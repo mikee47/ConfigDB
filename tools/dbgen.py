@@ -47,10 +47,20 @@ def make_string(s: str):
 
 
 def parse_object(ctx: Context, config: dict, output: list):
+    output += [
+        '',
+        f'class {ctx.type_name}: public ConfigDB::{STORE_KIND}::Group',
+        '{',
+        'public:',
+    ]
+
     # Get list of any immediate child objects which we should instantiate
     children = []
     for key, value in config['properties'].items():
         if value['type'] == 'object':
+            out = []
+            parse_object(Context(ctx.path_list + [key], key), value, out)
+            output += [out]
             children.append(key)
     if children:
         print('Children: ' + ', '.join(children))
@@ -59,21 +69,17 @@ def parse_object(ctx: Context, config: dict, output: list):
     tmp += [f'{make_identifier(c)}(store)' for c in children]
     init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
 
-    output += [
+    output += [[
         '',
-        f'class {ctx.type_name}: public ConfigDB::{STORE_KIND}::Group',
+        f'{ctx.type_name}(ConfigDB::{STORE_KIND}::Store& store):',
+        init_list,
         '{',
-        'public:',
-        [
-            f'{ctx.type_name}(ConfigDB::{STORE_KIND}::Store& store):',
-            init_list,
-            '{',
-            '}',
-            '',
-        ]
-    ]
+        '}',
+    ]]
     for key, value in config['properties'].items():
         ptype = value['type']
+        if ptype == 'object':
+            continue
         parse = type_parsers[ptype]
         out = []
         parse(Context(ctx.path_list + [key], key), value, out)
