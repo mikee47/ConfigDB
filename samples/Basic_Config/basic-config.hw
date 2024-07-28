@@ -1,0 +1,15 @@
+{
+	"name": "Basic Config sample",
+	"base_config": "standard",
+	"options": [
+		"2m"
+	],
+	"partitions": {
+		"lfs0": {
+			"address": "0x00100000",
+			"size": "400K",
+			"type": "data",
+			"subtype": "littlefs"
+		}
+	}
+}

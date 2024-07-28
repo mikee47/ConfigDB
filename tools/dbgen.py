@@ -10,14 +10,23 @@ import json
 
 STORE_KIND = 'Json'
 
-class Context:
-    def __init__(self, path_list: list, name: str):
+CPP_TYPENAMES = {
+    'object': '-',
+    'array': None,
+    'string': 'String',
+    'integer': 'int',
+    'boolean': 'bool',
+}
+
+class JsonPath:
+    '''Manages node identifier path'''
+    def __init__(self, nodes: list, name: str):
         self.name = name
-        self.path_list = path_list
+        self.nodes = nodes
 
     @property
     def path(self):
-        return '.'.join(self.path_list)
+        return '.'.join(self.nodes)
 
     @property
     def type_name(self):
@@ -25,7 +34,7 @@ class Context:
 
 
 def make_identifier(s: str, is_type: bool = False):
-    '''Make camelcase identifier for a type definition or variable'''
+    '''Form valid camelCase identifier for a variable (default) or type'''
     up = is_type
     id = ''
     for c in s:
@@ -38,18 +47,19 @@ def make_identifier(s: str, is_type: bool = False):
 
 
 def make_type_name(s: str):
+    '''Form valid CamelCase type name'''
     return make_identifier(s, True)
 
 
 def make_string(s: str):
-    return f'"{s}"'
-    # return f'_F("{s}")'
+    '''Encode a string value'''
+    return f'_F("{s}")'
 
 
-def parse_object(ctx: Context, config: dict, output: list):
-    output += [
+def parse_object(location: JsonPath, config: dict) -> list:
+    output = [
         '',
-        f'class {ctx.type_name}: public ConfigDB::{STORE_KIND}::Group',
+        f'class {location.type_name}: public ConfigDB::{STORE_KIND}::Group',
         '{',
         'public:',
     ]
@@ -58,75 +68,61 @@ def parse_object(ctx: Context, config: dict, output: list):
     children = []
     for key, value in config['properties'].items():
         if value['type'] == 'object':
-            out = []
-            parse_object(Context(ctx.path_list + [key], key), value, out)
-            output += [out]
+            loc = JsonPath(location.nodes + [key], key)
+            output += [parse_object(loc, value)]
             children.append(key)
-    if children:
-        print('Children: ' + ', '.join(children))
 
-    tmp = [f'Group(store, {make_string(ctx.path)})']
+    tmp = [f'Group(store, {make_string(location.path)})']
     tmp += [f'{make_identifier(c)}(store)' for c in children]
     init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
 
     output += [[
         '',
-        f'{ctx.type_name}(ConfigDB::{STORE_KIND}::Store& store):',
+        f'{location.type_name}(ConfigDB::{STORE_KIND}::Store& store):',
         init_list,
         '{',
         '}',
     ]]
     for key, value in config['properties'].items():
+        loc = JsonPath(location.nodes + [key], key)
         ptype = value['type']
-        if ptype == 'object':
+        ctype = CPP_TYPENAMES.get(ptype)
+        if not ctype:
+            print(f'*** "{loc.path}": {ptype} type not yet implemented.')
             continue
-        parse = type_parsers[ptype]
-        out = []
-        parse(Context(ctx.path_list + [key], key), value, out)
-        output += [ out ]
+        if ctype == '-':
+            continue
+        output += [parse_basic(loc, value, ctype)]
     output += [
         '',
         [f'{make_type_name(c)} {make_identifier(c)};' for c in children],
         '};'
     ]
+    return output
 
-def parse_array(ctx: Context, config: dict, output: list):
-    pass
 
-def parse_basic(ctx: Context, config: dict, output: list, value_type: str):
-    output += [
+def parse_array(location: JsonPath, config: dict) -> list:
+    # TODO
+    return []
+
+
+def parse_basic(location: JsonPath, config: dict, value_type: str) -> list:
+    return [
         '',
-        f'{value_type} get{ctx.type_name}()',
+        f'{value_type} get{location.type_name}()',
         '{',
         [
-            f'return Group::getValue<{value_type}>({make_string(ctx.name)});',
+            f'return Group::getValue<{value_type}>({make_string(location.name)});',
         ],
         '}'
         '',
-        f'bool set{ctx.type_name}(const {value_type}& value)',
+        f'bool set{location.type_name}(const {value_type}& value)',
         '{',
         [
-            f'return Group::setValue({make_string(ctx.name)}, value);'
+            f'return Group::setValue({make_string(location.name)}, value);'
         ],
         '}'
     ]
-
-def parse_string(ctx: Context, config: dict, output: list):
-    parse_basic(ctx, config, output, 'String')
-
-def parse_integer(ctx: Context, config: dict, output: list):
-    parse_basic(ctx, config, output, 'int')
-
-def parse_boolean(ctx: Context, config: dict, output: list):
-    parse_basic(ctx, config, output, 'bool')
-
-type_parsers = {
-    'object': parse_object,
-    'array': parse_array,
-    'string': parse_string,
-    'integer': parse_integer,
-    'boolean': parse_boolean,
-}
 
 
 def main():
@@ -149,8 +145,8 @@ def main():
         ' ****/',
         '',
         f'#include <ConfigDB/{STORE_KIND}.h>',
+        parse_object(JsonPath([], name), config)
     ]
-    parse_object(Context([], name), config, output)
 
     filename = os.path.join(args.outdir, f'{name}.h')
     os.makedirs(args.outdir, exist_ok=True)

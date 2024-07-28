@@ -1,4 +1,5 @@
 #include <SmingCore.h>
+#include <LittleFS.h>
 #include <basic-config.h>
 
 namespace
@@ -29,12 +30,18 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 void testStore()
 {
 	ConfigDB::Json::Store store("test", ConfigDB::Mode::readwrite);
+
 	BasicConfig::General general(store);
 	general.setDeviceName("Test Device");
 	Serial << "Device name: " << general.getDeviceName() << endl;
+
 	BasicConfig::Color color(store);
 	color.colortemp.setWw(12);
 	Serial << "WW " << color.colortemp.getWw() << endl;
+
+	BasicConfig config(store);
+	config.events.setColorMinintervalMs(1200);
+
 	store.commit();
 }
 
@@ -45,7 +52,11 @@ void init()
 	Serial.begin(COM_SPEED_SERIAL);
 	Serial.systemDebugOutput(true);
 
+#ifdef ARCH_HOST
 	fileSetFileSystem(&IFS::Host::getFileSystem());
+#else
+	lfs_mount();
+#endif
 
 	// checkConfig();
 	testStore();
