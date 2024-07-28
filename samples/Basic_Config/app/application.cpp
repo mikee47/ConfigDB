@@ -32,9 +32,9 @@ void testStore()
 	BasicConfig::General general(store);
 	general.setDeviceName("Test Device");
 	Serial << "Device name: " << general.getDeviceName() << endl;
-	BasicConfig::Color::Colortemp ct(store);
-	ct.setWw(12);
-	Serial << "WW " << ct.getWw() << endl;
+	BasicConfig::Color color(store);
+	color.colortemp.setWw(12);
+	Serial << "WW " << color.colortemp.getWw() << endl;
 	store.commit();
 }
 

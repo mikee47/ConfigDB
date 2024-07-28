@@ -24,16 +24,21 @@ class Context:
         return make_type_name(self.name)
 
 
-def make_type_name(s: str):
-    up = True
-    name = ''
+def make_identifier(s: str, is_type: bool = False):
+    '''Make camelcase identifier for a type definition or variable'''
+    up = is_type
+    id = ''
     for c in s:
         if c in ['-', '_']:
             up = True
         else:
-            name += c.upper() if up else c
+            id += c.upper() if up else c
             up = False
-    return name
+    return id
+
+
+def make_type_name(s: str):
+    return make_identifier(s, True)
 
 
 def make_string(s: str):
@@ -42,16 +47,30 @@ def make_string(s: str):
 
 
 def parse_object(ctx: Context, config: dict, output: list):
+    # Get list of any immediate child objects which we should instantiate
+    children = []
+    for key, value in config['properties'].items():
+        if value['type'] == 'object':
+            children.append(key)
+    if children:
+        print('Children: ' + ', '.join(children))
+
+    tmp = [f'Group(store, {make_string(ctx.path)})']
+    tmp += [f'{make_identifier(c)}(store)' for c in children]
+    init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
+
     output += [
         '',
         f'class {ctx.type_name}: public ConfigDB::{STORE_KIND}::Group',
         '{',
         'public:',
         [
-            f'{ctx.type_name}(ConfigDB::{STORE_KIND}::Store& store): Group(store, {make_string(ctx.path)})',
+            f'{ctx.type_name}(ConfigDB::{STORE_KIND}::Store& store):',
+            init_list,
             '{',
             '}',
-        ],
+            '',
+        ]
     ]
     for key, value in config['properties'].items():
         ptype = value['type']
@@ -60,6 +79,8 @@ def parse_object(ctx: Context, config: dict, output: list):
         parse(Context(ctx.path_list + [key], key), value, out)
         output += [ out ]
     output += [
+        '',
+        [f'{make_type_name(c)} {make_identifier(c)};' for c in children],
         '};'
     ]
 
@@ -132,8 +153,10 @@ def main():
             for item in items:
                 if isinstance(item, list):
                     dump_output(item, indent + '    ')
-                else:
+                elif item:
                     f.write(f'{indent}{item}\n')
+                else:
+                    f.write('\n')
         dump_output(output, '')
 
 
