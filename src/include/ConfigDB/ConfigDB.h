@@ -52,5 +52,4 @@ public:
 	// }
 };
 
-
 } // namespace ConfigDB

@@ -9,7 +9,7 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
  * Analyse ArduinoJson memory usage for the configuration as a whole,
  * and if each top-level object is handled as a separate document.
  */
-void checkConfig()
+[[maybe_unused]] void checkConfig()
 {
 	DynamicJsonDocument doc(4096);
 	assert(Json::deserialize(doc, sampleConfig));
@@ -24,8 +24,18 @@ void checkConfig()
 		totalMem += doc2.memoryUsage();
 	}
 	Serial << "Total memoryUsage " << totalMem << endl;
+}
 
-	System.restart();
+void testStore()
+{
+	ConfigDB::Json::Store store("test", ConfigDB::Mode::readwrite);
+	BasicConfig::General general(store);
+	general.setDeviceName("Test Device");
+	Serial << "Device name: " << general.getDeviceName() << endl;
+	BasicConfig::Color::Colortemp ct(store);
+	ct.setWw(12);
+	Serial << "WW " << ct.getWw() << endl;
+	store.commit();
 }
 
 } // namespace
@@ -33,5 +43,12 @@ void checkConfig()
 void init()
 {
 	Serial.begin(COM_SPEED_SERIAL);
-	checkConfig();
+	Serial.systemDebugOutput(true);
+
+	fileSetFileSystem(&IFS::Host::getFileSystem());
+
+	// checkConfig();
+	testStore();
+
+	System.restart();
 }
