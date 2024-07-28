@@ -31,14 +31,19 @@ public:
 		return true;
 	}
 
-	template <typename T> bool getValue(const String& path, const String& key, T& value)
+	template <typename T> bool setValue(const String& key, const T& value)
 	{
-		JsonObject obj = getObject(path);
-		if(obj.isNull()) {
-			return false;
-		}
-		value = obj[key];
-		return true;
+		return setValue(nullptr, key, value);
+	}
+
+	template <typename T> T getValue(const String& path, const String& key)
+	{
+		return getObject(path)[key];
+	}
+
+	template <typename T> T getValue(const String& key)
+	{
+		return getRootObject()[key];
 	}
 
 protected:
@@ -52,17 +57,19 @@ protected:
 	 */
 	JsonObject getObject(const String& path);
 
+	JsonObject getRootObject();
+
 private:
 	DynamicJsonDocument doc;
 };
 
 /**
- * @brief Access a group of simple key/value pairs within a store
+ * @brief Access a Object of simple key/value pairs within a store
  */
-class Group : public ConfigDB::Group
+class Object : public ConfigDB::Object
 {
 public:
-	Group(Store& store, const String& path) : ConfigDB::Group(path), store(store)
+	Object(Store& store, const String& path) : ConfigDB::Object(path), store(store)
 	{
 	}
 

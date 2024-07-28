@@ -9,7 +9,7 @@ JsonObject Store::getObject(const String& path)
 	String s(path);
 	s.replace('.', '\0');
 	CStringArray csa(std::move(s));
-	JsonObject obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
+	auto obj = getRootObject();
 	for(auto key : csa) {
 		if(!obj) {
 			break;
@@ -21,6 +21,11 @@ JsonObject Store::getObject(const String& path)
 		obj = child;
 	}
 	return obj;
+}
+
+JsonObject Store::getRootObject()
+{
+	return doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
 }
 
 } // namespace ConfigDB::Json

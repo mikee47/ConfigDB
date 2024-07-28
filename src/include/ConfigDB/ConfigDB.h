@@ -107,10 +107,10 @@ private:
 	String name;
 };
 
-class Group
+class Object
 {
 public:
-	Group(const String& path) : path(path)
+	Object(const String& path) : path(path)
 	{
 	}
 

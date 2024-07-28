@@ -66,7 +66,7 @@ def parse_object(location: JsonPath, store_kind: str, config: dict) -> list:
         store_kind = make_typename(config['store'])
         baseClass = f'{store_kind}::Store'
     else:
-        baseClass = f'{store_kind}::Group'
+        baseClass = f'{store_kind}::Object'
 
     if is_database:
         location.nodes = []
@@ -109,7 +109,7 @@ def parse_object(location: JsonPath, store_kind: str, config: dict) -> list:
             '}',
         ]]
     else:
-        tmp = [f'Group(store, {make_string(location.path)})']
+        tmp = [f'Object(store, {make_string(location.path)})']
         tmp += [f'{make_identifier(c)}(store)' for c in children]
         init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
         output += [[
