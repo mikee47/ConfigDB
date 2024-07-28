@@ -8,8 +8,6 @@ import os
 import sys
 import json
 
-STORE_KIND = 'Json'
-
 CPP_TYPENAMES = {
     'object': '-',
     'array': None,
@@ -30,7 +28,7 @@ class JsonPath:
 
     @property
     def type_name(self):
-        return make_type_name(self.name)
+        return make_typename(self.name)
 
 
 def make_identifier(s: str, is_type: bool = False):
@@ -46,7 +44,7 @@ def make_identifier(s: str, is_type: bool = False):
     return id
 
 
-def make_type_name(s: str):
+def make_typename(s: str):
     '''Form valid CamelCase type name'''
     return make_identifier(s, True)
 
@@ -56,10 +54,26 @@ def make_string(s: str):
     return f'_F("{s}")'
 
 
-def parse_object(location: JsonPath, config: dict) -> list:
+def parse_object(location: JsonPath, store_kind: str, config: dict) -> list:
+    is_database = ('database' in config)
+    is_store = ('store' in config)
+    if is_database:
+        if not is_store:
+            raise RuntimeError(f'Database requires default "store" value')
+        store_kind = make_typename(config['store'])
+        baseClass = 'Database'
+    elif is_store:
+        store_kind = make_typename(config['store'])
+        baseClass = f'{store_kind}::Store'
+    else:
+        baseClass = f'{store_kind}::Group'
+
+    if is_database:
+        location.nodes = []
+
     output = [
         '',
-        f'class {location.type_name}: public ConfigDB::{STORE_KIND}::Group',
+        f'class {location.type_name}: public ConfigDB::{baseClass}',
         '{',
         'public:',
     ]
@@ -69,20 +83,42 @@ def parse_object(location: JsonPath, config: dict) -> list:
     for key, value in config['properties'].items():
         if value['type'] == 'object':
             loc = JsonPath(location.nodes + [key], key)
-            output += [parse_object(loc, value)]
+            output += [parse_object(loc, store_kind, value)]
             children.append(key)
 
-    tmp = [f'Group(store, {make_string(location.path)})']
-    tmp += [f'{make_identifier(c)}(store)' for c in children]
-    init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
-
-    output += [[
-        '',
-        f'{location.type_name}(ConfigDB::{STORE_KIND}::Store& store):',
-        init_list,
-        '{',
-        '}',
-    ]]
+    if is_database:
+        tmp = [f'Database(path)']
+        tmp += [f'{make_identifier(c)}(store)' for c in children]
+        init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
+        output += [[
+            '',
+            f'{location.type_name}(const String& path):',
+            init_list,
+            '{',
+            '}',
+        ]]
+    elif is_store:
+        tmp = [f'Store(db, {make_string(key)})']
+        tmp += [f'{make_identifier(c)}(store)' for c in children]
+        init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
+        output += [[
+            '',
+            f'{location.type_name}(ConfigDB::Database& db):',
+            init_list,
+            '{',
+            '}',
+        ]]
+    else:
+        tmp = [f'Group(store, {make_string(location.path)})']
+        tmp += [f'{make_identifier(c)}(store)' for c in children]
+        init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
+        output += [[
+            '',
+            f'{location.type_name}(ConfigDB::{store_kind}::Store& store):',
+            init_list,
+            '{',
+            '}',
+        ]]
     for key, value in config['properties'].items():
         loc = JsonPath(location.nodes + [key], key)
         ptype = value['type']
@@ -95,7 +131,7 @@ def parse_object(location: JsonPath, config: dict) -> list:
         output += [parse_basic(loc, value, ctype)]
     output += [
         '',
-        [f'{make_type_name(c)} {make_identifier(c)};' for c in children],
+        [f'{make_typename(c)} {make_identifier(c)};' for c in children],
         '};'
     ]
     return output
@@ -112,14 +148,14 @@ def parse_basic(location: JsonPath, config: dict, value_type: str) -> list:
         f'{value_type} get{location.type_name}()',
         '{',
         [
-            f'return Group::getValue<{value_type}>({make_string(location.name)});',
+            f'return getValue<{value_type}>({make_string(location.name)});',
         ],
         '}'
         '',
         f'bool set{location.type_name}(const {value_type}& value)',
         '{',
         [
-            f'return Group::setValue({make_string(location.name)}, value);'
+            f'return setValue({make_string(location.name)}, value);'
         ],
         '}'
     ]
@@ -135,6 +171,20 @@ def main():
 
     with open(args.cfgfile, 'r') as f:
         config = json.load(f)
+    # Top-level object is implicitly a database
+    config['database'] = True
+
+    # Find out what stores are in use
+    stores = set()
+    def find_stores(cfg: dict):
+        kind = cfg.get('store')
+        if kind:
+            stores.add(kind)
+        for x in cfg.values():
+            if isinstance(x, dict):
+                find_stores(x)
+    find_stores(config)    
+    print(f'stores: {stores}')
 
     name = os.path.splitext(os.path.basename(args.cfgfile))[0]
     output = [
@@ -144,8 +194,8 @@ def main():
         ' *',
         ' ****/',
         '',
-        f'#include <ConfigDB/{STORE_KIND}.h>',
-        parse_object(JsonPath([], name), config)
+        *[f'#include <ConfigDB/{make_typename(kind)}.h>' for kind in stores],
+        *parse_object(JsonPath([name], name), None, config)
     ]
 
     filename = os.path.join(args.outdir, f'{name}.h')

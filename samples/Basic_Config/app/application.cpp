@@ -33,11 +33,11 @@ void testStore()
 
 	BasicConfig::General general(store);
 	general.setDeviceName("Test Device");
-	Serial << "Device name: " << general.getDeviceName() << endl;
+	Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
 
 	BasicConfig::Color color(store);
 	color.colortemp.setWw(12);
-	Serial << "WW " << color.colortemp.getWw() << endl;
+	Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
 	BasicConfig config(store);
 	config.events.setColorMinintervalMs(1200);

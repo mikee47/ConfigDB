@@ -22,3 +22,12 @@ The schema can then be used to provide auto-generated Standardised web editors c
         - USB config `Sming/Libraries/USB/schema.json`
 
     It's probably fair to consider it a standard part of the framework so this should be documented somewhere centrally and referred to.
+
+
+Schema rules
+------------
+
+- Root object is always a :cpp:class:`ConfigDB::Database`.
+- Direct children should be a :cpp:class:`ConfigDB::Store`.
+- A store has no direct values (string, integer, etc), but a group does.
+- If a database has any direct :cpp:class:`ConfigDB::Group` children, then it must also define a default store type.

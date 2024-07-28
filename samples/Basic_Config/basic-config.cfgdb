@@ -1,9 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "store": "json",
   "properties": {
     "general": {
       "type": "object",
+      "store": "json",
       "properties": {
         "device_name": {
           "type": "string"

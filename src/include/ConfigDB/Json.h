@@ -8,17 +8,17 @@ namespace ConfigDB::Json
 class Store : public ConfigDB::Store
 {
 public:
-	Store(const String& name, Mode mode) : doc(1024), filename(name + ".json"), mode(mode)
+	Store(Database& db, const String& name) : ConfigDB::Store(db, name), doc(1024)
 	{
-		::Json::loadFromFile(doc, filename);
+		::Json::loadFromFile(doc, getFilename());
 	}
 
 	bool commit()
 	{
-		if(mode != Mode::readwrite) {
+		if(database().getMode() != Mode::readwrite) {
 			return false;
 		}
-		return ::Json::saveToFile(doc, filename, ::Json::Pretty);
+		return ::Json::saveToFile(doc, getFilename(), ::Json::Pretty);
 	}
 
 	template <typename T> bool setValue(const String& path, const String& key, const T& value)
@@ -31,13 +31,22 @@ public:
 		return true;
 	}
 
-	template <typename T> T getValue(const String& path, const String& key)
+	template <typename T> bool getValue(const String& path, const String& key, T& value)
 	{
 		JsonObject obj = getObject(path);
-		return obj[key];
+		if(obj.isNull()) {
+			return false;
+		}
+		value = obj[key];
+		return true;
 	}
 
 protected:
+	String getFilename() const
+	{
+		return getPath() + ".json";
+	}
+
 	/**
 	 * @brief Resolve a path into the corresponding JSON object, creating it if required
 	 */
@@ -45,17 +54,15 @@ protected:
 
 private:
 	DynamicJsonDocument doc;
-	String filename;
-	Mode mode;
 };
 
 /**
  * @brief Access a group of simple key/value pairs within a store
  */
-class Group
+class Group : public ConfigDB::Group
 {
 public:
-	Group(Store& store, const String& path) : store(store), path(path)
+	Group(Store& store, const String& path) : ConfigDB::Group(path), store(store)
 	{
 	}
 
@@ -69,9 +76,8 @@ public:
 		return store.getValue<T>(path, key);
 	}
 
-private:
+protected:
 	Store& store;
-	String path;
 };
 
 } // namespace ConfigDB::Json
