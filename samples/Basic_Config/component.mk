@@ -1,0 +1,5 @@
+COMPONENT_DEPENDS := \
+	ConfigDB \
+	ArduinoJson6
+
+DISABLE_NETWORK := 1
