@@ -8,14 +8,12 @@ import os
 import sys
 import json
 
-class Context:
-    def __init__(self, path: list, name: str):
-        self.path_list = list(path) + [name]
+STORE_KIND = 'Json'
 
-    @property
-    def name(self):
-        _, _, s = self.path.rpartition('.')
-        return s
+class Context:
+    def __init__(self, path_list: list, name: str):
+        self.name = name
+        self.path_list = path_list
 
     @property
     def path(self):
@@ -46,11 +44,11 @@ def make_string(s: str):
 def parse_object(ctx: Context, config: dict, output: list):
     output += [
         '',
-        f'class {ctx.type_name}: public ConfigDB::Group',
+        f'class {ctx.type_name}: public ConfigDB::{STORE_KIND}::Group',
         '{',
         'public:',
         [
-            f'{ctx.type_name}(ConfigDB::Config& db): Group(db, {make_string(ctx.path)})',
+            f'{ctx.type_name}(ConfigDB::{STORE_KIND}::Store& store): Group(store, {make_string(ctx.path)})',
             '{',
             '}',
         ],
@@ -59,7 +57,7 @@ def parse_object(ctx: Context, config: dict, output: list):
         ptype = value['type']
         parse = type_parsers[ptype]
         out = []
-        parse(Context(ctx.path_list, key), value, out)
+        parse(Context(ctx.path_list + [key], key), value, out)
         output += [ out ]
     output += [
         '};'
@@ -74,7 +72,7 @@ def parse_basic(ctx: Context, config: dict, output: list, value_type: str):
         f'{value_type} get{ctx.type_name}()',
         '{',
         [
-            f'return Group::getValue({make_string(ctx.name)});'
+            f'return Group::getValue<{value_type}>({make_string(ctx.name)});',
         ],
         '}'
         '',
@@ -107,30 +105,42 @@ type_parsers = {
 def main():
     parser = argparse.ArgumentParser(description='ConfigDB specification utility')
 
-    parser.add_argument('input', help='Path to configuration file')
-    parser.add_argument('output', help='Output directory')
+    parser.add_argument('cfgfile', help='Path to configuration file')
+    parser.add_argument('outdir', help='Output directory')
 
     args = parser.parse_args()
 
-    with open(args.input, 'r') as f:
+    with open(args.cfgfile, 'r') as f:
         config = json.load(f)
 
-    name = os.path.splitext(os.path.basename(args.input))[0]
-    output = []
+    name = os.path.splitext(os.path.basename(args.cfgfile))[0]
+    output = [
+        '/****',
+        ' *',
+        ' * This file is auto-generated.',
+        ' *',
+        ' ****/',
+        '',
+        f'#include <ConfigDB/{STORE_KIND}.h>',
+    ]
     parse_object(Context([], name), config, output)
 
-    def dump_output(items: list, indent: str):
-        for item in items:
-            if isinstance(item, list):
-                dump_output(item, indent + '    ')
-            else:
-                print(f'{indent}{item}')
-    dump_output(output, '')
+    filename = os.path.join(args.outdir, f'{name}.h')
+    os.makedirs(args.outdir, exist_ok=True)
+    with open(filename, 'w') as f:
+        def dump_output(items: list, indent: str):
+            for item in items:
+                if isinstance(item, list):
+                    dump_output(item, indent + '    ')
+                else:
+                    f.write(f'{indent}{item}\n')
+        dump_output(output, '')
 
 
 if __name__ == '__main__':
     try:
         main()
     except Exception as e:
-        print("** ERROR! %s" % e, file=sys.stderr)
+        print(repr(e), file=sys.stderr)
+        raise
         sys.exit(2)

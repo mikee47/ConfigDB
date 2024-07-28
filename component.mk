@@ -1,0 +1,35 @@
+COMPONENT_INCDIRS := src/include
+COMPONENT_SRCDIRS := src
+
+CONFIGDB_GEN_CMDLINE := $(PYTHON) $(COMPONENT_PATH)/tools/dbgen.py
+
+COMPONENT_VARS := APP_CONFIGDB_DIR
+APP_CONFIGDB_DIR ?= $(PROJECT_DIR)/out/ConfigDB
+COMPONENT_INCDIRS += $(APP_CONFIGDB_DIR)
+
+COMPONENT_VARS += CONFIGDB_SCHEMA
+ifeq (,$(COMPONENT_RULE))
+CONFIGDB_SCHEMA := $(wildcard $(PROJECT_DIR)/*.cfgdb)
+endif
+
+CONFIGDB_FILES := $(addprefix $(APP_CONFIGDB_DIR)/,tzdata.h tzdata.cpp)
+
+ifneq (,$(CONFIGDB_FILES))
+
+$(CONFIGDB_FILES): | $(APP_CONFIGDB_DIR)
+	$(CONFIGDB_GEN_CMDLINE) $@ > $(APP_CONFIGDB_DIR)/${@F:.cfgdb=.h}
+
+$(APP_TZDATA_DIR):
+	$(Q) mkdir -p $@
+
+COMPONENT_PREREQUISITES := $(TZDATA_FILES)
+COMPONENT_APPCODE := $(APP_TZDATA_DIR)
+COMPONENT_INCDIRS += $(APP_TZDATA_DIR)
+
+.PHONY: tzdata-clean
+tzdata-clean:
+	$(Q) rm -f $(TZDATA_FILES)
+
+clean: tzdata-clean
+
+endif

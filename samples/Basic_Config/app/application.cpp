@@ -1,5 +1,5 @@
 #include <SmingCore.h>
-#include <ArduinoJson.h>
+#include <basic-config.h>
 
 namespace
 {
