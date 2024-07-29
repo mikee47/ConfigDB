@@ -1,5 +1,5 @@
 /**
- * DataStream.cpp
+ * ConfigDB/DataStream.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -18,6 +18,8 @@
  ****/
 
 #include "include/ConfigDB/DataStream.h"
+#include "include/ConfigDB/Store.h"
+#include "include/ConfigDB/Object.h"
 
 namespace ConfigDB
 {
@@ -31,9 +33,9 @@ void DataStream::reset()
 
 void DataStream::fillStream()
 {
-    if(state == State::done) {
-        return;
-    }
+	if(state == State::done) {
+		return;
+	}
 	if(state == State::header) {
 		stream << '{' << endl;
 		state = State::object;
@@ -65,7 +67,7 @@ void DataStream::fillStream()
 			stream << '"' << name << "\":";
 		}
 		stream << *object;
-        ++objectIndex;
+		++objectIndex;
 		return;
 	}
 	stream << endl << '}' << endl;

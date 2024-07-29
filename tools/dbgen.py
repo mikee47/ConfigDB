@@ -166,7 +166,7 @@ def generate_database(db: Database) -> list:
         ' *',
         ' ****/',
         '',
-        *[f'#include <ConfigDB/{typ}.h>' for typ in store_namespaces],
+        *[f'#include <ConfigDB/{ns}/Object.h>' for ns in store_namespaces],
         '',
         f'class {db.typename}: public ConfigDB::Database',
         '{',

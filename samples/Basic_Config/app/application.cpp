@@ -32,9 +32,12 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 	Serial << "Total memoryUsage " << totalMem << endl;
 }
 
-void testStore()
+/*
+ * Read and write some values
+ */
+void readWriteValues(BasicConfig& db)
 {
-	BasicConfig db("test");
+	Serial << endl << _F("** Read/Write Values **") << endl;
 
 	{
 		BasicConfig::Security sec(db);
@@ -66,6 +69,15 @@ void testStore()
 		events.setColorMinintervalMs(1200);
 		events.commit();
 	}
+}
+
+/*
+ * Prints out database content.
+ * Should be identical to stream output.
+ */
+void inspect(BasicConfig& db)
+{
+	Serial << endl << _F("** Inspect **") << endl;
 
 	Serial << '{' << endl;
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
@@ -86,6 +98,14 @@ void testStore()
 		}
 	}
 	Serial << endl << '}' << endl;
+}
+
+/*
+ * Test output from DataStream
+ */
+void stream(BasicConfig& db)
+{
+	Serial << endl << _F("** Stream **") << endl;
 
 	ConfigDB::DataStream stream(db);
 	Serial.copyFrom(&stream);
@@ -104,8 +124,16 @@ void init()
 	lfs_mount();
 #endif
 
-	// checkConfig();
-	testStore();
+	BasicConfig db("test");
 
+	// checkConfig();
+	readWriteValues(db);
+	inspect(db);
+	stream(db);
+
+	Serial << endl << endl;
+
+#ifdef ARCH_HOST
 	System.restart();
+#endif
 }

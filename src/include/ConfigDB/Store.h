@@ -1,56 +1,29 @@
+/**
+ * ConfigDB/Store.h
+ *
+ * Copyright 2024 mikee47 <mike@sillyhouse.net>
+ *
+ * This file is part of the ConfigDB Library
+ *
+ * This library is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, version 3 or later.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this library.
+ * If not, see <https://www.gnu.org/licenses/>.
+ *
+ ****/
+
 #pragma once
 
-#include <WString.h>
-#include <Data/CString.h>
-#include <Data/Stream/DataSourceStream.h>
+#include "Database.h"
 #include <debug_progmem.h>
 
 namespace ConfigDB
 {
-enum class Mode {
-	readonly,
-	readwrite,
-};
-
-class Store;
-class Object;
-
-class Database
-{
-public:
-	/**
-	 * @brief Database instance
-	 * @param path Path to root directory where all data is stored
-	 */
-	Database(const String& path) : path(path.c_str())
-	{
-	}
-
-	virtual ~Database()
-	{
-	}
-
-	String getName() const
-	{
-		auto pathstr = path.c_str();
-		auto sep = strrchr(pathstr, '/');
-		return sep ? &sep[1] : pathstr;
-	}
-
-	String getPath() const
-	{
-		return path.c_str();
-	}
-
-	/**
-	 * @brief Get stores
-	 */
-	virtual std::shared_ptr<Store> getStore(unsigned index) = 0;
-
-private:
-	CString path;
-};
-
 /**
  * @brief Manages access to an object store, typically one file
  */
@@ -124,7 +97,10 @@ public:
 		return name;
 	}
 
-	virtual std::unique_ptr<IDataSourceStream> serialize() const = 0;
+	/**
+	 * @brief Serialize entire store
+	 */
+	virtual size_t printTo(Print& p) const = 0;
 
 	/**
 	 * @brief Get top-level objects
@@ -161,50 +137,4 @@ private:
 };
 
 template <class BaseType, class ClassType> std::weak_ptr<ClassType> StoreTemplate<BaseType, ClassType>::store;
-
-/**
- * @brief An object can contain other objects, properties and arrays
- */
-class Object
-{
-public:
-	Object(const String& name) : name(name)
-	{
-	}
-
-	virtual ~Object()
-	{
-	}
-
-	const String& getName() const
-	{
-		return name;
-	}
-
-	String getPath() const
-	{
-		String path = getStore()->getName();
-		if(path && name) {
-			path += '.';
-			path += name;
-		}
-		return path;
-	}
-
-	virtual std::shared_ptr<Store> getStore() const = 0;
-
-	/**
-	 * @brief Commit changes to the store
-	 */
-	bool commit()
-	{
-		return getStore()->commit();
-	}
-
-	virtual size_t printTo(Print& p) const = 0;
-
-private:
-	String name;
-};
-
 } // namespace ConfigDB
