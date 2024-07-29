@@ -8,8 +8,6 @@ namespace ConfigDB::Json
 class Store : public ConfigDB::Store
 {
 public:
-	using Pointer = std::shared_ptr<Store>;
-
 	/**
 	 * @brief Construct a Store accessor
 	 * @param db
@@ -27,7 +25,7 @@ public:
 
 	template <typename T> bool setValue(const String& path, const String& key, const T& value)
 	{
-		JsonObject obj = getObject(path);
+		JsonObject obj = getJsonObject(path);
 		if(!obj) {
 			return false;
 		}
@@ -37,12 +35,11 @@ public:
 
 	template <typename T> T getValue(const String& path, const String& key, const T& defaultValue = {})
 	{
-		return getObject(path)[key] | defaultValue;
+		return getJsonObject(path)[key] | defaultValue;
 	}
 
 	std::unique_ptr<IDataSourceStream> serialize() const override;
 
-protected:
 	String getFilename() const
 	{
 		return getPath() + ".json";
@@ -51,9 +48,9 @@ protected:
 	/**
 	 * @brief Resolve a path into the corresponding JSON object, creating it if required
 	 */
-	JsonObject getObject(const String& path);
+	JsonObject getJsonObject(const String& path);
 
-	JsonObject getRootObject();
+	JsonObject getRootJsonObject();
 
 private:
 	DynamicJsonDocument doc;
@@ -65,7 +62,7 @@ private:
 class Object : public ConfigDB::Object
 {
 public:
-	Object(Store::Pointer store, const String& path) : ConfigDB::Object(path), store(store)
+	Object(std::shared_ptr<Store> store, const String& path) : ConfigDB::Object(path), store(store)
 	{
 	}
 
@@ -79,13 +76,15 @@ public:
 		return store->getValue<T>(getName(), key);
 	}
 
-	ConfigDB::Store::Pointer getStore() const override
+	std::shared_ptr<ConfigDB::Store> getStore() const override
 	{
 		return store;
 	}
 
+	size_t printTo(Print& p) const override;
+
 protected:
-	Store::Pointer store;
+	std::shared_ptr<Store> store;
 };
 
 } // namespace ConfigDB::Json

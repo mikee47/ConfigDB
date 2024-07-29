@@ -66,14 +66,23 @@ void testStore()
 		events.commit();
 	}
 
-	Serial << '{';
+	Serial << '{' << endl;
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
-		if (i > 0) {
-			Serial << ',';
+		if(i > 0) {
+			Serial << ',' << endl;
 		}
-		auto stream = store->serialize();
-		Serial << endl << '\t' << store->getName() << ": ";
-		Serial.copyFrom(stream.get());
+		if(auto& name = store->getName()) {
+			Serial << '"' << name << "\":";
+		}
+		for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
+			if(j > 0) {
+				Serial << ',' << endl;
+			}
+			if(auto& name = obj->getName()) {
+				Serial << '"' << name << "\":";
+			}
+			Serial << *obj;
+		}
 	}
 	Serial << endl << '}' << endl;
 }

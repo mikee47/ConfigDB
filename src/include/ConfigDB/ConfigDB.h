@@ -3,6 +3,7 @@
 #include <WString.h>
 #include <Data/CString.h>
 #include <Data/Stream/DataSourceStream.h>
+#include <debug_progmem.h>
 
 namespace ConfigDB
 {
@@ -12,6 +13,7 @@ enum class Mode {
 };
 
 class Store;
+class Object;
 
 class Database
 {
@@ -33,6 +35,9 @@ public:
 		return path.c_str();
 	}
 
+	/**
+	 * @brief Get stores
+	 */
 	virtual std::shared_ptr<Store> getStore(unsigned index) = 0;
 
 private:
@@ -45,8 +50,6 @@ private:
 class Store
 {
 public:
-	using Pointer = std::shared_ptr<Store>;
-
 	/**
 	 * @brief Storage instance
 	 * @param db Database to which this store belongs
@@ -54,10 +57,12 @@ public:
 	 */
 	Store(Database& db, const String& name) : db(db), name(name)
 	{
+		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
 	virtual ~Store()
 	{
+		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
 	/**
@@ -114,6 +119,11 @@ public:
 
 	virtual std::unique_ptr<IDataSourceStream> serialize() const = 0;
 
+	/**
+	 * @brief Get top-level objects
+	 */
+	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
+
 private:
 	Database& db;
 	String name;
@@ -132,6 +142,11 @@ public:
 			store = inst;
 		}
 		return inst;
+	}
+
+	static std::shared_ptr<ClassType> getPointer()
+	{
+		return store.lock();
 	}
 
 private:
@@ -166,7 +181,7 @@ public:
 		return path;
 	}
 
-	virtual Store::Pointer getStore() const = 0;
+	virtual std::shared_ptr<Store> getStore() const = 0;
 
 	/**
 	 * @brief Commit changes to the store
@@ -175,6 +190,8 @@ public:
 	{
 		return getStore()->commit();
 	}
+
+	virtual size_t printTo(Print& p) const = 0;
 
 private:
 	String name;

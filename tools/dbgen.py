@@ -35,12 +35,21 @@ class Object:
         return make_typename(self.name)
 
     @property
+    def namespace(self):
+        obj = self.parent
+        ns = []
+        while obj:
+            ns.append(obj.typename)
+            obj = obj.parent
+        return '::'.join(ns)
+
+    @property
     def id(self):
         return make_identifier(self.name)
 
     @property
     def base_class(self):
-        return f'{self.store.namespace}::Object'
+        return f'{self.store.store_ns}::Object'
 
     @property
     def path(self):
@@ -53,7 +62,7 @@ class Object:
 
 @dataclass
 class Store(Object):
-    namespace: str = None
+    store_ns: str = None
 
     @property
     def typename(self):
@@ -62,7 +71,7 @@ class Store(Object):
 
     @property
     def base_class(self):
-        return f'{self.namespace}::Store'
+        return f'{self.store_ns}::Store'
 
 @dataclass
 class Database(Object):
@@ -121,7 +130,7 @@ def load_config(filename: str) -> Database:
     store_ns = config.get('store')
     if store_ns is None:
         raise RuntimeError(f'Database requires root "store" value')
-    db.store = Store(db, '', namespace=make_typename(store_ns))
+    db.store = Store(db, '', store_ns=make_typename(store_ns))
     db.stores.append(db.store)
     config['object'] = db
 
@@ -131,12 +140,14 @@ def load_config(filename: str) -> Database:
                 continue
             properties = value['properties']
             if store_ns := value.get('store'):
-                store = Store(obj, key, namespace=make_typename(store_ns))
+                store = Store(obj, key, store_ns=make_typename(store_ns))
                 db.stores.append(store)
             else:
                 store = obj.store
             child = Object(obj, key, store, properties)
             obj.children.append(child)
+            if store != obj.store or store == db.store:
+                store.children.append(child)
             parse(child, value)
 
     parse(db, config)
@@ -145,8 +156,8 @@ def load_config(filename: str) -> Database:
 
 def generate_database(db: Database) -> list:
     # Find out what stores are in use
-    store_namespaces = set([child.store.namespace for child in db.children])
-    store_namespaces.add(db.store.namespace)
+    store_namespaces = set([child.store.store_ns for child in db.children])
+    store_namespaces.add(db.store.store_ns)
 
     output = [
         '/****',
@@ -164,28 +175,18 @@ def generate_database(db: Database) -> list:
     for store in db.stores:
         output += [[
             '',
-            f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.namespace}::Store, {store.typename}>',
+            f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.store_ns}::Store, {store.typename}>',
             '{',
             'public:',
             [
                 f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {make_string(store.path)})',
                 '{',
                 '}',
+                '',
+                'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;',
             ],
             '};',
         ]]
-    output += [[
-        '',
-        'ConfigDB::Store::Pointer getStore(unsigned index) override',
-        '{',
-        [
-            'switch(index) {',
-            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
-            ['default: return nullptr;'],
-            '}',
-        ],
-        '}',
-    ]]
     output += [generate_object(child) for child in db.children]
     output += [
         [
@@ -193,9 +194,32 @@ def generate_database(db: Database) -> list:
             f'{db.typename}(const String& path): Database(path)',
             '{',
             '}',
+            '',
+            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override',
+            '{',
+            [
+                'switch(index) {',
+                [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
+                ['default: return nullptr;'],
+                '}',
+            ],
+            '}',
         ],
         '};'
     ]
+    for store in db.stores:
+        output += [
+            '',
+            f'std::unique_ptr<ConfigDB::Object> {store.namespace}::{store.typename}::getObject(unsigned index)',
+            '{',
+            [
+                'switch(index) {',
+                [f'case {i}: return std::make_unique<{obj.namespace}::{obj.typename}>(getPointer());' for i, obj in enumerate(store.children)],
+                ['default: return nullptr;'],
+                '}',
+            ],
+            '}',
+        ]
 
     return output
 
@@ -211,10 +235,15 @@ def generate_object(obj: Object) -> list:
     # Append child object definitions
     output += [generate_object(child) for child in obj.children]
 
-    init_list = [f'Object({obj.store.typename}::open(db), {make_string(obj.relative_path)})']
-    init_list += [f'{child.id}(db)' for child in obj.children]
+    init_list = [f'Object(store, {make_string(obj.relative_path)})']
+    init_list += [f'{child.id}(store)' for child in obj.children]
     output += [[
-        f'{obj.typename}({obj.database.typename}& db): {", ".join(init_list)}',
+        '',
+        f'{obj.typename}(std::shared_ptr<{obj.store.typename}> store): {", ".join(init_list)}',
+        '{',
+        '}',
+        '',
+        f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
         '{',
         '}',
     ]]
