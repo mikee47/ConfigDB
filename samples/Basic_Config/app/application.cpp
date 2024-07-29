@@ -5,6 +5,7 @@
 #define JSON_FORMAT_DEFAULT Json::Pretty
 
 #include <basic-config.h>
+#include <ConfigDB/DataStream.h>
 
 namespace
 {
@@ -85,6 +86,9 @@ void testStore()
 		}
 	}
 	Serial << endl << '}' << endl;
+
+	ConfigDB::DataStream stream(db);
+	Serial.copyFrom(&stream);
 }
 
 } // namespace

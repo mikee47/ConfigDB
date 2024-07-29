@@ -18,16 +18,23 @@ class Object;
 class Database
 {
 public:
-	virtual ~Database()
-	{
-	}
-
 	/**
 	 * @brief Database instance
 	 * @param path Path to root directory where all data is stored
 	 */
 	Database(const String& path) : path(path.c_str())
 	{
+	}
+
+	virtual ~Database()
+	{
+	}
+
+	String getName() const
+	{
+		auto pathstr = path.c_str();
+		auto sep = strrchr(pathstr, '/');
+		return sep ? &sep[1] : pathstr;
 	}
 
 	String getPath() const
@@ -45,7 +52,7 @@ private:
 };
 
 /**
- * @brief Non-virtual implementation template
+ * @brief Manages access to an object store, typically one file
  */
 class Store
 {
@@ -155,6 +162,9 @@ private:
 
 template <class BaseType, class ClassType> std::weak_ptr<ClassType> StoreTemplate<BaseType, ClassType>::store;
 
+/**
+ * @brief An object can contain other objects, properties and arrays
+ */
 class Object
 {
 public:

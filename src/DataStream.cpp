@@ -1,0 +1,98 @@
+/**
+ * DataStream.cpp
+ *
+ * Copyright 2024 mikee47 <mike@sillyhouse.net>
+ *
+ * This file is part of the ConfigDB Library
+ *
+ * This library is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, version 3 or later.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this library.
+ * If not, see <https://www.gnu.org/licenses/>.
+ *
+ ****/
+
+#include "include/ConfigDB/DataStream.h"
+
+namespace ConfigDB
+{
+void DataStream::reset()
+{
+	store.reset();
+	stream.clear();
+	state = State::header;
+	fillStream();
+}
+
+void DataStream::fillStream()
+{
+    if(state == State::done) {
+        return;
+    }
+	if(state == State::header) {
+		stream << '{' << endl;
+		state = State::object;
+		storeIndex = 0;
+		objectIndex = 0;
+		store = db.getStore(0);
+	}
+	while(store) {
+		if(objectIndex == 0) {
+			if(storeIndex > 0) {
+				stream << ',' << endl;
+			}
+			if(auto& name = store->getName()) {
+				stream << '"' << name << "\":";
+			}
+		}
+		auto object = store->getObject(objectIndex);
+		if(!object) {
+			++storeIndex;
+			store.reset();
+			store = db.getStore(storeIndex);
+			objectIndex = 0;
+			continue;
+		}
+		if(objectIndex > 0) {
+			stream << ',' << endl;
+		}
+		if(auto& name = object->getName()) {
+			stream << '"' << name << "\":";
+		}
+		stream << *object;
+        ++objectIndex;
+		return;
+	}
+	stream << endl << '}' << endl;
+	state = State::done;
+}
+
+uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
+{
+	if(bufSize <= 0) {
+		return 0;
+	}
+
+	return stream.readMemoryBlock(data, bufSize);
+}
+
+bool DataStream::seek(int len)
+{
+	if(len <= 0) {
+		return false;
+	}
+
+	stream.seek(len);
+	if(stream.available() == 0) {
+		stream.clear();
+		fillStream();
+	}
+	return true;
+}
+
+} // namespace ConfigDB
