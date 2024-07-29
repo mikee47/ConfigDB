@@ -1,5 +1,6 @@
 #include "include/ConfigDB/Json.h"
 #include <Data/CStringArray.h>
+#include <Data/Stream/MemoryDataStream.h>
 
 namespace ConfigDB::Json
 {
@@ -26,6 +27,15 @@ JsonObject Store::getObject(const String& path)
 JsonObject Store::getRootObject()
 {
 	return doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
+}
+
+std::unique_ptr<IDataSourceStream> Store::serialize() const
+{
+	auto stream = std::make_unique<MemoryDataStream>();
+	if(stream) {
+		::Json::serialize(doc, stream.get());
+	}
+	return stream;
 }
 
 } // namespace ConfigDB::Json

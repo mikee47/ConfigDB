@@ -174,6 +174,18 @@ def generate_database(db: Database) -> list:
             ],
             '};',
         ]]
+    output += [[
+        '',
+        'ConfigDB::Store::Pointer getStore(unsigned index) override',
+        '{',
+        [
+            'switch(index) {',
+            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
+            ['default: return nullptr;'],
+            '}',
+        ],
+        '}',
+    ]]
     output += [generate_object(child) for child in db.children]
     output += [
         [

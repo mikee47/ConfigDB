@@ -2,6 +2,7 @@
 
 #include <WString.h>
 #include <Data/CString.h>
+#include <Data/Stream/DataSourceStream.h>
 
 namespace ConfigDB
 {
@@ -10,9 +11,15 @@ enum class Mode {
 	readwrite,
 };
 
+class Store;
+
 class Database
 {
 public:
+	virtual ~Database()
+	{
+	}
+
 	/**
 	 * @brief Database instance
 	 * @param path Path to root directory where all data is stored
@@ -25,6 +32,8 @@ public:
 	{
 		return path.c_str();
 	}
+
+	virtual std::shared_ptr<Store> getStore(unsigned index) = 0;
 
 private:
 	CString path;
@@ -47,10 +56,19 @@ public:
 	{
 	}
 
+	virtual ~Store()
+	{
+	}
+
 	/**
 	 * @brief Commit changes
 	 */
 	virtual bool commit() = 0;
+
+	bool isRoot() const
+	{
+		return name.length() == 0;
+	}
 
 	/**
 	 * @brief Store a value
@@ -94,6 +112,8 @@ public:
 		return name;
 	}
 
+	virtual std::unique_ptr<IDataSourceStream> serialize() const = 0;
+
 private:
 	Database& db;
 	String name;
@@ -124,6 +144,10 @@ class Object
 {
 public:
 	Object(const String& name) : name(name)
+	{
+	}
+
+	virtual ~Object()
 	{
 	}
 

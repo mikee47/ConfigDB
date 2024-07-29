@@ -65,6 +65,17 @@ void testStore()
 		events.setColorMinintervalMs(1200);
 		events.commit();
 	}
+
+	Serial << '{';
+	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
+		if (i > 0) {
+			Serial << ',';
+		}
+		auto stream = store->serialize();
+		Serial << endl << '\t' << store->getName() << ": ";
+		Serial.copyFrom(stream.get());
+	}
+	Serial << endl << '}' << endl;
 }
 
 } // namespace

@@ -40,6 +40,8 @@ public:
 		return getObject(path)[key] | defaultValue;
 	}
 
+	std::unique_ptr<IDataSourceStream> serialize() const override;
+
 protected:
 	String getFilename() const
 	{
