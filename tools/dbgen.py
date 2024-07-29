@@ -7,7 +7,7 @@ import argparse
 import os
 import sys
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 CPP_TYPENAMES = {
     'object': '-',
@@ -17,12 +17,18 @@ CPP_TYPENAMES = {
     'boolean': 'bool',
 }
 
+
 @dataclass
 class Object:
     parent: 'Object'
     name: str
-    properties: dict
-    children: list
+    store: 'Store' = None
+    properties: dict = field(default_factory=dict)
+    children: list['Object'] = field(default_factory=list)
+
+    @property
+    def database(self):
+        return self.parent.database
 
     @property
     def typename(self):
@@ -33,10 +39,6 @@ class Object:
         return make_identifier(self.name)
 
     @property
-    def store(self):
-        return self.parent.store
-
-    @property
     def base_class(self):
         return f'{self.store.namespace}::Object'
 
@@ -44,17 +46,19 @@ class Object:
     def path(self):
         return join_path(self.parent.path, self.name) if self.parent else self.name
 
+    @property
+    def relative_path(self):
+        path = self.path.removeprefix(self.store.path)
+        return path.removeprefix('.')
+
 @dataclass
 class Store(Object):
-    namespace: str
+    namespace: str = None
 
     @property
-    def store(self):
-        return self
-
-    @property
-    def path(self):
-        return ''
+    def typename(self):
+        typename = super().typename if self.name else 'Root'
+        return typename + 'Store'
 
     @property
     def base_class(self):
@@ -62,11 +66,11 @@ class Store(Object):
 
 @dataclass
 class Database(Object):
-    default_store: Store
+    stores: list[Store] = field(default_factory=list)
 
     @property
-    def store(self):
-        return self.default_store
+    def database(self):
+        return self
 
     @property
     def path(self):
@@ -103,7 +107,7 @@ def make_typename(s: str):
 
 def make_string(s: str):
     '''Encode a string value'''
-    return f'_F("{s}")'
+    return f'_F("{s}")' if s else 'nullptr'
 
 
 def load_config(filename: str) -> Database:
@@ -113,11 +117,12 @@ def load_config(filename: str) -> Database:
         config = json.load(f)
 
     dbname = os.path.splitext(os.path.basename(filename))[0]
-    db = Database(None, dbname, config['properties'], [], None)
+    db = Database(None, dbname, config['properties'])
     store_ns = config.get('store')
     if store_ns is None:
-        raise RuntimeError(f'Database requires default "store" value')
-    db.default_store = Store(db, 'defaultStore', [], None, make_typename(store_ns))
+        raise RuntimeError(f'Database requires root "store" value')
+    db.store = Store(db, '', namespace=make_typename(store_ns))
+    db.stores.append(db.store)
     config['object'] = db
 
     def parse(obj: Object, cfg: dict):
@@ -126,17 +131,64 @@ def load_config(filename: str) -> Database:
                 continue
             properties = value['properties']
             if store_ns := value.get('store'):
-                child_object = Store(obj, key, properties, [], make_typename(store_ns))
+                store = Store(obj, key, namespace=make_typename(store_ns))
+                db.stores.append(store)
             else:
-                child_object = Object(obj, key, properties, [])
-            obj.children.append(child_object)
-            parse(child_object, value)
+                store = obj.store
+            child = Object(obj, key, store, properties)
+            obj.children.append(child)
+            parse(child, value)
 
     parse(db, config)
     return db
 
 
-def parse_object(obj: Object) -> list:
+def generate_database(db: Database) -> list:
+    # Find out what stores are in use
+    store_namespaces = set([child.store.namespace for child in db.children])
+    store_namespaces.add(db.store.namespace)
+
+    output = [
+        '/****',
+        ' *',
+        ' * This file is auto-generated.',
+        ' *',
+        ' ****/',
+        '',
+        *[f'#include <ConfigDB/{typ}.h>' for typ in store_namespaces],
+        '',
+        f'class {db.typename}: public ConfigDB::Database',
+        '{',
+        'public:',
+    ]
+    for store in db.stores:
+        output += [[
+            '',
+            f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.namespace}::Store, {store.typename}>',
+            '{',
+            'public:',
+            [
+                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {make_string(store.path)})',
+                '{',
+                '}',
+            ],
+            '};',
+        ]]
+    output += [generate_object(child) for child in db.children]
+    output += [
+        [
+            '',
+            f'{db.typename}(const String& path): Database(path)',
+            '{',
+            '}',
+        ],
+        '};'
+    ]
+
+    return output
+
+
+def generate_object(obj: Object) -> list:
     output = [
         '',
         f'class {obj.typename}: public ConfigDB::{obj.base_class}',
@@ -145,45 +197,15 @@ def parse_object(obj: Object) -> list:
     ]
 
     # Append child object definitions
-    output += [parse_object(child) for child in obj.children]
+    output += [generate_object(child) for child in obj.children]
 
-    if isinstance(obj, Database):
-        tmp = [f'Database(path)']
-        for child in obj.children:
-            if isinstance(child, Store):
-                tmp += [f'{child.id}(*this)']
-            else:
-                tmp += [f'{child.id}(*this)']
-        init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
-        output += [[
-            '',
-            f'{obj.typename}(const String& path):',
-            init_list,
-            '{',
-            '}',
-        ]]
-    elif isinstance(obj, Store):
-        tmp = [f'Store(db, {make_string(obj.name)})']
-        tmp += [f'{child.id}(*this)' for child in obj.children]
-        init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
-        output += [[
-            '',
-            f'{obj.typename}(ConfigDB::Database& db):',
-            init_list,
-            '{',
-            '}',
-        ]]
-    else:
-        tmp = [f'Object(store, {make_string(obj.path)})']
-        tmp += [f'{child.id}(store)' for child in obj.children]
-        init_list = [f'{x},' for x in tmp[:-1]] + [tmp[-1]]
-        output += [[
-            '',
-            f'{obj.typename}(ConfigDB::{obj.store.base_class}& store):',
-            init_list,
-            '{',
-            '}',
-        ]]
+    init_list = [f'Object({obj.store.typename}::open(db), {make_string(obj.relative_path)})']
+    init_list += [f'{child.id}(db)' for child in obj.children]
+    output += [[
+        f'{obj.typename}({obj.database.typename}& db): {", ".join(init_list)}',
+        '{',
+        '}',
+    ]]
     for key, value in obj.properties.items():
         ptype = value['type']
         ctype = CPP_TYPENAMES.get(ptype)
@@ -192,38 +214,25 @@ def parse_object(obj: Object) -> list:
             continue
         if ctype == '-':
             continue
-        output += [parse_basic(obj.path, key, ctype)]
+        output += [[
+            '',
+            f'{ctype} get{make_typename(key)}()',
+            '{',
+            [f'return getValue<{ctype}>({make_string(key)});'],
+            '}'
+            '',
+            f'bool set{make_typename(key)}(const {ctype}& value)',
+            '{',
+            [f'return setValue({make_string(key)}, value);'],
+            '}'
+        ]]
+
     output += [
         '',
         [f'{child.typename} {child.id};' for child in obj.children],
         '};'
     ]
     return output
-
-
-def parse_array(config: dict) -> list:
-    # TODO
-    return []
-
-
-def parse_basic(path: str, value_name: str, value_type: str) -> list:
-    value_path = join_path(path, value_name)
-    return [
-        '',
-        f'{value_type} get{make_typename(value_name)}()',
-        '{',
-        [
-            f'return getValue<{value_type}>({make_string(value_path)});',
-        ],
-        '}'
-        '',
-        f'bool set{make_typename(value_name)}(const {value_type}& value)',
-        '{',
-        [
-            f'return setValue({make_string(value_path)}, value);'
-        ],
-        '}'
-    ]
 
 
 def main():
@@ -236,21 +245,7 @@ def main():
 
     db = load_config(args.cfgfile)
 
-    # Find out what stores are in use
-    store_namespaces = set([child.store.namespace for child in db.children])
-    store_namespaces.add(db.store.namespace)
-    print(f'stores: {store_namespaces}')
-
-    output = [
-        '/****',
-        ' *',
-        ' * This file is auto-generated.',
-        ' *',
-        ' ****/',
-        '',
-        *[f'#include <ConfigDB/{typ}.h>' for typ in store_namespaces],
-        *parse_object(db)
-    ]
+    output = generate_database(db)
 
     filename = os.path.join(args.outdir, f'{db.name}.h')
     os.makedirs(args.outdir, exist_ok=True)
@@ -265,11 +260,6 @@ def main():
                     f.write('\n')
         dump_output(output, '')
 
-def test_load() -> dict:
-    with open('../samples/Basic_Config/basic-config.cfgdb') as f:
-        config = json.load(f)
-    parse_config('basic-config', config)
-    return config
 
 if __name__ == '__main__':
     try:

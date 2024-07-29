@@ -1,5 +1,9 @@
 #include <SmingCore.h>
 #include <LittleFS.h>
+
+// Store JSON in easy-to-read format
+#define JSON_FORMAT_DEFAULT Json::Pretty
+
 #include <basic-config.h>
 
 namespace
@@ -29,20 +33,38 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 
 void testStore()
 {
-	ConfigDB::Json::Store store("test", ConfigDB::Mode::readwrite);
+	BasicConfig db("test");
 
-	BasicConfig::General general(store);
-	general.setDeviceName("Test Device");
-	Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
+	{
+		BasicConfig::Security sec(db);
+		sec.setApiSecured(true);
+		sec.commit();
+	}
 
-	BasicConfig::Color color(store);
-	color.colortemp.setWw(12);
-	Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
+	{
+		BasicConfig::General general(db);
+		general.setDeviceName("Test Device");
+		Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
+		general.commit();
+	}
 
-	BasicConfig config(store);
-	config.events.setColorMinintervalMs(1200);
+	{
+		BasicConfig::Color color(db);
+		color.colortemp.setWw(12);
+		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
-	store.commit();
+		BasicConfig::Color::Brightness bri(db);
+		bri.setBlue(12);
+		Serial << bri.getPath() << ".Blue = " << bri.getBlue() << endl;
+
+		color.commit();
+	}
+
+	{
+		BasicConfig::Events events(db);
+		events.setColorMinintervalMs(1200);
+		events.commit();
+	}
 }
 
 } // namespace

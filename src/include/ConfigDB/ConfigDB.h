@@ -16,9 +16,8 @@ public:
 	/**
 	 * @brief Database instance
 	 * @param path Path to root directory where all data is stored
-	 * @param mode Required access mode
 	 */
-	Database(const String& path, Mode mode) : path(path.c_str()), mode(mode)
+	Database(const String& path) : path(path.c_str())
 	{
 	}
 
@@ -27,14 +26,8 @@ public:
 		return path.c_str();
 	}
 
-	Mode getMode() const
-	{
-		return mode;
-	}
-
 private:
 	CString path;
-	Mode mode;
 };
 
 /**
@@ -43,6 +36,8 @@ private:
 class Store
 {
 public:
+	using Pointer = std::shared_ptr<Store>;
+
 	/**
 	 * @brief Storage instance
 	 * @param db Database to which this store belongs
@@ -53,12 +48,9 @@ public:
 	}
 
 	/**
-	 * @brief Commit changes, must fail in readonly mode
+	 * @brief Commit changes
 	 */
-	bool commit()
-	{
-		return false;
-	}
+	virtual bool commit() = 0;
 
 	/**
 	 * @brief Store a value
@@ -88,7 +80,7 @@ public:
 	{
 		String path = db.getPath();
 		path += '/';
-		path += name;
+		path += name ?: F("_root");
 		return path;
 	}
 
@@ -107,20 +99,61 @@ private:
 	String name;
 };
 
+template <class BaseType, class ClassType> class StoreTemplate : public BaseType
+{
+public:
+	using BaseType::BaseType;
+
+	static std::shared_ptr<ClassType> open(Database& db)
+	{
+		auto inst = store.lock();
+		if(!inst) {
+			inst = std::make_shared<ClassType>(db);
+			store = inst;
+		}
+		return inst;
+	}
+
+private:
+	static std::weak_ptr<ClassType> store;
+};
+
+template <class BaseType, class ClassType> std::weak_ptr<ClassType> StoreTemplate<BaseType, ClassType>::store;
+
 class Object
 {
 public:
-	Object(const String& path) : path(path)
+	Object(const String& name) : name(name)
 	{
+	}
+
+	const String& getName() const
+	{
+		return name;
 	}
 
 	String getPath() const
 	{
+		String path = getStore()->getName();
+		if(path && name) {
+			path += '.';
+			path += name;
+		}
 		return path;
 	}
 
-protected:
-	String path;
+	virtual Store::Pointer getStore() const = 0;
+
+	/**
+	 * @brief Commit changes to the store
+	 */
+	bool commit()
+	{
+		return getStore()->commit();
+	}
+
+private:
+	String name;
 };
 
 } // namespace ConfigDB

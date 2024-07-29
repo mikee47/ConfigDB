@@ -27,7 +27,12 @@ The schema can then be used to provide auto-generated Standardised web editors c
 Schema rules
 ------------
 
-- Root object is always a :cpp:class:`ConfigDB::Database`.
-- Direct children should be a :cpp:class:`ConfigDB::Store`.
-- A store has no direct values (string, integer, etc), but a group does.
-- If a database has any direct :cpp:class:`ConfigDB::Group` children, then it must also define a default store type.
+- Root object is always a :cpp:class:`ConfigDB::Database`
+- A database is always rooted in a directory
+- Root object must have a `store` property indicating which class of store to use. Currently only 'json' is implemented - see :cpp:class:`ConfigDB::Json::Store`.
+- Child objects may also have a `store` property. A Json store creates a separate filename using JSONPath format and does not use subdirectories.
+  The name of the store forms the JSONPath prefix for any contained objects and values.
+
+A store implementation inherits both the :cpp:class:`ConfigDB::Store` and :cpp:class:`ConfigDB::Object` classes.
+Because ArduinoJson already deals with object typing, this mechanism is templated.
+Other store types would need to provide type overloads as required.

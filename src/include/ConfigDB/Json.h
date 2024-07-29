@@ -8,17 +8,21 @@ namespace ConfigDB::Json
 class Store : public ConfigDB::Store
 {
 public:
+	using Pointer = std::shared_ptr<Store>;
+
+	/**
+	 * @brief Construct a Store accessor
+	 * @param db
+	 * @param name JsonPATH name for store relative to database root
+	 */
 	Store(Database& db, const String& name) : ConfigDB::Store(db, name), doc(1024)
 	{
 		::Json::loadFromFile(doc, getFilename());
 	}
 
-	bool commit()
+	bool commit() override
 	{
-		if(database().getMode() != Mode::readwrite) {
-			return false;
-		}
-		return ::Json::saveToFile(doc, getFilename(), ::Json::Pretty);
+		return ::Json::saveToFile(doc, getFilename());
 	}
 
 	template <typename T> bool setValue(const String& path, const String& key, const T& value)
@@ -31,19 +35,9 @@ public:
 		return true;
 	}
 
-	template <typename T> bool setValue(const String& key, const T& value)
+	template <typename T> T getValue(const String& path, const String& key, const T& defaultValue = {})
 	{
-		return setValue(nullptr, key, value);
-	}
-
-	template <typename T> T getValue(const String& path, const String& key)
-	{
-		return getObject(path)[key];
-	}
-
-	template <typename T> T getValue(const String& key)
-	{
-		return getRootObject()[key];
+		return getObject(path)[key] | defaultValue;
 	}
 
 protected:
@@ -69,22 +63,27 @@ private:
 class Object : public ConfigDB::Object
 {
 public:
-	Object(Store& store, const String& path) : ConfigDB::Object(path), store(store)
+	Object(Store::Pointer store, const String& path) : ConfigDB::Object(path), store(store)
 	{
 	}
 
 	template <typename T> bool setValue(const String& key, const T& value)
 	{
-		return store.setValue(path, key, value);
+		return store->setValue(getName(), key, value);
 	}
 
 	template <typename T> T getValue(const String& key)
 	{
-		return store.getValue<T>(path, key);
+		return store->getValue<T>(getName(), key);
+	}
+
+	ConfigDB::Store::Pointer getStore() const override
+	{
+		return store;
 	}
 
 protected:
-	Store& store;
+	Store::Pointer store;
 };
 
 } // namespace ConfigDB::Json
