@@ -73,13 +73,3 @@ This is identified in schema with the value **"store": "json"** on the correspon
 
 These are virtual classes to support streaming, but the application interface uses templating to wrap ArduinoJson code.
 This keeps the overhead low and should allow the compiler to optimise well.
-
-
-TODO
-----
-
-- Add stream parser for receiving database content, e.g. from web clients
-- Implement default value support. Thus, a default initial configuration can be created.
-- Implement range checking support
-- Enable custom value types. For example, can map *string* object with *ip4* format to :cpp:class:`IpAddress`.
-- Implement floating point number support. The *number* type can be used for this although according to the spec. it can also contain integers.
