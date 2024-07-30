@@ -39,7 +39,7 @@ class Object:
         obj = self.parent
         ns = []
         while obj:
-            ns.append(obj.typename)
+            ns.insert(0, obj.typename)
             obj = obj.parent
         return '::'.join(ns)
 
