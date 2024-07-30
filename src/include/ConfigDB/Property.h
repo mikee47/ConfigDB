@@ -47,13 +47,25 @@ public:
 	{
 	}
 
-	Property(Object& object, const String& name, Type type) : object(object), name(name), type(type)
+	Property(Object& object, const FlashString& name, Type type, const FlashString* defaultValue)
+		: object(object), name(&name), defaultValue(defaultValue), type(type)
 	{
 	}
 
-	const String& getName() const
+	String getName() const
 	{
-		return name;
+		if(name) {
+			return *name;
+		}
+		return nullptr;
+	}
+
+	String getDefaultStringValue() const
+	{
+		if(defaultValue) {
+			return *defaultValue;
+		}
+		return nullptr;
 	}
 
 	String getStringValue() const;
@@ -72,7 +84,8 @@ public:
 
 private:
 	Object& object;
-	String name;
+	const FlashString* name{};
+	const FlashString* defaultValue{};
 	Type type{};
 };
 

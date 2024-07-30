@@ -45,10 +45,10 @@ public:
 	String getStringValue(const String& path, const String& key) const override
 	{
 		JsonVariantConst value = getJsonObjectConst(path)[key];
-		if(!value.isNull()) {
-			return value;
+		if(value.isNull()) {
+			return nullptr;
 		}
-		return nullptr;
+		return value;
 	}
 
 	template <typename T> bool setValue(const String& path, const String& key, const T& value)
@@ -63,7 +63,11 @@ public:
 
 	template <typename T> T getValue(const String& path, const String& key, const T& defaultValue = {}) const
 	{
-		return getJsonObjectConst(path)[key] | defaultValue;
+		auto value = getJsonObjectConst(path)[key];
+		if(value.isNull()) {
+			return defaultValue;
+		}
+		return value;
 	}
 
 	size_t printTo(Print& p) const override

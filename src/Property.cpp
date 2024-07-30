@@ -18,7 +18,14 @@ namespace ConfigDB
 {
 String Property::getStringValue() const
 {
-	return object.getStringValue(name);
+	String value;
+	if(name) {
+		value = object.getStringValue(*name);
+		if(!value && defaultValue) {
+			value = *defaultValue;
+		}
+	}
+	return value;
 }
 
 String Property::getJsonValue() const

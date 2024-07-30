@@ -7,6 +7,7 @@ import argparse
 import os
 import sys
 import json
+import re
 from dataclasses import dataclass, field
 
 CPP_TYPENAMES = {
@@ -16,6 +17,27 @@ CPP_TYPENAMES = {
     'integer': 'int',
     'boolean': 'bool',
 }
+
+strings: dict[str, str] = {}
+
+def get_string(value: str, null_if_empty: bool = False) -> int:
+    if value is None or (null_if_empty and value == ''):
+        return 'nullptr'
+    id = strings.get(value)
+    if id:
+        return id
+    id = re.sub(r'[^A-Za-z0-9-]+', '', value)[:10]
+    if not id:
+        id = str(len(strings))
+    id = 'fstr_' + id
+    if id in strings.values():
+        i = 0
+        while f'{id}_{i}' in strings.values():
+            i += 1
+        id = f'{id}_{i}'
+    strings[value] = id
+    return id
+
 
 
 @dataclass
@@ -116,7 +138,7 @@ def make_typename(s: str):
 
 def make_string(s: str):
     '''Encode a string value'''
-    return f'_F("{s}")' if s else 'nullptr'
+    return f'"{s.replace('"', '\\"')}"'
 
 
 def load_config(filename: str) -> Database:
@@ -160,13 +182,7 @@ def generate_database(db: Database) -> tuple[list, list]:
     store_namespaces = set([child.store.store_ns for child in db.children])
     store_namespaces.add(db.store.store_ns)
 
-    header = [
-        *[f'#include <ConfigDB/{ns}/Object.h>' for ns in store_namespaces],
-        '',
-        f'class {db.typename}: public ConfigDB::Database',
-        '{',
-        'public:',
-    ]
+    header = []
     source = [
         f'#include "{db.name}.h"',
         '',
@@ -179,7 +195,7 @@ def generate_database(db: Database) -> tuple[list, list]:
             '{',
             'public:',
             [
-                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {make_string(store.path)})',
+                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
                 '{',
                 '}',
                 '',
@@ -231,6 +247,15 @@ def generate_database(db: Database) -> tuple[list, list]:
         ]
 
 
+    header = [
+        *[f'#include <ConfigDB/{ns}/Object.h>' for ns in store_namespaces],
+        '',
+        f'class {db.typename}: public ConfigDB::Database',
+        '{',
+        'public:',
+        [f'DEFINE_FSTR_LOCAL({id}, {make_string(value)})' for value, id in strings.items()]
+    ] + header
+
     return header, source
 
 
@@ -250,7 +275,7 @@ def generate_object(obj: Object) -> tuple[list, list]:
         header += [h]
         source += s
 
-    init_list = [f'Object(store, {make_string(obj.relative_path)})']
+    init_list = [f'Object(store, {get_string(obj.relative_path, True)})']
     init_list += [f'{child.id}(store)' for child in obj.children]
     header += [[
         '',
@@ -295,19 +320,36 @@ def generate_object(obj: Object) -> tuple[list, list]:
             continue
         if ctype == '-':
             continue
+        default = value.get('default')
+        if default is None:
+            default_str = ''
+        elif ptype == 'string':
+            default_str = f', {get_string(default)}'
+        elif ptype == 'boolean':
+            default_str = f', {'true' if default else 'false'}'
+        else:
+            default_str = f', {default}'
         header += [[
             '',
             f'{ctype} get{make_typename(key)}()',
             '{',
-            [f'return getValue<{ctype}>({make_string(key)});'],
+            [f'return getValue<{ctype}>({get_string(key)}{default_str});'],
             '}'
             '',
             f'bool set{make_typename(key)}(const {ctype}& value)',
             '{',
-            [f'return setValue({make_string(key)}, value);'],
+            [f'return setValue({get_string(key)}, value);'],
             '}'
         ]]
-        source += [[[f'case {i}: return {{*this, {make_string(key)}, Property::Type::{ptype.capitalize()}}};']]]
+        if default is None:
+            default_str = 'nullptr'
+        elif ptype == 'string':
+            default_str = '&' + get_string(default)
+        elif ptype == 'boolean':
+            default_str = '&' + get_string('True' if default else 'False')
+        else:
+            default_str = '&' + get_string(str(default))
+        source += [[[f'case {i}: return {{*this, {get_string(key)}, Property::Type::{ptype.capitalize()}, {default_str}}};']]]
     source += [
         [
             ['default: return {*this};'],
