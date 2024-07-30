@@ -1,5 +1,18 @@
 #include "include/ConfigDB/Property.h"
 #include "include/ConfigDB/Object.h"
+#include <Data/Format/Standard.h>
+
+String toString(ConfigDB::Property::Type type)
+{
+	switch(type) {
+#define XX(name)                                                                                                       \
+	case ConfigDB::Property::Type::name:                                                                               \
+		return F(#name);
+		CONFIGDB_PROPERTY_TYPE_MAP(XX)
+#undef XX
+	}
+	return nullptr;
+}
 
 namespace ConfigDB
 {
@@ -10,36 +23,22 @@ String Property::getStringValue() const
 
 String Property::getJsonValue() const
 {
-	switch(type) {
-	case Type::Invalid:
+	if(!name) {
 		return nullptr;
-	case Type::Null:
+	}
+	String value = getStringValue();
+	if(!value) {
 		return "null";
+	}
+	switch(type) {
 	case Type::Integer:
-		return getStringValue();
 	case Type::Boolean:
-		return getStringValue().toInt() ? "True" : "False";
+		return value;
 	case Type::String:
 		break;
 	}
-	String value = getStringValue();
-	String s;
-	unsigned quoteCount = 0;
-	for(auto c : value) {
-		if(c == '"') {
-			++quoteCount;
-		}
-	}
-	s.setLength(value.length() + 2 + quoteCount);
-	auto ptr = s.begin();
-	for(auto c : value) {
-		if(c == '"') {
-			*ptr++ = '\\';
-		}
-		*ptr++ = c;
-	}
-	*ptr = '"';
-	return s;
+	Format::standard.quote(value);
+	return value;
 }
 
 } // namespace ConfigDB

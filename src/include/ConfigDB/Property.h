@@ -22,6 +22,11 @@
 #include <WString.h>
 #include <memory>
 
+#define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
+	XX(String)                                                                                                         \
+	XX(Integer)                                                                                                        \
+	XX(Boolean)
+
 namespace ConfigDB
 {
 class Object;
@@ -33,11 +38,9 @@ class Property
 {
 public:
 	enum class Type {
-		Invalid,
-		Null,
-		String,
-		Integer,
-		Boolean,
+#define XX(name) name,
+		CONFIGDB_PROPERTY_TYPE_MAP(XX)
+#undef XX
 	};
 
 	Property(Object& object) : object(object)
@@ -62,7 +65,7 @@ public:
 
 	explicit operator bool() const
 	{
-		return type != Type::Invalid;
+		return bool(name);
 	}
 
 	String getJsonValue() const;
@@ -74,3 +77,5 @@ private:
 };
 
 } // namespace ConfigDB
+
+String toString(ConfigDB::Property::Type type);

@@ -48,19 +48,18 @@ JsonObjectConst Store::getJsonObjectConst(const String& path) const
 	s.replace('.', '\0');
 	CStringArray csa(std::move(s));
 	auto obj = doc.as<JsonObjectConst>();
-	if(obj.isNull()) {
-		return obj;
-	}
 	for(auto key : csa) {
 		if(!obj) {
 			break;
 		}
 		auto child = obj[key];
 		if(!child.is<JsonObjectConst>()) {
-			return JsonObjectConst{};
+			obj = {};
+			break;
 		}
 		obj = child;
 	}
+
 	return obj;
 }
 

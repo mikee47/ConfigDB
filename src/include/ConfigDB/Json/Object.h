@@ -50,11 +50,6 @@ public:
 		return store;
 	}
 
-	String getStringValue(const String& key) const override
-	{
-		return store->getStringValue(getName(), key);
-	}
-
 	size_t printTo(Print& p) const override;
 
 protected:

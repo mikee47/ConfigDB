@@ -53,7 +53,10 @@ public:
 		return path;
 	}
 
-	virtual String getStringValue(const String& key) const = 0;
+	String getStringValue(const String& key) const
+	{
+		return getStore()->getStringValue(name, key);
+	}
 
 	virtual std::shared_ptr<Store> getStore() const = 0;
 

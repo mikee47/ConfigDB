@@ -111,6 +111,56 @@ void stream(BasicConfig& db)
 	Serial.copyFrom(&stream);
 }
 
+void printItem(const String& tag, unsigned indent, const String& type, const String& name,
+			   const String& value = nullptr)
+{
+	String s;
+	s.pad(indent, '\t');
+	s += '#';
+	s += tag;
+	s += ' ';
+	s += type;
+	s += " \"";
+	s += name;
+	s += '"';
+	if(value) {
+		s += ": ";
+	}
+	Serial << s << value << endl;
+}
+
+void printObject(const String& tag, unsigned indent, ConfigDB::Object& obj)
+{
+	printItem(tag, indent, F("Object"), obj.getName());
+	for(unsigned i = 0; auto prop = obj.getProperty(i); ++i) {
+		String value;
+		value += toString(prop.getType());
+		value += " = ";
+		value += prop.getJsonValue();
+		printItem(tag + '.' + i, indent + 1, F("Property"), prop.getName(), value);
+	}
+	for(unsigned j = 0; auto child = obj.getObject(j); ++j) {
+		printObject(tag + '.' + j, indent + 1, *child);
+	}
+}
+
+/*
+ * Inspect database objects and properties recursively
+ */
+void listProperties(BasicConfig& db)
+{
+	Serial << endl << _F("** Inspect Properties **") << endl;
+
+	Serial << _F("Database \"") << db.getName() << '"' << endl;
+	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
+		String tag(i);
+		printItem(tag, 1, F("Store"), store->getName());
+		for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
+			printObject(tag + '.' + j, 2, *obj);
+		}
+	}
+}
+
 } // namespace
 
 void init()
@@ -131,6 +181,7 @@ void init()
 	readWriteValues(db);
 	inspect(db);
 	stream(db);
+	listProperties(db);
 
 	Serial << endl << endl;
 
