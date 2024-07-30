@@ -169,6 +169,8 @@ def generate_database(db: Database) -> tuple[list, list]:
     ]
     source = [
         f'#include "{db.name}.h"',
+        '',
+        'using namespace ConfigDB;',
     ]
     for store in db.stores:
         header += [[
@@ -188,7 +190,7 @@ def generate_database(db: Database) -> tuple[list, list]:
     for child in db.children:
         h, s = generate_object(child)
         header += [h]
-        source += [s]
+        source += s
     header += [
         [
             '',
@@ -203,7 +205,7 @@ def generate_database(db: Database) -> tuple[list, list]:
 
     source += [
         '',
-        f'std::shared_ptr<ConfigDB::Store> {db.typename}::getStore(unsigned index) override',
+        f'std::shared_ptr<Store> {db.typename}::getStore(unsigned index)',
         '{',
         [
             'switch(index) {',
@@ -217,7 +219,7 @@ def generate_database(db: Database) -> tuple[list, list]:
     for store in db.stores:
         source += [
             '',
-            f'std::unique_ptr<ConfigDB::Object> {store.namespace}::{store.typename}::getObject(unsigned index)',
+            f'std::unique_ptr<Object> {store.namespace}::{store.typename}::getObject(unsigned index)',
             '{',
             [
                 'switch(index) {',
@@ -246,13 +248,13 @@ def generate_object(obj: Object) -> tuple[list, list]:
     for child in obj.children:
         h, s = generate_object(child)
         header += [h]
-        source += [s]
+        source += s
 
     init_list = [f'Object(store, {make_string(obj.relative_path)})']
     init_list += [f'{child.id}(store)' for child in obj.children]
     header += [[
         '',
-        f'{obj.typename}(std::shared_ptr<{obj.store.typename}> store): {", ".join(init_list)}',
+        f'{obj.typename}(std::shared_ptr<ConfigDB::{obj.store.store_ns}::Store> store): {", ".join(init_list)}',
         '{',
         '}',
         '',
@@ -261,9 +263,31 @@ def generate_object(obj: Object) -> tuple[list, list]:
         '}',
         '',
 	    'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) const override;',
-	    'ConfigDB::Property getProperty(unsigned index) const override;',
+	    'ConfigDB::Property getProperty(unsigned index) override;',
     ]]
-    for key, value in obj.properties.items():
+
+    source += [
+        '',
+        f'std::unique_ptr<Object> {obj.namespace}::{obj.typename}::getObject(unsigned index) const',
+        '{',
+        [
+            'switch(index) {',
+            [f'case {i}: return std::make_unique<{child.namespace}::{child.typename}>(store);' for i, child in enumerate(obj.children)],
+            ['default: return nullptr;'],
+            '}',
+        ],
+        '}',
+    ]
+
+    source += [
+        '',
+        f'Property {obj.namespace}::{obj.typename}::getProperty(unsigned index)',
+        '{',
+        [
+            'switch(index) {'
+        ],
+    ]
+    for i, (key, value) in enumerate(obj.properties.items()):
         ptype = value['type']
         ctype = CPP_TYPENAMES.get(ptype)
         if not ctype:
@@ -283,6 +307,14 @@ def generate_object(obj: Object) -> tuple[list, list]:
             [f'return setValue({make_string(key)}, value);'],
             '}'
         ]]
+        source += [[[f'case {i}: return {{*this, {make_string(key)}, Property::Type::{ptype.capitalize()}}};']]]
+    source += [
+        [
+            ['default: return {*this};'],
+            '}',
+        ],
+        '}',
+    ]
 
     header += [
         '',

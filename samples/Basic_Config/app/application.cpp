@@ -124,6 +124,7 @@ void init()
 	lfs_mount();
 #endif
 
+	createDirectory("test");
 	BasicConfig db("test");
 
 	// checkConfig();

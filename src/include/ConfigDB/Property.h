@@ -40,7 +40,9 @@ public:
 		Boolean,
 	};
 
-	Property() = default;
+	Property(Object& object) : object(object)
+	{
+	}
 
 	Property(Object& object, const String& name, Type type) : object(object), name(name), type(type)
 	{

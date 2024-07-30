@@ -53,7 +53,7 @@ public:
 		return path;
 	}
 
-	virtual String getStringValue(const String& key) = 0;
+	virtual String getStringValue(const String& key) const = 0;
 
 	virtual std::shared_ptr<Store> getStore() const = 0;
 
@@ -65,7 +65,7 @@ public:
 	/**
 	 * @brief Get properties
 	 */
-	virtual Property getProperty(unsigned index) const = 0;
+	virtual Property getProperty(unsigned index) = 0;
 
 	/**
 	 * @brief Commit changes to the store

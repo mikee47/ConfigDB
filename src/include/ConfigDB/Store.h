@@ -62,7 +62,7 @@ public:
 	 * @param value Value to store
 	 * @retval bool true on success
 	 */
-	virtual bool setStringValue(const String& path, const String& key, const String& value) = 0;
+	// virtual bool setStringValue(const String& path, const String& key, const String& value) = 0;
 
 	/**
 	 * @brief Retrieve a value
@@ -70,7 +70,7 @@ public:
 	 * @param key Key for value
 	 * @retval String
 	 */
-	virtual String getStringValue(const String& path, const String& key) = 0;
+	virtual String getStringValue(const String& path, const String& key) const = 0;
 
 	String getPath() const
 	{
@@ -124,8 +124,6 @@ public:
 	{
 		return store.lock();
 	}
-
-	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;
 
 private:
 	static std::weak_ptr<ClassType> store;
