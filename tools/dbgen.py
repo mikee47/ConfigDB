@@ -259,6 +259,9 @@ def generate_object(obj: Object) -> tuple[list, list]:
         f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
         '{',
         '}',
+        '',
+	    'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) const override;',
+	    'ConfigDB::Property getProperty(unsigned index) const override;',
     ]]
     for key, value in obj.properties.items():
         ptype = value['type']

@@ -25,11 +25,10 @@ namespace ConfigDB::Json
 {
 JsonObject Store::getJsonObject(const String& path)
 {
-	// debug_i("getObject(%s)", path.c_str());
 	String s(path);
 	s.replace('.', '\0');
 	CStringArray csa(std::move(s));
-	auto obj = getRootJsonObject();
+	auto obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
 	for(auto key : csa) {
 		if(!obj) {
 			break;
@@ -43,9 +42,26 @@ JsonObject Store::getJsonObject(const String& path)
 	return obj;
 }
 
-JsonObject Store::getRootJsonObject()
+JsonObjectConst Store::getJsonObjectConst(const String& path) const
 {
-	return doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
+	String s(path);
+	s.replace('.', '\0');
+	CStringArray csa(std::move(s));
+	auto obj = doc.as<JsonObjectConst>();
+	if(obj.isNull()) {
+		return obj;
+	}
+	for(auto key : csa) {
+		if(!obj) {
+			break;
+		}
+		auto child = obj[key];
+		if(!child.is<JsonObjectConst>()) {
+			return JsonObjectConst{};
+		}
+		obj = child;
+	}
+	return obj;
 }
 
 } // namespace ConfigDB::Json

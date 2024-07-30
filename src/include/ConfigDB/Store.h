@@ -62,22 +62,15 @@ public:
 	 * @param value Value to store
 	 * @retval bool true on success
 	 */
-	template <typename T> bool setValue(const String& path, const String& key, const T& value)
-	{
-		return false;
-	}
+	virtual bool setStringValue(const String& path, const String& key, const String& value) = 0;
 
 	/**
 	 * @brief Retrieve a value
 	 * @param path JSONPath object location
 	 * @param key Key for value
-	 * @param value Variable to store result, undefined on failure
-	 * @retval bool true on success
+	 * @retval String
 	 */
-	template <typename T> bool getValue(const String& path, const String& key, T& value)
-	{
-		return false;
-	}
+	virtual String getStringValue(const String& path, const String& key) = 0;
 
 	String getPath() const
 	{
@@ -131,6 +124,8 @@ public:
 	{
 		return store.lock();
 	}
+
+	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;
 
 private:
 	static std::weak_ptr<ClassType> store;

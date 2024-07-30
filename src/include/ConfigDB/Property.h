@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Object.h
+ * ConfigDB/Property.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -19,22 +19,30 @@
 
 #pragma once
 
-#include "Store.h"
-#include "Property.h"
+#include <WString.h>
+#include <memory>
 
 namespace ConfigDB
 {
+class Object;
+
 /**
- * @brief An object can contain other objects, properties and arrays
+ * @brief Manages a key/value pair
  */
-class Object
+class Property
 {
 public:
-	Object(const String& name) : name(name)
-	{
-	}
+	enum class Type {
+		Invalid,
+		Null,
+		String,
+		Integer,
+		Boolean,
+	};
 
-	virtual ~Object()
+	Property() = default;
+
+	Property(Object& object, const String& name, Type type) : object(object), name(name), type(type)
 	{
 	}
 
@@ -43,42 +51,24 @@ public:
 		return name;
 	}
 
-	String getPath() const
+	String getStringValue() const;
+
+	Type getType() const
 	{
-		String path = getStore()->getName();
-		if(path && name) {
-			path += '.';
-			path += name;
-		}
-		return path;
+		return type;
 	}
 
-	virtual String getStringValue(const String& key) = 0;
-
-	virtual std::shared_ptr<Store> getStore() const = 0;
-
-	/**
-	 * @brief Get child objects
-	 */
-	virtual std::unique_ptr<Object> getObject(unsigned index) const = 0;
-
-	/**
-	 * @brief Get properties
-	 */
-	virtual Property getProperty(unsigned index) const = 0;
-
-	/**
-	 * @brief Commit changes to the store
-	 */
-	bool commit()
+	explicit operator bool() const
 	{
-		return getStore()->commit();
+		return type != Type::Invalid;
 	}
 
-	virtual size_t printTo(Print& p) const = 0;
+	String getJsonValue() const;
 
 private:
+	Object& object;
 	String name;
+	Type type{};
 };
 
 } // namespace ConfigDB

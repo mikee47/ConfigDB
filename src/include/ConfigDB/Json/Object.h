@@ -21,6 +21,7 @@
 
 #include "Store.h"
 #include "../Object.h"
+#include "../Property.h"
 
 namespace ConfigDB::Json
 {
@@ -39,7 +40,7 @@ public:
 		return store->setValue(getName(), key, value);
 	}
 
-	template <typename T> T getValue(const String& key)
+	template <typename T> T getValue(const String& key) const
 	{
 		return store->getValue<T>(getName(), key);
 	}

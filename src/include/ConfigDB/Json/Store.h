@@ -52,9 +52,9 @@ public:
 		return true;
 	}
 
-	template <typename T> T getValue(const String& path, const String& key, const T& defaultValue = {})
+	template <typename T> T getValue(const String& path, const String& key, const T& defaultValue = {}) const
 	{
-		return getJsonObject(path)[key] | defaultValue;
+		return getJsonObjectConst(path)[key] | defaultValue;
 	}
 
 	size_t printTo(Print& p) const override
@@ -67,14 +67,16 @@ public:
 		return getPath() + ".json";
 	}
 
+private:
+	friend class Object;
+
 	/**
 	 * @brief Resolve a path into the corresponding JSON object, creating it if required
 	 */
 	JsonObject getJsonObject(const String& path);
 
-	JsonObject getRootJsonObject();
+	JsonObjectConst getJsonObjectConst(const String& path) const;
 
-private:
 	DynamicJsonDocument doc;
 };
 
