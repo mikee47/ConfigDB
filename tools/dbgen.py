@@ -154,26 +154,24 @@ def load_config(filename: str) -> Database:
     return db
 
 
-def generate_database(db: Database) -> list:
+def generate_database(db: Database) -> tuple[list, list]:
+    '''Return header, source content'''
     # Find out what stores are in use
     store_namespaces = set([child.store.store_ns for child in db.children])
     store_namespaces.add(db.store.store_ns)
 
-    output = [
-        '/****',
-        ' *',
-        ' * This file is auto-generated.',
-        ' *',
-        ' ****/',
-        '',
+    header = [
         *[f'#include <ConfigDB/{ns}/Object.h>' for ns in store_namespaces],
         '',
         f'class {db.typename}: public ConfigDB::Database',
         '{',
         'public:',
     ]
+    source = [
+        f'#include "{db.name}.h"',
+    ]
     for store in db.stores:
-        output += [[
+        header += [[
             '',
             f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.store_ns}::Store, {store.typename}>',
             '{',
@@ -187,28 +185,37 @@ def generate_database(db: Database) -> list:
             ],
             '};',
         ]]
-    output += [generate_object(child) for child in db.children]
-    output += [
+    for child in db.children:
+        h, s = generate_object(child)
+        header += [h]
+        source += [s]
+    header += [
         [
             '',
             f'{db.typename}(const String& path): Database(path)',
             '{',
             '}',
             '',
-            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override',
-            '{',
-            [
-                'switch(index) {',
-                [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
-                ['default: return nullptr;'],
-                '}',
-            ],
-            '}',
+            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override;',
         ],
         '};'
     ]
+
+    source += [
+        '',
+        f'std::shared_ptr<ConfigDB::Store> {db.typename}::getStore(unsigned index) override',
+        '{',
+        [
+            'switch(index) {',
+            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
+            ['default: return nullptr;'],
+            '}',
+        ],
+        '}',
+    ]
+
     for store in db.stores:
-        output += [
+        source += [
             '',
             f'std::unique_ptr<ConfigDB::Object> {store.namespace}::{store.typename}::getObject(unsigned index)',
             '{',
@@ -221,23 +228,29 @@ def generate_database(db: Database) -> list:
             '}',
         ]
 
-    return output
+
+    return header, source
 
 
-def generate_object(obj: Object) -> list:
-    output = [
+def generate_object(obj: Object) -> tuple[list, list]:
+    header = [
         '',
         f'class {obj.typename}: public ConfigDB::{obj.base_class}',
         '{',
         'public:',
     ]
+    source = [
+    ]
 
     # Append child object definitions
-    output += [generate_object(child) for child in obj.children]
+    for child in obj.children:
+        h, s = generate_object(child)
+        header += [h]
+        source += [s]
 
     init_list = [f'Object(store, {make_string(obj.relative_path)})']
     init_list += [f'{child.id}(store)' for child in obj.children]
-    output += [[
+    header += [[
         '',
         f'{obj.typename}(std::shared_ptr<{obj.store.typename}> store): {", ".join(init_list)}',
         '{',
@@ -255,7 +268,7 @@ def generate_object(obj: Object) -> list:
             continue
         if ctype == '-':
             continue
-        output += [[
+        header += [[
             '',
             f'{ctype} get{make_typename(key)}()',
             '{',
@@ -268,13 +281,35 @@ def generate_object(obj: Object) -> list:
             '}'
         ]]
 
-    output += [
+    header += [
         '',
         [f'{child.typename} {child.id};' for child in obj.children],
         '};'
     ]
-    return output
 
+    return header, source
+
+
+def write_file(content: list, filename: str):
+    comment = [
+        '/****',
+        ' *',
+        ' * This file is auto-generated.',
+        ' *',
+        ' ****/',
+        '',
+    ]
+
+    with open(filename, 'w') as f:
+        def dump_output(items: list, indent: str):
+            for item in items:
+                if isinstance(item, list):
+                    dump_output(item, indent + '    ')
+                elif item:
+                    f.write(f'{indent}{item}\n')
+                else:
+                    f.write('\n')
+        dump_output(comment + content, '')
 
 def main():
     parser = argparse.ArgumentParser(description='ConfigDB specification utility')
@@ -286,20 +321,13 @@ def main():
 
     db = load_config(args.cfgfile)
 
-    output = generate_database(db)
+    header, source = generate_database(db)
 
-    filename = os.path.join(args.outdir, f'{db.name}.h')
+    filepath = os.path.join(args.outdir, f'{db.name}')
     os.makedirs(args.outdir, exist_ok=True)
-    with open(filename, 'w') as f:
-        def dump_output(items: list, indent: str):
-            for item in items:
-                if isinstance(item, list):
-                    dump_output(item, indent + '    ')
-                elif item:
-                    f.write(f'{indent}{item}\n')
-                else:
-                    f.write('\n')
-        dump_output(output, '')
+
+    write_file(header, f'{filepath}.h')
+    write_file(source, f'{filepath}.cpp')
 
 
 if __name__ == '__main__':
