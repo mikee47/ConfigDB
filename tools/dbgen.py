@@ -7,6 +7,8 @@ import json
 import re
 from dataclasses import dataclass, field
 
+MAX_STRINGID_LEN = 32
+
 CPP_TYPENAMES = {
     'object': '-',
     'array': None,
@@ -26,7 +28,7 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     ident = strings.get(value)
     if ident:
         return ident
-    ident = re.sub(r'[^A-Za-z0-9-]+', '', value)[:10]
+    ident = re.sub(r'[^A-Za-z0-9-_]+', '', value)[:MAX_STRINGID_LEN]
     if not ident:
         ident = str(len(strings))
     ident = 'fstr_' + ident
