@@ -78,6 +78,7 @@ bool Store::save()
 		debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());
 		return false;
 	}
+	stream.close();
 
 	String oldFilename = filename + ".old";
 	fileDelete(oldFilename);
