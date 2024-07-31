@@ -1,9 +1,6 @@
 #include <SmingCore.h>
 #include <LittleFS.h>
 
-// Store JSON in easy-to-read format
-#define JSON_FORMAT_DEFAULT Json::Pretty
-
 #include <basic-config.h>
 #include <ConfigDB/DataStream.h>
 
@@ -176,6 +173,7 @@ void init()
 
 	createDirectory("test");
 	BasicConfig db("test");
+	db.setFormat(ConfigDB::Format::Pretty);
 
 	// checkConfig();
 	readWriteValues(db);

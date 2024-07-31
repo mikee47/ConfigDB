@@ -27,19 +27,14 @@ namespace ConfigDB::Json
 class Store : public ConfigDB::Store
 {
 public:
-	/**
-	 * @brief Construct a Store accessor
-	 * @param db
-	 * @param name JsonPATH name for store relative to database root
-	 */
-	Store(Database& db, const String& name) : ConfigDB::Store(db, name), doc(1024)
+	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
 	{
-		::Json::loadFromFile(doc, getFilename());
+		load();
 	}
 
 	bool commit() override
 	{
-		return ::Json::saveToFile(doc, getFilename());
+		return save();
 	}
 
 	String getStringValue(const String& path, const String& key) const override
@@ -70,10 +65,7 @@ public:
 		return value;
 	}
 
-	size_t printTo(Print& p) const override
-	{
-		return ::Json::serialize(doc, p);
-	}
+	size_t printTo(Print& p) const override;
 
 	String getFilename() const
 	{
@@ -83,6 +75,9 @@ public:
 private:
 	friend class Object;
 
+	bool load();
+	bool save();
+
 	/**
 	 * @brief Resolve a path into the corresponding JSON object, creating it if required
 	 */
@@ -90,7 +85,7 @@ private:
 
 	JsonObjectConst getJsonObjectConst(const String& path) const;
 
-	DynamicJsonDocument doc;
+	StaticJsonDocument<1024> doc;
 };
 
 } // namespace ConfigDB::Json

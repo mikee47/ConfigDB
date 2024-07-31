@@ -27,6 +27,14 @@ namespace ConfigDB
 class Store;
 class Object;
 
+/**
+ * @brief Serialisation format
+ */
+enum class Format {
+	Compact,
+	Pretty,
+};
+
 class Database
 {
 public:
@@ -40,6 +48,20 @@ public:
 
 	virtual ~Database()
 	{
+	}
+
+	/**
+	 * @brief Set number of spaces to indent when serialising output
+	 * @param indent 0 produces compact output, > 0 lays content out for easier reading
+	 */
+	void setFormat(Format format)
+	{
+		this->format = format;
+	}
+
+	Format getFormat() const
+	{
+		return format;
 	}
 
 	String getName() const
@@ -61,6 +83,7 @@ public:
 
 private:
 	CString path;
+	Format format{};
 };
 
 } // namespace ConfigDB

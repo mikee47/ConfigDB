@@ -25,8 +25,15 @@ namespace ConfigDB::Json
 {
 size_t Object::printTo(Print& p) const
 {
+	auto& db = getStore()->database();
 	auto obj = store->getJsonObject(getName());
-	return ::Json::serialize(obj, p);
+	switch(db.getFormat()) {
+	case Format::Compact:
+		return serializeJson(obj, p);
+	case Format::Pretty:
+		return serializeJsonPretty(obj, p);
+	}
+	return 0;
 }
 
 } // namespace ConfigDB::Json

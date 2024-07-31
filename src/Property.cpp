@@ -44,7 +44,7 @@ String Property::getJsonValue() const
 	case Type::String:
 		break;
 	}
-	Format::standard.quote(value);
+	::Format::standard.quote(value);
 	return value;
 }
 

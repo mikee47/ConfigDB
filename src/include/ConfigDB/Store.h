@@ -80,7 +80,7 @@ public:
 		return path;
 	}
 
-	Database& database()
+	Database& database() const
 	{
 		return db;
 	}

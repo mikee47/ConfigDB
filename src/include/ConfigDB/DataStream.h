@@ -40,7 +40,10 @@ public:
 	 * @brief Reset back to start
 	 * @note Handy if you want to re-use this stream to send it somewhere else
 	 */
-	void reset();
+	void reset()
+	{
+		state = State::header;
+	}
 
 	bool isValid() const override
 	{
@@ -72,14 +75,13 @@ private:
 	Database& db;
 	std::shared_ptr<Store> store;
 	MemoryDataStream stream;
-	uint8_t storeIndex{0};
-	uint8_t objectIndex{0};
+	uint8_t storeIndex;
+	uint8_t objectIndex;
 	enum class State {
 		header,
 		object,
 		done,
-	} state = State::header;
-	uint8_t segIndex{0}; // nesting level
+	} state;
 };
 
 } // namespace ConfigDB
