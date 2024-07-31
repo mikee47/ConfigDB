@@ -68,6 +68,23 @@ void readWriteValues(BasicConfig& db)
 		events.setColorMinintervalMs(1200);
 		events.commit();
 	}
+
+	{
+		BasicConfig::General::Channels channels(db);
+		auto item = channels.addItem();
+		item.setName("Channel Name");
+		item.setPin(12);
+		item.commit();
+		// item = channels.getItem(0);
+		Serial << channels.getPath() << " = " << item << endl;
+	}
+
+	{
+		BasicConfig::General::SupportedColorModels models(db);
+		models.addItem("New Model");
+		models.commit();
+		Serial << models.getPath() << " = " << models << endl;
+	}
 }
 
 /*
@@ -182,6 +199,7 @@ void init()
 	inspect(db);
 	stream(db);
 	listProperties(db);
+	// checkPerformance(db);
 
 	Serial << endl << endl;
 

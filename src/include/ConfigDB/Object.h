@@ -97,16 +97,6 @@ public:
 	{
 	}
 
-	template <typename T> bool setValue(const String& key, const T& value)
-	{
-		return store->template setValue(getName(), key, value);
-	}
-
-	template <typename T> T getValue(const String& key, const T& defaultValue = {}) const
-	{
-		return store->template getValue<T>(getName(), key, defaultValue);
-	}
-
 	std::shared_ptr<Store> getStore() const override
 	{
 		return store;

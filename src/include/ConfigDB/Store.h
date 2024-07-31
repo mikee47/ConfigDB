@@ -100,6 +100,8 @@ public:
 	 */
 	virtual size_t printObjectTo(const Object& object, Print& p) const = 0;
 
+	virtual size_t printArrayTo(const Array& array, Print& p) const = 0;
+
 	/**
 	 * @brief Get top-level objects
 	 */

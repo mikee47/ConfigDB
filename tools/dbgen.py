@@ -11,7 +11,7 @@ MAX_STRINGID_LEN = 32
 
 CPP_TYPENAMES = {
     'object': '-',
-    'array': None,
+    'array': '-',
     'string': 'String',
     'integer': 'int',
     'boolean': 'bool',
@@ -72,12 +72,12 @@ class Object:
         return make_identifier(self.name)
 
     @property
-    def base_class(self):
-        return f'{self.store.store_ns}::Object'
+    def classname(self):
+        return type(self).__name__
 
     @property
-    def base_class_template(self):
-        return self.base_class + 'Template'
+    def base_class(self):
+        return f'{self.store.store_ns}::{self.classname}'
 
     @property
     def path(self):
@@ -90,8 +90,16 @@ class Object:
 
     @property
     def contained_children(self):
-        return (child for child in self.children if child.store == self.store)
+        return [child for child in self.children if child.store == self.store]
 
+
+@dataclass
+class Array(Object):
+    items: Object | dict = None
+
+@dataclass
+class ItemObject(Object):
+    pass
 
 @dataclass
 class Store(Object):
@@ -175,7 +183,7 @@ def make_string(s: str):
 def declare_templated_class(obj: Object) -> list[str]:
     return [
         '',
-        f'class {obj.typename}: public ConfigDB::{obj.base_class_template}<{obj.typename}>',
+        f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.typename}>',
         '{',
         'public:',
     ]
@@ -203,31 +211,38 @@ def load_config(filename: str) -> Database:
     '''Load, validate and parse schema into python objects'''
     config = load_schema(filename)
     dbname = os.path.splitext(os.path.basename(filename))[0]
-    db = Database(None, dbname, config['properties'])
+    db = Database(None, dbname, properties=config['properties'])
     store_ns = config.get('store')
     if store_ns is None:
         raise RuntimeError('Database requires root "store" value')
     db.store = Store(db, '', store_ns=make_typename(store_ns))
     db.stores.append(db.store)
-    config['object'] = db
 
-    def parse(obj: Object, cfg: dict):
-        for key, value in cfg['properties'].items():
-            if value['type'] != 'object':
+    def parse(obj: Object):
+        for key, value in obj.properties.items():
+            if value['type'] not in ['object', 'array']:
                 continue
-            properties = value['properties']
             if store_ns := value.get('store'):
                 store = Store(obj, key, store_ns=make_typename(store_ns))
                 db.stores.append(store)
             else:
                 store = obj.store
-            child = Object(obj, key, store, properties)
+            if value['type'] == 'object':
+                child = Object(obj, key, store, value['properties'])
+            else:
+                items = value['items']
+                arr = Array(obj, key, store)
+                if items['type'] == 'object':
+                    arr.items = ItemObject(arr, 'Item', store, items['properties'])
+                else:
+                    arr.items = items
+                child = arr
             obj.children.append(child)
             if store != obj.store or store == db.store:
                 store.children.append(child)
-            parse(child, value)
+            parse(child)
 
-    parse(db, config)
+    parse(db)
     return db
 
 
@@ -368,7 +383,7 @@ def generate_method_get_property(obj: Object) -> CodeLines:
     return lines
 
 
-def generate_method_accessors(obj: Object) -> CodeLines:
+def generate_object_accessors(obj: Object) -> CodeLines:
     '''Generate typed get/set methods for each property'''
 
     lines = CodeLines()
@@ -404,6 +419,54 @@ def generate_method_accessors(obj: Object) -> CodeLines:
     return lines
 
 
+def generate_array_accessors(arr: Array) -> CodeLines:
+    '''Generate typed get/set methods for each property'''
+
+    if isinstance(arr.items, Object):
+        return CodeLines([
+            '',
+            f'Item getItem(unsigned index)',
+            '{',
+            ['return getItemObject<Item>(index);'],
+            '}',
+            '',
+            f'Item addItem()',
+            '{',
+            ['return addItemObject<Item>();'],
+            '}',
+        ])
+
+    value = arr.items
+    ptype = value['type']
+    ctype = CPP_TYPENAMES.get(ptype)
+    if not ctype:
+        print(f'*** "{obj.path}": {ptype} type not yet implemented.')
+        return
+    if ctype == '-':
+        return
+    default = value.get('default')
+    if default is None:
+        default_str = ''
+    elif ptype == 'string':
+        default_str = f', {get_string(default)}'
+    elif ptype == 'boolean':
+        default_str = f', {'true' if default else 'false'}'
+    else:
+        default_str = f', {default}'
+    return CodeLines([
+        '',
+        f'{ctype} getItem(unsigned index) const',
+        '{',
+        [f'return ArrayTemplate::getItem<{ctype}>(index{default_str});'],
+        '}',
+        '',
+        f'bool setItem(unsigned index, const {ctype}& value)',
+        '{',
+        [f'return ArrayTemplate::setItem(index, value);'],
+        '}'
+    ])
+
+
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
@@ -414,13 +477,15 @@ def generate_object(obj: Object) -> CodeLines:
     for child in obj.children:
         lines.append(generate_object(child))
 
-    init_list = ', '.join([
-        f'ObjectTemplate(store, {get_string(obj.relative_path, True)})',
-        *(f'{child.id}(store)' for child in obj.contained_children)
-    ])
+    if isinstance(obj, Array) and isinstance(obj.items, Object):
+        lines.append(generate_item_object(obj.items))
+
     lines.header += [[
-        '',
-        f'{obj.typename}(std::shared_ptr<ConfigDB::{obj.store.base_class}> store): {init_list}',
+        f'{obj.typename}(std::shared_ptr<ConfigDB::{obj.store.base_class}> store):',
+        [', '.join([
+            f'{obj.classname}Template(store, {get_string(obj.relative_path, True)})',
+            *(f'{child.id}(store)' for child in obj.contained_children)
+        ])],
         '{',
         '}',
         '',
@@ -429,9 +494,54 @@ def generate_object(obj: Object) -> CodeLines:
         '}',
     ]]
 
-    lines.append(generate_method_get_child_object(obj, 'store'))
+    if isinstance(obj, Array):
+        lines.append(generate_array_accessors(obj))
+    else:
+        lines.append(generate_object_accessors(obj))
+        lines.append(generate_method_get_child_object(obj, 'store'))
     lines.append(generate_method_get_property(obj))
-    lines.append(generate_method_accessors(obj))
+
+    # Contained children member variables
+    lines.header += [
+        '',
+        [f'{child.typename} {child.id};' for child in obj.contained_children],
+        '};'
+    ]
+
+    return lines
+
+
+def generate_item_object(obj: Object) -> CodeLines:
+    '''Generate code for Array Item Object implementation'''
+
+    lines = CodeLines()
+    lines.header = [
+        '',
+        f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.parent.typename}, {obj.typename}>',
+        '{',
+        'public:',
+    ]
+
+    # Append child object definitions
+    for child in obj.children:
+        lines.append(generate_object(child))
+
+    lines.header += [[
+        f'{obj.typename}(ArrayTemplate<{obj.parent.typename}>& array, unsigned index):',
+        [', '.join([
+            f'{obj.classname}Template(array, index)',
+            *(f'{child.id}(array.getStore())' for child in obj.contained_children)
+        ])],
+        '{',
+        '}',
+    ]]
+
+    if isinstance(obj, Array):
+        lines.append(generate_array_accessors(obj))
+    else:
+        lines.append(generate_object_accessors(obj))
+        lines.append(generate_method_get_child_object(obj, 'store'))
+    lines.append(generate_method_get_property(obj))
 
     # Contained children member variables
     lines.header += [
