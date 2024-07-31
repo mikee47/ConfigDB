@@ -82,6 +82,11 @@ class Object:
         path = self.path.removeprefix(self.store.path)
         return path.removeprefix('.')
 
+    @property
+    def contained_children(self):
+        return (child for child in self.children if child.store == self.store)
+
+
 @dataclass
 class Store(Object):
     store_ns: str = None
@@ -90,6 +95,13 @@ class Store(Object):
     def typename(self):
         typename = super().typename if self.name else 'Root'
         return typename + 'Store'
+
+    @property
+    def namespace(self):
+        obj = self
+        while obj.parent:
+            obj = obj.parent
+        return obj.typename
 
     @property
     def base_class(self):
@@ -276,7 +288,7 @@ def generate_object(obj: Object) -> tuple[list, list]:
         source += s
 
     init_list = [f'Object(store, {get_string(obj.relative_path, True)})']
-    init_list += [f'{child.id}(store)' for child in obj.children]
+    init_list += [f'{child.id}(store)' for child in obj.contained_children]
     header += [[
         '',
         f'{obj.typename}(std::shared_ptr<ConfigDB::{obj.store.store_ns}::Store> store): {", ".join(init_list)}',
@@ -360,7 +372,7 @@ def generate_object(obj: Object) -> tuple[list, list]:
 
     header += [
         '',
-        [f'{child.typename} {child.id};' for child in obj.children],
+        [f'{child.typename} {child.id};' for child in obj.contained_children],
         '};'
     ]
 
