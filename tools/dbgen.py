@@ -153,12 +153,26 @@ def make_string(s: str):
     return f'"{s.replace('"', '\\"')}"'
 
 
-def load_config(filename: str) -> Database:
-    '''Load JSON configuration schema and parse into python objects
+def load_schema(filename: str) -> dict:
+    '''Load JSON configuration schema and validate
     '''
     with open(filename, 'r') as f:
         config = json.load(f)
+    try:
+        from jsonschema import Draft7Validator
+        v = Draft7Validator(Draft7Validator.META_SCHEMA)
+        errors = list(v.iter_errors(config))
+        if errors:
+            for e in errors:
+                print(f'{e.message} @ {e.path}')
+            sys.exit(3)
+    except ImportError as err:
+        print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
+    return config
 
+
+def load_config(filename: str) -> Database:
+    config = load_schema(filename)
     dbname = os.path.splitext(os.path.basename(filename))[0]
     db = Database(None, dbname, config['properties'])
     store_ns = config.get('store')
