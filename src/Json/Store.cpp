@@ -99,6 +99,19 @@ size_t Store::printTo(Print& p) const
 	return 0;
 }
 
+size_t Store::printObjectTo(const Object& object, Print& p) const
+{
+	auto& db = database();
+	auto obj = getJsonObjectConst(object.getName());
+	switch(db.getFormat()) {
+	case Format::Compact:
+		return serializeJson(obj, p);
+	case Format::Pretty:
+		return serializeJsonPretty(obj, p);
+	}
+	return 0;
+}
+
 JsonObject Store::getJsonObject(const String& path)
 {
 	String s(path);

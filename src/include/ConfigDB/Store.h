@@ -96,6 +96,11 @@ public:
 	virtual size_t printTo(Print& p) const = 0;
 
 	/**
+	 * @brief Serialize a single object
+	 */
+	virtual size_t printObjectTo(const Object& object, Print& p) const = 0;
+
+	/**
 	 * @brief Get top-level objects
 	 */
 	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;

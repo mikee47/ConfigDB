@@ -76,6 +76,10 @@ class Object:
         return f'{self.store.store_ns}::Object'
 
     @property
+    def base_class_template(self):
+        return self.base_class + 'Template'
+
+    @property
     def path(self):
         return join_path(self.parent.path, self.name) if self.parent else self.name
 
@@ -168,6 +172,15 @@ def make_string(s: str):
     return f'"{s.replace('"', '\\"')}"'
 
 
+def declare_templated_class(obj: Object) -> list[str]:
+    return [
+        '',
+        f'class {obj.typename}: public ConfigDB::{obj.base_class_template}<{obj.typename}>',
+        '{',
+        'public:',
+    ]
+
+
 def load_schema(filename: str) -> dict:
     '''Load JSON configuration schema and validate
     '''
@@ -233,10 +246,7 @@ def generate_database(db: Database) -> CodeLines:
     for store in db.stores:
         get_child_objects = generate_method_get_child_object(store, 'getPointer()')
         lines.header += [[
-            '',
-            f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.base_class}, {store.typename}>',
-            '{',
-            'public:',
+            *declare_templated_class(store),
             [
                 f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
                 '{',
@@ -275,7 +285,7 @@ def generate_database(db: Database) -> CodeLines:
     ]
 
     lines.header = [
-        *[f'#include <ConfigDB/{ns}/Object.h>' for ns in store_namespaces],
+        *[f'#include <ConfigDB/{ns}/Store.h>' for ns in store_namespaces],
         '',
         f'class {db.typename}: public ConfigDB::Database',
         '{',
@@ -398,19 +408,14 @@ def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
     lines = CodeLines()
-    lines.header = [
-        '',
-        f'class {obj.typename}: public ConfigDB::{obj.base_class}',
-        '{',
-        'public:',
-    ]
+    lines.header = declare_templated_class(obj)
 
     # Append child object definitions
     for child in obj.children:
         lines.append(generate_object(child))
 
     init_list = ', '.join([
-        f'Object(store, {get_string(obj.relative_path, True)})',
+        f'ObjectTemplate(store, {get_string(obj.relative_path, True)})',
         *(f'{child.id}(store)' for child in obj.contained_children)
     ])
     lines.header += [[

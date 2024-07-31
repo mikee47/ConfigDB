@@ -78,10 +78,42 @@ public:
 		return getStore()->commit();
 	}
 
-	virtual size_t printTo(Print& p) const = 0;
+	size_t printTo(Print& p) const
+	{
+		return getStore()->printObjectTo(*this, p);
+	}
 
 private:
 	String name;
+};
+
+/**
+ * @brief Object class template for use by code generator
+ */
+template <class StoreType, class ClassType> class ObjectTemplate : public Object
+{
+public:
+	ObjectTemplate(std::shared_ptr<StoreType> store, const String& path) : Object(path), store(store)
+	{
+	}
+
+	template <typename T> bool setValue(const String& key, const T& value)
+	{
+		return store->template setValue(getName(), key, value);
+	}
+
+	template <typename T> T getValue(const String& key, const T& defaultValue = {}) const
+	{
+		return store->template getValue<T>(getName(), key, defaultValue);
+	}
+
+	std::shared_ptr<Store> getStore() const override
+	{
+		return store;
+	}
+
+protected:
+	std::shared_ptr<StoreType> store;
 };
 
 } // namespace ConfigDB

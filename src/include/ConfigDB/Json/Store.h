@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "../Store.h"
+#include "../Object.h"
 #include <ArduinoJson.h>
 
 namespace ConfigDB::Json
@@ -67,6 +67,8 @@ public:
 
 	size_t printTo(Print& p) const override;
 
+	size_t printObjectTo(const Object& object, Print& p) const override;
+
 	String getFilename() const
 	{
 		return getPath() + ".json";
@@ -87,5 +89,8 @@ private:
 
 	StaticJsonDocument<1024> doc;
 };
+
+template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
+template <class ClassType> using ObjectTemplate = ConfigDB::ObjectTemplate<Store, ClassType>;
 
 } // namespace ConfigDB::Json
