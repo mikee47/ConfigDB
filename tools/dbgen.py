@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-#
-# Sming hardware configuration tool
-#
+'''ConfigDB database generator'''
 
 import argparse
 import os
@@ -20,23 +17,26 @@ CPP_TYPENAMES = {
 
 strings: dict[str, str] = {}
 
-def get_string(value: str, null_if_empty: bool = False) -> int:
+def get_string(value: str, null_if_empty: bool = False) -> str:
+    '''All string data stored as FSTR values
+    This de-duplicates strings and returns a unique C++ identifier to be used.
+    '''
     if value is None or (null_if_empty and value == ''):
         return 'nullptr'
-    id = strings.get(value)
-    if id:
-        return id
-    id = re.sub(r'[^A-Za-z0-9-]+', '', value)[:10]
-    if not id:
-        id = str(len(strings))
-    id = 'fstr_' + id
-    if id in strings.values():
+    ident = strings.get(value)
+    if ident:
+        return ident
+    ident = re.sub(r'[^A-Za-z0-9-]+', '', value)[:10]
+    if not ident:
+        ident = str(len(strings))
+    ident = 'fstr_' + ident
+    if ident in strings.values():
         i = 0
-        while f'{id}_{i}' in strings.values():
+        while f'{ident}_{i}' in strings.values():
             i += 1
-        id = f'{id}_{i}'
-    strings[value] = id
-    return id
+        ident = f'{ident}_{i}'
+    strings[value] = ident
+    return ident
 
 
 
@@ -124,20 +124,33 @@ class Database(Object):
         return 'Database'
 
 
+@dataclass
+class CodeLines:
+    '''Code is generated as list, with nested lists indented 
+    '''
+    header: list[str | list] = field(default_factory=list)
+    source: list[str | list] = field(default_factory=list)
+
+    def append(self, other: 'CodeLines'):
+        self.header += [other.header]
+        self.source += other.source
+
+
 def make_identifier(s: str, is_type: bool = False):
     '''Form valid camelCase identifier for a variable (default) or type'''
     up = is_type
-    id = ''
+    ident = ''
     for c in s:
         if c in ['-', '_']:
             up = True
         else:
-            id += c.upper() if up else c
+            ident += c.upper() if up else c
             up = False
-    return id
+    return ident
 
 
 def join_path(path: str, name: str):
+    '''Make path string using JSONPath syntax'''
     if path:
         path += '.'
     return path + name
@@ -156,7 +169,7 @@ def make_string(s: str):
 def load_schema(filename: str) -> dict:
     '''Load JSON configuration schema and validate
     '''
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         config = json.load(f)
     try:
         from jsonschema import Draft7Validator
@@ -172,12 +185,13 @@ def load_schema(filename: str) -> dict:
 
 
 def load_config(filename: str) -> Database:
+    '''Load, validate and parse schema into python objects'''
     config = load_schema(filename)
     dbname = os.path.splitext(os.path.basename(filename))[0]
     db = Database(None, dbname, config['properties'])
     store_ns = config.get('store')
     if store_ns is None:
-        raise RuntimeError(f'Database requires root "store" value')
+        raise RuntimeError('Database requires root "store" value')
     db.store = Store(db, '', store_ns=make_typename(store_ns))
     db.stores.append(db.store)
     config['object'] = db
@@ -202,22 +216,23 @@ def load_config(filename: str) -> Database:
     return db
 
 
-def generate_database(db: Database) -> tuple[list, list]:
-    '''Return header, source content'''
+def generate_database(db: Database) -> CodeLines:
+    '''Generate content for entire database'''
     # Find out what stores are in use
-    store_namespaces = set([child.store.store_ns for child in db.children])
+    store_namespaces = {child.store.store_ns for child in db.children}
     store_namespaces.add(db.store.store_ns)
 
-    header = []
-    source = [
+    lines = CodeLines()
+    lines.source = [
         f'#include "{db.name}.h"',
         '',
         'using namespace ConfigDB;',
     ]
     for store in db.stores:
-        header += [[
+        get_child_objects = generate_method_get_child_object(store, 'getPointer()')
+        lines.header += [[
             '',
-            f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.store_ns}::Store, {store.typename}>',
+            f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.base_class}, {store.typename}>',
             '{',
             'public:',
             [
@@ -225,15 +240,14 @@ def generate_database(db: Database) -> tuple[list, list]:
                 '{',
                 '}',
                 '',
-                'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;',
+                *get_child_objects.header,
             ],
             '};',
         ]]
+        lines.source += get_child_objects.source
     for child in db.children:
-        h, s = generate_object(child)
-        header += [h]
-        source += s
-    header += [
+        lines.append(generate_object(child))
+    lines.header += [
         [
             '',
             f'{db.typename}(const String& path): Database(path)',
@@ -245,7 +259,7 @@ def generate_database(db: Database) -> tuple[list, list]:
         '};'
     ]
 
-    source += [
+    lines.source += [
         '',
         f'std::shared_ptr<Store> {db.typename}::getStore(unsigned index)',
         '{',
@@ -258,87 +272,95 @@ def generate_database(db: Database) -> tuple[list, list]:
         '}',
     ]
 
-    for store in db.stores:
-        source += [
-            '',
-            f'std::unique_ptr<Object> {store.namespace}::{store.typename}::getObject(unsigned index)',
-            '{',
-            [
-                'switch(index) {',
-                [f'case {i}: return std::make_unique<{obj.namespace}::{obj.typename}>(getPointer());' for i, obj in enumerate(store.children)],
-                ['default: return nullptr;'],
-                '}',
-            ],
-            '}',
-        ]
-
-
-    header = [
+    lines.header = [
         *[f'#include <ConfigDB/{ns}/Object.h>' for ns in store_namespaces],
         '',
         f'class {db.typename}: public ConfigDB::Database',
         '{',
         'public:',
         [f'DEFINE_FSTR_LOCAL({id}, {make_string(value)})' for value, id in strings.items()]
-    ] + header
+    ] + lines.header
 
-    return header, source
+    return lines
 
 
-def generate_object(obj: Object) -> tuple[list, list]:
-    header = [
-        '',
-        f'class {obj.typename}: public ConfigDB::{obj.base_class}',
-        '{',
-        'public:',
-    ]
-    source = [
-    ]
+def generate_method_get_child_object(obj: Store | Object, store: str) -> CodeLines:
+    '''Generate *getChildObject* method'''
 
-    # Append child object definitions
-    for child in obj.children:
-        h, s = generate_object(child)
-        header += [h]
-        source += s
-
-    init_list = [f'Object(store, {get_string(obj.relative_path, True)})']
-    init_list += [f'{child.id}(store)' for child in obj.contained_children]
-    header += [[
-        '',
-        f'{obj.typename}(std::shared_ptr<ConfigDB::{obj.store.store_ns}::Store> store): {", ".join(init_list)}',
-        '{',
-        '}',
-        '',
-        f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
-        '{',
-        '}',
-        '',
-	    'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) const override;',
-	    'ConfigDB::Property getProperty(unsigned index) override;',
-    ]]
-
-    source += [
-        '',
-        f'std::unique_ptr<Object> {obj.namespace}::{obj.typename}::getObject(unsigned index) const',
-        '{',
+    return CodeLines(
         [
-            'switch(index) {',
-            [f'case {i}: return std::make_unique<{child.namespace}::{child.typename}>(store);' for i, child in enumerate(obj.children)],
-            ['default: return nullptr;'],
+            '',
+            'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;'
+        ],
+        [
+            '',
+            f'std::unique_ptr<Object> {obj.namespace}::{obj.typename}::getObject(unsigned index)',
+            '{',
+            [
+                'switch(index) {',
+                [f'case {i}: return std::make_unique<{child.namespace}::{child.typename}>({store});'
+                    for i, child in enumerate(obj.children)],
+                ['default: return nullptr;'],
+                '}',
+            ],
+            '}',
+        ]
+    )
+
+
+def generate_method_get_property(obj: Object) -> CodeLines:
+    '''Generate *getProperty* method'''
+
+    lines = CodeLines(
+        [
+            '',
+            'ConfigDB::Property getProperty(unsigned index) override;',
+        ],
+        [
+            '',
+            f'Property {obj.namespace}::{obj.typename}::getProperty(unsigned index)',
+            '{',
+            ['switch(index) {'],
+        ])
+    for i, (key, value) in enumerate(obj.properties.items()):
+        ptype = value['type']
+        ctype = CPP_TYPENAMES.get(ptype)
+        if not ctype:
+            print(f'*** "{obj.path}": {ptype} type not yet implemented.')
+            continue
+        if ctype == '-':
+            continue
+        default = value.get('default')
+
+        # Source
+        if default is None:
+            default_str = 'nullptr'
+        elif ptype == 'string':
+            default_str = '&' + get_string(default)
+        elif ptype == 'boolean':
+            default_str = '&' + get_string('True' if default else 'False')
+        else:
+            default_str = '&' + get_string(str(default))
+        lines.source += [[[
+            f'case {i}: return {{*this, {get_string(key)}, Property::Type::{ptype.capitalize()}, {default_str}}};'
+        ]]]
+
+    lines.source += [
+        [
+            ['default: return {*this};'],
             '}',
         ],
         '}',
     ]
 
-    source += [
-        '',
-        f'Property {obj.namespace}::{obj.typename}::getProperty(unsigned index)',
-        '{',
-        [
-            'switch(index) {'
-        ],
-    ]
-    for i, (key, value) in enumerate(obj.properties.items()):
+    return lines
+
+
+def generate_method_accessors(obj: Object) -> CodeLines:
+    '''Generate typed get/set methods for each property'''
+
+    lines = CodeLines()
+    for key, value in obj.properties.items():
         ptype = value['type']
         ctype = CPP_TYPENAMES.get(ptype)
         if not ctype:
@@ -355,45 +377,66 @@ def generate_object(obj: Object) -> tuple[list, list]:
             default_str = f', {'true' if default else 'false'}'
         else:
             default_str = f', {default}'
-        header += [[
+        lines.header += [
             '',
-            f'{ctype} get{make_typename(key)}()',
+            f'{ctype} get{make_typename(key)}() const',
             '{',
             [f'return getValue<{ctype}>({get_string(key)}{default_str});'],
-            '}'
+            '}',
             '',
             f'bool set{make_typename(key)}(const {ctype}& value)',
             '{',
             [f'return setValue({get_string(key)}, value);'],
             '}'
-        ]]
-        if default is None:
-            default_str = 'nullptr'
-        elif ptype == 'string':
-            default_str = '&' + get_string(default)
-        elif ptype == 'boolean':
-            default_str = '&' + get_string('True' if default else 'False')
-        else:
-            default_str = '&' + get_string(str(default))
-        source += [[[f'case {i}: return {{*this, {get_string(key)}, Property::Type::{ptype.capitalize()}, {default_str}}};']]]
-    source += [
-        [
-            ['default: return {*this};'],
-            '}',
-        ],
-        '}',
+        ]
+    return lines
+
+
+def generate_object(obj: Object) -> CodeLines:
+    '''Generate code for Object implementation'''
+
+    lines = CodeLines()
+    lines.header = [
+        '',
+        f'class {obj.typename}: public ConfigDB::{obj.base_class}',
+        '{',
+        'public:',
     ]
 
-    header += [
+    # Append child object definitions
+    for child in obj.children:
+        lines.append(generate_object(child))
+
+    init_list = ', '.join([
+        f'Object(store, {get_string(obj.relative_path, True)})',
+        *(f'{child.id}(store)' for child in obj.contained_children)
+    ])
+    lines.header += [[
+        '',
+        f'{obj.typename}(std::shared_ptr<ConfigDB::{obj.store.base_class}> store): {init_list}',
+        '{',
+        '}',
+        '',
+        f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
+        '{',
+        '}',
+    ]]
+
+    lines.append(generate_method_get_child_object(obj, 'store'))
+    lines.append(generate_method_get_property(obj))
+    lines.append(generate_method_accessors(obj))
+
+    # Contained children member variables
+    lines.header += [
         '',
         [f'{child.typename} {child.id};' for child in obj.contained_children],
         '};'
     ]
 
-    return header, source
+    return lines
 
 
-def write_file(content: list, filename: str):
+def write_file(content: list[str | list], filename: str):
     comment = [
         '/****',
         ' *',
@@ -403,16 +446,18 @@ def write_file(content: list, filename: str):
         '',
     ]
 
-    with open(filename, 'w') as f:
-        def dump_output(items: list, indent: str):
-            for item in items:
-                if isinstance(item, list):
-                    dump_output(item, indent + '    ')
-                elif item:
-                    f.write(f'{indent}{item}\n')
-                else:
-                    f.write('\n')
+    def dump_output(items: list, indent: str):
+        for item in items:
+            if isinstance(item, list):
+                dump_output(item, indent + '    ')
+            elif item:
+                f.write(f'{indent}{item}\n')
+            else:
+                f.write('\n')
+
+    with open(filename, 'w', encoding='utf-8') as f:
         dump_output(comment + content, '')
+
 
 def main():
     parser = argparse.ArgumentParser(description='ConfigDB specification utility')
@@ -424,19 +469,14 @@ def main():
 
     db = load_config(args.cfgfile)
 
-    header, source = generate_database(db)
+    lines = generate_database(db)
 
     filepath = os.path.join(args.outdir, f'{db.name}')
     os.makedirs(args.outdir, exist_ok=True)
 
-    write_file(header, f'{filepath}.h')
-    write_file(source, f'{filepath}.cpp')
+    write_file(lines.header, f'{filepath}.h')
+    write_file(lines.source, f'{filepath}.cpp')
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        print(repr(e), file=sys.stderr)
-        raise
-        sys.exit(2)
+    main()

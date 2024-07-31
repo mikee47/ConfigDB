@@ -63,7 +63,7 @@ public:
 	/**
 	 * @brief Get child objects
 	 */
-	virtual std::unique_ptr<Object> getObject(unsigned index) const = 0;
+	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
 
 	/**
 	 * @brief Get properties
