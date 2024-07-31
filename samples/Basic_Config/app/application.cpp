@@ -4,6 +4,8 @@
 #include <basic-config.h>
 #include <ConfigDB/DataStream.h>
 
+extern void checkPerformance(BasicConfig& db);
+
 namespace
 {
 IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")

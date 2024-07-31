@@ -66,24 +66,17 @@ bool Store::load()
 
 bool Store::save()
 {
-	String filename = getFilename();
-	String newFilename = filename + ".new";
-
 	FileStream stream;
-	if(!stream.open(newFilename, File::WriteOnly | File::CreateNewAlways)) {
+	if(!stream.open(getFilename(), File::WriteOnly | File::CreateNewAlways)) {
 		return false;
 	}
 	printTo(stream);
+
 	if(stream.getLastError() != FS_OK) {
 		debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());
 		return false;
 	}
-	stream.close();
 
-	String oldFilename = filename + ".old";
-	fileDelete(oldFilename);
-	fileRename(filename, oldFilename);
-	fileRename(newFilename, filename);
 	return true;
 }
 
