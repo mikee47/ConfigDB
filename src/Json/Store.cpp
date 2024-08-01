@@ -177,7 +177,11 @@ JsonArray Store::getJsonArray(const String& path)
 		obj = child;
 	}
 
-	return obj[name] | obj.createNestedArray(name);
+	JsonArray arr = obj[name];
+	if(!arr) {
+		arr = obj.createNestedArray(name);
+	}
+	return arr;
 }
 
 JsonArrayConst Store::getJsonArrayConst(const String& path) const

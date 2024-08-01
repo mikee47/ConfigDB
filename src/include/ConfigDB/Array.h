@@ -47,11 +47,6 @@ public:
 		return store;
 	}
 
-	std::unique_ptr<Object> getObject(unsigned index) override
-	{
-		return nullptr;
-	}
-
 	size_t printTo(Print& p) const
 	{
 		return getStore()->printArrayTo(*this, p);

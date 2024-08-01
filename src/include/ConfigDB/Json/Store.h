@@ -106,21 +106,11 @@ public:
 		: ConfigDB::ArrayTemplate<Store, ClassType>(store, path)
 	{
 		array = store->getJsonArray(path);
-
-		// String s = ::Json::serialize(array);
-		// debug_i("%s(%s): %s", __FUNCTION__, path.c_str(), s.c_str());
 	}
 
-	template <class Item> Item addItemObject()
+	std::unique_ptr<Object> getObject(unsigned index) override
 	{
-		auto index = array.size();
-		array.createNestedObject();
-		return Item(*this, index);
-	}
-
-	template <class Item> Item getItemObject(unsigned index)
-	{
-		return Item(*this, index);
+		return nullptr;
 	}
 
 	template <typename T> T getItem(unsigned index, const T& defaultValue = {}) const
@@ -147,12 +137,54 @@ public:
 	JsonArray array;
 };
 
+template <class ClassType> class ObjectArrayTemplate : public ConfigDB::ArrayTemplate<Store, ClassType>
+{
+public:
+	ObjectArrayTemplate(std::shared_ptr<Store> store, const String& path)
+		: ConfigDB::ArrayTemplate<Store, ClassType>(store, path)
+	{
+		array = store->getJsonArray(path);
+
+		// String s = ::Json::serialize(array);
+		// debug_i("%s(%s): %s", __FUNCTION__, path.c_str(), s.c_str());
+	}
+
+	std::unique_ptr<Object> getObject(unsigned index) override
+	{
+		auto item = static_cast<ClassType*>(this)->getItem(index);
+		if(item) {
+			return std::make_unique<decltype(item)>(item);
+		}
+		return nullptr;
+	}
+
+	template <class Item> Item addItem()
+	{
+		auto index = array.size();
+		array.createNestedObject();
+		return Item(*this, index);
+	}
+
+	template <class Item> Item getItem(unsigned index)
+	{
+		return Item(*this, index);
+	}
+
+	template <typename T> bool removeItem(unsigned index)
+	{
+		array.remove(index);
+		return true;
+	}
+
+	JsonArray array;
+};
+
 template <class ArrayType, class ClassType> class ItemObjectTemplate : public ObjectTemplate<ClassType>
 {
 public:
-	ItemObjectTemplate(ArrayTemplate<ArrayType>& array, unsigned index) :
-		ObjectTemplate<ClassType>(std::static_pointer_cast<Store>(array.getStore()), nullptr),
-		object(array.template array[index])
+	ItemObjectTemplate(ObjectArrayTemplate<ArrayType>& array, unsigned index)
+		: ObjectTemplate<ClassType>(std::static_pointer_cast<Store>(array.getStore()), nullptr),
+		  object(array.template array[index])
 	{
 	}
 
@@ -165,6 +197,11 @@ public:
 	template <typename T> T getValue(const String& key, const T& defaultValue = {}) const
 	{
 		return object[key] | defaultValue;
+	}
+
+	explicit operator bool() const
+	{
+		return !object.isNull();
 	}
 
 private:

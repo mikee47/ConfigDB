@@ -95,7 +95,11 @@ class Object:
 
 @dataclass
 class Array(Object):
-    items: Object | dict = None
+    items: dict = None
+
+@dataclass
+class ObjectArray(Object):
+    items: Object = None
 
 @dataclass
 class ItemObject(Object):
@@ -231,11 +235,11 @@ def load_config(filename: str) -> Database:
                 child = Object(obj, key, store, value['properties'])
             else:
                 items = value['items']
-                arr = Array(obj, key, store)
                 if items['type'] == 'object':
+                    arr = ObjectArray(obj, key, store)
                     arr.items = ItemObject(arr, 'Item', store, items['properties'])
                 else:
-                    arr.items = items
+                    arr = Array(obj, key, store, items=items)
                 child = arr
             obj.children.append(child)
             if store != obj.store or store == db.store:
@@ -422,20 +426,6 @@ def generate_object_accessors(obj: Object) -> CodeLines:
 def generate_array_accessors(arr: Array) -> CodeLines:
     '''Generate typed get/set methods for each property'''
 
-    if isinstance(arr.items, Object):
-        return CodeLines([
-            '',
-            f'Item getItem(unsigned index)',
-            '{',
-            ['return getItemObject<Item>(index);'],
-            '}',
-            '',
-            f'Item addItem()',
-            '{',
-            ['return addItemObject<Item>();'],
-            '}',
-        ])
-
     value = arr.items
     ptype = value['type']
     ctype = CPP_TYPENAMES.get(ptype)
@@ -467,6 +457,21 @@ def generate_array_accessors(arr: Array) -> CodeLines:
     ])
 
 
+def generate_objectarray_accessors(arr: ObjectArray) -> CodeLines:
+    return CodeLines([
+        '',
+        f'Item getItem(unsigned index)',
+        '{',
+        ['return ObjectArrayTemplate::getItem<Item>(index);'],
+        '}',
+        '',
+        f'Item addItem()',
+        '{',
+        ['return ObjectArrayTemplate::addItem<Item>();'],
+        '}',
+    ])
+
+
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
@@ -477,7 +482,7 @@ def generate_object(obj: Object) -> CodeLines:
     for child in obj.children:
         lines.append(generate_object(child))
 
-    if isinstance(obj, Array) and isinstance(obj.items, Object):
+    if isinstance(obj, ObjectArray):
         lines.append(generate_item_object(obj.items))
 
     lines.header += [[
@@ -496,6 +501,8 @@ def generate_object(obj: Object) -> CodeLines:
 
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
+    elif isinstance(obj, ObjectArray):
+        lines.append(generate_objectarray_accessors(obj))
     else:
         lines.append(generate_object_accessors(obj))
         lines.append(generate_method_get_child_object(obj, 'store'))
@@ -527,7 +534,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         lines.append(generate_object(child))
 
     lines.header += [[
-        f'{obj.typename}(ArrayTemplate<{obj.parent.typename}>& array, unsigned index):',
+        f'{obj.typename}(ObjectArrayTemplate<{obj.parent.typename}>& array, unsigned index):',
         [', '.join([
             f'{obj.classname}Template(array, index)',
             *(f'{child.id}(array.getStore())' for child in obj.contained_children)
