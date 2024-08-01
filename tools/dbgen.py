@@ -232,6 +232,12 @@ def generate_database(db: Database) -> CodeLines:
         get_child_objects = generate_method_get_child_object(store, 'getPointer()')
         lines.header += [[
             '',
+            '/**',
+            ' *',
+            f' * @class: {store.typename}',
+            f' * @brief: ConfigDB store class for {store.typename} ',
+            ' *',
+            ' */',
             f'class {store.typename}: public ConfigDB::StoreTemplate<ConfigDB::{store.base_class}, {store.typename}>',
             '{',
             'public:',
@@ -275,6 +281,11 @@ def generate_database(db: Database) -> CodeLines:
     lines.header = [
         *[f'#include <ConfigDB/{ns}/Object.h>' for ns in store_namespaces],
         '',
+        '/**',
+        ' *',
+        f' * @class {db.typename} - ConfigDB base class generated from schema',
+        ' *',
+        ' */',
         f'class {db.typename}: public ConfigDB::Database',
         '{',
         'public:',
@@ -377,13 +388,34 @@ def generate_method_accessors(obj: Object) -> CodeLines:
             default_str = f', {'true' if default else 'false'}'
         else:
             default_str = f', {default}'
+
+        if default_str != '':
+            default_str_doxy=', default {default_str}'
+        else:
+            default_str_doxy=''
+
         lines.header += [
             '',
+            f'/**',
+            f' * @brief get{make_typename(key)}',
+            f' * ',
+            f' * get the value for {obj.path}.{key}',
+            f' * ',
+            rf' * @return `{ctype}`; the value for {obj.path}.{key}{default_str_doxy}',
+            f' */',
             f'{ctype} get{make_typename(key)}() const',
             '{',
             [f'return getValue<{ctype}>({get_string(key)}{default_str});'],
             '}',
             '',
+            f'/**',
+            f' * @brief set{make_typename(key)}',
+            f' * ',
+            f' * set the value for {obj.path}.{key}',
+            f' * ',
+            rf' * @param value the `{ctype}` value for {obj.path}.{key}{default_str}',
+            f' * @return bool success',
+            f' */',
             f'bool set{make_typename(key)}(const {ctype}& value)',
             '{',
             [f'return setValue({get_string(key)}, value);'],
@@ -398,6 +430,11 @@ def generate_object(obj: Object) -> CodeLines:
     lines = CodeLines()
     lines.header = [
         '',
+        '/**',
+        ' *',
+        f' *  @class {obj.typename} ConfigDB class generated from schema',
+        ' *',
+        ' */',
         f'class {obj.typename}: public ConfigDB::{obj.base_class}',
         '{',
         'public:',
