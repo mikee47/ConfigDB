@@ -28,7 +28,7 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     ident = strings.get(value)
     if ident:
         return ident
-    ident = re.sub(r'[^A-Za-z0-9-_]+', '', value)[:MAX_STRINGID_LEN]
+    ident = re.sub(r'[^A-Za-z0-9-]+', '_', value)[:MAX_STRINGID_LEN]
     if not ident:
         ident = str(len(strings))
     ident = 'fstr_' + ident
@@ -41,13 +41,54 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     return ident
 
 
+@dataclass
+class Property:
+    name: str
+    fields: dict
+
+    @property
+    def ptype(self):
+        return self.fields['type']
+
+    @property
+    def ctype(self):
+        return CPP_TYPENAMES[self.ptype]
+
+    @property
+    def typename(self):
+        return make_typename(self.name)
+
+    @property
+    def default(self):
+        return self.fields.get('default')
+
+    @property
+    def default_str(self):
+        default = self.default
+        if self.ptype == 'string':
+            return get_string(default)
+        if self.ptype == 'boolean':
+            return 'true' if default else 'false'
+        return str(default) if default else '{}'
+
+    @property
+    def default_fstr(self):
+        default = self.default
+        if default is None:
+            return 'nullptr'
+        if self.ptype == 'string':
+            return '&' + get_string(default)
+        if self.ptype == 'boolean':
+            return '&' + get_string('True' if default else 'False')
+        return '&' + get_string(str(default))
+
 
 @dataclass
 class Object:
     parent: 'Object'
     name: str
     store: 'Store' = None
-    properties: dict = field(default_factory=dict)
+    properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
 
     @property
@@ -95,7 +136,7 @@ class Object:
 
 @dataclass
 class Array(Object):
-    items: dict = None
+    items: Property = None
 
 @dataclass
 class ObjectArray(Object):
@@ -224,24 +265,37 @@ def load_config(filename: str) -> Database:
 
     def parse(obj: Object, properties: dict):
         for key, value in properties.items():
-            if value['type'] not in ['object', 'array']:
+            # Filter out support property types
+            prop = Property(key, value)
+            if not prop.ctype:
+                print(f'*** "{obj.path}": {prop.ptype} type not yet implemented.')
+                continue
+            if prop.ctype != '-': # object or array
+                obj.properties.append(prop)
                 continue
             if store_ns := value.get('store'):
                 store = Store(obj, key, store_ns=make_typename(store_ns))
                 db.stores.append(store)
             else:
                 store = obj.store
-            if value['type'] == 'object':
-                child = Object(obj, key, store, value['properties'])
+            if prop.ptype == 'object':
+                child = Object(obj, key, store)
                 parse(child, value['properties'])
-            else:
+            elif prop.ptype == 'array':
                 items = value['items']
                 if items['type'] == 'object':
                     arr = ObjectArray(obj, key, store)
-                    arr.items = ItemObject(arr, 'Item', store, items['properties'])
+                    arr.items = ItemObject(arr, 'Item', store)
+                    parse(arr.items, items['properties'])
                 else:
-                    arr = Array(obj, key, store, items=items)
+                    arr = Array(obj, key, store)
+                    parse(arr, {'items': items})
+                    assert len(arr.properties) == 1
+                    arr.items = arr.properties[0]
+                    arr.properties = None
                 child = arr
+            else:
+                raise ValueError('Bad type ' + repr(prop))
             obj.children.append(child)
             if store != obj.store or store == db.store:
                 store.children.append(child)
@@ -256,12 +310,13 @@ def generate_database(db: Database) -> CodeLines:
     store_namespaces = {child.store.store_ns for child in db.children}
     store_namespaces.add(db.store.store_ns)
 
-    lines = CodeLines()
-    lines.source = [
-        f'#include "{db.name}.h"',
-        '',
-        'using namespace ConfigDB;',
-    ]
+    lines = CodeLines(
+        [],
+        [
+            f'#include "{db.name}.h"',
+            '',
+            'using namespace ConfigDB;',
+        ])
     for store in db.stores:
         get_child_objects = generate_method_get_child_object(store, 'getPointer()')
         lines.header += [[
@@ -303,14 +358,14 @@ def generate_database(db: Database) -> CodeLines:
         '}',
     ]
 
-    lines.header = [
+    lines.header[:0] = [
         *[f'#include <ConfigDB/{ns}/Store.h>' for ns in store_namespaces],
         '',
         f'class {db.typename}: public ConfigDB::Database',
         '{',
         'public:',
         [f'DEFINE_FSTR_LOCAL({id}, {make_string(value)})' for value, id in strings.items()]
-    ] + lines.header
+    ]
 
     return lines
 
@@ -347,7 +402,7 @@ def generate_method_get_child_object(obj: Store | Object, store: str) -> CodeLin
 def generate_method_get_property(obj: Object) -> CodeLines:
     '''Generate *getProperty* method'''
 
-    lines = CodeLines(
+    return CodeLines(
         [
             '',
         	'unsigned getPropertyCount() const override',
@@ -362,138 +417,62 @@ def generate_method_get_property(obj: Object) -> CodeLines:
             f'Property {obj.namespace}::{obj.typename}::getProperty(unsigned index)',
             '{',
             ['switch(index) {'],
-        ])
-    for i, (key, value) in enumerate(obj.properties.items()):
-        ptype = value['type']
-        ctype = CPP_TYPENAMES.get(ptype)
-        if not ctype:
-            print(f'*** "{obj.path}": {ptype} type not yet implemented.')
-            continue
-        if ctype == '-':
-            continue
-        default = value.get('default')
-
-        # Source
-        if default is None:
-            default_str = 'nullptr'
-        elif ptype == 'string':
-            default_str = '&' + get_string(default)
-        elif ptype == 'boolean':
-            default_str = '&' + get_string('True' if default else 'False')
-        else:
-            default_str = '&' + get_string(str(default))
-        lines.source += [[[
-            f'case {i}: return {{*this, {get_string(key)}, Property::Type::{ptype.capitalize()}, {default_str}}};'
-        ]]]
-
-    lines.source += [
-        [
-            ['default: return {};'],
+            *([
+                f'case {i}: return {{*this, {get_string(prop.name)}, Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
+            ] for i, prop in enumerate(obj.properties)),
+            [
+                'default: return {};',
+                '}',
+            ],
             '}',
-        ],
-        '}',
-    ]
-
-    return lines
+        ])
 
 
 def generate_array_get_property(array: Array) -> CodeLines:
     '''Generate *getProperty* method for Array'''
 
-    ptype = array.items['type']
-    ctype = CPP_TYPENAMES.get(ptype)
-    if not ctype:
-        print(f'*** "{array.path}": {ptype} type not yet implemented.')
-        return []
-    if ctype == '-':
-        return []
-    default = array.items.get('default')
-
-    # Source
-    if default is None:
-        default_str = 'nullptr'
-    elif ptype == 'string':
-        default_str = '&' + get_string(default)
-    elif ptype == 'boolean':
-        default_str = '&' + get_string('True' if default else 'False')
-    else:
-        default_str = '&' + get_string(str(default))
-
+    prop = array.items
     return CodeLines([
         '',
         'ConfigDB::Property getProperty(unsigned index) override',
         '{',
-        [f'return getArrayProperty(index, ConfigDB::Property::Type::{ptype.capitalize()}, {default_str});'],
+        [f'return getArrayProperty(index, ConfigDB::Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr});'],
         '}',
     ])
-
-    return lines
 
 
 def generate_object_accessors(obj: Object) -> CodeLines:
     '''Generate typed get/set methods for each property'''
 
-    lines = CodeLines()
-    for key, value in obj.properties.items():
-        ptype = value['type']
-        ctype = CPP_TYPENAMES.get(ptype)
-        if not ctype:
-            print(f'*** "{obj.path}": {ptype} type not yet implemented.')
-            continue
-        if ctype == '-':
-            continue
-        default = value.get('default')
-        if default is None:
-            default_str = ''
-        elif ptype == 'string':
-            default_str = f', {get_string(default)}'
-        elif ptype == 'boolean':
-            default_str = f', {'true' if default else 'false'}'
-        else:
-            default_str = f', {default}'
-        lines.header += [
+    return CodeLines(
+        [*([
             '',
-            f'{ctype} get{make_typename(key)}() const',
+            f'{prop.ctype} get{prop.typename}() const',
             '{',
-            [f'return getValue<{ctype}>({get_string(key)}{default_str});'],
+            [f'return getValue<{prop.ctype}>({get_string(prop.name)}, {prop.default_str});'],
             '}',
             '',
-            f'bool set{make_typename(key)}(const {ctype}& value)',
+            f'bool set{prop.typename}(const {prop.ctype}& value)',
             '{',
-            [f'return setValue({get_string(key)}, value);'],
+            [f'return setValue({get_string(prop.name)}, value);'],
             '}'
-        ]
+        ] for prop in obj.properties)]
+    )
     return lines
 
 
 def generate_array_accessors(arr: Array) -> CodeLines:
     '''Generate typed get/set methods for each property'''
 
-    value = arr.items
-    ptype = value['type']
-    ctype = CPP_TYPENAMES.get(ptype)
-    if not ctype:
-        print(f'*** "{obj.path}": {ptype} type not yet implemented.')
-        return
-    if ctype == '-':
-        return
-    default = value.get('default')
-    if default is None:
-        default_str = ''
-    elif ptype == 'string':
-        default_str = f', {get_string(default)}'
-    elif ptype == 'boolean':
-        default_str = f', {'true' if default else 'false'}'
-    else:
-        default_str = f', {default}'
+    prop = arr.items
     return CodeLines([
         '',
-        f'{ctype} getItem(unsigned index) const',
+        f'{prop.ctype} getItem(unsigned index) const',
         '{',
-        [f'return ArrayTemplate::getItem<{ctype}>(index{default_str});'],
+        [f'return ArrayTemplate::getItem<{prop.ctype}>(index, {prop.default_str});'],
         '}',
         '',
-        f'bool setItem(unsigned index, const {ctype}& value)',
+        f'bool setItem(unsigned index, const {prop.ctype}& value)',
         '{',
         [f'return ArrayTemplate::setItem(index, value);'],
         '}'
