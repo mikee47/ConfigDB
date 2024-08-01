@@ -377,13 +377,34 @@ def generate_method_accessors(obj: Object) -> CodeLines:
             default_str = f', {'true' if default else 'false'}'
         else:
             default_str = f', {default}'
+
+        if default_str != '':
+            default_str_doxy=', default {default_str}'
+        else:
+            default_str_doxy=''
+
         lines.header += [
             '',
+            f'/**',
+            f' * @brief get{make_typename(key)}',
+            f' * ',
+            f' * get the value for {obj.path}.{key}',
+            f' * ',
+            f' * @return <{ctype}> the value for {obj.path}.{key}{default_str_doxy}',
+            f' */',
             f'{ctype} get{make_typename(key)}() const',
             '{',
             [f'return getValue<{ctype}>({get_string(key)}{default_str});'],
             '}',
             '',
+            f'/**',
+            f' * @brief set{make_typename(key)}',
+            f' * ',
+            f' * set the value for {obj.path}.{key}',
+            f' * ',
+            f' * @param <{ctype}> value for {obj.path}.{key}{default_str}',
+            f' * @return bool success',
+            f' */',
             f'bool set{make_typename(key)}(const {ctype}& value)',
             '{',
             [f'return setValue({get_string(key)}, value);'],
