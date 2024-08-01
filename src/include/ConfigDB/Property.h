@@ -43,12 +43,15 @@ public:
 #undef XX
 	};
 
-	Property(Object& object) : object(object)
+	Property() = default;
+
+	Property(Object& object, const FlashString& name, Type type, const FlashString* defaultValue)
+		: object(&object), name(&name), defaultValue(defaultValue), type(type)
 	{
 	}
 
-	Property(Object& object, const FlashString& name, Type type, const FlashString* defaultValue)
-		: object(object), name(&name), defaultValue(defaultValue), type(type)
+	Property(Object& object, unsigned index, Type type, const FlashString* defaultValue)
+		: object(&object), defaultValue(defaultValue), index(index), type(type)
 	{
 	}
 
@@ -57,7 +60,12 @@ public:
 		if(name) {
 			return *name;
 		}
-		return nullptr;
+		return String(index);
+	}
+
+	unsigned getIndex() const
+	{
+		return index;
 	}
 
 	String getDefaultStringValue() const
@@ -77,15 +85,16 @@ public:
 
 	explicit operator bool() const
 	{
-		return bool(name);
+		return bool(object);
 	}
 
 	String getJsonValue() const;
 
 private:
-	Object& object;
+	Object* object{};
 	const FlashString* name{};
 	const FlashString* defaultValue{};
+	uint16_t index{};
 	Type type{};
 };
 

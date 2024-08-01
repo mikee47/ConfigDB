@@ -72,6 +72,14 @@ public:
 	 */
 	virtual String getStringValue(const String& path, const String& key) const = 0;
 
+	/**
+	 * @brief Retrieve a value
+	 * @param path JSONPath object location
+	 * @param key Index of value
+	 * @retval String
+	 */
+	virtual String getStringValue(const String& path, unsigned index) const = 0;
+
 	String getPath() const
 	{
 		String path = db.getPath();
@@ -101,6 +109,11 @@ public:
 	virtual size_t printObjectTo(const Object& object, Print& p) const = 0;
 
 	virtual size_t printArrayTo(const Array& array, Print& p) const = 0;
+
+	/**
+	 * @brief Get number of child objects
+	 */
+	virtual unsigned getObjectCount() const = 0;
 
 	/**
 	 * @brief Get top-level objects

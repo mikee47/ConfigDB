@@ -58,12 +58,27 @@ public:
 		return getStore()->getStringValue(name, key);
 	}
 
+	String getStringValue(unsigned index) const
+	{
+		return getStore()->getStringValue(name, index);
+	}
+
 	virtual std::shared_ptr<Store> getStore() const = 0;
+
+	/**
+	 * @brief Get number of child objects
+	 */
+	virtual unsigned getObjectCount() const = 0;
 
 	/**
 	 * @brief Get child objects
 	 */
 	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
+
+	/**
+	 * @brief Get number of properties
+	 */
+	virtual unsigned getPropertyCount() const = 0;
 
 	/**
 	 * @brief Get properties

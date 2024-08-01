@@ -48,6 +48,15 @@ public:
 		return value;
 	}
 
+	String getStringValue(const String& path, unsigned index) const override
+	{
+		JsonVariantConst value = getJsonArrayConst(path)[index];
+		if(value.isNull()) {
+			return nullptr;
+		}
+		return value;
+	}
+
 	size_t printTo(Print& p) const override;
 
 	size_t printObjectTo(const Object& object, Print& p) const override;
@@ -108,6 +117,16 @@ public:
 		array = store->getJsonArray(path);
 	}
 
+	unsigned getObjectCount() const override
+	{
+		return 0;
+	}
+
+	unsigned getPropertyCount() const override
+	{
+		return array.size();
+	}
+
 	std::unique_ptr<Object> getObject(unsigned index) override
 	{
 		return nullptr;
@@ -134,6 +153,15 @@ public:
 		return true;
 	}
 
+protected:
+	Property getArrayProperty(unsigned index, Property::Type type, const FlashString* defaultValue)
+	{
+		if(index >= array.size()) {
+			return {};
+		}
+		return Property(*this, index, type, defaultValue);
+	}
+
 	JsonArray array;
 };
 
@@ -149,6 +177,11 @@ public:
 		// debug_i("%s(%s): %s", __FUNCTION__, path.c_str(), s.c_str());
 	}
 
+	unsigned getObjectCount() const override
+	{
+		return array.size();
+	}
+
 	std::unique_ptr<Object> getObject(unsigned index) override
 	{
 		auto item = static_cast<ClassType*>(this)->getItem(index);
@@ -156,6 +189,16 @@ public:
 			return std::make_unique<decltype(item)>(item);
 		}
 		return nullptr;
+	}
+
+	unsigned getPropertyCount() const override
+	{
+		return 0;
+	}
+
+	Property getProperty(unsigned) override
+	{
+		return {};
 	}
 
 	template <class Item> Item addItem()

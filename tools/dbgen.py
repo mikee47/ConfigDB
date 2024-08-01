@@ -184,10 +184,10 @@ def make_string(s: str):
     return f'"{s.replace('"', '\\"')}"'
 
 
-def declare_templated_class(obj: Object) -> list[str]:
+def declare_templated_class(obj: Object, tparams: list = []) -> list[str]:
     return [
         '',
-        f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.typename}>',
+        f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{", ".join(tparams + [obj.typename])}>',
         '{',
         'public:',
     ]
@@ -222,8 +222,8 @@ def load_config(filename: str) -> Database:
     db.store = Store(db, '', store_ns=make_typename(store_ns))
     db.stores.append(db.store)
 
-    def parse(obj: Object):
-        for key, value in obj.properties.items():
+    def parse(obj: Object, properties: dict):
+        for key, value in properties.items():
             if value['type'] not in ['object', 'array']:
                 continue
             if store_ns := value.get('store'):
@@ -233,6 +233,7 @@ def load_config(filename: str) -> Database:
                 store = obj.store
             if value['type'] == 'object':
                 child = Object(obj, key, store, value['properties'])
+                parse(child, value['properties'])
             else:
                 items = value['items']
                 if items['type'] == 'object':
@@ -244,9 +245,8 @@ def load_config(filename: str) -> Database:
             obj.children.append(child)
             if store != obj.store or store == db.store:
                 store.children.append(child)
-            parse(child)
 
-    parse(db)
+    parse(db, db.properties)
     return db
 
 
@@ -321,6 +321,11 @@ def generate_method_get_child_object(obj: Store | Object, store: str) -> CodeLin
     return CodeLines(
         [
             '',
+        	'unsigned getObjectCount() const override',
+            '{',
+            [f'return {len(obj.children)};'],
+            '}',
+            '',
             'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;'
         ],
         [
@@ -344,6 +349,11 @@ def generate_method_get_property(obj: Object) -> CodeLines:
 
     lines = CodeLines(
         [
+            '',
+        	'unsigned getPropertyCount() const override',
+            '{',
+            [f'return {len(obj.properties)};'],
+            '}',
             '',
             'ConfigDB::Property getProperty(unsigned index) override;',
         ],
@@ -378,11 +388,44 @@ def generate_method_get_property(obj: Object) -> CodeLines:
 
     lines.source += [
         [
-            ['default: return {*this};'],
+            ['default: return {};'],
             '}',
         ],
         '}',
     ]
+
+    return lines
+
+
+def generate_array_get_property(array: Array) -> CodeLines:
+    '''Generate *getProperty* method for Array'''
+
+    ptype = array.items['type']
+    ctype = CPP_TYPENAMES.get(ptype)
+    if not ctype:
+        print(f'*** "{array.path}": {ptype} type not yet implemented.')
+        return []
+    if ctype == '-':
+        return []
+    default = array.items.get('default')
+
+    # Source
+    if default is None:
+        default_str = 'nullptr'
+    elif ptype == 'string':
+        default_str = '&' + get_string(default)
+    elif ptype == 'boolean':
+        default_str = '&' + get_string('True' if default else 'False')
+    else:
+        default_str = '&' + get_string(str(default))
+
+    return CodeLines([
+        '',
+        'ConfigDB::Property getProperty(unsigned index) override',
+        '{',
+        [f'return getArrayProperty(index, ConfigDB::Property::Type::{ptype.capitalize()}, {default_str});'],
+        '}',
+    ])
 
     return lines
 
@@ -501,12 +544,13 @@ def generate_object(obj: Object) -> CodeLines:
 
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
+        lines.append(generate_array_get_property(obj))
     elif isinstance(obj, ObjectArray):
         lines.append(generate_objectarray_accessors(obj))
     else:
         lines.append(generate_object_accessors(obj))
         lines.append(generate_method_get_child_object(obj, 'store'))
-    lines.append(generate_method_get_property(obj))
+        lines.append(generate_method_get_property(obj))
 
     # Contained children member variables
     lines.header += [
@@ -522,12 +566,7 @@ def generate_item_object(obj: Object) -> CodeLines:
     '''Generate code for Array Item Object implementation'''
 
     lines = CodeLines()
-    lines.header = [
-        '',
-        f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.parent.typename}, {obj.typename}>',
-        '{',
-        'public:',
-    ]
+    lines.header = declare_templated_class(obj, [obj.parent.typename])
 
     # Append child object definitions
     for child in obj.children:
