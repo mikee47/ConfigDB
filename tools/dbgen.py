@@ -180,10 +180,10 @@ class Database(Object):
 
 @dataclass
 class CodeLines:
-    '''Code is generated as list, with nested lists indented 
+    '''Code is generated as list, with nested lists indented
     '''
-    header: list[str | list] = field(default_factory=list)
-    source: list[str | list] = field(default_factory=list)
+    header: list[str | list]
+    source: list[str | list]
 
     def append(self, other: 'CodeLines'):
         self.header += [other.header]
@@ -419,12 +419,14 @@ def generate_method_get_property(obj: Object) -> CodeLines:
             f'Property {obj.namespace}::{obj.typename}::getProperty(unsigned index)',
             '{',
             ['switch(index) {'],
-            *([
-                f'case {i}: return {{*this, {get_string(prop.name)}, Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
-            ] for i, prop in enumerate(obj.properties)),
-            *([
-                f'case {objbase+i}: return {{*this, {get_string(child.name)}, Property::Type::{obj.classname}, nullptr}}'
-            ] for i, child in enumerate(obj.children)),
+            [
+                *(f'case {i}: return {{*this, {get_string(prop.name)}, Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
+                for i, prop in enumerate(obj.properties))
+            ],
+            [
+                *(f'case {objbase+i}: return {{*this, {get_string(child.name)}, Property::Type::{obj.classname}, nullptr}}'
+                for i, child in enumerate(obj.children))
+            ],
             [
                 'default: return {};',
                 '}',
@@ -443,14 +445,14 @@ def generate_array_get_property(array: Array) -> CodeLines:
         '{',
         [f'return getArrayProperty(index, ConfigDB::Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr});'],
         '}',
-    ])
+    ], [])
 
 
 def generate_object_accessors(obj: Object) -> CodeLines:
     '''Generate typed get/set methods for each property'''
 
     return CodeLines(
-        [*([
+        [*((
             '',
             f'{prop.ctype} get{prop.typename}() const',
             '{',
@@ -461,9 +463,10 @@ def generate_object_accessors(obj: Object) -> CodeLines:
             '{',
             [f'return setValue({get_string(prop.name)}, value);'],
             '}'
-        ] for prop in obj.properties)]
+            ) for prop in obj.properties)
+        ],
+        []
     )
-    return lines
 
 
 def generate_array_accessors(arr: Array) -> CodeLines:
@@ -481,7 +484,7 @@ def generate_array_accessors(arr: Array) -> CodeLines:
         '{',
         [f'return ArrayTemplate::setItem(index, value);'],
         '}'
-    ])
+    ], [])
 
 
 def generate_objectarray_accessors(arr: ObjectArray) -> CodeLines:
@@ -496,14 +499,16 @@ def generate_objectarray_accessors(arr: ObjectArray) -> CodeLines:
         '{',
         ['return ObjectArrayTemplate::addItem<Item>();'],
         '}',
-    ])
+    ], [])
 
 
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
-    lines = CodeLines()
-    lines.header = declare_templated_class(obj)
+    lines = CodeLines(
+        declare_templated_class(obj),
+        []
+    )
 
     # Append child object definitions
     for child in obj.children:
@@ -549,8 +554,10 @@ def generate_object(obj: Object) -> CodeLines:
 def generate_item_object(obj: Object) -> CodeLines:
     '''Generate code for Array Item Object implementation'''
 
-    lines = CodeLines()
-    lines.header = declare_templated_class(obj)#, [obj.parent.typename])
+    lines = CodeLines(
+        declare_templated_class(obj),
+        []
+    )
 
     # Append child object definitions
     for child in obj.children:
@@ -595,10 +602,10 @@ def write_file(content: list[str | list], filename: str):
 
     def dump_output(items: list, indent: str):
         for item in items:
-            if isinstance(item, list):
-                dump_output(item, indent + '    ')
-            elif item:
+            if isinstance(item, str):
                 f.write(f'{indent}{item}\n')
+            elif item:
+                dump_output(item, indent + '    ')
             else:
                 f.write('\n')
 
