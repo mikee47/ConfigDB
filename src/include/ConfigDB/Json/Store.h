@@ -27,15 +27,10 @@ namespace ConfigDB::Json
 class Store : public ConfigDB::Store
 {
 public:
-	Store(Database& db, RootObject& root, const String& name) : ConfigDB::Store(db, name), root(root)
+	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
 	{
 		load();
 	}
-
-	Object& getRoot() override
-	{
-		return root;
-	};
 
 	bool commit() override
 	{
@@ -48,13 +43,34 @@ public:
 	}
 
 private:
+	friend class RootObject;
+
 	bool load();
 	bool save();
 
 	StaticJsonDocument<1024> doc;
-	RootObject& root;
 };
 
 template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
+
+class RootObject : public Object
+{
+public:
+	RootObject(Database& db, const String& name);
+
+	Store& getStore() override
+	{
+		return store;
+	}
+
+private:
+	Store store;
+};
+
+template <class ClassType> class RootObjectTemplate : public RootObject
+{
+public:
+	using RootObject::RootObject;
+};
 
 } // namespace ConfigDB::Json

@@ -47,8 +47,6 @@ public:
 		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
-	virtual Object& getRoot() = 0;
-
 	const String& getName() const
 	{
 		return name;
@@ -68,6 +66,18 @@ public:
 	}
 
 	virtual bool commit() = 0;
+
+	template <class T> size_t printObjectTo(T& obj, Print& p) const
+	{
+		auto format = getDatabase().getFormat();
+		switch(format) {
+		case Format::Compact:
+			return serializeJson(obj, p);
+		case Format::Pretty:
+			return serializeJsonPretty(obj, p);
+		}
+		return 0;
+	}
 
 private:
 	Database& db;
@@ -99,4 +109,5 @@ private:
 };
 
 template <class BaseType, class ClassType> std::weak_ptr<ClassType> StoreTemplate<BaseType, ClassType>::store;
+
 } // namespace ConfigDB

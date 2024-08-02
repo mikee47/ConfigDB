@@ -18,8 +18,7 @@
  ****/
 
 #include <ConfigDB/Json/Store.h>
-#include <Data/CStringArray.h>
-#include <Data/Stream/MemoryDataStream.h>
+#include <ConfigDB/Json/Object.h>
 
 namespace ConfigDB::Json
 {
@@ -40,7 +39,7 @@ bool Store::load()
 	if(!stream.open(filename, File::ReadOnly)) {
 		if(stream.getLastError() == IFS::Error::NotFound) {
 			// OK, we have an empty document
-			root.object = doc.to<JsonObject>();
+			doc.to<JsonObject>();
 			return true;
 		}
 		// Other errors indicate a problem
@@ -59,7 +58,6 @@ bool Store::load()
 	switch(error.code()) {
 	case DeserializationError::Ok:
 	case DeserializationError::EmptyInput:
-		root.object = doc.as<JsonObject>();
 		return true;
 	default:
 		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
@@ -81,6 +79,10 @@ bool Store::save()
 	}
 
 	return true;
+}
+
+RootObject::RootObject(Database& db, const String& name) : Object(), store(db, name), object(store.doc<as>(JsonObject))
+{
 }
 
 } // namespace ConfigDB::Json

@@ -19,7 +19,7 @@
 
 #include <ConfigDB/Json/Object.h>
 #include <ConfigDB/Json/Array.h>
-#include <ConfigDB/Database.h>
+#include <ConfigDB/Json/Store.h>
 
 namespace ConfigDB::Json
 {
@@ -29,14 +29,9 @@ Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent), object
 
 size_t Object::printTo(Print& p) const
 {
-	auto format = getDatabase().getFormat();
-	switch(format) {
-	case Format::Compact:
-		return serializeJson(object, p);
-	case Format::Pretty:
-		return serializeJsonPretty(object, p);
-	}
-	return 0;
+	auto store = const_cast<Store&>(getStore());
+	return store.printObjectTo(object, p);
 }
+
 
 } // namespace ConfigDB::Json
