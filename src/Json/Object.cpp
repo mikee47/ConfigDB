@@ -29,8 +29,7 @@ Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent), object
 
 size_t Object::printTo(Print& p) const
 {
-	auto store = const_cast<Store&>(getStore());
-	return store.printObjectTo(object, p);
+	return Store::printObjectTo(object, getDatabase().getFormat(), p);
 }
 
 

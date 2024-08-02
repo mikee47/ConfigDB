@@ -35,42 +35,18 @@ void DataStream::fillStream()
 			stream << endl;
 		}
 	};
-	if(state == State::header) {
+	if(storeIndex == 0) {
 		stream << '{';
 		newline();
-		state = State::object;
-		storeIndex = 0;
-		propertyIndex = 0;
-		store.reset();
-		store = db.getStore(0);
 	}
-	while(store) {
-		if(propertyIndex == 0) {
-			if(storeIndex > 0) {
-				stream << ',';
-				newline();
-			}
-			if(auto& name = store->getName()) {
-				stream << '"' << name << "\":";
-			}
-		}
-		auto prop = store->getRoot()->getProperty(propertyIndex);
-		if(!prop) {
-			++storeIndex;
-			store.reset();
-			store = db.getStore(storeIndex);
-			propertyIndex = 0;
-			continue;
-		}
-		if(propertyIndex > 0) {
+	auto store = db.getStore(storeIndex);
+	if(store) {
+		if(storeIndex > 0) {
 			stream << ',';
 			newline();
 		}
-		if(auto name = prop.getName()) {
-			stream << '"' << name << "\":";
-		}
-		stream << *prop.getObjectValue();
-		++propertyIndex;
+		stream << *store;
+		++storeIndex;
 		return;
 	}
 	newline();

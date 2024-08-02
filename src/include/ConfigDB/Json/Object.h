@@ -69,6 +69,7 @@ public:
 private:
 	friend class Store;
 	friend class Array;
+	friend class RootObject;
 
 	JsonObject object;
 };

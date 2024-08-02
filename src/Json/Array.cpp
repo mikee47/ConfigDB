@@ -25,8 +25,7 @@ namespace ConfigDB::Json
 {
 size_t Array::printTo(Print& p) const
 {
-	auto& store = const_cast<Array*>(this)->getStore();
-	return static_cast<Store&>(store).printObjectTo(array, p);
+	return Store::printObjectTo(array, getDatabase().getFormat(), p);
 }
 
 } // namespace ConfigDB::Json

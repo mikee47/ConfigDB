@@ -29,7 +29,7 @@ class Object;
 /**
  * @brief Manages access to an object store, typically one file
  */
-class Store
+class Store: public Printable
 {
 public:
 	/**
@@ -66,18 +66,6 @@ public:
 	}
 
 	virtual bool commit() = 0;
-
-	template <class T> size_t printObjectTo(T& obj, Print& p) const
-	{
-		auto format = getDatabase().getFormat();
-		switch(format) {
-		case Format::Compact:
-			return serializeJson(obj, p);
-		case Format::Pretty:
-			return serializeJsonPretty(obj, p);
-		}
-		return 0;
-	}
 
 private:
 	Database& db;

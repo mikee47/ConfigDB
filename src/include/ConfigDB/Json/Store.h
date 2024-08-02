@@ -42,6 +42,19 @@ public:
 		return getPath() + ".json";
 	}
 
+	size_t printTo(Print& p) const override;
+
+	template <class T> static size_t printObjectTo(T& obj, Format format, Print& p)
+	{
+		switch(format) {
+		case Format::Compact:
+			return serializeJson(obj, p);
+		case Format::Pretty:
+			return serializeJsonPretty(obj, p);
+		}
+		return 0;
+	}
+
 private:
 	friend class RootObject;
 

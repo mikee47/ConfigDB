@@ -73,10 +73,8 @@ private:
 	void fillStream();
 
 	Database& db;
-	std::shared_ptr<Store> store;
 	MemoryDataStream stream;
 	uint8_t storeIndex;
-	uint8_t propertyIndex;
 	enum class State {
 		header,
 		object,

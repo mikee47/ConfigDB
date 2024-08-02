@@ -71,7 +71,7 @@ bool Store::save()
 	if(!stream.open(getFilename(), File::WriteOnly | File::CreateNewAlways)) {
 		return false;
 	}
-	root.printTo(stream);
+	printObjectTo(doc, getDatabase().getFormat(), stream);
 
 	if(stream.getLastError() != FS_OK) {
 		debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());
@@ -81,8 +81,21 @@ bool Store::save()
 	return true;
 }
 
-RootObject::RootObject(Database& db, const String& name) : Object(), store(db, name), object(store.doc<as>(JsonObject))
+size_t Store::printTo(Print& p) const
 {
+	size_t n{0};
+	if(auto& name = getName()) {
+		n += p.print('"');
+		n += p.print(name);
+		n += p.print("\":");
+	}
+	// TODO: Nameless store omits {}
+	return printObjectTo(doc, getDatabase().getFormat(), p);
+}
+
+RootObject::RootObject(Database& db, const String& name) : Object(), store(db, name)
+{
+	object = store.doc.as<JsonObject>();
 }
 
 } // namespace ConfigDB::Json
