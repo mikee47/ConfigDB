@@ -34,6 +34,17 @@ String Property::getStringValue() const
 	return value;
 }
 
+std::unique_ptr<Object> Property::getObjectValue() const
+{
+	if(!object) {
+		return nullptr;
+	}
+	if(name) {
+		return object->getObject(*name);
+	}
+	return object->getObject(index);
+}
+
 String Property::getJsonValue() const
 {
 	if(!object) {

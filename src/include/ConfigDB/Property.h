@@ -23,6 +23,8 @@
 #include <memory>
 
 #define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
+	XX(Object)                                                                                                         \
+	XX(Array)                                                                                                          \
 	XX(String)                                                                                                         \
 	XX(Integer)                                                                                                        \
 	XX(Boolean)
@@ -32,7 +34,7 @@ namespace ConfigDB
 class Object;
 
 /**
- * @brief Manages a key/value pair
+ * @brief Manages a key/value pair stored in an object
  */
 class Property
 {
@@ -45,11 +47,17 @@ public:
 
 	Property() = default;
 
+	/**
+	 * @brief Property accessed by key
+	 */
 	Property(Object& object, const FlashString& name, Type type, const FlashString* defaultValue)
 		: object(&object), name(&name), defaultValue(defaultValue), type(type)
 	{
 	}
 
+	/**
+	 * @brief Property accessed by index
+	 */
 	Property(Object& object, unsigned index, Type type, const FlashString* defaultValue)
 		: object(&object), defaultValue(defaultValue), index(index), type(type)
 	{
@@ -68,6 +76,23 @@ public:
 		return index;
 	}
 
+	/**
+	 * @brief Check if this property is accessed by index
+	 * @retval bool true if this property is an array member, false if it's a named object property
+	 */
+	bool isIndexed() const
+	{
+		return bool(name);
+	}
+
+	/**
+	 * @brief Check if this property refers to an Object or Array
+	 */
+	bool isObject() const
+	{
+		return type == Type::Object || type == Type::Array;
+	}
+
 	String getDefaultStringValue() const
 	{
 		if(defaultValue) {
@@ -77,6 +102,8 @@ public:
 	}
 
 	String getStringValue() const;
+
+	std::unique_ptr<Object> getObjectValue() const;
 
 	Type getType() const
 	{
@@ -96,6 +123,11 @@ private:
 	const FlashString* defaultValue{};
 	uint16_t index{};
 	Type type{};
+};
+
+struct ObjectProperty {
+	String name;
+	std::unique_ptr<Object> object;
 };
 
 } // namespace ConfigDB

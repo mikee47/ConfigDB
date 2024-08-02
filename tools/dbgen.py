@@ -402,12 +402,13 @@ def generate_method_get_child_object(obj: Store | Object, store: str) -> CodeLin
 def generate_method_get_property(obj: Object) -> CodeLines:
     '''Generate *getProperty* method'''
 
+    objbase = len(obj.properties)
     return CodeLines(
         [
             '',
         	'unsigned getPropertyCount() const override',
             '{',
-            [f'return {len(obj.properties)};'],
+            [f'return {len(obj.children) + len(obj.properties)};'],
             '}',
             '',
             'ConfigDB::Property getProperty(unsigned index) override;',
@@ -420,6 +421,9 @@ def generate_method_get_property(obj: Object) -> CodeLines:
             *([
                 f'case {i}: return {{*this, {get_string(prop.name)}, Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
             ] for i, prop in enumerate(obj.properties)),
+            *([
+                f'case {objbase+i}: return {{*this, {get_string(child.name)}, Property::Type::{obj.classname}, nullptr}}'
+            ] for i, child in enumerate(obj.children)),
             [
                 'default: return {};',
                 '}',

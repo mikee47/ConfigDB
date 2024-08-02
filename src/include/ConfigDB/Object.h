@@ -19,51 +19,52 @@
 
 #pragma once
 
-#include "Store.h"
 #include "Property.h"
+#include <Printable.h>
 
 namespace ConfigDB
 {
+class Store;
+
 /**
  * @brief An object can contain other objects, properties and arrays
  */
-class Object
+class Object : public Printable
 {
 public:
-	Object(const String& name) : name(name)
+	Object() = default;
+
+	Object(Object& parent) : parent(&parent)
 	{
 	}
 
-	virtual ~Object()
-	{
-	}
+	/**
+	 * @brief Retrieve a value
+	 * @param key Key for value
+	 * @retval String
+	 */
+	virtual String getStringValue(const String& key) const = 0;
 
-	const String& getName() const
-	{
-		return name;
-	}
+	/**
+	 * @brief Retrieve a value by index
+	 * @param key Index of value
+	 * @retval String
+	 */
+	virtual String getStringValue(unsigned index) const = 0;
 
-	String getPath() const
-	{
-		String path = getStore()->getName();
-		if(path && name) {
-			path += '.';
-			path += name;
-		}
-		return path;
-	}
+	/**
+	 * @brief Store a value
+	 * @param key Key for value
+	 * @param value Value to store
+	 * @retval bool true on success
+	 */
+	// virtual bool setStringValue(const String& key, const String& value) = 0;
 
-	String getStringValue(const String& key) const
+	virtual Store* getStore() const
 	{
-		return getStore()->getStringValue(name, key);
+		assert(parent != nullptr);
+		return parent->getStore();
 	}
-
-	String getStringValue(unsigned index) const
-	{
-		return getStore()->getStringValue(name, index);
-	}
-
-	virtual std::shared_ptr<Store> getStore() const = 0;
 
 	/**
 	 * @brief Get number of child objects
@@ -71,7 +72,12 @@ public:
 	virtual unsigned getObjectCount() const = 0;
 
 	/**
-	 * @brief Get child objects
+	 * @brief Get child object by key
+	 */
+	virtual std::unique_ptr<Object> getObject(const String& key) = 0;
+
+	/**
+	 * @brief Get child object by index
 	 */
 	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
 
@@ -88,37 +94,17 @@ public:
 	/**
 	 * @brief Commit changes to the store
 	 */
-	bool commit()
+	virtual bool commit()
 	{
-		return getStore()->commit();
+		assert(parent != nullptr);
+		return parent->commit();
 	}
 
-	size_t printTo(Print& p) const
-	{
-		return getStore()->printObjectTo(*this, p);
-	}
+	// Printable [STOREIMPL]
+	// virtual size_t printTo(Print& p) const = 0;
 
 private:
-	String name;
-};
-
-/**
- * @brief Object class template for use by code generator
- */
-template <class StoreType, class ClassType> class ObjectTemplate : public Object
-{
-public:
-	ObjectTemplate(std::shared_ptr<StoreType> store, const String& path) : Object(path), store(store)
-	{
-	}
-
-	std::shared_ptr<Store> getStore() const override
-	{
-		return store;
-	}
-
-protected:
-	std::shared_ptr<StoreType> store;
+	Object* parent{};
 };
 
 } // namespace ConfigDB

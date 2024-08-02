@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Array.h
+ * ConfigDB/ObjectArray.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -23,10 +23,20 @@
 
 namespace ConfigDB
 {
-class Array : public Object
+class ObjectArray : public Object
 {
 public:
 	using Object::Object;
+
+	unsigned getPropertyCount() const override
+	{
+		return 0;
+	}
+
+	Property getProperty(unsigned index)
+	{
+		return {};
+	}
 };
 
 } // namespace ConfigDB
