@@ -518,18 +518,22 @@ def generate_object(obj: Object) -> CodeLines:
         lines.append(generate_item_object(obj.items))
 
     lines.header += [[
-        f'{obj.typename}(std::shared_ptr<ConfigDB::{obj.store.base_class}> store):',
+        f'{obj.typename}({obj.parent.typename}& parent):',
         [', '.join([
-            f'{obj.classname}Template(store, {get_string(obj.relative_path, True)})',
-            *(f'{child.id}(store)' for child in obj.contained_children)
+            f'{obj.classname}Template(parent, {get_string(obj.relative_path, True)})',
+            *(f'{child.id}(*this)' for child in obj.contained_children)
         ])],
         '{',
         '}',
-        '',
-        f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
-        '{',
-        '}',
     ]]
+    if not isinstance(obj.parent, Database):
+        lines.header += [[
+                '',
+            f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
+            '{',
+            '}',
+        ]]
+
 
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
