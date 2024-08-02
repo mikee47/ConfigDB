@@ -317,8 +317,22 @@ def generate_database(db: Database) -> CodeLines:
             '',
             'using namespace ConfigDB;',
         ])
+    for store in db.stores:
+        get_child_objects = generate_method_get_child_object(store, 'getPointer()')
+        lines.header += [[
+            *declare_templated_class(store),
+            [
+                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
+                '{',
+                '}',
+            ],
+            '};',
+        ]]
+        lines.source += get_child_objects.source
+
     for child in db.children:
         lines.append(generate_object(child))
+
     lines.header += [
         [
             '',
