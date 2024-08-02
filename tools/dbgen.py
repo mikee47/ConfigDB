@@ -97,7 +97,7 @@ class Object:
 
     @property
     def typename(self):
-        return make_typename(self.name)
+        return make_typename(self.name) if self.name else 'Root'
 
     @property
     def namespace(self):
@@ -143,17 +143,12 @@ class ObjectArray(Object):
     items: Object = None
 
 @dataclass
-class ItemObject(Object):
-    pass
-
-@dataclass
 class Store(Object):
     store_ns: str = None
 
     @property
     def typename(self):
-        typename = super().typename if self.name else 'Root'
-        return typename + 'Store'
+        return f'{super().typename}Store'
 
     @property
     def namespace(self):
@@ -262,9 +257,13 @@ def load_config(filename: str) -> Database:
         raise RuntimeError('Database requires root "store" value')
     db.store = Store(db, '', store_ns=make_typename(store_ns))
     db.stores.append(db.store)
+    root = Object(db, '', db.store)
+    db.children.append(root)
 
     def parse(obj: Object, properties: dict):
+        obj_root = obj
         for key, value in properties.items():
+            obj = obj_root
             # Filter out support property types
             prop = Property(key, value)
             if not prop.ctype:
@@ -274,8 +273,11 @@ def load_config(filename: str) -> Database:
                 obj.properties.append(prop)
                 continue
             if store_ns := value.get('store'):
-                store = Store(obj, key, store_ns=make_typename(store_ns))
+                if obj is not root:
+                    raise ValueError(f'{key} cannot have "store", not a root object')
+                store = Store(db, key, store_ns=make_typename(store_ns))
                 db.stores.append(store)
+                obj = root
             else:
                 store = obj.store
             if prop.ptype == 'object':
@@ -285,7 +287,7 @@ def load_config(filename: str) -> Database:
                 items = value['items']
                 if items['type'] == 'object':
                     arr = ObjectArray(obj, key, store)
-                    arr.items = ItemObject(arr, 'Item', store)
+                    arr.items = Object(arr, 'Item', store)
                     parse(arr.items, items['properties'])
                 else:
                     arr = Array(obj, key, store)
@@ -297,10 +299,8 @@ def load_config(filename: str) -> Database:
             else:
                 raise ValueError('Bad type ' + repr(prop))
             obj.children.append(child)
-            if store != obj.store or store == db.store:
-                store.children.append(child)
 
-    parse(db, db.properties)
+    parse(root, db.properties)
     return db
 
 
@@ -317,20 +317,6 @@ def generate_database(db: Database) -> CodeLines:
             '',
             'using namespace ConfigDB;',
         ])
-    for store in db.stores:
-        get_child_objects = generate_method_get_child_object(store, 'getPointer()')
-        lines.header += [[
-            *declare_templated_class(store),
-            [
-                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
-                '{',
-                '}',
-                '',
-                *get_child_objects.header,
-            ],
-            '};',
-        ]]
-        lines.source += get_child_objects.source
     for child in db.children:
         lines.append(generate_object(child))
     lines.header += [
@@ -381,6 +367,7 @@ def generate_method_get_child_object(obj: Store | Object, store: str) -> CodeLin
             [f'return {len(obj.children)};'],
             '}',
             '',
+            'std::unique_ptr<ConfigDB::Object> getObject(const String& name) override;'
             'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;'
         ],
         [
@@ -549,16 +536,16 @@ def generate_item_object(obj: Object) -> CodeLines:
     '''Generate code for Array Item Object implementation'''
 
     lines = CodeLines()
-    lines.header = declare_templated_class(obj, [obj.parent.typename])
+    lines.header = declare_templated_class(obj)#, [obj.parent.typename])
 
     # Append child object definitions
     for child in obj.children:
         lines.append(generate_object(child))
 
     lines.header += [[
-        f'{obj.typename}(ObjectArrayTemplate<{obj.parent.typename}>& array, unsigned index):',
+        f'{obj.typename}({obj.parent.typename}& parent, unsigned index):',
         [', '.join([
-            f'{obj.classname}Template(array, index)',
+            f'{obj.classname}Template(parent, index)',
             *(f'{child.id}(array.getStore())' for child in obj.contained_children)
         ])],
         '{',

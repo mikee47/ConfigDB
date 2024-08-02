@@ -37,6 +37,16 @@ public:
 		array = parent.array[index];
 	}
 
+	String getStringValue(const String& key) const override
+	{
+		return nullptr;
+	}
+
+	String getStringValue(unsigned index) const override
+	{
+		return array[index].as<const char*>();
+	}
+
 	explicit operator bool() const
 	{
 		return !array.isNull();

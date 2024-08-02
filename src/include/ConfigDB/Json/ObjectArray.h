@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "../ObjectArray.h"
 #include "Object.h"
 
 namespace ConfigDB::Json
@@ -26,14 +27,24 @@ namespace ConfigDB::Json
 class ObjectArray : public ConfigDB::ObjectArray
 {
 public:
-	ObjectArray(Object& parent, const String& name) : ConfigDB::ObjectArray(parent)
+	ObjectArray(Json::Object& parent, const String& name) : ConfigDB::ObjectArray(parent)
 	{
 		array = parent.object[name];
 	}
 
-	ObjectArray(Object& parent, unsigned index) : ConfigDB::ObjectArray(parent)
+	ObjectArray(ObjectArray& parent, unsigned index) : ConfigDB::ObjectArray(parent)
 	{
-		array = parent.object[index];
+		array = parent.array[index];
+	}
+
+	String getStringValue(const String& key) const override
+	{
+		return nullptr;
+	}
+
+	String getStringValue(unsigned index) const override
+	{
+		return nullptr;
 	}
 
 	explicit operator bool() const
@@ -69,9 +80,9 @@ public:
 		return true;
 	}
 
-	size_t printTo(Print& p) const override;
-
 private:
+	friend class Json::Object;
+
 	JsonArray array;
 };
 

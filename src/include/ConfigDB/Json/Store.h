@@ -21,6 +21,8 @@
 
 #include "../Store.h"
 #include "Object.h"
+#include "Array.h"
+#include "ObjectArray.h"
 
 namespace ConfigDB::Json
 {

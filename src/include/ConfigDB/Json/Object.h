@@ -25,6 +25,7 @@
 namespace ConfigDB::Json
 {
 class Array;
+class ObjectArray;
 
 class Object : public ConfigDB::Object
 {
@@ -41,13 +42,14 @@ public:
 
 	Object(Array& parent, unsigned index);
 
+	Object(ObjectArray& parent, unsigned index);
+
 	explicit operator bool() const
 	{
 		return !object.isNull();
 	}
 
 	String getStringValue(const String& key) const override;
-
 	String getStringValue(unsigned index) const override;
 
 	// [CODEGEN]
@@ -69,6 +71,7 @@ public:
 private:
 	friend class Store;
 	friend class Array;
+	friend class ObjectArray;
 	friend class RootObject;
 
 	JsonObject object;

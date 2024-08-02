@@ -26,7 +26,14 @@ namespace ConfigDB
 class ObjectArray : public Object
 {
 public:
-	using Object::Object;
+	ObjectArray(Object& parent) : Object(parent)
+	{
+	}
+
+	std::unique_ptr<Object> getObject(const String& key) override
+	{
+		return nullptr;
+	}
 
 	unsigned getPropertyCount() const override
 	{

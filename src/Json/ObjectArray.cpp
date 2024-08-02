@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Array.h
+ * ConfigDB/Json/Array.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,33 +17,14 @@
  *
  ****/
 
-#pragma once
+#include <ConfigDB/Json/ObjectArray.h>
+#include <ConfigDB/Json/Store.h>
 
-#include "Object.h"
-
-namespace ConfigDB
+namespace ConfigDB::Json
 {
-class Array : public Object
+size_t ObjectArray::printTo(Print& p) const
 {
-public:
-	Array(Object& parent) : Object(parent)
-	{
-	}
+	return Store::printObjectTo(array, getDatabase().getFormat(), p);
+}
 
-	unsigned getObjectCount() const override
-	{
-		return 0;
-	}
-
-	std::unique_ptr<Object> getObject(const String& key) override
-	{
-		return nullptr;
-	}
-
-	std::unique_ptr<Object> getObject(unsigned index) override
-	{
-		return nullptr;
-	}
-};
-
-} // namespace ConfigDB
+} // namespace ConfigDB::Json

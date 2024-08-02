@@ -19,6 +19,7 @@
 
 #include <ConfigDB/Json/Object.h>
 #include <ConfigDB/Json/Array.h>
+#include <ConfigDB/Json/ObjectArray.h>
 #include <ConfigDB/Json/Store.h>
 
 namespace ConfigDB::Json
@@ -27,10 +28,13 @@ Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent), object
 {
 }
 
+Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
+{
+}
+
 size_t Object::printTo(Print& p) const
 {
 	return Store::printObjectTo(object, getDatabase().getFormat(), p);
 }
-
 
 } // namespace ConfigDB::Json

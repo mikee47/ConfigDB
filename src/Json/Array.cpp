@@ -18,7 +18,6 @@
  ****/
 
 #include <ConfigDB/Json/Array.h>
-#include <ConfigDB/Json/Object.h>
 #include <ConfigDB/Json/Store.h>
 
 namespace ConfigDB::Json
