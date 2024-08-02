@@ -96,7 +96,7 @@ size_t Store::printTo(Print& p) const
 size_t Store::printObjectTo(const Object& object, Print& p) const
 {
 	auto& db = database();
-	auto obj = getJsonObjectConst(object.getName());
+	auto obj = static_cast<const ObjectTemplate<void>&>(object).object;
 	switch(db.getFormat()) {
 	case Format::Compact:
 		return serializeJson(obj, p);
@@ -109,7 +109,7 @@ size_t Store::printObjectTo(const Object& object, Print& p) const
 size_t Store::printArrayTo(const Array& array, Print& p) const
 {
 	auto& db = database();
-	auto arr = getJsonArrayConst(array.getName());
+	auto arr = static_cast <const ArrayTemplate<void>&>(array).array;
 	switch(db.getFormat()) {
 	case Format::Compact:
 		return serializeJson(arr, p);

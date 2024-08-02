@@ -41,20 +41,12 @@ public:
 
 	String getStringValue(const String& path, const String& key) const override
 	{
-		JsonVariantConst value = getJsonObjectConst(path)[key];
-		if(value.isNull()) {
-			return nullptr;
-		}
-		return value;
+		return getJsonObjectConst(path)[key].as<const char*>();
 	}
 
 	String getStringValue(const String& path, unsigned index) const override
 	{
-		JsonVariantConst value = getJsonArrayConst(path)[index];
-		if(value.isNull()) {
-			return nullptr;
-		}
-		return value;
+		return getJsonArrayConst(path)[index].as<const char*>();
 	}
 
 	size_t printTo(Print& p) const override;
@@ -105,6 +97,9 @@ public:
 		return object[key] | defaultValue;
 	}
 
+private:
+	friend class Store;
+
 	JsonObject object;
 };
 
@@ -147,7 +142,7 @@ public:
 		return array.add(value);
 	}
 
-	template <typename T> bool removeItem(unsigned index)
+	bool removeItem(unsigned index)
 	{
 		array.remove(index);
 		return true;
@@ -161,6 +156,9 @@ protected:
 		}
 		return Property(*this, index, type, defaultValue);
 	}
+
+private:
+	friend class Store;
 
 	JsonArray array;
 };
@@ -213,7 +211,7 @@ public:
 		return Item(*this, index);
 	}
 
-	template <typename T> bool removeItem(unsigned index)
+	bool removeItem(unsigned index)
 	{
 		array.remove(index);
 		return true;
@@ -226,7 +224,7 @@ template <class ArrayType, class ClassType> class ItemObjectTemplate : public Ob
 {
 public:
 	ItemObjectTemplate(ObjectArrayTemplate<ArrayType>& array, unsigned index)
-		: ObjectTemplate<ClassType>(std::static_pointer_cast<Store>(array.getStore()), nullptr),
+		: ObjectTemplate<ClassType>(std::static_pointer_cast<Store>(array.getStore()), String(index)),
 		  object(array.template array[index])
 	{
 	}
