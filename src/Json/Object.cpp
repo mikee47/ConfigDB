@@ -23,9 +23,8 @@
 
 namespace ConfigDB::Json
 {
-Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent)
+Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
 {
-	object = parent.array[index];
 }
 
 size_t Object::printTo(Print& p) const

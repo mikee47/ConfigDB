@@ -20,19 +20,22 @@
 #pragma once
 
 #include "../Store.h"
-#include "../Object.h"
-#include "../Array.h"
-#include <ArduinoJson.h>
+#include "Object.h"
 
 namespace ConfigDB::Json
 {
 class Store : public ConfigDB::Store
 {
 public:
-	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
+	Store(Database& db, RootObject& root, const String& name) : ConfigDB::Store(db, name), root(root)
 	{
 		load();
 	}
+
+	Object& getRoot() override
+	{
+		return root;
+	};
 
 	bool commit() override
 	{
@@ -49,6 +52,7 @@ private:
 	bool save();
 
 	StaticJsonDocument<1024> doc;
+	RootObject& root;
 };
 
 template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;

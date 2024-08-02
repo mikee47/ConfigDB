@@ -54,7 +54,7 @@ void DataStream::fillStream()
 				stream << '"' << name << "\":";
 			}
 		}
-		auto prop = store->getProperty(propertyIndex);
+		auto prop = store->getRoot().getProperty(propertyIndex);
 		if(!prop) {
 			++storeIndex;
 			store.reset();

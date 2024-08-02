@@ -40,7 +40,7 @@ bool Store::load()
 	if(!stream.open(filename, File::ReadOnly)) {
 		if(stream.getLastError() == IFS::Error::NotFound) {
 			// OK, we have an empty document
-			object = doc.to<JsonObject>();
+			root.object = doc.to<JsonObject>();
 			return true;
 		}
 		// Other errors indicate a problem
@@ -59,7 +59,7 @@ bool Store::load()
 	switch(error.code()) {
 	case DeserializationError::Ok:
 	case DeserializationError::EmptyInput:
-		object = doc.as<JsonObject>();
+		root.object = doc.as<JsonObject>();
 		return true;
 	default:
 		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
@@ -73,7 +73,7 @@ bool Store::save()
 	if(!stream.open(getFilename(), File::WriteOnly | File::CreateNewAlways)) {
 		return false;
 	}
-	printTo(stream);
+	root.printTo(stream);
 
 	if(stream.getLastError() != FS_OK) {
 		debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());

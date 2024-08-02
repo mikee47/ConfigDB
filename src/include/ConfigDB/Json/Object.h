@@ -29,9 +29,14 @@ class Array;
 class Object : public ConfigDB::Object
 {
 public:
-	Object(Object& parent, const String& name) : ConfigDB::Object(parent)
+	Object() = default;
+
+	Object(JsonObject obj) : ConfigDB::Object(), object(obj)
 	{
-		object = parent.object[name];
+	}
+
+	Object(Object& parent, const String& name) : ConfigDB::Object(parent), object(parent.object[name])
+	{
 	}
 
 	Object(Array& parent, unsigned index);
@@ -68,10 +73,32 @@ private:
 	JsonObject object;
 };
 
+class RootObject : public Object
+{
+public:
+	RootObject(Store& store) : Object(), store(store)
+	{
+	}
+
+	Store& getStore() override
+	{
+		return store;
+	}
+
+private:
+	Store& store;
+};
+
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
 	using Object::Object;
+};
+
+template <class ClassType> class RootObjectTemplate : public RootObject
+{
+public:
+	using RootObject::RootObject;
 };
 
 } // namespace ConfigDB::Json

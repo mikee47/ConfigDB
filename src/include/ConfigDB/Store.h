@@ -20,15 +20,16 @@
 #pragma once
 
 #include "Database.h"
-#include "Object.h"
 #include <debug_progmem.h>
 
 namespace ConfigDB
 {
+class Object;
+
 /**
  * @brief Manages access to an object store, typically one file
  */
-class Store : public Object
+class Store
 {
 public:
 	/**
@@ -36,17 +37,17 @@ public:
 	 * @param db Database to which this store belongs
 	 * @param name Name of store, used as key in JSONPath
 	 */
-	Store(Database& db, const String& name) : Object(), db(db), name(name)
+	Store(Database& db, const String& name) : db(db), name(name)
 	{
 		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
-	virtual ~Store()
+	~Store()
 	{
 		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
-	virtual bool commit() = 0;
+	virtual Object& getRoot() = 0;
 
 	const String& getName() const
 	{
@@ -61,15 +62,12 @@ public:
 		return path;
 	}
 
-	Store& getStore() override
-	{
-		return *this;
-	}
-
-	Database& getDatabase() const override
+	Database& getDatabase() const
 	{
 		return db;
 	}
+
+	virtual bool commit() = 0;
 
 private:
 	Database& db;
