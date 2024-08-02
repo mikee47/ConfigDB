@@ -24,6 +24,8 @@
 
 namespace ConfigDB::Json
 {
+class Array;
+
 class Object : public ConfigDB::Object
 {
 public:
@@ -32,10 +34,7 @@ public:
 		object = parent.object[name];
 	}
 
-	Object(Object& parent, unsigned index) : ConfigDB::Object(parent)
-	{
-		object = parent.object[index];
-	}
+	Object(Array& parent, unsigned index);
 
 	explicit operator bool() const
 	{
@@ -63,6 +62,9 @@ public:
 	size_t printTo(Print& p) const override;
 
 private:
+	friend class Store;
+	friend class Array;
+
 	JsonObject object;
 };
 

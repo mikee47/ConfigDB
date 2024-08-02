@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Store.h
+ * ConfigDB/Json/Object.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,40 +17,27 @@
  *
  ****/
 
-#pragma once
-
-#include "../Store.h"
-#include "../Object.h"
-#include "../Array.h"
-#include <ArduinoJson.h>
+#include <ConfigDB/Json/Object.h>
+#include <ConfigDB/Json/Array.h>
+#include <ConfigDB/Database.h>
 
 namespace ConfigDB::Json
 {
-class Store : public ConfigDB::Store
+Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent)
 {
-public:
-	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
-	{
-		load();
+	object = parent.array[index];
+}
+
+size_t Object::printTo(Print& p) const
+{
+	auto format = getDatabase().getFormat();
+	switch(format) {
+	case Format::Compact:
+		return serializeJson(object, p);
+	case Format::Pretty:
+		return serializeJsonPretty(object, p);
 	}
-
-	bool commit() override
-	{
-		return save();
-	}
-
-	String getFilename() const
-	{
-		return getPath() + ".json";
-	}
-
-private:
-	bool load();
-	bool save();
-
-	StaticJsonDocument<1024> doc;
-};
-
-template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
+	return 0;
+}
 
 } // namespace ConfigDB::Json

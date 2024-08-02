@@ -40,6 +40,7 @@ bool Store::load()
 	if(!stream.open(filename, File::ReadOnly)) {
 		if(stream.getLastError() == IFS::Error::NotFound) {
 			// OK, we have an empty document
+			object = doc.to<JsonObject>();
 			return true;
 		}
 		// Other errors indicate a problem
@@ -58,6 +59,7 @@ bool Store::load()
 	switch(error.code()) {
 	case DeserializationError::Ok:
 	case DeserializationError::EmptyInput:
+		object = doc.as<JsonObject>();
 		return true;
 	default:
 		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
@@ -79,131 +81,6 @@ bool Store::save()
 	}
 
 	return true;
-}
-
-size_t Store::printTo(Print& p) const
-{
-	auto format = database().getFormat();
-	switch(format) {
-	case Format::Compact:
-		return serializeJson(doc, p);
-	case Format::Pretty:
-		return serializeJsonPretty(doc, p);
-	}
-	return 0;
-}
-
-size_t Store::printObjectTo(const Object& object, Print& p) const
-{
-	auto& db = database();
-	auto obj = static_cast<const ObjectTemplate<void>&>(object).object;
-	switch(db.getFormat()) {
-	case Format::Compact:
-		return serializeJson(obj, p);
-	case Format::Pretty:
-		return serializeJsonPretty(obj, p);
-	}
-	return 0;
-}
-
-size_t Store::printArrayTo(const Array& array, Print& p) const
-{
-	auto& db = database();
-	auto arr = static_cast <const ArrayTemplate<void>&>(array).array;
-	switch(db.getFormat()) {
-	case Format::Compact:
-		return serializeJson(arr, p);
-	case Format::Pretty:
-		return serializeJsonPretty(arr, p);
-	}
-	return 0;
-}
-
-JsonObject Store::getJsonObject(const String& path)
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObject>()) {
-			child = obj.createNestedObject(const_cast<char*>(key));
-		}
-		obj = child;
-	}
-	return obj;
-}
-
-JsonObjectConst Store::getJsonObjectConst(const String& path) const
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto obj = doc.as<JsonObjectConst>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObjectConst>()) {
-			obj = {};
-			break;
-		}
-		obj = child;
-	}
-
-	return obj;
-}
-
-JsonArray Store::getJsonArray(const String& path)
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto name = csa.popBack();
-	auto obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObject>()) {
-			child = obj.createNestedObject(const_cast<char*>(key));
-		}
-		obj = child;
-	}
-
-	JsonArray arr = obj[name];
-	if(!arr) {
-		arr = obj.createNestedArray(name);
-	}
-	return arr;
-}
-
-JsonArrayConst Store::getJsonArrayConst(const String& path) const
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto name = csa.popBack();
-	auto obj = doc.as<JsonObjectConst>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObjectConst>()) {
-			obj = {};
-			break;
-		}
-		obj = child;
-	}
-
-	return obj[name];
 }
 
 } // namespace ConfigDB::Json

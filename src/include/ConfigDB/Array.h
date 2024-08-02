@@ -26,7 +26,10 @@ namespace ConfigDB
 class Array : public Object
 {
 public:
-	using Object::Object;
+	Array(Object& parent) : Object(parent)
+	{
+	}
+	// using Object::Object;
 };
 
 } // namespace ConfigDB

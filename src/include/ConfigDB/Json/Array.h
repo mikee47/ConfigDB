@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "../Array.h"
 #include "Object.h"
 
 namespace ConfigDB::Json
@@ -26,14 +27,14 @@ namespace ConfigDB::Json
 class Array : public ConfigDB::Array
 {
 public:
-	Array(Object& parent, const String& name) : ConfigDB::Array(parent)
+	Array(Json::Object& parent, const String& name) : ConfigDB::Array(parent)
 	{
 		array = parent.object[name];
 	}
 
-	Array(Object& parent, unsigned index) : ConfigDB::Array(parent)
+	Array(Array& parent, unsigned index) : ConfigDB::Array(parent)
 	{
-		array = parent.object[index];
+		array = parent.array[index];
 	}
 
 	explicit operator bool() const
@@ -79,6 +80,8 @@ protected:
 	}
 
 private:
+	friend class Json::Object;
+
 	JsonArray array;
 };
 

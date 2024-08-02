@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Store.h
+ * ConfigDB/DataStream.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,40 +17,14 @@
  *
  ****/
 
-#pragma once
+#include "include/ConfigDB/Object.h"
+#include "include/ConfigDB/Store.h"
 
-#include "../Store.h"
-#include "../Object.h"
-#include "../Array.h"
-#include <ArduinoJson.h>
-
-namespace ConfigDB::Json
+namespace ConfigDB
 {
-class Store : public ConfigDB::Store
+bool Object::commit()
 {
-public:
-	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
-	{
-		load();
-	}
+	return getStore().commit();
+}
 
-	bool commit() override
-	{
-		return save();
-	}
-
-	String getFilename() const
-	{
-		return getPath() + ".json";
-	}
-
-private:
-	bool load();
-	bool save();
-
-	StaticJsonDocument<1024> doc;
-};
-
-template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
-
-} // namespace ConfigDB::Json
+} // namespace ConfigDB

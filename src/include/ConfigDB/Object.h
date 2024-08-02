@@ -24,6 +24,7 @@
 
 namespace ConfigDB
 {
+class Database;
 class Store;
 
 /**
@@ -60,10 +61,16 @@ public:
 	 */
 	// virtual bool setStringValue(const String& key, const String& value) = 0;
 
-	virtual Store* getStore() const
+	virtual Store& getStore()
 	{
 		assert(parent != nullptr);
 		return parent->getStore();
+	}
+
+	virtual Database& getDatabase() const
+	{
+		assert(parent != nullptr);
+		return parent->getDatabase();
 	}
 
 	/**
@@ -94,11 +101,7 @@ public:
 	/**
 	 * @brief Commit changes to the store
 	 */
-	virtual bool commit()
-	{
-		assert(parent != nullptr);
-		return parent->commit();
-	}
+	bool commit();
 
 	// Printable [STOREIMPL]
 	// virtual size_t printTo(Print& p) const = 0;

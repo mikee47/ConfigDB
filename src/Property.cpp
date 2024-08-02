@@ -60,6 +60,9 @@ String Property::getJsonValue() const
 		return value;
 	case Type::String:
 		break;
+	case Type::Object:
+	case Type::Array:
+		return value;
 	}
 	::Format::standard.quote(value);
 	return value;

@@ -61,7 +61,12 @@ public:
 		return path;
 	}
 
-	Database& database() const
+	Store& getStore() override
+	{
+		return *this;
+	}
+
+	Database& getDatabase() const override
 	{
 		return db;
 	}

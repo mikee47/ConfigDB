@@ -40,12 +40,12 @@ void DataStream::fillStream()
 		newline();
 		state = State::object;
 		storeIndex = 0;
-		objectIndex = 0;
+		propertyIndex = 0;
 		store.reset();
 		store = db.getStore(0);
 	}
 	while(store) {
-		if(objectIndex == 0) {
+		if(propertyIndex == 0) {
 			if(storeIndex > 0) {
 				stream << ',';
 				newline();
@@ -54,23 +54,23 @@ void DataStream::fillStream()
 				stream << '"' << name << "\":";
 			}
 		}
-		auto object = store->getObject(objectIndex);
-		if(!object) {
+		auto prop = store->getProperty(propertyIndex);
+		if(!prop) {
 			++storeIndex;
 			store.reset();
 			store = db.getStore(storeIndex);
-			objectIndex = 0;
+			propertyIndex = 0;
 			continue;
 		}
-		if(objectIndex > 0) {
+		if(propertyIndex > 0) {
 			stream << ',';
 			newline();
 		}
-		if(auto& name = object->getName()) {
+		if(auto name = prop.getName()) {
 			stream << '"' << name << "\":";
 		}
-		stream << *object;
-		++objectIndex;
+		stream << *prop.getObjectValue();
+		++propertyIndex;
 		return;
 	}
 	newline();
