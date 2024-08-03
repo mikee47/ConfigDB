@@ -1,0 +1,5 @@
+COMPONENT_DEPENDS := \
+	ConfigDB
+
+DISABLE_NETWORK := 1
+

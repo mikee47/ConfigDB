@@ -35,7 +35,7 @@ class Object : public Printable
 public:
 	Object() = default;
 
-	Object(Object& parent) : parent(&parent)
+	explicit Object(Object& parent) : parent(&parent)
 	{
 	}
 
@@ -67,10 +67,11 @@ public:
 		return parent->getStore();
 	}
 
-	virtual Database& getDatabase() const
+	Database& getDatabase();
+
+	const Database& getDatabase() const
 	{
-		assert(parent != nullptr);
-		return parent->getDatabase();
+		return const_cast<Object*>(this)->getDatabase();
 	}
 
 	/**

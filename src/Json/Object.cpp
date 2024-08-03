@@ -24,11 +24,15 @@
 
 namespace ConfigDB::Json
 {
-Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
+Object::Object(Store& parent) : ConfigDB::Object(), object(parent.doc.as<JsonObject>())
 {
 }
 
-Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
+// Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
+// {
+// }
+
+Object::Object(ObjectArray& parent, JsonObject obj) : ConfigDB::Object(parent), object(obj)
 {
 }
 

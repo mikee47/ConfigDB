@@ -58,7 +58,7 @@ public:
 	}
 
 private:
-	friend class RootObject;
+	friend class Object;
 
 	bool load();
 	bool save();
@@ -67,25 +67,5 @@ private:
 };
 
 template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
-
-class RootObject : public Object
-{
-public:
-	RootObject(Database& db, const String& name);
-
-	Store& getStore() override
-	{
-		return store;
-	}
-
-private:
-	Store store;
-};
-
-template <class ClassType> class RootObjectTemplate : public RootObject
-{
-public:
-	using RootObject::RootObject;
-};
 
 } // namespace ConfigDB::Json

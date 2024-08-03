@@ -27,14 +27,34 @@ namespace ConfigDB::Json
 class ObjectArray : public ConfigDB::ObjectArray
 {
 public:
-	ObjectArray(Json::Object& parent, const String& name) : ConfigDB::ObjectArray(parent)
+	using ConfigDB::ObjectArray::ObjectArray;
+
+	ObjectArray(Json::Object& parent, JsonArray array) : ConfigDB::ObjectArray(parent), array(array)
 	{
-		array = parent.object[name];
+	}
+
+	ObjectArray(Json::Object& parent, const String& name) : ObjectArray(parent, get(parent, name))
+	{
 	}
 
 	ObjectArray(ObjectArray& parent, unsigned index) : ConfigDB::ObjectArray(parent)
 	{
 		array = parent.array[index];
+	}
+
+	static JsonArray get(Json::Object& parent, const String& name)
+	{
+		JsonArray arr = parent.object[name];
+		if(arr.isNull())
+		{
+			arr = parent.object.createNestedArray(name);
+		}
+		return arr;
+	}
+
+	void init(Json::Object& parent, const String& name)
+	{
+		array = get(parent, name);
 	}
 
 	String getStringValue(const String& key) const override
@@ -59,66 +79,47 @@ public:
 
 	size_t printTo(Print& p) const override;
 
-	template <typename T> T getItem(unsigned index, const T& defaultValue = {}) const
-	{
-		return array[index] | defaultValue;
-	}
-
-	template <typename T> bool setItem(unsigned index, const T& value)
-	{
-		return array[index].set(value);
-	}
-
-	template <typename T> bool addItem(const T& value)
-	{
-		return array.add(value);
-	}
-
 	bool removeItem(unsigned index)
 	{
 		array.remove(index);
 		return true;
 	}
 
-private:
+protected:
 	friend class Json::Object;
 
 	JsonArray array;
 };
 
-template <class ClassType> class ObjectArrayTemplate : public ObjectArray
+template <class ClassType, class Item> class ObjectArrayTemplate : public ObjectArray
 {
 public:
 	using ObjectArray::ObjectArray;
 
+	using ObjectArray::getObject;
+
 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
 	{
-		auto item = static_cast<ClassType*>(this)->getItem(index);
-		if(item) {
-			return std::make_unique<decltype(item)>(item);
+		if(index >= array.size()) {
+			return nullptr;
 		}
-		return nullptr;
+		return std::make_unique<Item>(*this, array[index]);
 	}
 
-	template <class Item> Item addItem()
+	Item getItem(unsigned index)
 	{
-		auto index = array.size();
-		array.createNestedObject();
-		return Item(*this, index);
+		return Item(*this, array[index]);
 	}
 
-	template <class Item> Item getItem(unsigned index)
+	bool setItem(unsigned index, const Item& value)
 	{
-		return Item(*this, index);
+		return array[index].set(value.object);
 	}
 
-	bool removeItem(unsigned index)
+	Item addItem()
 	{
-		array.remove(index);
-		return true;
+		return Item(*this, array.createNestedObject());
 	}
-
-	JsonArray array;
 };
 
 } // namespace ConfigDB::Json

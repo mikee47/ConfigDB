@@ -26,6 +26,8 @@ namespace ConfigDB
 class ObjectArray : public Object
 {
 public:
+	ObjectArray() = default;
+
 	ObjectArray(Object& parent) : Object(parent)
 	{
 	}

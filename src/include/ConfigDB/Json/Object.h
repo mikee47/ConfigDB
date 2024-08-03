@@ -26,31 +26,50 @@ namespace ConfigDB::Json
 {
 class Array;
 class ObjectArray;
+class Store;
 
 class Object : public ConfigDB::Object
 {
 public:
 	Object() = default;
 
-	Object(JsonObject obj) : ConfigDB::Object(), object(obj)
+	explicit Object(Store& parent);
+
+	Object(Object& parent, JsonObject obj) : ConfigDB::Object(parent), object(obj)
 	{
 	}
 
-	Object(Object& parent, const String& name) : ConfigDB::Object(parent), object(parent.object[name])
+	Object(Object& parent, const String& name) : Object(parent, get(parent, name))
 	{
 	}
 
-	Object(Array& parent, unsigned index);
+	// Object(Array& parent, unsigned index);
 
-	Object(ObjectArray& parent, unsigned index);
+	Object(ObjectArray& parent, JsonObject obj);
+
+	static JsonObject get(Object& parent, const String& name)
+	{
+		JsonObject obj = parent.object[name];
+		if(obj.isNull()) {
+			obj = parent.object.createNestedObject(name);
+		}
+		return obj;
+	}
 
 	explicit operator bool() const
 	{
 		return !object.isNull();
 	}
 
-	String getStringValue(const String& key) const override;
-	String getStringValue(unsigned index) const override;
+	String getStringValue(const String& key) const override
+	{
+		return object[key].as<const char*>();
+	}
+
+	String getStringValue(unsigned index) const override
+	{
+		return nullptr;
+	}
 
 	// [CODEGEN]
 	// unsigned getPropertyCount() const override
@@ -77,10 +96,31 @@ private:
 	JsonObject object;
 };
 
-template <class ClassType> class ObjectTemplate : public Object
+class SimpleObject : public Object
 {
 public:
 	using Object::Object;
+
+	unsigned getObjectCount() const override
+	{
+		return 0;
+	}
+	std::unique_ptr<ConfigDB::Object> getObject(const String& name) override
+	{
+		return nullptr;
+	}
+	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
+	{
+		return nullptr;
+	}
+	unsigned getPropertyCount() const override
+	{
+		return 0;
+	}
+	ConfigDB::Property getProperty(unsigned index) override
+	{
+		return {};
+	}
 };
 
 } // namespace ConfigDB::Json

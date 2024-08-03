@@ -37,13 +37,10 @@ bool Store::load()
 	String filename = getFilename();
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
-		if(stream.getLastError() == IFS::Error::NotFound) {
-			// OK, we have an empty document
-			doc.to<JsonObject>();
-			return true;
-		}
-		// Other errors indicate a problem
-		return false;
+		// Create new document
+		debug_w("open('%s') failed", filename.c_str());
+		doc.to<JsonObject>();
+		return true;
 	}
 
 	/*
@@ -58,9 +55,11 @@ bool Store::load()
 	switch(error.code()) {
 	case DeserializationError::Ok:
 	case DeserializationError::EmptyInput:
+		debug_i("load('%s') OK, %s, %s", filename.c_str(), error.c_str(), ::Json::serialize(doc).c_str());
 		return true;
 	default:
 		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
+		doc.to<JsonObject>();
 		return false;
 	}
 }
@@ -91,11 +90,6 @@ size_t Store::printTo(Print& p) const
 	}
 	// TODO: Nameless store omits {}
 	return printObjectTo(doc, getDatabase().getFormat(), p);
-}
-
-RootObject::RootObject(Database& db, const String& name) : Object(), store(db, name)
-{
-	object = store.doc.as<JsonObject>();
 }
 
 } // namespace ConfigDB::Json

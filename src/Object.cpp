@@ -27,4 +27,9 @@ bool Object::commit()
 	return getStore().commit();
 }
 
+Database& Object::getDatabase()
+{
+	return getStore().getDatabase();
+}
+
 } // namespace ConfigDB
