@@ -477,12 +477,12 @@ def generate_array_accessors(arr: Array) -> CodeLines:
         '',
         f'{prop.ctype} getItem(unsigned index) const',
         '{',
-        [f'return ArrayTemplate::getItem<{prop.ctype}>(index, {prop.default_str});'],
+        [f'return Array::getItem<{prop.ctype}>(index, {prop.default_str});'],
         '}',
         '',
         f'bool setItem(unsigned index, const {prop.ctype}& value)',
         '{',
-        [f'return ArrayTemplate::setItem(index, value);'],
+        [f'return Array::setItem(index, value);'],
         '}'
     ], [])
 
@@ -490,16 +490,26 @@ def generate_array_accessors(arr: Array) -> CodeLines:
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
+    parents = []
+    o = obj.parent
+    while not isinstance(o, Database):
+        parents.insert(0, o)
+        o = o.parent
+
+    def generate_parent_initialisers() -> list:
+        return [
+            f'{parents[0].id}(*store)',
+            *(f'{p.id}({p.parent.id}, {get_string(p.name)})' for p in parents[1:]),
+        ] if parents else []
+
+    def generate_parent_variables() -> list:
+        return [
+            f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;',
+            *(f'ConfigDB::{p.store.store_ns}::SimpleObject {p.id};' for p in parents),
+        ]
+
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
-        def get_parents() -> list:
-            vars = []
-            o = obj.parent
-            while not isinstance(o, Database):
-                vars.insert(0, o)
-                o = o.parent
-            return vars
-
         return CodeLines([
             '',
             f'class {obj.typename};',
@@ -512,7 +522,10 @@ def generate_object(obj: Object) -> CodeLines:
                 f'{obj.typename}({obj.database.typename}& db):',
                 [', '.join([
                     f'{obj.classname}Template()',
-                    *(f'{child.id}(*this)' for child in obj.contained_children)
+                    f'store({obj.store.typename}::open(db))',
+                    f'{parents[0].id}(*store)',
+                    *(f'{p.id}({p.parent.id}, {get_string(p.name)})' for p in parents[1:]),
+                    *(f'{child.id}(*this)' for child in obj.contained_children),
                 ])],
                 '{',
                 [f'init({obj.parent.id}, {get_string(obj.name)});'],
@@ -520,10 +533,7 @@ def generate_object(obj: Object) -> CodeLines:
             ],
             '',
             'private:',
-            [
-                f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;',
-                [(f'ConfigDB::{p.store.store_ns}::SimpleObject {p.id};') for p in get_parents()],
-            ],
+            generate_parent_variables(),
             '};',
         ],
         item_lines.source)
@@ -534,7 +544,19 @@ def generate_object(obj: Object) -> CodeLines:
             f'class {obj.typename}: public ConfigDB::{obj.base_class}',
             '{',
             'public:',
-            [f'using {obj.classname}::{obj.classname};'],
+            [
+                f'{obj.typename}({obj.database.typename}& db):',
+                [', '.join([
+                    f'{obj.classname}()',
+                    f'store({obj.store.typename}::open(db))',
+                    *generate_parent_initialisers(),
+                    *(f'{child.id}(*this)' for child in obj.contained_children)
+                ])],
+                '{',
+                [f'init({obj.parent.id}, {get_string(obj.name)});'],
+                '}',
+            ],
+            '',
         ],
         [])
 
@@ -542,30 +564,31 @@ def generate_object(obj: Object) -> CodeLines:
     for child in obj.children:
         lines.append(generate_object(child))
 
-    lines.header += [[
-        '',
-        f'{obj.typename}({obj.parent.typename}& parent):',
-        [', '.join([
-            f'{obj.classname}(parent, {get_string(obj.relative_path, True)})',
-            *(f'{child.id}(*this)' for child in obj.contained_children)
-        ])],
-        '{',
-        '}',
-    ]]
-    if not isinstance(obj.parent, Database):
-        lines.header += [[
-                '',
-            f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
-            '{',
-            '}',
-        ]]
+    # lines.header += [[
+    #     '',
+    #     f'{obj.typename}({obj.parent.typename}& parent):',
+    #     [', '.join([
+    #         f'{obj.classname}(parent, {get_string(obj.relative_path, True)})',
+    #         *(f'{child.id}(*this)' for child in obj.contained_children)
+    #     ])],
+    #     '{',
+    #     '}',
+    # ]]
+
+    # if not isinstance(obj.parent, Database):
+    #     lines.header += [[
+    #         '',
+    #         f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
+    #         '{',
+    #         '}',
+    #     ]]
 
 
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
         lines.append(generate_array_get_property(obj))
     elif isinstance(obj, ObjectArray):
-        pass
+        assert False
     else:
         lines.append(generate_object_accessors(obj))
         lines.append(generate_method_get_child_object(obj, 'store'))
@@ -575,6 +598,9 @@ def generate_object(obj: Object) -> CodeLines:
     lines.header += [
         '',
         [f'{child.typename} {child.id};' for child in obj.contained_children],
+        '',
+        'private:',
+        generate_parent_variables(),
         '};'
     ]
 

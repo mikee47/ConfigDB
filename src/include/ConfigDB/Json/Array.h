@@ -27,14 +27,34 @@ namespace ConfigDB::Json
 class Array : public ConfigDB::Array
 {
 public:
-	Array(Json::Object& parent, const String& name) : ConfigDB::Array(parent)
+	using ConfigDB::Array::Array;
+
+	Array(Json::Object& parent, JsonArray array) : ConfigDB::Array(parent), array(array)
 	{
-		array = parent.object[name];
+	}
+
+	Array(Json::Object& parent, const String& name) : Array(parent, get(parent, name))
+	{
 	}
 
 	Array(Array& parent, unsigned index) : ConfigDB::Array(parent)
 	{
 		array = parent.array[index];
+	}
+
+	static JsonArray get(Json::Object& parent, const String& name)
+	{
+		JsonArray arr = parent.object[name];
+		if(arr.isNull())
+		{
+			arr = parent.object.createNestedArray(name);
+		}
+		return arr;
+	}
+
+	void init(Json::Object& parent, const String& name)
+	{
+		array = get(parent, name);
 	}
 
 	String getStringValue(const String& key) const override
