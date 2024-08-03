@@ -606,10 +606,11 @@ def write_file(content: list[str | list], filename: str):
 
     def dump_output(items: list, indent: str):
         for item in items:
-            if isinstance(item, str):
-                f.write(f'{indent}{item}\n')
-            elif item:
-                dump_output(item, indent + '    ')
+            if item:
+                if isinstance(item, str):
+                    f.write(f'{indent}{item}\n')
+                else:
+                    dump_output(item, indent + '    ')
             else:
                 f.write('\n')
 
