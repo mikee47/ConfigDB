@@ -107,7 +107,7 @@ public:
 	// Printable [STOREIMPL]
 	// virtual size_t printTo(Print& p) const = 0;
 
-private:
+protected:
 	Object* parent{};
 };
 

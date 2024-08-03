@@ -54,6 +54,7 @@ public:
 
 	void init(Json::Object& parent, const String& name)
 	{
+		this->parent = &parent;
 		array = get(parent, name);
 	}
 

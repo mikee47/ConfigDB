@@ -31,7 +31,7 @@ class Store;
 class Object : public ConfigDB::Object
 {
 public:
-	Object() = default;
+	using ConfigDB::Object::Object;
 
 	explicit Object(Store& parent);
 
@@ -54,6 +54,12 @@ public:
 			obj = parent.object.createNestedObject(name);
 		}
 		return obj;
+	}
+
+	void init(Json::Object& parent, const String& name)
+	{
+		this->parent = &parent;
+		object = get(parent, name);
 	}
 
 	explicit operator bool() const

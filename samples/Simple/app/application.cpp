@@ -11,6 +11,7 @@ public:
 	DEFINE_FSTR_LOCAL(fstr_general, "general")
 	DEFINE_FSTR_LOCAL(fstr_color, "color")
 	DEFINE_FSTR_LOCAL(fstr_events, "events")
+	DEFINE_FSTR_LOCAL(fstr_3, "")
 	DEFINE_FSTR_LOCAL(fstr_pin, "pin")
 	DEFINE_FSTR_LOCAL(fstr_name, "name")
 	DEFINE_FSTR_LOCAL(fstr_red, "red")
@@ -19,7 +20,6 @@ public:
 	DEFINE_FSTR_LOCAL(fstr_supported_color_models, "supported_color_models")
 	DEFINE_FSTR_LOCAL(fstr_RGB, "RGB")
 	DEFINE_FSTR_LOCAL(fstr_device_name, "device_name")
-	DEFINE_FSTR_LOCAL(fstr_11, "")
 	DEFINE_FSTR_LOCAL(fstr_pin_config_url, "pin_config_url")
 	DEFINE_FSTR_LOCAL(fstr_https_raw_githubusercontent_com_,
 					  "https://raw.githubusercontent.com/pljakobs/esp_rgb_webapp2/devel/public/config/pinconfig.json")
@@ -77,7 +77,8 @@ public:
 	DEFINE_FSTR_LOCAL(fstr_500, "500")
 	DEFINE_FSTR_LOCAL(fstr_1000, "1000")
 	DEFINE_FSTR_LOCAL(fstr_True, "True")
-	DEFINE_FSTR_LOCAL(fstr_network_mqtt, "network.mqtt")
+	DEFINE_FSTR_LOCAL(fstr_network, "network")
+	DEFINE_FSTR_LOCAL(fstr_mqtt, "mqtt")
 	DEFINE_FSTR_LOCAL(fstr_server, "server")
 	DEFINE_FSTR_LOCAL(fstr_mqtt_local, "mqtt.local")
 	DEFINE_FSTR_LOCAL(fstr_password, "password")
@@ -87,20 +88,16 @@ public:
 	DEFINE_FSTR_LOCAL(fstr_enabled, "enabled")
 	DEFINE_FSTR_LOCAL(fstr_username, "username")
 	DEFINE_FSTR_LOCAL(fstr_1883, "1883")
-	DEFINE_FSTR_LOCAL(fstr_network_connection, "network.connection")
+	DEFINE_FSTR_LOCAL(fstr_connection, "connection")
 	DEFINE_FSTR_LOCAL(fstr_netmask, "netmask")
 	DEFINE_FSTR_LOCAL(fstr_0_0_0_0, "0.0.0.0")
 	DEFINE_FSTR_LOCAL(fstr_ip, "ip")
 	DEFINE_FSTR_LOCAL(fstr_dhcp, "dhcp")
 	DEFINE_FSTR_LOCAL(fstr_gateway, "gateway")
-	DEFINE_FSTR_LOCAL(fstr_network_ap, "network.ap")
+	DEFINE_FSTR_LOCAL(fstr_ap, "ap")
 	DEFINE_FSTR_LOCAL(fstr_rgbwwctrl, "rgbwwctrl")
 	DEFINE_FSTR_LOCAL(fstr_secured, "secured")
 	DEFINE_FSTR_LOCAL(fstr_ssid, "ssid")
-	DEFINE_FSTR_LOCAL(fstr_network, "network")
-	DEFINE_FSTR_LOCAL(fstr_mqtt, "mqtt")
-	DEFINE_FSTR_LOCAL(fstr_connection, "connection")
-	DEFINE_FSTR_LOCAL(fstr_ap, "ap")
 
 	class RootStore : public ConfigDB::Json::StoreTemplate<RootStore>
 	{
@@ -180,10 +177,158 @@ public:
 			init(general, fstr_channels);
 		}
 
+		ConfigDB::Store& getStore() override
+		{
+			return *store;
+		}
+
 	private:
 		std::shared_ptr<ConfigDB::Json::Store> store;
 		ConfigDB::Json::SimpleObject root;
 		ConfigDB::Json::SimpleObject general;
+	};
+
+	class General : public ConfigDB::Json::Object
+	{
+	public:
+		General(std::shared_ptr<ConfigDB::Json::Store&> store): Object(*store, fstr_general),
+			: Object(root), store(RootStore::open(db)), root(*store), channels(*this, fstr_channels),
+			  supportedColorModels(*this, fstr_supported_color_models)
+		{
+			init(root, fstr_general);
+		}
+
+		General(BasicConfig& db)
+			: Object(root), store(RootStore::open(db)), root(*store), channels(*this, fstr_channels),
+			  supportedColorModels(*this, fstr_supported_color_models)
+		{
+			init(root, fstr_general);
+		}
+
+		using ContainedChannels = ConfigDB::Json::ObjectArrayTemplate<Channels, ChannelsItem>;
+
+		class ContainedSupportedColorModels : public ConfigDB::Json::Array
+		{
+		public:
+			using Array::Array;
+
+			String getItem(unsigned index) const
+			{
+				return Array::getItem<String>(index, fstr_RGB);
+			}
+
+			bool setItem(unsigned index, const String& value)
+			{
+				return Array::setItem(index, value);
+			}
+
+			ConfigDB::Property getProperty(unsigned index) override
+			{
+				return getArrayProperty(index, ConfigDB::Property::Type::String, &fstr_RGB);
+			}
+
+		private:
+			std::shared_ptr<ConfigDB::Json::Store> store;
+			ConfigDB::Json::SimpleObject root;
+			ConfigDB::Json::SimpleObject general;
+		};
+
+		String getDeviceName() const
+		{
+			return getValue<String>(fstr_device_name, fstr_3);
+		}
+
+		bool setDeviceName(const String& value)
+		{
+			return setValue(fstr_device_name, value);
+		}
+
+		String getPinConfigUrl() const
+		{
+			return getValue<String>(fstr_pin_config_url, fstr_https_raw_githubusercontent_com_);
+		}
+
+		bool setPinConfigUrl(const String& value)
+		{
+			return setValue(fstr_pin_config_url, value);
+		}
+
+		String getCurrentPinConfigName() const
+		{
+			return getValue<String>(fstr_current_pin_config_name, fstr_mrpj);
+		}
+
+		bool setCurrentPinConfigName(const String& value)
+		{
+			return setValue(fstr_current_pin_config_name, value);
+		}
+
+		int getButtonsDebounceMs() const
+		{
+			return getValue<int>(fstr_buttons_debounce_ms, 50);
+		}
+
+		bool setButtonsDebounceMs(const int& value)
+		{
+			return setValue(fstr_buttons_debounce_ms, value);
+		}
+
+		String getPinConfig() const
+		{
+			return getValue<String>(fstr_pin_config, fstr_13_12_14_5_4);
+		}
+
+		bool setPinConfig(const String& value)
+		{
+			return setValue(fstr_pin_config, value);
+		}
+
+		String getButtonsConfig() const
+		{
+			return getValue<String>(fstr_buttons_config, fstr_3);
+		}
+
+		bool setButtonsConfig(const String& value)
+		{
+			return setValue(fstr_buttons_config, value);
+		}
+
+		unsigned getObjectCount() const override
+		{
+			return 2;
+		}
+
+		std::unique_ptr<ConfigDB::Object> getObject(const String& name) override
+		{
+			return nullptr;
+		}
+
+		std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
+		{
+			return nullptr;
+		}
+
+		unsigned getPropertyCount() const override
+		{
+			return 8;
+		}
+
+		ConfigDB::Property getProperty(unsigned index) override
+		{
+			return ConfigDB::Property{};
+		}
+
+		ConfigDB::Store& getStore() override
+		{
+			return *store;
+		}
+
+		ContainedChannels channels;
+		ContainedSupportedColorModels supportedColorModels;
+
+	private:
+		std::shared_ptr<ConfigDB::Json::Store> store;
+		ConfigDB::Json::SimpleObject root;
 	};
 
 	using Database::Database;
@@ -211,6 +356,11 @@ void init()
 	createDirectory("test");
 	BasicConfig db("test");
 	db.setFormat(ConfigDB::Format::Pretty);
+
+	BasicConfig::General gen(db);
+	gen.setButtonsConfig("Here lies buttons config");
+	gen.supportedColorModels.addItem("New model");
+	gen.commit();
 
 	BasicConfig::Channels channels(db);
 	auto item = channels.addItem();
