@@ -110,7 +110,7 @@ class Object:
 
     @property
     def id(self):
-        return make_identifier(self.name)
+        return make_identifier(self.name) if self.name else 'root';
 
     @property
     def classname(self):
@@ -287,7 +287,7 @@ def load_config(filename: str) -> Database:
                 items = value['items']
                 if items['type'] == 'object':
                     arr = ObjectArray(obj, key, store)
-                    arr.items = Object(arr, 'Item', store)
+                    arr.items = Object(arr, f'{arr.typename}Item', store)
                     parse(arr.items, items['properties'])
                 else:
                     arr = Array(obj, key, store)
@@ -487,40 +487,66 @@ def generate_array_accessors(arr: Array) -> CodeLines:
     ], [])
 
 
-def generate_objectarray_accessors(arr: ObjectArray) -> CodeLines:
-    return CodeLines([
-        '',
-        f'Item getItem(unsigned index)',
-        '{',
-        ['return ObjectArrayTemplate::getItem<Item>(index);'],
-        '}',
-        '',
-        f'Item addItem()',
-        '{',
-        ['return ObjectArrayTemplate::addItem<Item>();'],
-        '}',
-    ], [])
-
-
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
+    if isinstance(obj, ObjectArray):
+        item_lines = generate_item_object(obj.items)
+        def get_parents() -> list:
+            vars = []
+            o = obj.parent
+            while not isinstance(o, Database):
+                vars.insert(0, o)
+                o = o.parent
+            return vars
+
+        return CodeLines([
+            '',
+            f'class {obj.typename};',
+            *item_lines.header,
+            '',
+            f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.typename}, {obj.items.typename}>',
+            '{',
+            'public:',
+            [
+                f'{obj.typename}({obj.database.typename}& db):',
+                [', '.join([
+                    f'{obj.classname}Template()',
+                    *(f'{child.id}(*this)' for child in obj.contained_children)
+                ])],
+                '{',
+                [f'init({obj.parent.id}, {get_string(obj.name)});'],
+                '}',
+            ],
+            '',
+            'private:',
+            [
+                f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;',
+                [(f'ConfigDB::{p.store.store_ns}::SimpleObject {p.id};') for p in get_parents()],
+            ],
+            '};',
+        ],
+        item_lines.source)
+
     lines = CodeLines(
-        declare_templated_class(obj),
-        []
-    )
+        [
+            '',
+            f'class {obj.typename}: public ConfigDB::{obj.base_class}',
+            '{',
+            'public:',
+            [f'using {obj.classname}::{obj.classname};'],
+        ],
+        [])
 
     # Append child object definitions
     for child in obj.children:
         lines.append(generate_object(child))
 
-    if isinstance(obj, ObjectArray):
-        lines.append(generate_item_object(obj.items))
-
     lines.header += [[
+        '',
         f'{obj.typename}({obj.parent.typename}& parent):',
         [', '.join([
-            f'{obj.classname}Template(parent, {get_string(obj.relative_path, True)})',
+            f'{obj.classname}(parent, {get_string(obj.relative_path, True)})',
             *(f'{child.id}(*this)' for child in obj.contained_children)
         ])],
         '{',
@@ -539,7 +565,7 @@ def generate_object(obj: Object) -> CodeLines:
         lines.append(generate_array_accessors(obj))
         lines.append(generate_array_get_property(obj))
     elif isinstance(obj, ObjectArray):
-        lines.append(generate_objectarray_accessors(obj))
+        pass
     else:
         lines.append(generate_object_accessors(obj))
         lines.append(generate_method_get_child_object(obj, 'store'))
@@ -559,7 +585,12 @@ def generate_item_object(obj: Object) -> CodeLines:
     '''Generate code for Array Item Object implementation'''
 
     lines = CodeLines(
-        declare_templated_class(obj),
+        [
+            '',
+            f'class {obj.typename}: public ConfigDB::{obj.base_class}',
+            '{',
+            'public:',
+        ],
         []
     )
 
@@ -568,9 +599,10 @@ def generate_item_object(obj: Object) -> CodeLines:
         lines.append(generate_object(child))
 
     lines.header += [[
-        f'{obj.typename}({obj.parent.typename}& parent, unsigned index):',
+        '',
+        f'template <typename... Params> {obj.typename}(Params&... params):',
         [', '.join([
-            f'{obj.classname}Template(parent, index)',
+            f'{obj.classname}(params...)',
             *(f'{child.id}(array.getStore())' for child in obj.contained_children)
         ])],
         '{',
