@@ -55,7 +55,7 @@ bool Store::load()
 	switch(error.code()) {
 	case DeserializationError::Ok:
 	case DeserializationError::EmptyInput:
-		debug_i("load('%s') OK, %s, %s", filename.c_str(), error.c_str(), ::Json::serialize(doc).c_str());
+		debug_d("load('%s') OK, %s, %s", filename.c_str(), error.c_str(), ::Json::serialize(doc).c_str());
 		return true;
 	default:
 		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
@@ -82,14 +82,33 @@ bool Store::save()
 
 size_t Store::printTo(Print& p) const
 {
+	auto format = getDatabase().getFormat();
+
 	size_t n{0};
+
+	auto root = doc.as<JsonObjectConst>();
+
 	if(auto& name = getName()) {
 		n += p.print('"');
 		n += p.print(name);
-		n += p.print("\":");
+		n += p.print("\":{");
+		n += printObjectTo(root, format, p);
+		return n;
 	}
-	// TODO: Nameless store omits {}
-	return printObjectTo(doc, getDatabase().getFormat(), p);
+
+	// Nameless (root) store omits {}
+	for(JsonPairConst child : root) {
+		if(n > 0) {
+			n += p.print(',');
+		}
+		n += p.print('"');
+		JsonString name = child.key();
+		n += p.write(name.c_str(), name.size());
+		n += p.print("\":");
+		JsonVariantConst value = child.value();
+		n += printObjectTo(value, format, p);
+	}
+	return n;
 }
 
 } // namespace ConfigDB::Json

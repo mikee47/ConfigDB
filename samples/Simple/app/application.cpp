@@ -1,6 +1,7 @@
 #include <SmingCore.h>
 #include <ConfigDB/Json/Store.h>
 #include <ConfigDB/Database.h>
+#include <ConfigDB/DataStream.h>
 
 namespace
 {
@@ -239,15 +240,23 @@ void init()
 	db.setFormat(ConfigDB::Format::Pretty);
 
 	BasicConfig::Channels channels(db);
-	Serial << "store: " << channels.getStore() << endl;
 	auto item = channels.addItem();
 	item.setName("My channel item");
-	item.setPin(123);
+	// item.setPin(123);
 	item.commit();
-	Serial << "Item: " << item << endl;
-	Serial << "Channels: " << channels << endl;
-	Serial << "store: " << channels.getStore() << endl;
+	Serial << "new item = " << item << endl;
+	for(unsigned i = 0; auto item = channels.getItem(i); ++i) {
+		Serial << "item.name = " << item.getName() << endl;
+		Serial << "item.pin = " << item.getPin() << endl;
+	}
+	Serial << "channels = " << channels << endl;
+	Serial << "store = " << channels.getStore() << endl;
 	channels.commit();
+
+	Serial << endl << _F("Database:") << endl;
+
+	ConfigDB::DataStream stream(db);
+	Serial.copyFrom(&stream);
 
 	System.restart();
 }

@@ -42,7 +42,8 @@ public:
 	 */
 	void reset()
 	{
-		state = State::header;
+		storeIndex = 0;
+		done = false;
 	}
 
 	bool isValid() const override
@@ -56,7 +57,7 @@ public:
 
 	bool isFinished() override
 	{
-		return state == State::done && stream.isFinished();
+		return done && stream.isFinished();
 	}
 
 	String getName() const override
@@ -75,11 +76,7 @@ private:
 	Database& db;
 	MemoryDataStream stream;
 	uint8_t storeIndex;
-	enum class State {
-		header,
-		object,
-		done,
-	} state;
+	bool done;
 };
 
 } // namespace ConfigDB

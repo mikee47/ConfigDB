@@ -26,7 +26,7 @@ namespace ConfigDB
 void DataStream::fillStream()
 {
 	stream.clear();
-	if(state == State::done) {
+	if(done) {
 		return;
 	}
 	auto format = db.getFormat();
@@ -51,7 +51,7 @@ void DataStream::fillStream()
 	}
 	newline();
 	stream << '}' << endl;
-	state = State::done;
+	done = true;
 }
 
 uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
@@ -60,7 +60,7 @@ uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
 		return 0;
 	}
 
-	if(state == State::header) {
+	if(storeIndex == 0) {
 		fillStream();
 	}
 
@@ -73,10 +73,14 @@ bool DataStream::seek(int len)
 		return false;
 	}
 
-	stream.seek(len);
+	if(!stream.seek(len)) {
+		return false;
+	}
+
 	if(stream.available() == 0) {
 		fillStream();
 	}
+
 	return true;
 }
 
