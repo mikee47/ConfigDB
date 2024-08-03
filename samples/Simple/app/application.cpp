@@ -174,43 +174,16 @@ public:
 	class Channels : public ConfigDB::Json::ObjectArrayTemplate<Channels, ChannelsItem>
 	{
 	public:
-		class Root : public ConfigDB::Json::SimpleObject
+		Channels(BasicConfig& db)
+			: ObjectArrayTemplate(), store(RootStore::open(db)), root(*store), general(root, fstr_general)
 		{
-		public:
-			Root(ConfigDB::Json::Store& parent) : SimpleObject(parent)
-			{
-			}
-		};
-
-		class General : public ConfigDB::Json::SimpleObject
-		{
-		public:
-			General(Root& parent) : SimpleObject(parent, "general")
-			{
-			}
-		};
-
-		Channels(BasicConfig& db) : ObjectArrayTemplate(), store(RootStore::open(db)), root(*store), general(root)
-		{
-			init(general, "channels");
-		}
-
-		using ObjectArray::getObject;
-
-		std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
-		{
-			return nullptr;
-		}
-
-		ConfigDB::Json::Store& getStore()
-		{
-			return *store;
+			init(general, fstr_channels);
 		}
 
 	private:
 		std::shared_ptr<ConfigDB::Json::Store> store;
-		Root root;
-		General general;
+		ConfigDB::Json::SimpleObject root;
+		ConfigDB::Json::SimpleObject general;
 	};
 
 	using Database::Database;

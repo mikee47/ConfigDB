@@ -113,6 +113,9 @@ public:
 
 	bool setItem(unsigned index, const Item& value)
 	{
+		if(index >= array.size()) {
+			return false;
+		}
 		return array[index].set(value.object);
 	}
 
