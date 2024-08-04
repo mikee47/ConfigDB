@@ -290,7 +290,7 @@ def load_config(filename: str) -> Database:
                 items = value['items']
                 if items['type'] == 'object':
                     arr = ObjectArray(obj, key, store)
-                    arr.items = Object(arr, f'{arr.typename}Item', store)
+                    arr.items = Object(arr.parent, f'{arr.typename}Item', store)
                     parse(arr.items, items['properties'])
                 else:
                     arr = Array(obj, key, store)
@@ -321,17 +321,15 @@ def generate_database(db: Database) -> CodeLines:
             'using namespace ConfigDB;',
         ])
     for store in db.stores:
-        get_child_objects = generate_method_get_child_object(store, 'getPointer()')
         lines.header += [[
             *declare_templated_class(store),
             [
-                f'{store.typename}({store.database.typename}& db): StoreTemplate(db, {get_string(store.path, True)})',
+                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
                 '{',
                 '}',
             ],
             '};',
         ]]
-        lines.source += get_child_objects.source
 
     for child in db.children:
         lines.append(generate_object(child))
@@ -373,7 +371,7 @@ def generate_database(db: Database) -> CodeLines:
     return lines
 
 
-def generate_method_get_child_object(obj: Store | Object, store: str) -> CodeLines:
+def generate_method_get_child_object(obj: Store | Object) -> CodeLines:
     '''Generate *getChildObject* method'''
 
     return CodeLines(
@@ -384,22 +382,23 @@ def generate_method_get_child_object(obj: Store | Object, store: str) -> CodeLin
             [f'return {len(obj.children)};'],
             '}',
             '',
-            'std::unique_ptr<ConfigDB::Object> getObject(const String& name) override;'
-            'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;'
-        ],
-        [
+            'std::unique_ptr<ConfigDB::Object> getObject(const String& key) override',
+            '{',
+            ['return nullptr;'],
+            '}',
             '',
-            f'std::unique_ptr<Object> {obj.namespace}::{obj.typename}::getObject(unsigned index)',
+            'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override',
             '{',
             [
                 'switch(index) {',
-                [f'case {i}: return std::make_unique<{child.namespace}::{child.typename}>({store});'
+                [f'case {i}: return std::make_unique<Contained{child.typename}>(*this);'
                     for i, child in enumerate(obj.children)],
                 ['default: return nullptr;'],
                 '}',
             ],
-            '}',
-        ]
+            '}'
+        ],
+        []
     )
 
 
@@ -415,19 +414,18 @@ def generate_method_get_property(obj: Object) -> CodeLines:
             [f'return {len(obj.children) + len(obj.properties)};'],
             '}',
             '',
-            'ConfigDB::Property getProperty(unsigned index) override;',
-        ],
-        [
-            '',
-            f'Property {obj.namespace}::{obj.typename}::getProperty(unsigned index)',
+            'ConfigDB::Property getProperty(unsigned index) override',
             '{',
-            ['switch(index) {'],
             [
-                *(f'case {i}: return {{*this, {get_string(prop.name)}, Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
+                'using Type = ConfigDB::Property::Type;',
+                'switch(index) {',
+            ],
+            [
+                *(f'case {i}: return {{*this, {get_string(prop.name)}, Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
                 for i, prop in enumerate(obj.properties))
             ],
             [
-                *(f'case {objbase+i}: return {{*this, {get_string(child.name)}, Property::Type::{obj.classname}, nullptr}}'
+                *(f'case {objbase+i}: return {{*this, {get_string(child.name)}, Type::{obj.classname}, nullptr}};'
                 for i, child in enumerate(obj.children))
             ],
             [
@@ -435,7 +433,8 @@ def generate_method_get_property(obj: Object) -> CodeLines:
                 '}',
             ],
             '}',
-        ])
+        ],
+        [])
 
 
 def generate_array_get_property(array: Array) -> CodeLines:
@@ -569,7 +568,7 @@ def generate_object(obj: Object) -> CodeLines:
         assert False
     else:
         lines.header += generate_object_accessors(obj)
-        lines.append(generate_method_get_child_object(obj, 'store'))
+        lines.append(generate_method_get_child_object(obj))
         lines.append(generate_method_get_property(obj))
 
     # Contained children member variables
@@ -634,7 +633,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         lines.append(generate_array_accessors(obj))
     else:
         lines.header += generate_object_accessors(obj)
-        lines.append(generate_method_get_child_object(obj, 'store'))
+        lines.append(generate_method_get_child_object(obj))
     lines.append(generate_method_get_property(obj))
 
     # Contained children member variables
