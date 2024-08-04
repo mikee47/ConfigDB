@@ -94,7 +94,7 @@ size_t Store::printTo(Print& p) const
 	if(auto& name = getName()) {
 		n += p.print('"');
 		n += p.print(name);
-		n += p.print("\":{");
+		n += p.print("\":");
 		n += printObjectTo(root, format, p);
 		return n;
 	}
@@ -103,6 +103,9 @@ size_t Store::printTo(Print& p) const
 	for(JsonPairConst child : root) {
 		if(n > 0) {
 			n += p.print(',');
+			if(format == Format::Pretty) {
+				n += p.println();
+			}
 		}
 		n += p.print('"');
 		JsonString name = child.key();

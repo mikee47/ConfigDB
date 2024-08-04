@@ -499,7 +499,7 @@ def generate_object(obj: Object) -> CodeLines:
             [
                 f'{obj.typename}({obj.database.typename}& db):',
                 [', '.join([
-                    f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.path)})',
+                    f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.relative_path)})',
                     f'store({obj.store.typename}::open(db))',
                     *(f'{child.id}(*this)' for child in obj.contained_children),
                 ])],
@@ -574,7 +574,7 @@ def generate_object(obj: Object) -> CodeLines:
         [
             f'{obj.typename}({obj.database.typename}& db):',
             [', '.join([
-                f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.path)})',
+                f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.relative_path)})',
                 f'store({obj.store.typename}::open(db))'
             ])],
             '{',
