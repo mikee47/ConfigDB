@@ -17,7 +17,11 @@ CPP_TYPENAMES = {
     'boolean': 'bool',
 }
 
-strings: dict[str, str] = {}
+strings: dict[str, str] = {
+    "": 'empty',
+}
+
+STRING_PREFIX = 'fstr_'
 
 def get_string(value: str, null_if_empty: bool = False) -> str:
     '''All string data stored as FSTR values
@@ -27,18 +31,17 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
         return 'nullptr'
     ident = strings.get(value)
     if ident:
-        return ident
+        return STRING_PREFIX + ident
     ident = re.sub(r'[^A-Za-z0-9-]+', '_', value)[:MAX_STRINGID_LEN]
     if not ident:
         ident = str(len(strings))
-    ident = 'fstr_' + ident
     if ident in strings.values():
         i = 0
         while f'{ident}_{i}' in strings.values():
             i += 1
         ident = f'{ident}_{i}'
     strings[value] = ident
-    return ident
+    return STRING_PREFIX + ident
 
 
 @dataclass
@@ -364,7 +367,7 @@ def generate_database(db: Database) -> CodeLines:
         f'class {db.typename}: public ConfigDB::Database',
         '{',
         'public:',
-        [f'DEFINE_FSTR_LOCAL({id}, {make_string(value)})' for value, id in strings.items()]
+        [f'DEFINE_FSTR_LOCAL({STRING_PREFIX}{id}, {make_string(value)})' for value, id in strings.items()]
     ]
 
     return lines
@@ -448,11 +451,11 @@ def generate_array_get_property(array: Array) -> CodeLines:
     ], [])
 
 
-def generate_object_accessors(obj: Object) -> CodeLines:
+def generate_object_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
-    return CodeLines(
-        [*((
+    return [
+        *((
             '',
             f'{prop.ctype} get{prop.typename}() const',
             '{',
@@ -464,9 +467,7 @@ def generate_object_accessors(obj: Object) -> CodeLines:
             [f'return setValue({get_string(prop.name)}, value);'],
             '}'
             ) for prop in obj.properties)
-        ],
-        []
-    )
+        ]
 
 
 def generate_array_accessors(arr: Array) -> CodeLines:
@@ -515,13 +516,19 @@ def generate_object(obj: Object) -> CodeLines:
             f'class {obj.typename};',
             *item_lines.header,
             '',
-            f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.typename}, {obj.items.typename}>',
+            f'class Contained{obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.typename}, {obj.items.typename}>',
+            '{',
+            'public:',
+            [f'using {obj.classname}Template::{obj.classname}Template;'],
+            '};',
+            '',
+            f'class {obj.typename}: public Contained{obj.typename}',
             '{',
             'public:',
             [
                 f'{obj.typename}({obj.database.typename}& db):',
                 [', '.join([
-                    f'{obj.classname}Template()',
+                    f'Contained{obj.typename}()',
                     f'store({obj.store.typename}::open(db))',
                     f'{parents[0].id}(*store)',
                     *(f'{p.id}({p.parent.id}, {get_string(p.name)})' for p in parents[1:]),
@@ -538,25 +545,13 @@ def generate_object(obj: Object) -> CodeLines:
         ],
         item_lines.source)
 
+
     lines = CodeLines(
         [
             '',
-            f'class {obj.typename}: public ConfigDB::{obj.base_class}',
+            f'class Contained{obj.typename}: public ConfigDB::{obj.base_class}',
             '{',
             'public:',
-            [
-                f'{obj.typename}({obj.database.typename}& db):',
-                [', '.join([
-                    f'{obj.classname}()',
-                    f'store({obj.store.typename}::open(db))',
-                    *generate_parent_initialisers(),
-                    *(f'{child.id}(*this)' for child in obj.contained_children)
-                ])],
-                '{',
-                [f'init({obj.parent.id}, {get_string(obj.name)});'],
-                '}',
-            ],
-            '',
         ],
         [])
 
@@ -584,25 +579,55 @@ def generate_object(obj: Object) -> CodeLines:
     #     ]]
 
 
+    lines.header += [[
+        '',
+        f'template <typename... Params> Contained{obj.typename}(Params&... params):',
+        [', '.join([
+            f'{obj.classname}(params...)',
+            *(f'{child.id}(*this)' for child in obj.contained_children)
+        ])],
+        '{',
+        '}'
+    ]]
+
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
         lines.append(generate_array_get_property(obj))
     elif isinstance(obj, ObjectArray):
         assert False
     else:
-        lines.append(generate_object_accessors(obj))
+        lines.header += generate_object_accessors(obj)
         lines.append(generate_method_get_child_object(obj, 'store'))
         lines.append(generate_method_get_property(obj))
 
     # Contained children member variables
     lines.header += [
         '',
-        [f'{child.typename} {child.id};' for child in obj.contained_children],
-        '',
-        'private:',
-        generate_parent_variables(),
+        [f'Contained{child.typename} {child.id};' for child in obj.contained_children],
         '};'
     ]
+
+    lines.header += [
+            '',
+            f'class {obj.typename}: public Contained{obj.typename}',
+            '{',
+            'public:',
+            [
+                f'{obj.typename}({obj.database.typename}& db):',
+                [', '.join([
+                    f'Contained{obj.typename}()',
+                    f'store({obj.store.typename}::open(db))',
+                    *generate_parent_initialisers()
+                ])],
+                '{',
+                [f'init({obj.parent.id}, {get_string(obj.name)});'],
+                '}',
+            ],
+            '',
+            'private:',
+            generate_parent_variables(),
+            '};'
+        ]
 
     return lines
 
@@ -638,7 +663,7 @@ def generate_item_object(obj: Object) -> CodeLines:
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
     else:
-        lines.append(generate_object_accessors(obj))
+        lines.header += generate_object_accessors(obj)
         lines.append(generate_method_get_child_object(obj, 'store'))
     lines.append(generate_method_get_property(obj))
 
