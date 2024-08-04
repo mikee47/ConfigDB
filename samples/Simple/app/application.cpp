@@ -2,6 +2,7 @@
 #include <ConfigDB/Json/Store.h>
 #include <ConfigDB/Database.h>
 #include <ConfigDB/DataStream.h>
+#include <LittleFS.h>
 
 namespace
 {
@@ -188,148 +189,151 @@ public:
 		ConfigDB::Json::SimpleObject general;
 	};
 
-	class General : public ConfigDB::Json::Object
-	{
-	public:
-		General(std::shared_ptr<ConfigDB::Json::Store&> store): Object(*store, fstr_general),
-			: Object(root), store(RootStore::open(db)), root(*store), channels(*this, fstr_channels),
-			  supportedColorModels(*this, fstr_supported_color_models)
-		{
-			init(root, fstr_general);
-		}
+	// class General : public ConfigDB::Json::Object
+	// {
+	// public:
+	// 	General(std::shared_ptr<ConfigDB::Json::Store&> store)
+	// 		: Object(*store, fstr_general), : Object(root),
+	// 										  store(RootStore::open(db)),
+	// 										  root(*store),
+	// 										  channels(*this, fstr_channels),
+	// 										  supportedColorModels(*this, fstr_supported_color_models)
+	// 	{
+	// 		init(root, fstr_general);
+	// 	}
 
-		General(BasicConfig& db)
-			: Object(root), store(RootStore::open(db)), root(*store), channels(*this, fstr_channels),
-			  supportedColorModels(*this, fstr_supported_color_models)
-		{
-			init(root, fstr_general);
-		}
+	// 	General(BasicConfig& db)
+	// 		: Object(root), store(RootStore::open(db)), root(*store), channels(*this, fstr_channels),
+	// 		  supportedColorModels(*this, fstr_supported_color_models)
+	// 	{
+	// 		init(root, fstr_general);
+	// 	}
 
-		using ContainedChannels = ConfigDB::Json::ObjectArrayTemplate<Channels, ChannelsItem>;
+	// 	using ContainedChannels = ConfigDB::Json::ObjectArrayTemplate<Channels, ChannelsItem>;
 
-		class ContainedSupportedColorModels : public ConfigDB::Json::Array
-		{
-		public:
-			using Array::Array;
+	// 	class ContainedSupportedColorModels : public ConfigDB::Json::Array
+	// 	{
+	// 	public:
+	// 		using Array::Array;
 
-			String getItem(unsigned index) const
-			{
-				return Array::getItem<String>(index, fstr_RGB);
-			}
+	// 		String getItem(unsigned index) const
+	// 		{
+	// 			return Array::getItem<String>(index, fstr_RGB);
+	// 		}
 
-			bool setItem(unsigned index, const String& value)
-			{
-				return Array::setItem(index, value);
-			}
+	// 		bool setItem(unsigned index, const String& value)
+	// 		{
+	// 			return Array::setItem(index, value);
+	// 		}
 
-			ConfigDB::Property getProperty(unsigned index) override
-			{
-				return getArrayProperty(index, ConfigDB::Property::Type::String, &fstr_RGB);
-			}
+	// 		ConfigDB::Property getProperty(unsigned index) override
+	// 		{
+	// 			return getArrayProperty(index, ConfigDB::Property::Type::String, &fstr_RGB);
+	// 		}
 
-		private:
-			std::shared_ptr<ConfigDB::Json::Store> store;
-			ConfigDB::Json::SimpleObject root;
-			ConfigDB::Json::SimpleObject general;
-		};
+	// 	private:
+	// 		std::shared_ptr<ConfigDB::Json::Store> store;
+	// 		ConfigDB::Json::SimpleObject root;
+	// 		ConfigDB::Json::SimpleObject general;
+	// 	};
 
-		String getDeviceName() const
-		{
-			return getValue<String>(fstr_device_name, fstr_3);
-		}
+	// 	String getDeviceName() const
+	// 	{
+	// 		return getValue<String>(fstr_device_name, fstr_3);
+	// 	}
 
-		bool setDeviceName(const String& value)
-		{
-			return setValue(fstr_device_name, value);
-		}
+	// 	bool setDeviceName(const String& value)
+	// 	{
+	// 		return setValue(fstr_device_name, value);
+	// 	}
 
-		String getPinConfigUrl() const
-		{
-			return getValue<String>(fstr_pin_config_url, fstr_https_raw_githubusercontent_com_);
-		}
+	// 	String getPinConfigUrl() const
+	// 	{
+	// 		return getValue<String>(fstr_pin_config_url, fstr_https_raw_githubusercontent_com_);
+	// 	}
 
-		bool setPinConfigUrl(const String& value)
-		{
-			return setValue(fstr_pin_config_url, value);
-		}
+	// 	bool setPinConfigUrl(const String& value)
+	// 	{
+	// 		return setValue(fstr_pin_config_url, value);
+	// 	}
 
-		String getCurrentPinConfigName() const
-		{
-			return getValue<String>(fstr_current_pin_config_name, fstr_mrpj);
-		}
+	// 	String getCurrentPinConfigName() const
+	// 	{
+	// 		return getValue<String>(fstr_current_pin_config_name, fstr_mrpj);
+	// 	}
 
-		bool setCurrentPinConfigName(const String& value)
-		{
-			return setValue(fstr_current_pin_config_name, value);
-		}
+	// 	bool setCurrentPinConfigName(const String& value)
+	// 	{
+	// 		return setValue(fstr_current_pin_config_name, value);
+	// 	}
 
-		int getButtonsDebounceMs() const
-		{
-			return getValue<int>(fstr_buttons_debounce_ms, 50);
-		}
+	// 	int getButtonsDebounceMs() const
+	// 	{
+	// 		return getValue<int>(fstr_buttons_debounce_ms, 50);
+	// 	}
 
-		bool setButtonsDebounceMs(const int& value)
-		{
-			return setValue(fstr_buttons_debounce_ms, value);
-		}
+	// 	bool setButtonsDebounceMs(const int& value)
+	// 	{
+	// 		return setValue(fstr_buttons_debounce_ms, value);
+	// 	}
 
-		String getPinConfig() const
-		{
-			return getValue<String>(fstr_pin_config, fstr_13_12_14_5_4);
-		}
+	// 	String getPinConfig() const
+	// 	{
+	// 		return getValue<String>(fstr_pin_config, fstr_13_12_14_5_4);
+	// 	}
 
-		bool setPinConfig(const String& value)
-		{
-			return setValue(fstr_pin_config, value);
-		}
+	// 	bool setPinConfig(const String& value)
+	// 	{
+	// 		return setValue(fstr_pin_config, value);
+	// 	}
 
-		String getButtonsConfig() const
-		{
-			return getValue<String>(fstr_buttons_config, fstr_3);
-		}
+	// 	String getButtonsConfig() const
+	// 	{
+	// 		return getValue<String>(fstr_buttons_config, fstr_3);
+	// 	}
 
-		bool setButtonsConfig(const String& value)
-		{
-			return setValue(fstr_buttons_config, value);
-		}
+	// 	bool setButtonsConfig(const String& value)
+	// 	{
+	// 		return setValue(fstr_buttons_config, value);
+	// 	}
 
-		unsigned getObjectCount() const override
-		{
-			return 2;
-		}
+	// 	unsigned getObjectCount() const override
+	// 	{
+	// 		return 2;
+	// 	}
 
-		std::unique_ptr<ConfigDB::Object> getObject(const String& name) override
-		{
-			return nullptr;
-		}
+	// 	std::unique_ptr<ConfigDB::Object> getObject(const String& name) override
+	// 	{
+	// 		return nullptr;
+	// 	}
 
-		std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
-		{
-			return nullptr;
-		}
+	// 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
+	// 	{
+	// 		return nullptr;
+	// 	}
 
-		unsigned getPropertyCount() const override
-		{
-			return 8;
-		}
+	// 	unsigned getPropertyCount() const override
+	// 	{
+	// 		return 8;
+	// 	}
 
-		ConfigDB::Property getProperty(unsigned index) override
-		{
-			return ConfigDB::Property{};
-		}
+	// 	ConfigDB::Property getProperty(unsigned index) override
+	// 	{
+	// 		return ConfigDB::Property{};
+	// 	}
 
-		ConfigDB::Store& getStore() override
-		{
-			return *store;
-		}
+	// 	ConfigDB::Store& getStore() override
+	// 	{
+	// 		return *store;
+	// 	}
 
-		ContainedChannels channels;
-		ContainedSupportedColorModels supportedColorModels;
+	// 	ContainedChannels channels;
+	// 	ContainedSupportedColorModels supportedColorModels;
 
-	private:
-		std::shared_ptr<ConfigDB::Json::Store> store;
-		ConfigDB::Json::SimpleObject root;
-	};
+	// private:
+	// 	std::shared_ptr<ConfigDB::Json::Store> store;
+	// 	ConfigDB::Json::SimpleObject root;
+	// };
 
 	using Database::Database;
 
@@ -351,22 +355,31 @@ void init()
 	Serial.begin(COM_SPEED_SERIAL);
 	Serial.systemDebugOutput(true);
 
+#ifdef ARCH_HOST
 	fileSetFileSystem(&IFS::Host::getFileSystem());
+#else
+	lfs_mount();
+#endif
 
 	createDirectory("test");
 	BasicConfig db("test");
 	db.setFormat(ConfigDB::Format::Pretty);
 
-	BasicConfig::General gen(db);
-	gen.setButtonsConfig("Here lies buttons config");
-	gen.supportedColorModels.addItem("New model");
-	gen.commit();
+	IFS::Profiler profiler;
+	getFileSystem()->setProfiler(&profiler);
+
+	// BasicConfig::General gen(db);
+	// gen.setButtonsConfig("Here lies buttons config");
+	// gen.supportedColorModels.addItem("New model");
+	// gen.commit();
 
 	BasicConfig::Channels channels(db);
 	auto item = channels.addItem();
 	item.setName("My channel item");
 	// item.setPin(123);
 	item.commit();
+	Serial << profiler << endl;
+
 	Serial << "new item = " << item << endl;
 	for(unsigned i = 0; auto item = channels.getItem(i); ++i) {
 		Serial << "item.name = " << item.getName() << endl;
@@ -376,10 +389,14 @@ void init()
 	Serial << "store = " << channels.getStore() << endl;
 	channels.commit();
 
-	Serial << endl << _F("Database:") << endl;
+	Serial << profiler << endl;
 
-	ConfigDB::DataStream stream(db);
-	Serial.copyFrom(&stream);
+	// Serial << endl << _F("Database:") << endl;
 
+	// ConfigDB::DataStream stream(db);
+	// Serial.copyFrom(&stream);
+
+#ifdef ARCH_HOST
 	System.restart();
+#endif
 }

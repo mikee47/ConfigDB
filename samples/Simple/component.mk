@@ -1,5 +1,7 @@
 COMPONENT_DEPENDS := \
-	ConfigDB
+	ConfigDB \
+	LittleFS
 
 DISABLE_NETWORK := 1
 
+HWCONFIG := simple-cdb
