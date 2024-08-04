@@ -539,9 +539,19 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.header += [[
         '',
-        f'template <typename... Params> Contained{obj.typename}(Params&... params):',
+        f'using {obj.classname}::{obj.classname};',
+        '',
+        f'Contained{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
-            f'{obj.classname}(params...)',
+            f'{obj.classname}(store, path)',
+            *(f'{child.id}(*this)' for child in obj.contained_children)
+        ])],
+        '{',
+        '}'
+        '',
+        f'Contained{obj.typename}({obj.parent.classname}& parent):',
+        [', '.join([
+            f'{obj.classname}(parent)',
             *(f'{child.id}(*this)' for child in obj.contained_children)
         ])],
         '{',
@@ -606,9 +616,9 @@ def generate_item_object(obj: Object) -> CodeLines:
 
     lines.header += [[
         '',
-        f'template <typename... Params> {obj.typename}(Params&... params):',
+        f'{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
-            f'{obj.classname}(params...)',
+            f'{obj.classname}(store, path)',
             *(f'{child.id}(array.getStore())' for child in obj.contained_children)
         ])],
         '{',
