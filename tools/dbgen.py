@@ -488,11 +488,9 @@ def generate_object(obj: Object) -> CodeLines:
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
         return CodeLines([
-            '',
-            f'class {obj.typename};',
             *item_lines.header,
             '',
-            f'class Contained{obj.typename}: public ConfigDB::{obj.base_class}Template<{obj.typename}, {obj.items.typename}>',
+            f'class Contained{obj.typename}: public ConfigDB::{obj.base_class}Template<Contained{obj.typename}, {obj.items.typename}>',
             '{',
             'public:',
             [f'using {obj.classname}Template::{obj.classname}Template;'],
