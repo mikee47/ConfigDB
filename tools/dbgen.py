@@ -325,7 +325,7 @@ def generate_database(db: Database) -> CodeLines:
         lines.header += [[
             *declare_templated_class(store),
             [
-                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
+                f'{store.typename}({store.database.typename}& db): StoreTemplate(db, {get_string(store.path, True)})',
                 '{',
                 '}',
             ],
@@ -548,15 +548,19 @@ def generate_object(obj: Object) -> CodeLines:
         ])],
         '{',
         '}'
-        '',
-        f'Contained{obj.typename}({obj.parent.classname}& parent):',
-        [', '.join([
-            f'{obj.classname}(parent)',
-            *(f'{child.id}(*this)' for child in obj.contained_children)
-        ])],
-        '{',
-        '}'
     ]]
+
+    if not isinstance(obj.parent, Database):
+        lines.header += [[
+            '',
+            f'Contained{obj.typename}({obj.parent.classname}& parent):',
+            [', '.join([
+                f'{obj.classname}(parent)',
+                *(f'{child.id}(*this)' for child in obj.contained_children)
+            ])],
+            '{',
+            '}'
+        ]]
 
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
@@ -606,6 +610,7 @@ def generate_item_object(obj: Object) -> CodeLines:
             f'class {obj.typename}: public ConfigDB::{obj.base_class}',
             '{',
             'public:',
+            [f'using {obj.classname}::{obj.classname};'],
         ],
         []
     )
