@@ -518,7 +518,7 @@ def generate_object(obj: Object) -> CodeLines:
                 '}',
             ],
             '',
-            [f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;'],
+            [f'std::shared_ptr<{obj.store.typename}> store;'],
             '};',
         ],
         item_lines.source)
@@ -536,26 +536,6 @@ def generate_object(obj: Object) -> CodeLines:
     # Append child object definitions
     for child in obj.children:
         lines.append(generate_object(child))
-
-    # lines.header += [[
-    #     '',
-    #     f'{obj.typename}({obj.parent.typename}& parent):',
-    #     [', '.join([
-    #         f'{obj.classname}(parent, {get_string(obj.relative_path, True)})',
-    #         *(f'{child.id}(*this)' for child in obj.contained_children)
-    #     ])],
-    #     '{',
-    #     '}',
-    # ]]
-
-    # if not isinstance(obj.parent, Database):
-    #     lines.header += [[
-    #         '',
-    #         f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
-    #         '{',
-    #         '}',
-    #     ]]
-
 
     lines.header += [[
         '',
@@ -581,7 +561,6 @@ def generate_object(obj: Object) -> CodeLines:
     # Contained children member variables
     lines.header += [
         '',
-        [f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;'],
         [f'Contained{child.typename} {child.id};' for child in obj.contained_children],
         '};'
     ]
@@ -601,7 +580,7 @@ def generate_object(obj: Object) -> CodeLines:
                 '}',
             ],
             '',
-            [f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;'],
+            [f'std::shared_ptr<{obj.store.typename}> store;'],
             '};'
         ]
 
