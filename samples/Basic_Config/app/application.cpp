@@ -56,7 +56,7 @@ void readWriteValues(BasicConfig& db)
 		color.colortemp.setWw(12);
 		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
-		BasicConfig::Color::Brightness bri(db);
+		BasicConfig::Root::Color::Brightness bri(db);
 		bri.setBlue(12);
 		Serial << bri.getPath() << ".Blue = " << bri.getBlue() << endl;
 
@@ -70,7 +70,7 @@ void readWriteValues(BasicConfig& db)
 	}
 
 	{
-		BasicConfig::General::Channels channels(db);
+		BasicConfig::Root::General::Channels channels(db);
 		auto item = channels.addItem();
 		item.setName("Channel Name");
 		item.setPin(12);
@@ -80,7 +80,7 @@ void readWriteValues(BasicConfig& db)
 	}
 
 	{
-		BasicConfig::General::SupportedColorModels models(db);
+		BasicConfig::Root::General::SupportedColorModels models(db);
 		models.addItem("New Model");
 		models.commit();
 		Serial << models.getPath() << " = " << models << endl;
@@ -93,27 +93,27 @@ void readWriteValues(BasicConfig& db)
  */
 void inspect(BasicConfig& db)
 {
-	Serial << endl << _F("** Inspect **") << endl;
+	// Serial << endl << _F("** Inspect **") << endl;
 
-	Serial << '{' << endl;
-	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
-		if(i > 0) {
-			Serial << ',' << endl;
-		}
-		if(auto& name = store->getName()) {
-			Serial << '"' << name << "\":";
-		}
-		for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
-			if(j > 0) {
-				Serial << ',' << endl;
-			}
-			if(auto& name = obj->getName()) {
-				Serial << '"' << name << "\":";
-			}
-			Serial << *obj;
-		}
-	}
-	Serial << endl << '}' << endl;
+	// Serial << '{' << endl;
+	// for(unsigned i = 0; auto store = db.getStore(i); ++i) {
+	// 	if(i > 0) {
+	// 		Serial << ',' << endl;
+	// 	}
+	// 	if(auto& name = store->getName()) {
+	// 		Serial << '"' << name << "\":";
+	// 	}
+	// 	for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
+	// 		if(j > 0) {
+	// 			Serial << ',' << endl;
+	// 		}
+	// 		if(auto& name = obj->getName()) {
+	// 			Serial << '"' << name << "\":";
+	// 		}
+	// 		Serial << *obj;
+	// 	}
+	// }
+	// Serial << endl << '}' << endl;
 }
 
 /*
@@ -126,6 +126,8 @@ void stream(BasicConfig& db)
 	ConfigDB::DataStream stream(db);
 	Serial.copyFrom(&stream);
 }
+
+#if 0
 
 void printItem(const String& tag, unsigned indent, const String& type, const String& name,
 			   const String& value = nullptr)
@@ -177,6 +179,8 @@ void listProperties(BasicConfig& db)
 	}
 }
 
+#endif
+
 } // namespace
 
 void init()
@@ -198,7 +202,7 @@ void init()
 	readWriteValues(db);
 	inspect(db);
 	stream(db);
-	listProperties(db);
+	// listProperties(db);
 	// checkPerformance(db);
 
 	Serial << endl << endl;

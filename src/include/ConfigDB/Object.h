@@ -107,6 +107,16 @@ public:
 	// Printable [STOREIMPL]
 	// virtual size_t printTo(Print& p) const = 0;
 
+	String getName() const
+	{
+		return F("NOTIMPL");
+	}
+
+	String getPath() const
+	{
+		return F("NOTIMPL");
+	}
+
 protected:
 	Object* parent{};
 };
