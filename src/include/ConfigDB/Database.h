@@ -80,8 +80,45 @@ public:
 	 */
 	virtual std::shared_ptr<Store> getStore(unsigned index) = 0;
 
+	/**
+	 * @brief Keep a lock on the most recently opened store
+	 *
+	 * Called by `StoreTemplate::open`.
+	 *
+	 * Improves performance but also absolutely necessary due to the way object instances
+	 * are constructed. For example, here 
+	 *
+	 *   class GeneralStore: public StoreTemplate...
+	 *
+     *   class General: public ContainedGeneral
+     *   {
+     *   public:
+     *       General(BasicConfig& db):
+     *           ContainedGeneral(*GeneralStore::open(db), fstr_general),
+	 * 			 store(GeneralStore::open(db))
+     *       {
+     *       }
+	 *
+     *       std::shared_ptr<GeneralStore> store;
+     *   };
+	 *
+	 * The call to `GeneralStore::open(db)` creates a Store instance, calls this method
+	 * then returns it for use by the `ContainedGeneral` base class constructor.
+	 * Because we are holding a lock on the pointer it remains in scope and so
+	 * our own `store` variable gets set correctly.
+	 *
+	 * The lock is held here to avoid unintentionally holding more than one store open
+	 * at a time.
+	 */
+	void setActiveStore(std::shared_ptr<Store> store)
+	{
+		// TODO: Implement timeout mechanism for releasing this
+		activeStore = store;
+	}
+
 private:
 	CString path;
+	std::shared_ptr<Store> activeStore;
 	Format format{};
 };
 

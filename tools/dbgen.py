@@ -341,22 +341,17 @@ def generate_database(db: Database) -> CodeLines:
             '{',
             '}',
             '',
-            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override;',
-        ],
-        '};'
-    ]
-
-    lines.source += [
-        '',
-        f'std::shared_ptr<Store> {db.typename}::getStore(unsigned index)',
-        '{',
-        [
-            'switch(index) {',
-            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
-            ['default: return nullptr;'],
+            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override',
+            '{',
+            [
+                'switch(index) {',
+                [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
+                ['default: return nullptr;'],
+                '}',
+            ],
             '}',
         ],
-        '}',
+        '};'
     ]
 
     lines.header[:0] = [
@@ -515,6 +510,11 @@ def generate_object(obj: Object) -> CodeLines:
                 ])],
                 '{',
                 '}',
+                '',
+                'ConfigDB::Store& getStore() override',
+                '{',
+                ['return *store;'],
+                '}',
             ],
             '',
             [f'std::shared_ptr<{obj.store.typename}> store;'],
@@ -590,6 +590,11 @@ def generate_object(obj: Object) -> CodeLines:
                     f'store({obj.store.typename}::open(db))'
                 ])],
                 '{',
+                '}',
+                '',
+                'ConfigDB::Store& getStore() override',
+                '{',
+                ['return *store;'],
                 '}',
             ],
             '',

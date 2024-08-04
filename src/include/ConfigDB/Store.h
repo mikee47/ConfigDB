@@ -29,7 +29,7 @@ class Object;
 /**
  * @brief Manages access to an object store, typically one file
  */
-class Store: public Printable
+class Store : public Printable
 {
 public:
 	/**
@@ -67,7 +67,7 @@ public:
 
 	virtual bool commit() = 0;
 
-private:
+protected:
 	Database& db;
 	String name;
 };
@@ -81,20 +81,14 @@ public:
 	{
 		auto inst = store.lock();
 		if(!inst) {
+			// Release database lock to avoid opening multiple stores at once
+			db.setActiveStore(nullptr);
 			inst = std::make_shared<ClassType>(db);
 			store = inst;
 		}
+		// Keep a lock on this new store to keep it in scope
+		db.setActiveStore(inst);
 		return inst;
-	}
-
-	static std::shared_ptr<ClassType> getPointer()
-	{
-		return store.lock();
-	}
-
-	template <typename ObjectType> ObjectType getObject()
-	{
-		
 	}
 
 private:

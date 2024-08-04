@@ -38,8 +38,10 @@ bool Store::load()
 	String filename = getFilename();
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
+		if(stream.getLastError() != IFS::Error::NotFound) {
+			debug_w("open('%s') failed", filename.c_str());
+		}
 		// Create new document
-		debug_w("open('%s') failed", filename.c_str());
 		doc.to<JsonObject>();
 		return true;
 	}

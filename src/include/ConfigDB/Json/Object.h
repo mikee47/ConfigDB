@@ -43,8 +43,6 @@ public:
 	{
 	}
 
-	// Object(Array& parent, unsigned index);
-
 	Object(ObjectArray& parent, JsonObject obj);
 
 	static JsonObject get(Object& parent, const String& name)

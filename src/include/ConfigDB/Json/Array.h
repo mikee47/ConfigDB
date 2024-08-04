@@ -47,8 +47,7 @@ public:
 	static JsonArray get(Json::Object& parent, const String& name)
 	{
 		JsonArray arr = parent.object[name];
-		if(arr.isNull())
-		{
+		if(arr.isNull()) {
 			arr = parent.object.createNestedArray(name);
 		}
 		return arr;
