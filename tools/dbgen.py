@@ -528,8 +528,6 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.header += [[
         '',
-        f'using {obj.classname}Template::{obj.classname}Template;',
-        '',
         f'Contained{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
             f'{obj.classname}Template(store, path)',

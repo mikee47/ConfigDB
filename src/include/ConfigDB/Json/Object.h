@@ -110,31 +110,4 @@ public:
 	}
 };
 
-class SimpleObject : public Object
-{
-public:
-	using Object::Object;
-
-	unsigned getObjectCount() const override
-	{
-		return 0;
-	}
-	std::unique_ptr<ConfigDB::Object> getObject(const String& name) override
-	{
-		return nullptr;
-	}
-	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
-	{
-		return nullptr;
-	}
-	unsigned getPropertyCount() const override
-	{
-		return 0;
-	}
-	ConfigDB::Property getProperty(unsigned index) override
-	{
-		return {};
-	}
-};
-
 } // namespace ConfigDB::Json
