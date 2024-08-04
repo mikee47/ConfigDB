@@ -118,10 +118,10 @@ public:
 
 	class Channels;
 
-	class ChannelsItem : public ConfigDB::Json::Object
+	class ChannelsItem : public ConfigDB::Json::ObjectTemplate<ChannelsItem>
 	{
 	public:
-		using Object::Object;
+		using ObjectTemplate::ObjectTemplate;
 
 		int getPin() const
 		{

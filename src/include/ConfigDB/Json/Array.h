@@ -117,4 +117,10 @@ private:
 	JsonArray array;
 };
 
+template <class ClassType> class ArrayTemplate : public Array
+{
+public:
+	using Array::Array;
+};
+
 } // namespace ConfigDB::Json

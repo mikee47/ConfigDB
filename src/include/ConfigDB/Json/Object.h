@@ -100,6 +100,16 @@ private:
 	JsonObject object;
 };
 
+template <class ClassType> class ObjectTemplate : public Object
+{
+public:
+	using Object::Object;
+
+	ObjectTemplate(Object& parent) : Object(parent)
+	{
+	}
+};
+
 class SimpleObject : public Object
 {
 public:

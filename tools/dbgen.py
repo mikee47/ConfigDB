@@ -223,10 +223,10 @@ def make_string(s: str):
     return f'"{s.replace('"', '\\"')}"'
 
 
-def declare_templated_class(obj: Object, tparams: list = []) -> list[str]:
+def declare_templated_class(obj: Object, prefix: str = '', tparams: list = []) -> list[str]:
     return [
         '',
-        f'class {obj.typename}: public ConfigDB::{obj.base_class}Template<{", ".join(tparams + [obj.typename])}>',
+        f'class {prefix}{obj.typename}: public ConfigDB::{obj.base_class}Template<{", ".join([f'{prefix}{obj.typename}'] + tparams)}>',
         '{',
         'public:',
     ]
@@ -489,10 +489,7 @@ def generate_object(obj: Object) -> CodeLines:
         item_lines = generate_item_object(obj.items)
         return CodeLines([
             *item_lines.header,
-            '',
-            f'class Contained{obj.typename}: public ConfigDB::{obj.base_class}Template<Contained{obj.typename}, {obj.items.typename}>',
-            '{',
-            'public:',
+            *declare_templated_class(obj, 'Contained', [obj.items.typename]),
             [f'using {obj.classname}Template::{obj.classname}Template;'],
             '};',
             '',
@@ -522,12 +519,7 @@ def generate_object(obj: Object) -> CodeLines:
 
 
     lines = CodeLines(
-        [
-            '',
-            f'class Contained{obj.typename}: public ConfigDB::{obj.base_class}',
-            '{',
-            'public:',
-        ],
+        declare_templated_class(obj, 'Contained'),
         [])
 
     # Append child object definitions
@@ -536,11 +528,11 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.header += [[
         '',
-        f'using {obj.classname}::{obj.classname};',
+        f'using {obj.classname}Template::{obj.classname}Template;',
         '',
         f'Contained{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
-            f'{obj.classname}(store, path)',
+            f'{obj.classname}Template(store, path)',
             *(f'{child.id}(*this)' for child in obj.contained_children)
         ])],
         '{',
@@ -552,7 +544,7 @@ def generate_object(obj: Object) -> CodeLines:
             '',
             f'Contained{obj.typename}({obj.parent.classname}& parent):',
             [', '.join([
-                f'{obj.classname}(parent)',
+                f'{obj.classname}Template(parent)',
                 *(f'{child.id}(*this)' for child in obj.contained_children)
             ])],
             '{',
@@ -577,28 +569,28 @@ def generate_object(obj: Object) -> CodeLines:
     ]
 
     lines.header += [
-            '',
-            f'class {obj.typename}: public Contained{obj.typename}',
+        '',
+        f'class {obj.typename}: public Contained{obj.typename}',
+        '{',
+        'public:',
+        [
+            f'{obj.typename}({obj.database.typename}& db):',
+            [', '.join([
+                f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.path)})',
+                f'store({obj.store.typename}::open(db))'
+            ])],
             '{',
-            'public:',
-            [
-                f'{obj.typename}({obj.database.typename}& db):',
-                [', '.join([
-                    f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.path)})',
-                    f'store({obj.store.typename}::open(db))'
-                ])],
-                '{',
-                '}',
-                '',
-                'ConfigDB::Store& getStore() override',
-                '{',
-                ['return *store;'],
-                '}',
-            ],
+            '}',
             '',
-            [f'std::shared_ptr<{obj.store.typename}> store;'],
-            '};'
-        ]
+            'ConfigDB::Store& getStore() override',
+            '{',
+            ['return *store;'],
+            '}',
+        ],
+        '',
+        [f'std::shared_ptr<{obj.store.typename}> store;'],
+        '};'
+    ]
 
     return lines
 
@@ -608,11 +600,8 @@ def generate_item_object(obj: Object) -> CodeLines:
 
     lines = CodeLines(
         [
-            '',
-            f'class {obj.typename}: public ConfigDB::{obj.base_class}',
-            '{',
-            'public:',
-            [f'using {obj.classname}::{obj.classname};'],
+            *declare_templated_class(obj),
+            [f'using {obj.classname}Template::{obj.classname}Template;']
         ],
         []
     )
@@ -625,7 +614,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         '',
         f'{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
-            f'{obj.classname}(store, path)',
+            f'{obj.classname}Template(store, path)',
             *(f'{child.id}(array.getStore())' for child in obj.contained_children)
         ])],
         '{',
