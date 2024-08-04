@@ -29,6 +29,8 @@ class Array : public ConfigDB::Array
 public:
 	using ConfigDB::Array::Array;
 
+	explicit Array(Store& store, const String& path);
+
 	Array(Json::Object& parent, JsonArray array) : ConfigDB::Array(parent), array(array)
 	{
 	}
