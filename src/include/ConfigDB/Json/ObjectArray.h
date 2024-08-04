@@ -29,6 +29,8 @@ class ObjectArray : public ConfigDB::ObjectArray
 public:
 	using ConfigDB::ObjectArray::ObjectArray;
 
+	explicit ObjectArray(Store& store, const String& path);
+
 	ObjectArray(Json::Object& parent, JsonArray array) : ConfigDB::ObjectArray(parent), array(array)
 	{
 	}

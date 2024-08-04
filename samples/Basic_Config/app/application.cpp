@@ -39,20 +39,20 @@ void readWriteValues(BasicConfig& db)
 	Serial << endl << _F("** Read/Write Values **") << endl;
 
 	{
-		BasicConfig::Security sec(db);
+		BasicConfig::Root::Security sec(db);
 		sec.setApiSecured(true);
 		sec.commit();
 	}
 
 	{
-		BasicConfig::General general(db);
+		BasicConfig::Root::General general(db);
 		general.setDeviceName("Test Device");
 		Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
 		general.commit();
 	}
 
 	{
-		BasicConfig::Color color(db);
+		BasicConfig::Root::Color color(db);
 		color.colortemp.setWw(12);
 		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
@@ -64,7 +64,7 @@ void readWriteValues(BasicConfig& db)
 	}
 
 	{
-		BasicConfig::Events events(db);
+		BasicConfig::Root::Events events(db);
 		events.setColorMinintervalMs(1200);
 		events.commit();
 	}

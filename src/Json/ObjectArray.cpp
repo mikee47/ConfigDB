@@ -22,6 +22,10 @@
 
 namespace ConfigDB::Json
 {
+ObjectArray::ObjectArray(Store& store, const String& path) : ConfigDB::ObjectArray(), array(store.getJsonArray(path))
+{
+}
+
 size_t ObjectArray::printTo(Print& p) const
 {
 	return Store::printObjectTo(array, getDatabase().getFormat(), p);

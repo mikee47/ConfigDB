@@ -491,24 +491,6 @@ def generate_array_accessors(arr: Array) -> CodeLines:
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
-    parents = []
-    o = obj.parent
-    while not isinstance(o, Database):
-        parents.insert(0, o)
-        o = o.parent
-
-    def generate_parent_initialisers() -> list:
-        return [
-            f'{parents[0].id}(*store)',
-            *(f'{p.id}({p.parent.id}, {get_string(p.name)})' for p in parents[1:]),
-        ] if parents else []
-
-    def generate_parent_variables() -> list:
-        return [
-            f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;',
-            *(f'ConfigDB::{p.store.store_ns}::SimpleObject {p.id};' for p in parents),
-        ]
-
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
         return CodeLines([
@@ -528,19 +510,15 @@ def generate_object(obj: Object) -> CodeLines:
             [
                 f'{obj.typename}({obj.database.typename}& db):',
                 [', '.join([
-                    f'Contained{obj.typename}()',
+                    f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.path)})',
                     f'store({obj.store.typename}::open(db))',
-                    f'{parents[0].id}(*store)',
-                    *(f'{p.id}({p.parent.id}, {get_string(p.name)})' for p in parents[1:]),
                     *(f'{child.id}(*this)' for child in obj.contained_children),
                 ])],
                 '{',
-                [f'init({obj.parent.id}, {get_string(obj.name)});'],
                 '}',
             ],
             '',
-            'private:',
-            generate_parent_variables(),
+            [f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;'],
             '};',
         ],
         item_lines.source)
@@ -603,6 +581,7 @@ def generate_object(obj: Object) -> CodeLines:
     # Contained children member variables
     lines.header += [
         '',
+        [f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;'],
         [f'Contained{child.typename} {child.id};' for child in obj.contained_children],
         '};'
     ]
@@ -615,17 +594,14 @@ def generate_object(obj: Object) -> CodeLines:
             [
                 f'{obj.typename}({obj.database.typename}& db):',
                 [', '.join([
-                    f'Contained{obj.typename}()',
-                    f'store({obj.store.typename}::open(db))',
-                    *generate_parent_initialisers()
+                    f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.path)})',
+                    f'store({obj.store.typename}::open(db))'
                 ])],
                 '{',
-                [f'init({obj.parent.id}, {get_string(obj.name)});'],
                 '}',
             ],
             '',
-            'private:',
-            generate_parent_variables(),
+            [f'std::shared_ptr<ConfigDB::{obj.store.base_class}> store;'],
             '};'
         ]
 

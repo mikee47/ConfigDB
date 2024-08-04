@@ -19,6 +19,7 @@
 
 #include <ConfigDB/Json/Store.h>
 #include <ConfigDB/Json/Object.h>
+#include <Data/CStringArray.h>
 
 namespace ConfigDB::Json
 {
@@ -109,6 +110,93 @@ size_t Store::printTo(Print& p) const
 		n += printObjectTo(value, format, p);
 	}
 	return n;
+}
+
+JsonObject Store::getJsonObject(const String& path)
+{
+	String s(path);
+	s.replace('.', '\0');
+	CStringArray csa(std::move(s));
+	auto obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
+	for(auto key : csa) {
+		if(!obj) {
+			break;
+		}
+		auto child = obj[key];
+		if(!child.is<JsonObject>()) {
+			child = obj.createNestedObject(const_cast<char*>(key));
+		}
+		obj = child;
+	}
+	return obj;
+}
+
+JsonObjectConst Store::getJsonObjectConst(const String& path) const
+{
+	String s(path);
+	s.replace('.', '\0');
+	CStringArray csa(std::move(s));
+	auto obj = doc.as<JsonObjectConst>();
+	for(auto key : csa) {
+		if(!obj) {
+			break;
+		}
+		auto child = obj[key];
+		if(!child.is<JsonObjectConst>()) {
+			obj = {};
+			break;
+		}
+		obj = child;
+	}
+
+	return obj;
+}
+
+JsonArray Store::getJsonArray(const String& path)
+{
+	String s(path);
+	s.replace('.', '\0');
+	CStringArray csa(std::move(s));
+	auto name = csa.popBack();
+	auto obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
+	for(auto key : csa) {
+		if(!obj) {
+			break;
+		}
+		auto child = obj[key];
+		if(!child.is<JsonObject>()) {
+			child = obj.createNestedObject(const_cast<char*>(key));
+		}
+		obj = child;
+	}
+
+	JsonArray arr = obj[name];
+	if(!arr) {
+		arr = obj.createNestedArray(name);
+	}
+	return arr;
+}
+
+JsonArrayConst Store::getJsonArrayConst(const String& path) const
+{
+	String s(path);
+	s.replace('.', '\0');
+	CStringArray csa(std::move(s));
+	auto name = csa.popBack();
+	auto obj = doc.as<JsonObjectConst>();
+	for(auto key : csa) {
+		if(!obj) {
+			break;
+		}
+		auto child = obj[key];
+		if(!child.is<JsonObjectConst>()) {
+			obj = {};
+			break;
+		}
+		obj = child;
+	}
+
+	return obj[name];
 }
 
 } // namespace ConfigDB::Json

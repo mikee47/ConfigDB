@@ -33,7 +33,7 @@ class Object : public ConfigDB::Object
 public:
 	using ConfigDB::Object::Object;
 
-	explicit Object(Store& parent);
+	explicit Object(Store& store, const String& path);
 
 	Object(Object& parent, JsonObject obj) : ConfigDB::Object(parent), object(obj)
 	{

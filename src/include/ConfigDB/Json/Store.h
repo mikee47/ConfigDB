@@ -44,6 +44,15 @@ public:
 		return getPath() + ".json";
 	}
 
+	/**
+	 * @brief Resolve a path into the corresponding JSON object, creating it if required
+	 */
+	JsonObject getJsonObject(const String& path);
+	JsonObjectConst getJsonObjectConst(const String& path) const;
+
+	JsonArray getJsonArray(const String& path);
+	JsonArrayConst getJsonArrayConst(const String& path) const;
+
 	size_t printTo(Print& p) const override;
 
 	template <class T> static size_t printObjectTo(T& obj, Format format, Print& p)

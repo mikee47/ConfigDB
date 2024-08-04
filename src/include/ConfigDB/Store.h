@@ -92,6 +92,11 @@ public:
 		return store.lock();
 	}
 
+	template <typename ObjectType> ObjectType getObject()
+	{
+		
+	}
+
 private:
 	static std::weak_ptr<ClassType> store;
 };

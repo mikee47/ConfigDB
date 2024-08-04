@@ -24,7 +24,7 @@
 
 namespace ConfigDB::Json
 {
-Object::Object(Store& parent) : ConfigDB::Object(), object(parent.doc.as<JsonObject>())
+Object::Object(Store& store, const String& path) : ConfigDB::Object(), object(store.getJsonObject(path))
 {
 }
 
