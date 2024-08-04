@@ -39,26 +39,7 @@ public:
 	{
 	}
 
-	Object(Object& parent, const String& name) : Object(parent, get(parent, name))
-	{
-	}
-
 	Object(ObjectArray& parent, JsonObject obj);
-
-	static JsonObject get(Object& parent, const String& name)
-	{
-		JsonObject obj = parent.object[name];
-		if(obj.isNull()) {
-			obj = parent.object.createNestedObject(name);
-		}
-		return obj;
-	}
-
-	void init(Json::Object& parent, const String& name)
-	{
-		this->parent = &parent;
-		object = get(parent, name);
-	}
 
 	explicit operator bool() const
 	{

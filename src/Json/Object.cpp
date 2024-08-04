@@ -28,10 +28,6 @@ Object::Object(Store& store, const String& path) : ConfigDB::Object(), object(st
 {
 }
 
-// Object::Object(Array& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
-// {
-// }
-
 Object::Object(ObjectArray& parent, JsonObject obj) : ConfigDB::Object(parent), object(obj)
 {
 }

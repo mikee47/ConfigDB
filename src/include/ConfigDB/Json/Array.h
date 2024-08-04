@@ -35,30 +35,6 @@ public:
 	{
 	}
 
-	Array(Json::Object& parent, const String& name) : Array(parent, get(parent, name))
-	{
-	}
-
-	Array(Array& parent, unsigned index) : ConfigDB::Array(parent)
-	{
-		array = parent.array[index];
-	}
-
-	static JsonArray get(Json::Object& parent, const String& name)
-	{
-		JsonArray arr = parent.object[name];
-		if(arr.isNull()) {
-			arr = parent.object.createNestedArray(name);
-		}
-		return arr;
-	}
-
-	void init(Json::Object& parent, const String& name)
-	{
-		this->parent = &parent;
-		array = get(parent, name);
-	}
-
 	String getStringValue(const String& key) const override
 	{
 		return nullptr;

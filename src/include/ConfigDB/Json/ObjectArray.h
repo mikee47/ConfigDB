@@ -35,30 +35,6 @@ public:
 	{
 	}
 
-	ObjectArray(Json::Object& parent, const String& name) : ObjectArray(parent, get(parent, name))
-	{
-	}
-
-	ObjectArray(ObjectArray& parent, unsigned index) : ConfigDB::ObjectArray(parent)
-	{
-		array = parent.array[index];
-	}
-
-	static JsonArray get(Json::Object& parent, const String& name)
-	{
-		JsonArray arr = parent.object[name];
-		if(arr.isNull()) {
-			arr = parent.object.createNestedArray(name);
-		}
-		return arr;
-	}
-
-	void init(Json::Object& parent, const String& name)
-	{
-		this->parent = &parent;
-		array = get(parent, name);
-	}
-
 	String getStringValue(const String& key) const override
 	{
 		return nullptr;
@@ -97,6 +73,10 @@ template <class ClassType, class Item> class ObjectArrayTemplate : public Object
 {
 public:
 	using ObjectArray::ObjectArray;
+
+	// ObjectArrayTemplate(Object& parent) : ObjectArray(parent)
+	// {
+	// }
 
 	using ObjectArray::getObject;
 
