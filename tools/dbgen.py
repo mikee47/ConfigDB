@@ -309,9 +309,6 @@ def load_config(filename: str) -> Database:
 
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
-    # Find out what stores are in use
-    store_namespaces = {store.store_ns for store in db.stores}
-    store_namespaces.add(db.store.store_ns)
 
     lines = CodeLines(
         [],
@@ -361,7 +358,7 @@ def generate_database(db: Database) -> CodeLines:
     ]
 
     lines.header[:0] = [
-        *[f'#include <ConfigDB/{ns}/Store.h>' for ns in store_namespaces],
+        *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.stores}],
         '',
         f'class {db.typename}: public ConfigDB::Database',
         '{',
@@ -474,43 +471,11 @@ def generate_object(obj: Object) -> CodeLines:
         return CodeLines([
             *item_lines.header,
             *declare_templated_class(obj, 'Contained', [obj.items.typename]),
-            [
-                f'Contained{obj.typename}({obj.store.typename}& store):',
-                [f'{obj.classname}Template(store, {get_string(obj.relative_path)})'],
-                '{',
-                '}',
-                '',
-                f'Contained{obj.typename}(Contained{obj.parent.typename}& parent):',
-                [f'{obj.classname}Template(parent, {get_string(obj.name)})'],
-                '{',
-                '}',
-            ],
-            '',
+            generate_contained_constructors(obj),
             generate_typeinfo(obj),
             '};',
             '',
-            f'class {obj.typename}: public Contained{obj.typename}',
-            '{',
-            'public:',
-            [
-                f'using Contained{obj.typename}::Contained{obj.typename};',
-                '',
-                f'{obj.typename}({obj.database.typename}& db):',
-                [
-                    f'Contained{obj.typename}(*{obj.store.typename}::open(db)),',
-                    f'store({obj.store.typename}::open(db))'
-                ],
-                '{',
-                '}',
-                '',
-                'ConfigDB::Store& getStore() override',
-                '{',
-                ['return *store;'],
-                '}',
-            ],
-            '',
-            [f'std::shared_ptr<{obj.store.typename}> store;'],
-            '};',
+            generate_outer_class(obj)
         ],
         item_lines.source)
 
@@ -523,7 +488,31 @@ def generate_object(obj: Object) -> CodeLines:
     for child in obj.children:
         lines.append(generate_object(child))
 
-    lines.header += [[
+    lines.header += [
+        generate_contained_constructors(obj),
+        generate_typeinfo(obj)
+    ]
+
+    if isinstance(obj, Array):
+        lines.append(generate_array_accessors(obj))
+    else:
+        lines.header += generate_object_accessors(obj)
+        lines.append(generate_method_get_child_object(obj))
+
+    # Contained children member variables
+    lines.header += [
+        '',
+        [f'Contained{child.typename} {child.id};' for child in obj.contained_children],
+        '};'
+    ]
+
+    lines.header += generate_outer_class(obj)
+
+    return lines
+
+
+def generate_contained_constructors(obj: Object) -> list:
+    return [
         '',
         f'Contained{obj.typename}({obj.store.typename}& store):',
         [', '.join([
@@ -540,26 +529,11 @@ def generate_object(obj: Object) -> CodeLines:
         ])],
         '{',
         '}',
-        generate_typeinfo(obj),
-    ]]
-
-    if isinstance(obj, Array):
-        lines.append(generate_array_accessors(obj))
-        # lines.append(generate_array_get_property(obj))
-    elif isinstance(obj, ObjectArray):
-        assert False
-    else:
-        lines.header += generate_object_accessors(obj)
-        lines.append(generate_method_get_child_object(obj))
-
-    # Contained children member variables
-    lines.header += [
-        '',
-        [f'Contained{child.typename} {child.id};' for child in obj.contained_children],
-        '};'
     ]
 
-    lines.header += [
+
+def generate_outer_class(obj: Object) -> list:
+    return [
         '',
         f'class {obj.typename}: public Contained{obj.typename}',
         '{',
@@ -584,8 +558,6 @@ def generate_object(obj: Object) -> CodeLines:
         [f'std::shared_ptr<{obj.store.typename}> store;'],
         '};'
     ]
-
-    return lines
 
 
 def generate_item_object(obj: Object) -> CodeLines:
