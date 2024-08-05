@@ -79,15 +79,6 @@ public:
 	size_t printTo(Print& p) const override;
 
 protected:
-	Property getArrayProperty(unsigned index, Property::Type type, const FlashString* defaultValue)
-	{
-		if(index >= array.size()) {
-			return {};
-		}
-		return Property(*this, index, type, defaultValue);
-	}
-
-private:
 	friend class Json::Object;
 
 	JsonArray array;
@@ -97,6 +88,20 @@ template <class ClassType> class ArrayTemplate : public Array
 {
 public:
 	using Array::Array;
+
+	const Typeinfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+	Property getProperty(unsigned index) override
+	{
+		auto propinfo = getTypeinfo().propinfo;
+		if(index >= array.size() || !propinfo) {
+			return {};
+		}
+		return {*this, index, (*propinfo)[0]};
+	}
 };
 
 } // namespace ConfigDB::Json

@@ -92,12 +92,24 @@ public:
 	/**
 	 * @brief Get number of properties
 	 */
-	virtual unsigned getPropertyCount() const = 0;
+	virtual unsigned getPropertyCount() const
+	{
+		auto& typeinfo = getTypeinfo();
+		return typeinfo.propinfo ? typeinfo.propinfo->length() : 0;
+	}
 
 	/**
 	 * @brief Get properties
 	 */
-	virtual Property getProperty(unsigned index) = 0;
+	virtual Property getProperty(unsigned index)
+	{
+		auto& typeinfo = getTypeinfo();
+		if(!typeinfo.propinfo) {
+			return {};
+		}
+		auto propinfo = (*typeinfo.propinfo)[index];
+		return {*this, propinfo};
+	}
 
 	/**
 	 * @brief Commit changes to the store
@@ -106,6 +118,8 @@ public:
 
 	// Printable [STOREIMPL]
 	// virtual size_t printTo(Print& p) const = 0;
+
+	virtual const Typeinfo& getTypeinfo() const = 0;
 
 	String getName() const
 	{

@@ -20,11 +20,14 @@
 #pragma once
 
 #include <WString.h>
+#include <FlashString/Array.hpp>
+#include <FlashString/Vector.hpp>
 #include <memory>
 
 #define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
 	XX(Object)                                                                                                         \
 	XX(Array)                                                                                                          \
+	XX(ObjectArray)                                                                                                    \
 	XX(String)                                                                                                         \
 	XX(Integer)                                                                                                        \
 	XX(Boolean)
@@ -33,40 +36,53 @@ namespace ConfigDB
 {
 class Object;
 
+enum class Proptype {
+#define XX(name) name,
+	CONFIGDB_PROPERTY_TYPE_MAP(XX)
+#undef XX
+};
+
+struct Propinfo {
+	const FlashString* name;
+	const FlashString* defaultValue;
+	Proptype type;
+};
+
+struct Typeinfo {
+	const FlashString* name;
+	const FSTR::Vector<Typeinfo>* objinfo;
+	const FSTR::Array<Propinfo>* propinfo;
+	Proptype type;
+};
+
 /**
  * @brief Manages a key/value pair stored in an object
  */
 class Property
 {
 public:
-	enum class Type {
-#define XX(name) name,
-		CONFIGDB_PROPERTY_TYPE_MAP(XX)
-#undef XX
-	};
-
 	Property() = default;
+
+	using Type = Proptype;
 
 	/**
 	 * @brief Property accessed by key
 	 */
-	Property(Object& object, const FlashString& name, Type type, const FlashString* defaultValue)
-		: object(&object), name(&name), defaultValue(defaultValue), type(type)
+	Property(Object& object, const Propinfo& info) : object(&object), info(info)
 	{
 	}
 
 	/**
 	 * @brief Property accessed by index
 	 */
-	Property(Object& object, unsigned index, Type type, const FlashString* defaultValue)
-		: object(&object), defaultValue(defaultValue), index(index), type(type)
+	Property(Object& object, unsigned index, const Propinfo& info) : object(&object), info(info), index(index)
 	{
 	}
 
 	String getName() const
 	{
-		if(name) {
-			return *name;
+		if(info.name) {
+			return *info.name;
 		}
 		return String(index);
 	}
@@ -82,7 +98,7 @@ public:
 	 */
 	bool isIndexed() const
 	{
-		return bool(name);
+		return info.name != nullptr;
 	}
 
 	/**
@@ -90,13 +106,20 @@ public:
 	 */
 	bool isObject() const
 	{
-		return type == Type::Object || type == Type::Array;
+		switch(getType()) {
+		case Type::Object:
+		case Type::Array:
+		case Type::ObjectArray:
+			return true;
+		default:
+			return false;
+		}
 	}
 
 	String getDefaultStringValue() const
 	{
-		if(defaultValue) {
-			return *defaultValue;
+		if(info.defaultValue) {
+			return *info.defaultValue;
 		}
 		return nullptr;
 	}
@@ -107,27 +130,20 @@ public:
 
 	Type getType() const
 	{
-		return type;
+		return info.type;
 	}
 
 	explicit operator bool() const
 	{
-		return bool(object);
+		return object != nullptr;
 	}
 
 	String getJsonValue() const;
 
 private:
 	Object* object{};
-	const FlashString* name{};
-	const FlashString* defaultValue{};
+	Propinfo info{};
 	uint16_t index{};
-	Type type{};
-};
-
-struct ObjectProperty {
-	String name;
-	std::unique_ptr<Object> object;
 };
 
 } // namespace ConfigDB

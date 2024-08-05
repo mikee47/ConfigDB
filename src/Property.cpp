@@ -42,13 +42,13 @@ String Property::getStringValue() const
 	}
 
 	String value;
-	if(name) {
-		value = object->getStringValue(*name);
+	if(info.name) {
+		value = object->getStringValue(*info.name);
 	} else {
 		value = object->getStringValue(index);
 	}
-	if(!value && defaultValue) {
-		value = *defaultValue;
+	if(!value && info.defaultValue) {
+		value = *info.defaultValue;
 	}
 	return value;
 }
@@ -58,10 +58,7 @@ std::unique_ptr<Object> Property::getObjectValue() const
 	if(!object) {
 		return nullptr;
 	}
-	if(name) {
-		return object->getObject(*name);
-	}
-	return object->getObject(index);
+	return info.name ? object->getObject(*info.name) : object->getObject(index);
 }
 
 String Property::getJsonValue() const
@@ -73,7 +70,7 @@ String Property::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	switch(type) {
+	switch(info.type) {
 	case Type::Integer:
 	case Type::Boolean:
 		return value;
@@ -81,6 +78,7 @@ String Property::getJsonValue() const
 		break;
 	case Type::Object:
 	case Type::Array:
+	case Type::ObjectArray:
 		return value;
 	}
 	::Format::standard.quote(value);

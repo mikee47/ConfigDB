@@ -74,9 +74,10 @@ template <class ClassType, class Item> class ObjectArrayTemplate : public Object
 public:
 	using ObjectArray::ObjectArray;
 
-	// ObjectArrayTemplate(Object& parent) : ObjectArray(parent)
-	// {
-	// }
+	const Typeinfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
+	}
 
 	using ObjectArray::getObject;
 

@@ -297,7 +297,7 @@ def load_config(filename: str) -> Database:
                     parse(arr, {'items': items})
                     assert len(arr.properties) == 1
                     arr.items = arr.properties[0]
-                    arr.properties = None
+                    arr.properties = []
                 child = arr
             else:
                 raise ValueError('Bad type ' + repr(prop))
@@ -397,52 +397,61 @@ def generate_method_get_child_object(obj: Store | Object) -> CodeLines:
     )
 
 
-def generate_method_get_property(obj: Object) -> CodeLines:
-    '''Generate *getProperty* method'''
+def generate_typeinfo(obj: Object) -> list:
+    '''Generate type information and *getProperty* method'''
 
     objbase = len(obj.properties)
-    return CodeLines(
+    return [
+        'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::Typeinfo,',
+        [f'&{child.typename}::typeinfo,' for child in obj.children],
+        ')',
+        'static constexpr const ConfigDB::Typeinfo typeinfo PROGMEM {',
         [
-            '',
-        	'unsigned getPropertyCount() const override',
-            '{',
-            [f'return {len(obj.children) + len(obj.properties)};'],
-            '}',
-            '',
-            'ConfigDB::Property getProperty(unsigned index) override',
-            '{',
-            [
-                'using Type = ConfigDB::Property::Type;',
-                'switch(index) {',
-            ],
-            [
-                *(f'case {i}: return {{*this, {get_string(prop.name)}, Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
-                for i, prop in enumerate(obj.properties))
-            ],
-            [
-                *(f'case {objbase+i}: return {{*this, {get_string(child.name)}, Type::{obj.classname}, nullptr}};'
-                for i, child in enumerate(obj.children))
-            ],
-            [
-                'default: return {};',
-                '}',
-            ],
-            '}',
+            f'&{get_string(obj.name)},',
+            '&objinfo,',
+            'nullptr,',
+            f'ConfigDB::Property::Type::{obj.classname}',
         ],
-        [])
+        '};',
+        # '',
+        # 'unsigned getPropertyCount() const override',
+        # '{',
+        # [f'return {len(obj.children) + len(obj.properties)};'],
+        # '}',
+        # '',
+        # 'ConfigDB::Property getProperty(unsigned index) override',
+        # '{',
+        # [
+        #     'using Type = ConfigDB::Property::Type;',
+        #     'switch(index) {',
+        # ],
+        # [
+        #     *(f'case {i}: return {{*this, {get_string(prop.name)}, Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
+        #     for i, prop in enumerate(obj.properties))
+        # ],
+        # [
+        #     *(f'case {objbase+i}: return {{*this, {get_string(child.name)}, Type::{obj.classname}, nullptr}};'
+        #     for i, child in enumerate(obj.children))
+        # ],
+        # [
+        #     'default: return {};',
+        #     '}',
+        # ],
+        # '}',
+    ]
 
 
-def generate_array_get_property(array: Array) -> CodeLines:
-    '''Generate *getProperty* method for Array'''
+# def generate_array_get_property(array: Array) -> CodeLines:
+#     '''Generate *getProperty* method for Array'''
 
-    prop = array.items
-    return CodeLines([
-        '',
-        'ConfigDB::Property getProperty(unsigned index) override',
-        '{',
-        [f'return getArrayProperty(index, ConfigDB::Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr});'],
-        '}',
-    ], [])
+#     prop = array.items
+#     return CodeLines([
+#         '',
+#         'ConfigDB::Property getProperty(unsigned index) override',
+#         '{',
+#         [f'return getArrayProperty(index, ConfigDB::Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr});'],
+#         '}',
+#     ], [])
 
 
 def generate_object_accessors(obj: Object) -> list:
@@ -491,6 +500,7 @@ def generate_object(obj: Object) -> CodeLines:
             *item_lines.header,
             *declare_templated_class(obj, 'Contained', [obj.items.typename]),
             [f'using {obj.classname}Template::{obj.classname}Template;'],
+            generate_typeinfo(obj),
             '};',
             '',
             f'class {obj.typename}: public Contained{obj.typename}',
@@ -534,7 +544,8 @@ def generate_object(obj: Object) -> CodeLines:
             *(f'{child.id}(*this)' for child in obj.contained_children)
         ])],
         '{',
-        '}'
+        '}',
+        generate_typeinfo(obj),
     ]]
 
     if not isinstance(obj.parent, Database):
@@ -546,18 +557,17 @@ def generate_object(obj: Object) -> CodeLines:
                 *(f'{child.id}(*this)' for child in obj.contained_children)
             ])],
             '{',
-            '}'
+            '}',
         ]]
 
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
-        lines.append(generate_array_get_property(obj))
+        # lines.append(generate_array_get_property(obj))
     elif isinstance(obj, ObjectArray):
         assert False
     else:
         lines.header += generate_object_accessors(obj)
         lines.append(generate_method_get_child_object(obj))
-        lines.append(generate_method_get_property(obj))
 
     # Contained children member variables
     lines.header += [
@@ -610,6 +620,8 @@ def generate_item_object(obj: Object) -> CodeLines:
 
     lines.header += [[
         '',
+        *generate_typeinfo(obj),
+        '',
         f'{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
             f'{obj.classname}Template(store, path)',
@@ -624,7 +636,6 @@ def generate_item_object(obj: Object) -> CodeLines:
     else:
         lines.header += generate_object_accessors(obj)
         lines.append(generate_method_get_child_object(obj))
-    lines.append(generate_method_get_property(obj))
 
     # Contained children member variables
     lines.header += [
