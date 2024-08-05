@@ -104,7 +104,7 @@ public:
 	virtual Property getProperty(unsigned index)
 	{
 		auto& typeinfo = getTypeinfo();
-		if(!typeinfo.propinfo) {
+		if(!typeinfo.propinfo || index >= typeinfo.propinfo->length()) {
 			return {};
 		}
 		auto propinfo = (*typeinfo.propinfo)[index];

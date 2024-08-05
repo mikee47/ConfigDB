@@ -94,10 +94,6 @@ template <class ClassType> class ObjectTemplate : public Object
 public:
 	using Object::Object;
 
-	// ObjectTemplate(Object& parent) : Object(parent)
-	// {
-	// }
-
 	const Typeinfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;

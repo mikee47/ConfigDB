@@ -93,6 +93,7 @@ class Object:
     store: 'Store' = None
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
+    is_item: bool = False # Is an ObjectArray item ?
 
     @property
     def database(self):
@@ -291,6 +292,7 @@ def load_config(filename: str) -> Database:
                 if items['type'] == 'object':
                     arr = ObjectArray(obj, key, store)
                     arr.items = Object(arr.parent, f'{arr.typename}Item', store)
+                    arr.items.is_item = True
                     parse(arr.items, items['properties'])
                 else:
                     arr = Array(obj, key, store)
@@ -401,29 +403,44 @@ def generate_method_get_child_object(obj: Store | Object) -> CodeLines:
 
 
 def generate_typeinfo(obj: Object) -> list:
-    '''Generate type information and *getProperty* method'''
+    '''Generate type information'''
 
-    objbase = len(obj.properties)
+    header = []
     if obj.children:
-        objinfo = [
+        header += [
+            '',
             'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::Typeinfo,',
             [f'&{child.typename}::typeinfo,' for child in obj.children],
             ')'
         ]
+        objstr = '&objinfo'
     else:
-        objinfo = []
+        objstr = 'nullptr'
 
-    return [
-        *objinfo,
+    if obj.properties:
+        header += [
+            '',
+            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::Propinfo,',
+            [
+                f'{{&{get_string(prop.name)}, {prop.default_fstr}, ConfigDB::Proptype::{prop.ptype.capitalize()}}},'
+                for prop in obj.properties
+            ],
+            ')'
+        ]
+        propstr = '&propinfo'
+    else:
+        propstr = 'nullptr'
+
+    namestr = 'nullptr' if obj.is_item else f'&{get_string(obj.name)}'
+
+    header += [
+        '',
         'static constexpr const ConfigDB::Typeinfo typeinfo PROGMEM {',
-        [
-            f'&{get_string(obj.name)},',
-            f'{"&objinfo" if objinfo else "nullptr"},',
-            'nullptr,',
-            f'ConfigDB::Proptype::{obj.classname}',
-        ],
+        [f'{namestr}, {objstr}, {propstr}, ConfigDB::Proptype::{obj.classname}'],
         '};',
     ]
+
+    return header;
 
 
 def generate_object_accessors(obj: Object) -> list:

@@ -108,7 +108,7 @@ public:
 		if(index >= array.size() || !propinfo) {
 			return {};
 		}
-		return {*this, index, (*propinfo)[0]};
+		return {*this, index, (*propinfo)[index]};
 	}
 };
 
