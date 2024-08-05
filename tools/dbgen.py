@@ -32,7 +32,7 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     ident = strings.get(value)
     if ident:
         return STRING_PREFIX + ident
-    ident = re.sub(r'[^A-Za-z0-9-]+', '_', value)[:MAX_STRINGID_LEN]
+    ident = re.sub(r'[^A-Za-z0-9]+', '_', value)[:MAX_STRINGID_LEN]
     if not ident:
         ident = str(len(strings))
     if ident in strings.values():
@@ -293,7 +293,7 @@ def load_config(filename: str) -> Database:
                 items = value['items']
                 if items['type'] == 'object':
                     arr = ObjectArray(obj, key, store)
-                    arr.items = Object(arr.parent, f'{arr.typename}Item', store)
+                    arr.items = Object(arr, f'{arr.typename}Item', store)
                     arr.items.is_item = True
                     parse(arr.items, items['properties'])
                 else:
@@ -535,7 +535,7 @@ def generate_object(obj: Object) -> CodeLines:
 
 
 def generate_contained_constructors(obj: Object) -> list:
-    return [
+    headers = [
         '',
         f'Contained{obj.typename}({obj.store.typename}& store):',
         [', '.join([
@@ -544,15 +544,22 @@ def generate_contained_constructors(obj: Object) -> list:
         ])],
         '{',
         '}',
-        '',
-        f'Contained{obj.typename}(ConfigDB::{obj.parent.base_class}& parent):',
-        [', '.join([
-            f'{obj.classname}Template(parent, {get_string(obj.name)})',
-            *(f'{child.id}(*this)' for child in obj.children)
-        ])],
-        '{',
-        '}',
     ]
+
+    if not isinstance(obj.parent, Store):
+        prefix = '' if obj.parent.is_item else 'Contained'
+        headers += [
+            '',
+            f'Contained{obj.typename}({prefix}{obj.parent.typename}& parent):',
+            [', '.join([
+                f'{obj.classname}Template(parent, {get_string(obj.name)})',
+                *(f'{child.id}(*this)' for child in obj.children)
+            ])],
+            '{',
+            '}',
+        ]
+
+    return headers
 
 
 def generate_outer_class(obj: Object) -> list:
@@ -588,8 +595,8 @@ def generate_item_object(obj: Object) -> CodeLines:
 
     lines = CodeLines(
         [
+            f'class Contained{obj.parent.typename};',
             *declare_templated_class(obj),
-            [f'using {obj.classname}Template::{obj.classname}Template;']
         ],
         []
     )
@@ -605,7 +612,23 @@ def generate_item_object(obj: Object) -> CodeLines:
         f'{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
             f'{obj.classname}Template(store, path)',
-            *(f'{child.id}(array.getStore())' for child in obj.children)
+            *(f'{child.id}(*this)' for child in obj.children)
+        ])],
+        '{',
+        '}',
+        '',
+        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}):',
+        [', '.join([
+            f'{obj.classname}Template({obj.parent.id})',
+            *(f'{child.id}(*this)' for child in obj.children)
+        ])],
+        '{',
+        '}',
+        '',
+        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& parent, unsigned index):',
+        [', '.join([
+            f'{obj.classname}Template(parent, index)',
+            *(f'{child.id}(*this)' for child in obj.children)
         ])],
         '{',
         '}',
@@ -620,7 +643,7 @@ def generate_item_object(obj: Object) -> CodeLines:
     # Contained children member variables
     lines.header += [
         '',
-        [f'{child.typename} {child.id};' for child in obj.children],
+        [f'Contained{child.typename} {child.id};' for child in obj.children],
         '};'
     ]
 

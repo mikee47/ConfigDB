@@ -28,7 +28,11 @@ Object::Object(Store& store, const String& path) : ConfigDB::Object(), object(st
 {
 }
 
-Object::Object(ObjectArray& parent, JsonObject obj) : ConfigDB::Object(parent), object(obj)
+Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
+{
+}
+
+Object::Object(ObjectArray& parent) : ConfigDB::Object(parent), object(parent.array.createNestedObject())
 {
 }
 

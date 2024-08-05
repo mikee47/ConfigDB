@@ -35,10 +35,6 @@ public:
 
 	explicit Object(Store& store, const String& path);
 
-	Object(Object& parent, JsonObject obj) : ConfigDB::Object(parent), object(obj)
-	{
-	}
-
 	Object(Object& parent, const String& name) : Object(parent)
 	{
 		object = parent.object[name];
@@ -47,7 +43,9 @@ public:
 		}
 	}
 
-	Object(ObjectArray& parent, JsonObject obj);
+	Object(ObjectArray& parent, unsigned index);
+
+	Object(ObjectArray& parent);
 
 	explicit operator bool() const
 	{

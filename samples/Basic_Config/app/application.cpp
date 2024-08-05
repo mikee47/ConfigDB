@@ -74,6 +74,10 @@ void readWriteValues(BasicConfig& db)
 		auto item = channels.addItem();
 		item.setName("Channel Name");
 		item.setPin(12);
+		item.details.setCurrentLimit(400);
+		item.notes.addItem(_F("This is a nice pin"));
+		item.notes.addItem(_F("It is useful"));
+		item.notes.commit();
 		item.commit();
 		// item = channels.getItem(0);
 		Serial << channels.getPath() << " = " << item << endl;

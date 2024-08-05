@@ -31,10 +31,6 @@ public:
 
 	explicit ObjectArray(Store& store, const String& path);
 
-	ObjectArray(Json::Object& parent, JsonArray array) : ConfigDB::ObjectArray(parent), array(array)
-	{
-	}
-
 	ObjectArray(Json::Object& parent, const String& name) : ObjectArray(parent)
 	{
 		array = parent.object[name];
@@ -94,7 +90,7 @@ public:
 		if(index >= array.size()) {
 			return nullptr;
 		}
-		return std::make_unique<Item>(*this, array[index]);
+		return std::make_unique<Item>(*this, index);
 	}
 
 	Item getItem(unsigned index)
@@ -112,7 +108,7 @@ public:
 
 	Item addItem()
 	{
-		return Item(*this, array.createNestedObject());
+		return Item(*this);
 	}
 };
 

@@ -31,10 +31,6 @@ public:
 
 	explicit Array(Store& store, const String& path);
 
-	Array(Json::Object& parent, JsonArray array) : ConfigDB::Array(parent), array(array)
-	{
-	}
-
 	Array(Json::Object& parent, const String& name) : Array(parent)
 	{
 		array = parent.object[name];
