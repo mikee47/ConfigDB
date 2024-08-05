@@ -32,4 +32,17 @@ Database& Object::getDatabase()
 	return getStore().getDatabase();
 }
 
+String Object::getPath() const
+{
+	String path;
+	if(parent) {
+		path += parent->getPath();
+	} else {
+		path += getStore().getName();
+	}
+	path += '.';
+	path += getName();
+	return path;
+}
+
 } // namespace ConfigDB

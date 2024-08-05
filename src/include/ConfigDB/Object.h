@@ -67,6 +67,11 @@ public:
 		return parent->getStore();
 	}
 
+	const Store& getStore() const
+	{
+		return const_cast<Object*>(this)->getStore();
+	}
+
 	Database& getDatabase();
 
 	const Database& getDatabase() const
@@ -122,10 +127,7 @@ public:
 		return typeinfo.name ? String(*typeinfo.name) : nullptr;
 	}
 
-	String getPath() const
-	{
-		return F("NOTIMPL");
-	}
+	String getPath() const;
 
 protected:
 	Object* parent{};
