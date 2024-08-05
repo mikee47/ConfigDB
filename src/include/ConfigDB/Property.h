@@ -49,7 +49,8 @@ struct Propinfo {
 };
 
 struct Typeinfo {
-	const FlashString* name;
+	const FlashString* name; ///< Within store, root always nullptr
+	const FlashString* path; ///< Relative to store
 	const FSTR::Vector<Typeinfo>* objinfo;
 	const FSTR::Array<Propinfo>* propinfo;
 	Proptype type;

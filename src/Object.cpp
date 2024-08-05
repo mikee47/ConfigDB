@@ -34,14 +34,22 @@ Database& Object::getDatabase()
 
 String Object::getPath() const
 {
-	String path;
-	if(parent) {
-		path += parent->getPath();
-	} else {
-		path += getStore().getName();
+	String relpath;
+	auto& typeinfo = getTypeinfo();
+	if(typeinfo.path) {
+		relpath += *typeinfo.path;
 	}
-	path += '.';
-	path += getName();
+	if(typeinfo.name) {
+		if(relpath) {
+			relpath += '.';
+		}
+		relpath += *typeinfo.name;
+	}
+	String path = getStore().getName();
+	if(relpath) {
+		path += '.';
+		path += relpath;
+	}
 	return path;
 }
 

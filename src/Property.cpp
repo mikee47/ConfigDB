@@ -63,7 +63,7 @@ std::unique_ptr<Object> Property::getObjectValue() const
 		return object->getObject(index);
 	}
 
-assert(false);
+	assert(false);
 
 	auto& typeinfo = object->getTypeinfo();
 	if(!typeinfo.objinfo) {

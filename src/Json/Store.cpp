@@ -91,7 +91,7 @@ size_t Store::printTo(Print& p) const
 
 	auto root = doc.as<JsonObjectConst>();
 
-	if(auto& name = getName()) {
+	if(name) {
 		n += p.print('"');
 		n += p.print(name);
 		n += p.print("\":");

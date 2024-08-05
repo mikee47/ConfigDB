@@ -44,6 +44,12 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     return STRING_PREFIX + ident
 
 
+def get_string_ptr(value: str, null_if_empty: bool = False) -> str:
+    if value is None or (null_if_empty and value == ''):
+        return 'nullptr'
+    return '&' + get_string(value)
+
+
 @dataclass
 class Property:
     name: str
@@ -80,10 +86,10 @@ class Property:
         if default is None:
             return 'nullptr'
         if self.ptype == 'string':
-            return '&' + get_string(default)
+            return get_string_ptr(default)
         if self.ptype == 'boolean':
-            return '&' + get_string('True' if default else 'False')
-        return '&' + get_string(str(default))
+            return get_string_ptr('True' if default else 'False')
+        return get_string_ptr(str(default))
 
 
 @dataclass
@@ -114,7 +120,7 @@ class Object:
 
     @property
     def id(self):
-        return make_identifier(self.name) if self.name else 'root';
+        return make_identifier(self.name) if self.name else 'root'
 
     @property
     def classname(self):
@@ -126,16 +132,12 @@ class Object:
 
     @property
     def path(self):
-        return join_path(self.parent.path, self.name) if self.parent else self.name
+        return join_path(self.parent.path, self.name) if not isinstance(self.parent, Store) else self.name
 
     @property
     def relative_path(self):
         path = self.path.removeprefix(self.store.path)
         return path.removeprefix('.')
-
-    @property
-    def contained_children(self):
-        return [child for child in self.children if child.store == self.store]
 
 
 @dataclass
@@ -418,7 +420,7 @@ def generate_typeinfo(obj: Object) -> list:
             '',
             'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::Propinfo,',
             [
-                f'{{&{get_string(prop.name)}, {prop.default_fstr}, ConfigDB::Proptype::{prop.ptype.capitalize()}}},'
+                f'{{{get_string_ptr(prop.name)}, {prop.default_fstr}, ConfigDB::Proptype::{prop.ptype.capitalize()}}},'
                 for prop in obj.properties
             ],
             ')'
@@ -434,12 +436,14 @@ def generate_typeinfo(obj: Object) -> list:
     else:
         propstr = 'nullptr'
 
-    namestr = 'nullptr' if obj.is_item else f'&{get_string(obj.name)}'
+    is_root = isinstance(obj.parent, Store)
+    namestr = 'nullptr' if obj.is_item or is_root else f'{get_string_ptr(obj.name, True)}'
+    pathstr = 'nullptr' if is_root else f'{get_string_ptr(obj.parent.relative_path, True)}'
 
     header += [
         '',
         'static constexpr const ConfigDB::Typeinfo typeinfo PROGMEM {',
-        [f'{namestr}, {objstr}, {propstr}, ConfigDB::Proptype::{obj.classname}'],
+        [f'{namestr}, {pathstr}, {objstr}, {propstr}, ConfigDB::Proptype::{obj.classname}'],
         '};',
     ]
 
@@ -494,8 +498,7 @@ def generate_object(obj: Object) -> CodeLines:
             generate_contained_constructors(obj),
             generate_typeinfo(obj),
             '};',
-            '',
-            generate_outer_class(obj)
+            *generate_outer_class(obj)
         ],
         item_lines.source)
 
@@ -522,7 +525,7 @@ def generate_object(obj: Object) -> CodeLines:
     # Contained children member variables
     lines.header += [
         '',
-        [f'Contained{child.typename} {child.id};' for child in obj.contained_children],
+        [f'Contained{child.typename} {child.id};' for child in obj.children],
         '};'
     ]
 
@@ -537,7 +540,7 @@ def generate_contained_constructors(obj: Object) -> list:
         f'Contained{obj.typename}({obj.store.typename}& store):',
         [', '.join([
             f'{obj.classname}Template(store, {get_string(obj.relative_path)})',
-            *(f'{child.id}(*this)' for child in obj.contained_children)
+            *(f'{child.id}(*this)' for child in obj.children)
         ])],
         '{',
         '}',
@@ -545,7 +548,7 @@ def generate_contained_constructors(obj: Object) -> list:
         f'Contained{obj.typename}(ConfigDB::{obj.parent.base_class}& parent):',
         [', '.join([
             f'{obj.classname}Template(parent, {get_string(obj.name)})',
-            *(f'{child.id}(*this)' for child in obj.contained_children)
+            *(f'{child.id}(*this)' for child in obj.children)
         ])],
         '{',
         '}',
@@ -602,7 +605,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         f'{obj.typename}({obj.store.typename}& store, const String& path):',
         [', '.join([
             f'{obj.classname}Template(store, path)',
-            *(f'{child.id}(array.getStore())' for child in obj.contained_children)
+            *(f'{child.id}(array.getStore())' for child in obj.children)
         ])],
         '{',
         '}',
@@ -617,7 +620,7 @@ def generate_item_object(obj: Object) -> CodeLines:
     # Contained children member variables
     lines.header += [
         '',
-        [f'{child.typename} {child.id};' for child in obj.contained_children],
+        [f'{child.typename} {child.id};' for child in obj.children],
         '};'
     ]
 
