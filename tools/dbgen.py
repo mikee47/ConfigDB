@@ -382,11 +382,6 @@ def generate_method_get_child_object(obj: Store | Object) -> CodeLines:
             [f'return {len(obj.children)};'],
             '}',
             '',
-            'std::unique_ptr<ConfigDB::Object> getObject(const String& key) override',
-            '{',
-            ['return nullptr;'],
-            '}',
-            '',
             'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override',
             '{',
             [
@@ -417,6 +412,7 @@ def generate_typeinfo(obj: Object) -> list:
     else:
         objstr = 'nullptr'
 
+    propstr = '&propinfo'
     if obj.properties:
         header += [
             '',
@@ -427,7 +423,14 @@ def generate_typeinfo(obj: Object) -> list:
             ],
             ')'
         ]
-        propstr = '&propinfo'
+    elif isinstance(obj, Array):
+        prop = obj.items
+        header += [
+            '',
+            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::Propinfo,',
+            [f'{{nullptr, {prop.default_fstr}, ConfigDB::Proptype::{prop.ptype.capitalize()}}}'],
+            ')'
+        ]
     else:
         propstr = 'nullptr'
 

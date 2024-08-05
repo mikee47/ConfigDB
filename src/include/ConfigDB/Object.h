@@ -80,11 +80,6 @@ public:
 	virtual unsigned getObjectCount() const = 0;
 
 	/**
-	 * @brief Get child object by key
-	 */
-	virtual std::unique_ptr<Object> getObject(const String& key) = 0;
-
-	/**
 	 * @brief Get child object by index
 	 */
 	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;

@@ -147,7 +147,7 @@ void printItem(const String& tag, unsigned indent, const String& type, const Str
 
 void printObject(const String& tag, unsigned indent, ConfigDB::Object& obj)
 {
-	printItem(tag, indent, F("Object"), obj.getName());
+	printItem(tag, indent, toString(obj.getTypeinfo().type), obj.getName());
 	for(unsigned i = 0; auto prop = obj.getProperty(i); ++i) {
 		String value;
 		value += toString(prop.getType());

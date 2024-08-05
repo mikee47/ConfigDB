@@ -53,6 +53,12 @@ struct Typeinfo {
 	const FSTR::Vector<Typeinfo>* objinfo;
 	const FSTR::Array<Propinfo>* propinfo;
 	Proptype type;
+
+	static const Typeinfo& empty()
+	{
+		static const Typeinfo PROGMEM emptyTypeinfo{};
+		return emptyTypeinfo;
+	}
 };
 
 /**
@@ -81,10 +87,7 @@ public:
 
 	String getName() const
 	{
-		if(info.name) {
-			return *info.name;
-		}
-		return String(index);
+		return info.name ? String(*info.name) : nullptr;
 	}
 
 	unsigned getIndex() const

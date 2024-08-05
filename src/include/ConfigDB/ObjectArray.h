@@ -32,11 +32,6 @@ public:
 	{
 	}
 
-	std::unique_ptr<Object> getObject(const String& key) override
-	{
-		return nullptr;
-	}
-
 	unsigned getPropertyCount() const override
 	{
 		return 0;

@@ -37,11 +37,6 @@ public:
 		return 0;
 	}
 
-	std::unique_ptr<Object> getObject(const String& key) override
-	{
-		return nullptr;
-	}
-
 	std::unique_ptr<Object> getObject(unsigned index) override
 	{
 		return nullptr;

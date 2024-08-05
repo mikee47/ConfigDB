@@ -58,7 +58,25 @@ std::unique_ptr<Object> Property::getObjectValue() const
 	if(!object) {
 		return nullptr;
 	}
-	return info.name ? object->getObject(*info.name) : object->getObject(index);
+
+	if(!info.name) {
+		return object->getObject(index);
+	}
+
+assert(false);
+
+	auto& typeinfo = object->getTypeinfo();
+	if(!typeinfo.objinfo) {
+		return nullptr;
+	}
+	unsigned i = 0;
+	for(auto& obj : *typeinfo.objinfo) {
+		if(obj.name == info.name) {
+			return object->getObject(i);
+		}
+		++i;
+	}
+	return nullptr;
 }
 
 String Property::getJsonValue() const
