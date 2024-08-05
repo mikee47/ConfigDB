@@ -45,18 +45,18 @@ void readWriteValues(BasicConfig& db)
 	}
 
 	{
-		BasicConfig::Root::General general(db);
+		BasicConfig::General general(db);
 		general.setDeviceName("Test Device");
 		Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
 		general.commit();
 	}
 
 	{
-		BasicConfig::Root::Color color(db);
+		BasicConfig::Color color(db);
 		color.colortemp.setWw(12);
 		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
-		BasicConfig::Root::Color::Brightness bri(db);
+		BasicConfig::Color::Brightness bri(db);
 		bri.setBlue(12);
 		Serial << bri.getPath() << ".Blue = " << bri.getBlue() << endl;
 
@@ -64,13 +64,13 @@ void readWriteValues(BasicConfig& db)
 	}
 
 	{
-		BasicConfig::Root::Events events(db);
+		BasicConfig::Events events(db);
 		events.setColorMinintervalMs(1200);
 		events.commit();
 	}
 
 	{
-		BasicConfig::Root::General::Channels channels(db);
+		BasicConfig::General::Channels channels(db);
 		auto item = channels.addItem();
 		item.setName("Channel Name");
 		item.setPin(12);
@@ -80,7 +80,7 @@ void readWriteValues(BasicConfig& db)
 	}
 
 	{
-		BasicConfig::Root::General::SupportedColorModels models(db);
+		BasicConfig::General::SupportedColorModels models(db);
 		models.addItem("New Model");
 		models.commit();
 		Serial << models.getPath() << " = " << models << endl;
@@ -127,8 +127,6 @@ void stream(BasicConfig& db)
 	Serial.copyFrom(&stream);
 }
 
-#if 0
-
 void printItem(const String& tag, unsigned indent, const String& type, const String& name,
 			   const String& value = nullptr)
 {
@@ -173,13 +171,9 @@ void listProperties(BasicConfig& db)
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
 		String tag(i);
 		printItem(tag, 1, F("Store"), store->getName());
-		for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
-			printObject(tag + '.' + j, 2, *obj);
-		}
+		printObject(tag + ".0", 2, *store->getObject());
 	}
 }
-
-#endif
 
 } // namespace
 
@@ -202,7 +196,7 @@ void init()
 	readWriteValues(db);
 	inspect(db);
 	stream(db);
-	// listProperties(db);
+	listProperties(db);
 	// checkPerformance(db);
 
 	Serial << endl << endl;

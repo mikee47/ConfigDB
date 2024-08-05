@@ -6,7 +6,7 @@ namespace
 {
 void __noinline testSetValue(BasicConfig& db, int value, bool commit)
 {
-	BasicConfig::Root::Color::Brightness bri(db);
+	BasicConfig::Color::Brightness bri(db);
 	bri.setRed(value);
 	bri.setGreen(value);
 	bri.setBlue(value);
@@ -19,7 +19,7 @@ void __noinline testSetValue(BasicConfig& db, int value, bool commit)
 
 void __noinline testGetValueSimple(BasicConfig& db)
 {
-	BasicConfig::Root::Color::Brightness bri(db);
+	BasicConfig::Color::Brightness bri(db);
 	bri.getRed();
 	bri.getGreen();
 	bri.getBlue();
@@ -29,7 +29,7 @@ void __noinline testGetValueSimple(BasicConfig& db)
 
 String __noinline testGetValueBuildString(BasicConfig& db, int value)
 {
-	BasicConfig::Root::Color::Brightness bri(db);
+	BasicConfig::Color::Brightness bri(db);
 	String s;
 	s += _F("read:");
 	s += value;
@@ -49,7 +49,7 @@ String __noinline testGetValueBuildString(BasicConfig& db, int value)
 
 void __noinline testGetValuePrint(BasicConfig& db, int value, Print& p)
 {
-	BasicConfig::Root::Color::Brightness bri(db);
+	BasicConfig::Color::Brightness bri(db);
 	p << _F("read:") << value << _F("{r:") << bri.getRed() << _F(",g:") << bri.getGreen() << _F(",b:") << bri.getBlue()
 	  << _F(",cw:") << bri.getCw() << _F(",ww:") << bri.getWw() << _F("}") << endl;
 }
@@ -69,7 +69,7 @@ void checkPerformance(BasicConfig& db)
 	 * TODO: Database could cache the last used store, perhaps only closing it
 	 *  	 when another is opened or a brief timeout elapses.
 	 */
-	BasicConfig::Root::Color color(db);
+	BasicConfig::Color color(db);
 
 	Serial << _F("Evaluating setValue / commit ...") << endl;
 	{

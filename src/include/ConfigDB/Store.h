@@ -67,6 +67,8 @@ public:
 
 	virtual bool commit() = 0;
 
+	virtual std::unique_ptr<Object> getObject() = 0;
+
 protected:
 	Database& db;
 	String name;

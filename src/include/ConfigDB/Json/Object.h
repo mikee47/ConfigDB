@@ -39,6 +39,14 @@ public:
 	{
 	}
 
+	Object(Object& parent, const String& name) : Object(parent)
+	{
+		object = parent.object[name];
+		if(object.isNull()) {
+			object = parent.object.createNestedObject(name);
+		}
+	}
+
 	Object(ObjectArray& parent, JsonObject obj);
 
 	explicit operator bool() const
@@ -86,9 +94,9 @@ template <class ClassType> class ObjectTemplate : public Object
 public:
 	using Object::Object;
 
-	ObjectTemplate(Object& parent) : Object(parent)
-	{
-	}
+	// ObjectTemplate(Object& parent) : Object(parent)
+	// {
+	// }
 
 	const Typeinfo& getTypeinfo() const override
 	{

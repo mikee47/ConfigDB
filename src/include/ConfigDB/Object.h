@@ -123,7 +123,8 @@ public:
 
 	String getName() const
 	{
-		return F("NOTIMPL");
+		auto& typeinfo = getTypeinfo();
+		return typeinfo.name ? String(*typeinfo.name) : nullptr;
 	}
 
 	String getPath() const

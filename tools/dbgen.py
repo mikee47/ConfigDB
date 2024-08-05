@@ -260,8 +260,8 @@ def load_config(filename: str) -> Database:
         raise RuntimeError('Database requires root "store" value')
     db.store = Store(db, '', store_ns=make_typename(store_ns))
     db.stores.append(db.store)
-    root = Object(db, '', db.store)
-    db.children.append(root)
+    root = Object(db.store, '', db.store)
+    db.store.children.append(root)
 
     def parse(obj: Object, properties: dict):
         obj_root = obj
@@ -280,7 +280,7 @@ def load_config(filename: str) -> Database:
                     raise ValueError(f'{key} cannot have "store", not a root object')
                 store = Store(db, key, store_ns=make_typename(store_ns))
                 db.stores.append(store)
-                obj = root
+                obj = store
             else:
                 store = obj.store
             if prop.ptype == 'object':
@@ -310,7 +310,7 @@ def load_config(filename: str) -> Database:
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
     # Find out what stores are in use
-    store_namespaces = {child.store.store_ns for child in db.children}
+    store_namespaces = {store.store_ns for store in db.stores}
     store_namespaces.add(db.store.store_ns)
 
     lines = CodeLines(
@@ -327,12 +327,18 @@ def generate_database(db: Database) -> CodeLines:
                 f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
                 '{',
                 '}',
+                '',
+                'std::unique_ptr<ConfigDB::Object> getObject() override',
+                '{',
+                [f'return std::make_unique<{store.children[0].typename}>(*this);'],
+                '}',
             ],
             '};',
         ]]
 
-    for child in db.children:
-        lines.append(generate_object(child))
+    for store in db.stores:
+        for child in store.children:
+            lines.append(generate_object(child))
 
     lines.header += [
         [
@@ -401,57 +407,26 @@ def generate_typeinfo(obj: Object) -> list:
     '''Generate type information and *getProperty* method'''
 
     objbase = len(obj.properties)
+    if obj.children:
+        objinfo = [
+            'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::Typeinfo,',
+            [f'&{child.typename}::typeinfo,' for child in obj.children],
+            ')'
+        ]
+    else:
+        objinfo = []
+
     return [
-        'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::Typeinfo,',
-        [f'&{child.typename}::typeinfo,' for child in obj.children],
-        ')',
+        *objinfo,
         'static constexpr const ConfigDB::Typeinfo typeinfo PROGMEM {',
         [
             f'&{get_string(obj.name)},',
-            '&objinfo,',
+            f'{"&objinfo" if objinfo else "nullptr"},',
             'nullptr,',
-            f'ConfigDB::Property::Type::{obj.classname}',
+            f'ConfigDB::Proptype::{obj.classname}',
         ],
         '};',
-        # '',
-        # 'unsigned getPropertyCount() const override',
-        # '{',
-        # [f'return {len(obj.children) + len(obj.properties)};'],
-        # '}',
-        # '',
-        # 'ConfigDB::Property getProperty(unsigned index) override',
-        # '{',
-        # [
-        #     'using Type = ConfigDB::Property::Type;',
-        #     'switch(index) {',
-        # ],
-        # [
-        #     *(f'case {i}: return {{*this, {get_string(prop.name)}, Type::{prop.ptype.capitalize()}, {prop.default_fstr}}};'
-        #     for i, prop in enumerate(obj.properties))
-        # ],
-        # [
-        #     *(f'case {objbase+i}: return {{*this, {get_string(child.name)}, Type::{obj.classname}, nullptr}};'
-        #     for i, child in enumerate(obj.children))
-        # ],
-        # [
-        #     'default: return {};',
-        #     '}',
-        # ],
-        # '}',
     ]
-
-
-# def generate_array_get_property(array: Array) -> CodeLines:
-#     '''Generate *getProperty* method for Array'''
-
-#     prop = array.items
-#     return CodeLines([
-#         '',
-#         'ConfigDB::Property getProperty(unsigned index) override',
-#         '{',
-#         [f'return getArrayProperty(index, ConfigDB::Property::Type::{prop.ptype.capitalize()}, {prop.default_fstr});'],
-#         '}',
-#     ], [])
 
 
 def generate_object_accessors(obj: Object) -> list:
@@ -499,7 +474,18 @@ def generate_object(obj: Object) -> CodeLines:
         return CodeLines([
             *item_lines.header,
             *declare_templated_class(obj, 'Contained', [obj.items.typename]),
-            [f'using {obj.classname}Template::{obj.classname}Template;'],
+            [
+                f'Contained{obj.typename}({obj.store.typename}& store):',
+                [f'{obj.classname}Template(store, {get_string(obj.relative_path)})'],
+                '{',
+                '}',
+                '',
+                f'Contained{obj.typename}(Contained{obj.parent.typename}& parent):',
+                [f'{obj.classname}Template(parent, {get_string(obj.name)})'],
+                '{',
+                '}',
+            ],
+            '',
             generate_typeinfo(obj),
             '};',
             '',
@@ -507,12 +493,13 @@ def generate_object(obj: Object) -> CodeLines:
             '{',
             'public:',
             [
+                f'using Contained{obj.typename}::Contained{obj.typename};',
+                '',
                 f'{obj.typename}({obj.database.typename}& db):',
-                [', '.join([
-                    f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.relative_path)})',
-                    f'store({obj.store.typename}::open(db))',
-                    *(f'{child.id}(*this)' for child in obj.contained_children),
-                ])],
+                [
+                    f'Contained{obj.typename}(*{obj.store.typename}::open(db)),',
+                    f'store({obj.store.typename}::open(db))'
+                ],
                 '{',
                 '}',
                 '',
@@ -538,27 +525,23 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.header += [[
         '',
-        f'Contained{obj.typename}({obj.store.typename}& store, const String& path):',
+        f'Contained{obj.typename}({obj.store.typename}& store):',
         [', '.join([
-            f'{obj.classname}Template(store, path)',
+            f'{obj.classname}Template(store, {get_string(obj.relative_path)})',
+            *(f'{child.id}(*this)' for child in obj.contained_children)
+        ])],
+        '{',
+        '}',
+        '',
+        f'Contained{obj.typename}(ConfigDB::{obj.parent.base_class}& parent):',
+        [', '.join([
+            f'{obj.classname}Template(parent, {get_string(obj.name)})',
             *(f'{child.id}(*this)' for child in obj.contained_children)
         ])],
         '{',
         '}',
         generate_typeinfo(obj),
     ]]
-
-    if not isinstance(obj.parent, Database):
-        lines.header += [[
-            '',
-            f'Contained{obj.typename}({obj.parent.classname}& parent):',
-            [', '.join([
-                f'{obj.classname}Template(parent)',
-                *(f'{child.id}(*this)' for child in obj.contained_children)
-            ])],
-            '{',
-            '}',
-        ]]
 
     if isinstance(obj, Array):
         lines.append(generate_array_accessors(obj))
@@ -582,11 +565,13 @@ def generate_object(obj: Object) -> CodeLines:
         '{',
         'public:',
         [
+            f'using Contained{obj.typename}::Contained{obj.typename};',
+            '',
             f'{obj.typename}({obj.database.typename}& db):',
-            [', '.join([
-                f'Contained{obj.typename}(*{obj.store.typename}::open(db), {get_string(obj.relative_path)})',
+            [
+                f'Contained{obj.typename}(*{obj.store.typename}::open(db)),',
                 f'store({obj.store.typename}::open(db))'
-            ])],
+            ],
             '{',
             '}',
             '',

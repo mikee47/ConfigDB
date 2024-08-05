@@ -35,6 +35,14 @@ public:
 	{
 	}
 
+	Array(Json::Object& parent, const String& name) : Array(parent)
+	{
+		array = parent.object[name];
+		if(array.isNull()) {
+			array = parent.object.createNestedArray(name);
+		}
+	}
+
 	String getStringValue(const String& key) const override
 	{
 		return nullptr;
