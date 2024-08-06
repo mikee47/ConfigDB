@@ -91,17 +91,13 @@ public:
 	{
 		auto inst = store.lock();
 		if(!inst) {
-			// Release database lock to avoid opening multiple stores at once
-			db.setActiveStore(nullptr);
 			inst = std::make_shared<ClassType>(db);
 			store = inst;
 		}
-		// Keep a lock on this new store to keep it in scope
-		db.setActiveStore(inst);
 		return inst;
 	}
 
-private:
+protected:
 	static std::weak_ptr<ClassType> store;
 };
 

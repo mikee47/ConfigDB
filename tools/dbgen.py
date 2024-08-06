@@ -340,7 +340,7 @@ def generate_database(db: Database) -> CodeLines:
                 '',
                 'std::unique_ptr<ConfigDB::Object> getObject() override',
                 '{',
-                [f'return std::make_unique<{store.children[0].typename}>(*this);'],
+                [f'return std::make_unique<{store.children[0].typename}>(store.lock());'],
                 '}',
             ],
             '};',
@@ -588,13 +588,11 @@ def generate_outer_class(obj: Object) -> list:
         '{',
         'public:',
         [
-            f'using Contained{obj.typename}::Contained{obj.typename};',
+            f'{obj.typename}(std::shared_ptr<{obj.store.typename}> store): Contained{obj.typename}(*store), store(store)',
+            '{',
+            '}',
             '',
-            f'{obj.typename}({obj.database.typename}& db):',
-            [
-                f'Contained{obj.typename}(*{obj.store.typename}::open(db)),',
-                f'store({obj.store.typename}::open(db))'
-            ],
+            f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
             '{',
             '}',
             '',
@@ -604,6 +602,7 @@ def generate_outer_class(obj: Object) -> list:
             '}',
         ],
         '',
+        'private:',
         [f'std::shared_ptr<{obj.store.typename}> store;'],
         '};'
     ]
