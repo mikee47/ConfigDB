@@ -226,6 +226,11 @@ def make_string(s: str):
     return f'"{s.replace('"', '\\"')}"'
 
 
+def make_static_initializer(entries: list, term_str: str = '') -> list:
+    '''Create a static structured initialiser list from given items'''
+    return [ '{', [e + ',' for e in entries], '}' + term_str]
+
+
 def declare_templated_class(obj: Object, prefix: str = '', tparams: list = []) -> list[str]:
     return [
         '',
@@ -392,7 +397,7 @@ def generate_method_get_child_object(obj: Store | Object) -> CodeLines:
                     for i, child in enumerate(obj.children)],
                 ['default: return nullptr;'],
                 '}',
-            ],
+            ] if obj.children else ['return nullptr;'],
             '}'
         ],
         []
@@ -414,15 +419,17 @@ def generate_typeinfo(obj: Object) -> list:
     else:
         objstr = 'nullptr'
 
+
     propstr = '&propinfo'
     if obj.properties:
         header += [
             '',
             'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::Propinfo,',
-            [
-                f'{{{get_string_ptr(prop.name)}, {prop.default_fstr}, ConfigDB::Proptype::{prop.ptype.capitalize()}}},'
-                for prop in obj.properties
-            ],
+            *(make_static_initializer([
+                get_string_ptr(prop.name),
+                prop.default_fstr,
+                f'ConfigDB::Proptype::{prop.ptype.capitalize()}'
+            ], ',') for prop in obj.properties),
             ')'
         ]
     elif isinstance(obj, Array):
@@ -430,8 +437,11 @@ def generate_typeinfo(obj: Object) -> list:
         header += [
             '',
             'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::Propinfo,',
-            [f'{{nullptr, {prop.default_fstr}, ConfigDB::Proptype::{prop.ptype.capitalize()}}}'],
-            ')'
+            make_static_initializer([
+                'nullptr',
+                prop.default_fstr,
+                f'ConfigDB::Proptype::{prop.ptype.capitalize()}'
+            ], ')')
         ]
     else:
         propstr = 'nullptr'
@@ -442,9 +452,14 @@ def generate_typeinfo(obj: Object) -> list:
 
     header += [
         '',
-        'static constexpr const ConfigDB::Typeinfo typeinfo PROGMEM {',
-        [f'{namestr}, {pathstr}, {objstr}, {propstr}, ConfigDB::Proptype::{obj.classname}'],
-        '};',
+        'static constexpr const ConfigDB::Typeinfo typeinfo PROGMEM',
+        *make_static_initializer([
+            namestr,
+            pathstr,
+            objstr,
+            propstr,
+            f'ConfigDB::Proptype::{obj.classname}'
+        ], ';')
     ]
 
     return header;
@@ -523,13 +538,16 @@ def generate_object(obj: Object) -> CodeLines:
         lines.append(generate_method_get_child_object(obj))
 
     # Contained children member variables
-    lines.header += [
-        '',
-        [f'Contained{child.typename} {child.id};' for child in obj.children],
-        '};'
-    ]
+    if obj.children:
+        lines.header += [
+            '',
+            [f'Contained{child.typename} {child.id};' for child in obj.children],
+        ]
 
-    lines.header += generate_outer_class(obj)
+    lines.header += [
+        '};',
+        *generate_outer_class(obj)
+    ]
 
     return lines
 
@@ -537,11 +555,10 @@ def generate_object(obj: Object) -> CodeLines:
 def generate_contained_constructors(obj: Object) -> list:
     headers = [
         '',
-        f'Contained{obj.typename}({obj.store.typename}& store):',
-        [', '.join([
+        f'Contained{obj.typename}({obj.store.typename}& store): ' + ', '.join([
             f'{obj.classname}Template(store, {get_string(obj.relative_path)})',
             *(f'{child.id}(*this)' for child in obj.children)
-        ])],
+        ]),
         '{',
         '}',
     ]
@@ -550,11 +567,10 @@ def generate_contained_constructors(obj: Object) -> list:
         prefix = '' if obj.parent.is_item else 'Contained'
         headers += [
             '',
-            f'Contained{obj.typename}({prefix}{obj.parent.typename}& parent):',
-            [', '.join([
+            f'Contained{obj.typename}({prefix}{obj.parent.typename}& parent): ' + ', '.join([
                 f'{obj.classname}Template(parent, {get_string(obj.name)})',
                 *(f'{child.id}(*this)' for child in obj.children)
-            ])],
+            ]),
             '{',
             '}',
         ]
