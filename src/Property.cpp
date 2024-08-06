@@ -41,16 +41,8 @@ String Property::getValue() const
 		return nullptr;
 	}
 
-	String value;
-	if(info.name) {
-		value = object->getStoredValue(*info.name);
-	} else {
-		value = object->getStoredArrayValue(index);
-	}
-	if(!value && info.defaultValue) {
-		value = *info.defaultValue;
-	}
-	return value;
+	String value = isIndexed() ? object->getStoredArrayValue(index) : object->getStoredValue(info.getName());
+	return value ?: info.getDefaultValue();
 }
 
 String Property::getJsonValue() const
@@ -62,7 +54,7 @@ String Property::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	switch(info.type) {
+	switch(info.getType()) {
 	case Type::Integer:
 	case Type::Boolean:
 		return value;

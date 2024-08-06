@@ -43,10 +43,33 @@ enum class PropertyType {
  * @brief Property metadata
  */
 struct PropertyInfo {
+	// Don't access these directly!
 	const FlashString* name;
 	const FlashString* defaultValue;
 	PropertyType type;
+
+	String getName() const
+	{
+		return name ? String(*name) : nullptr;
+	}
+
+	String getDefaultValue() const
+	{
+		return defaultValue ? String(*defaultValue) : nullptr;
+	}
+
+	PropertyType getType() const
+	{
+		return FSTR::readValue(&type);
+	}
+
+	explicit operator bool() const
+	{
+		return name != nullptr;
+	}
 };
+
+static constexpr const PropertyInfo emptyPropertyInfo{};
 
 /**
  * @brief Manages a key/value pair stored in an object
@@ -54,27 +77,24 @@ struct PropertyInfo {
 class Property
 {
 public:
-	Property() = default;
+	Property() : info(emptyPropertyInfo)
+	{
+	}
 
 	using Type = PropertyType;
 
 	/**
 	 * @brief Property accessed by key
 	 */
-	Property(Object& object, const PropertyInfo& info) : object(&object), info(info)
+	Property(Object& object, const PropertyInfo& info) : info(info), object(&object)
 	{
 	}
 
 	/**
 	 * @brief Property accessed by index
 	 */
-	Property(Object& object, unsigned index, const PropertyInfo& info) : object(&object), info(info), index(index)
+	Property(Object& object, unsigned index, const PropertyInfo& info) : info(info), object(&object), index(index)
 	{
-	}
-
-	String getName() const
-	{
-		return info.name ? String(*info.name) : nullptr;
 	}
 
 	unsigned getIndex() const
@@ -88,23 +108,10 @@ public:
 	 */
 	bool isIndexed() const
 	{
-		return info.name != nullptr;
-	}
-
-	String getDefaultStringValue() const
-	{
-		if(info.defaultValue) {
-			return *info.defaultValue;
-		}
-		return nullptr;
+		return index >= 0;
 	}
 
 	String getValue() const;
-
-	Type getType() const
-	{
-		return info.type;
-	}
 
 	explicit operator bool() const
 	{
@@ -113,10 +120,11 @@ public:
 
 	String getJsonValue() const;
 
+	const PropertyInfo& info;
+
 private:
 	Object* object{};
-	PropertyInfo info{};
-	uint16_t index{};
+	int index{-1};
 };
 
 } // namespace ConfigDB

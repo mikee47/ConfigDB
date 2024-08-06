@@ -52,12 +52,12 @@ public:
 
 	Property getProperty(unsigned index) override
 	{
-		auto propcount = getPropertyCount();
+		// Property info contains exactly one element
 		auto propinfo = getTypeinfo().propinfo;
-		if(index >= propcount || !propinfo) {
-			return {};
+		if(index < getPropertyCount() && propinfo) {
+			return {*this, index, *propinfo->data()};
 		}
-		return {*this, index, (*propinfo)[0]};
+		return {};
 	}
 };
 

@@ -39,6 +39,7 @@ enum class ObjectType {
 };
 
 struct ObjectInfo {
+	// DO NOT access these directly!
 	const FlashString* name; ///< Within store, root always nullptr
 	const FlashString* path; ///< Relative to store
 	const FSTR::Vector<ObjectInfo>* objinfo;
@@ -47,8 +48,23 @@ struct ObjectInfo {
 
 	static const ObjectInfo& empty()
 	{
-		static const ObjectInfo PROGMEM emptyTypeinfo{};
-		return emptyTypeinfo;
+		static const ObjectInfo PROGMEM emptyInfo{};
+		return emptyInfo;
+	}
+
+	String getName() const
+	{
+		return name ? String(*name) : nullptr;
+	}
+
+	String getPath() const
+	{
+		return path ? String(*path) : nullptr;
+	}
+
+	ObjectType getType() const
+	{
+		return FSTR::readValue(&type);
 	}
 };
 
@@ -135,8 +151,7 @@ public:
 		if(!typeinfo.propinfo || index >= typeinfo.propinfo->length()) {
 			return {};
 		}
-		auto propinfo = (*typeinfo.propinfo)[index];
-		return {*this, propinfo};
+		return {*this, *(typeinfo.propinfo->data() + index)};
 	}
 
 	/**

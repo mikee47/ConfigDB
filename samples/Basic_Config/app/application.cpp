@@ -122,13 +122,13 @@ void printItem(const String& tag, unsigned indent, const String& type, const Str
 
 void printObject(const String& tag, unsigned indent, ConfigDB::Object& obj)
 {
-	printItem(tag, indent, toString(obj.getTypeinfo().type), obj.getName());
+	printItem(tag, indent, toString(obj.getTypeinfo().getType()), obj.getName());
 	for(unsigned i = 0; auto prop = obj.getProperty(i); ++i) {
 		String value;
-		value += toString(prop.getType());
+		value += toString(prop.info.getType());
 		value += " = ";
 		value += prop.getJsonValue();
-		printItem(tag + '.' + i, indent + 1, F("Property"), prop.getName(), value);
+		printItem(tag + '.' + i, indent + 1, F("Property"), prop.info.getName(), value);
 	}
 	for(unsigned j = 0; auto child = obj.getObject(j); ++j) {
 		printObject(tag + '.' + j, indent + 1, *child);
