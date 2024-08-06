@@ -382,16 +382,11 @@ def generate_database(db: Database) -> CodeLines:
     return lines
 
 
-def generate_method_get_child_object(obj: Store | Object) -> CodeLines:
+def generate_method_get_child_object(obj: Object) -> list:
     '''Generate *getChildObject* method'''
 
-    return CodeLines(
-        [
-            '',
-        	'unsigned getObjectCount() const override',
-            '{',
-            [f'return {len(obj.children)};'],
-            '}',
+    if obj.children:
+        return [
             '',
             'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override',
             '{',
@@ -401,11 +396,14 @@ def generate_method_get_child_object(obj: Store | Object) -> CodeLines:
                     for i, child in enumerate(obj.children)],
                 ['default: return nullptr;'],
                 '}',
-            ] if obj.children else ['return nullptr;'],
+            ],
             '}'
-        ],
-        []
-    )
+        ]
+
+    return [
+        '',
+        'std::unique_ptr<ConfigDB::Object> getObject(unsigned) override { return nullptr; }',
+    ]
 
 
 def generate_typeinfo(obj: Object) -> list:
@@ -468,30 +466,28 @@ def generate_typeinfo(obj: Object) -> list:
     return header;
 
 
-def generate_object_accessors(obj: Object) -> list:
+def generate_property_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
-    return [
-        *((
-            '',
-            f'{prop.ctype} get{prop.typename}() const',
-            '{',
-            [f'return getValue<{prop.ctype}>({get_string(prop.name)}, {prop.default_str});'],
-            '}',
-            '',
-            f'bool set{prop.typename}(const {prop.ctype}& value)',
-            '{',
-            [f'return setValue({get_string(prop.name)}, value);'],
-            '}'
-            ) for prop in obj.properties)
-        ]
+    return [(
+        '',
+        f'{prop.ctype} get{prop.typename}() const',
+        '{',
+        [f'return getValue<{prop.ctype}>({get_string(prop.name)}, {prop.default_str});'],
+        '}',
+        '',
+        f'bool set{prop.typename}(const {prop.ctype}& value)',
+        '{',
+        [f'return setValue({get_string(prop.name)}, value);'],
+        '}'
+        ) for prop in obj.properties]
 
 
-def generate_array_accessors(arr: Array) -> CodeLines:
+def generate_array_accessors(arr: Array) -> list:
     '''Generate typed get/set methods for each property'''
 
     prop = arr.items
-    return CodeLines([
+    return [
         '',
         f'{prop.ctype} getItem(unsigned index) const',
         '{',
@@ -502,7 +498,7 @@ def generate_array_accessors(arr: Array) -> CodeLines:
         '{',
         [f'return Array::setItem(index, value);'],
         '}'
-    ], [])
+    ]
 
 
 def generate_object(obj: Object) -> CodeLines:
@@ -535,10 +531,12 @@ def generate_object(obj: Object) -> CodeLines:
     ]
 
     if isinstance(obj, Array):
-        lines.append(generate_array_accessors(obj))
+        lines.header += generate_array_accessors(obj)
     else:
-        lines.header += generate_object_accessors(obj)
-        lines.append(generate_method_get_child_object(obj))
+        lines.header += [
+            *generate_property_accessors(obj),
+            generate_method_get_child_object(obj)
+        ]
 
     # Contained children member variables
     if obj.children:
@@ -639,10 +637,12 @@ def generate_item_object(obj: Object) -> CodeLines:
     ]]
 
     if isinstance(obj, Array):
-        lines.append(generate_array_accessors(obj))
+        lines.header += generate_array_accessors(obj)
     else:
-        lines.header += generate_object_accessors(obj)
-        lines.append(generate_method_get_child_object(obj))
+        lines.header += [
+            *generate_property_accessors(obj),
+            generate_method_get_child_object(obj)
+        ]
 
     # Contained children member variables
     lines.header += [

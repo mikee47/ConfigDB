@@ -35,12 +35,12 @@ public:
 	{
 	}
 
-	String getStoredValue(const String& key) const override
+	String getStoredValue(const String&) const override
 	{
 		return nullptr;
 	}
 
-	String getStoredArrayValue(unsigned index) const override
+	String getStoredArrayValue(unsigned) const override
 	{
 		return nullptr;
 	}
@@ -50,7 +50,7 @@ public:
 		return 0;
 	}
 
-	Property getProperty(unsigned index)
+	Property getProperty(unsigned)
 	{
 		return {};
 	}

@@ -35,17 +35,12 @@ public:
 	{
 	}
 
-	String getStoredValue(const String& key) const override
+	String getStoredValue(const String&) const override
 	{
 		return nullptr;
 	}
 
-	unsigned getObjectCount() const override
-	{
-		return 0;
-	}
-
-	std::unique_ptr<Object> getObject(unsigned index) override
+	std::unique_ptr<Object> getObject(unsigned) override
 	{
 		return nullptr;
 	}

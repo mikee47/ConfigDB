@@ -123,8 +123,13 @@ public:
 
 	/**
 	 * @brief Get number of child objects
+	 * @note ObjectArray overrides this to return number of items in the array
 	 */
-	virtual unsigned getObjectCount() const = 0;
+	virtual unsigned getObjectCount() const
+	{
+		auto& typeinfo = getTypeinfo();
+		return typeinfo.objinfo ? typeinfo.objinfo->length() : 0;
+	}
 
 	/**
 	 * @brief Get child object by index
@@ -191,7 +196,7 @@ public:
 		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 
-	String getStoredArrayValue(unsigned index) const override
+	String getStoredArrayValue(unsigned) const override
 	{
 		return nullptr;
 	}
