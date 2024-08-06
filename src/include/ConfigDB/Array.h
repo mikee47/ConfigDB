@@ -41,6 +41,16 @@ public:
 	{
 		return nullptr;
 	}
+
+	Property getProperty(unsigned index) override
+	{
+		auto propcount = getPropertyCount();
+		auto propinfo = getTypeinfo().propinfo;
+		if(index >= propcount || !propinfo) {
+			return {};
+		}
+		return {*this, index, (*propinfo)[0]};
+	}
 };
 
 } // namespace ConfigDB

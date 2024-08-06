@@ -97,15 +97,6 @@ public:
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
 	}
-
-	Property getProperty(unsigned index) override
-	{
-		auto propinfo = getTypeinfo().propinfo;
-		if(index >= array.size() || !propinfo) {
-			return {};
-		}
-		return {*this, index, (*propinfo)[0]};
-	}
 };
 
 } // namespace ConfigDB::Json
