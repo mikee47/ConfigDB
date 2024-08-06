@@ -39,16 +39,6 @@ public:
 		}
 	}
 
-	String getStringValue(const String& key) const override
-	{
-		return nullptr;
-	}
-
-	String getStringValue(unsigned index) const override
-	{
-		return nullptr;
-	}
-
 	explicit operator bool() const
 	{
 		return !array.isNull();

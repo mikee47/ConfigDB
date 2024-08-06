@@ -74,11 +74,19 @@ protected:
 	String name;
 };
 
+/**
+ * @brief Used by store implemention to create specific template for `Store`
+ * @tparam BaseType The store's base `Store` class
+ * @tparam ClassType Concrete type provided by code generator (CRTP)
+ */
 template <class BaseType, class ClassType> class StoreTemplate : public BaseType
 {
 public:
 	using BaseType::BaseType;
 
+	/**
+	 * @brief Open a store instance, load it and return a shared pointer
+	 */
 	static std::shared_ptr<ClassType> open(Database& db)
 	{
 		auto inst = store.lock();

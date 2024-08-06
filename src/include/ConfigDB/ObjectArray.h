@@ -23,6 +23,9 @@
 
 namespace ConfigDB
 {
+/**
+ * @brief Base class to provide array of objects
+ */
 class ObjectArray : public Object
 {
 public:
@@ -30,6 +33,16 @@ public:
 
 	ObjectArray(Object& parent) : Object(parent)
 	{
+	}
+
+	String getStoredValue(const String& key) const override
+	{
+		return nullptr;
+	}
+
+	String getStoredArrayValue(unsigned index) const override
+	{
+		return nullptr;
 	}
 
 	unsigned getPropertyCount() const override
@@ -43,6 +56,12 @@ public:
 	}
 };
 
+/**
+ * @brief Used by store implemention to create specific template for `ObjectArray`
+ * @tparam BaseType The store's base `Array` class
+ * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @tparam Item Concrete type for array item provided by code generator
+ */
 template <class BaseType, class ClassType, class Item> class ObjectArrayTemplate : public BaseType
 {
 public:

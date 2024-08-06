@@ -39,6 +39,9 @@ enum class PropertyType {
 #undef XX
 };
 
+/**
+ * @brief Property metadata
+ */
 struct PropertyInfo {
 	const FlashString* name;
 	const FlashString* defaultValue;
@@ -96,7 +99,7 @@ public:
 		return nullptr;
 	}
 
-	String getStringValue() const;
+	String getValue() const;
 
 	Type getType() const
 	{

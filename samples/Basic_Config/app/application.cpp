@@ -92,35 +92,6 @@ void readWriteValues(BasicConfig& db)
 }
 
 /*
- * Prints out database content.
- * Should be identical to stream output.
- */
-void inspect(BasicConfig& db)
-{
-	// Serial << endl << _F("** Inspect **") << endl;
-
-	// Serial << '{' << endl;
-	// for(unsigned i = 0; auto store = db.getStore(i); ++i) {
-	// 	if(i > 0) {
-	// 		Serial << ',' << endl;
-	// 	}
-	// 	if(auto& name = store->getName()) {
-	// 		Serial << '"' << name << "\":";
-	// 	}
-	// 	for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
-	// 		if(j > 0) {
-	// 			Serial << ',' << endl;
-	// 		}
-	// 		if(auto& name = obj->getName()) {
-	// 			Serial << '"' << name << "\":";
-	// 		}
-	// 		Serial << *obj;
-	// 	}
-	// }
-	// Serial << endl << '}' << endl;
-}
-
-/*
  * Test output from DataStream
  */
 void stream(BasicConfig& db)
@@ -167,7 +138,7 @@ void printObject(const String& tag, unsigned indent, ConfigDB::Object& obj)
 /*
  * Inspect database objects and properties recursively
  */
-void listProperties(BasicConfig& db)
+void listProperties(ConfigDB::Database& db)
 {
 	Serial << endl << _F("** Inspect Properties **") << endl;
 
@@ -198,7 +169,6 @@ void init()
 
 	// checkConfig();
 	readWriteValues(db);
-	inspect(db);
 	stream(db);
 	listProperties(db);
 	// checkPerformance(db);

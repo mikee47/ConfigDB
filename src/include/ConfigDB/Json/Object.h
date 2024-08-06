@@ -52,14 +52,9 @@ public:
 		return !object.isNull();
 	}
 
-	String getStringValue(const String& key) const override
+	String getStoredValue(const String& key) const override
 	{
 		return object[key].as<const char*>();
-	}
-
-	String getStringValue(unsigned index) const override
-	{
-		return nullptr;
 	}
 
 	template <typename T> bool setValue(const String& key, const T& value)

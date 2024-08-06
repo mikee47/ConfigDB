@@ -54,6 +54,7 @@ struct ObjectInfo {
 
 /**
  * @brief An object can contain other objects, properties and arrays
+ * @note This class is the base for concrete Object, Array and ObjectArray classes
  */
 class Object : public Printable
 {
@@ -69,14 +70,14 @@ public:
 	 * @param key Key for value
 	 * @retval String
 	 */
-	virtual String getStringValue(const String& key) const = 0;
+	virtual String getStoredValue(const String& key) const = 0;
 
 	/**
-	 * @brief Retrieve a value by index
+	 * @brief Retrieve a value from an array
 	 * @param key Index of value
 	 * @retval String
 	 */
-	virtual String getStringValue(unsigned index) const = 0;
+	virtual String getStoredArrayValue(unsigned index) const = 0;
 
 	/**
 	 * @brief Store a value
@@ -160,6 +161,11 @@ protected:
 	Object* parent{};
 };
 
+/**
+ * @brief Used by store implemention to create specific template for `Object` only (not array)
+ * @tparam BaseType The store's base `Object` class
+ * @tparam ClassType Concrete type provided by code generator (CRTP)
+ */
 template <class BaseType, class ClassType> class ObjectTemplate : public BaseType
 {
 public:
@@ -168,6 +174,11 @@ public:
 	const ObjectInfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+	String getStoredArrayValue(unsigned index) const override
+	{
+		return nullptr;
 	}
 };
 

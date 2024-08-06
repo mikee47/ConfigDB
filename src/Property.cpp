@@ -35,7 +35,7 @@ String toString(ConfigDB::PropertyType type)
 
 namespace ConfigDB
 {
-String Property::getStringValue() const
+String Property::getValue() const
 {
 	if(!object) {
 		return nullptr;
@@ -43,9 +43,9 @@ String Property::getStringValue() const
 
 	String value;
 	if(info.name) {
-		value = object->getStringValue(*info.name);
+		value = object->getStoredValue(*info.name);
 	} else {
-		value = object->getStringValue(index);
+		value = object->getStoredArrayValue(index);
 	}
 	if(!value && info.defaultValue) {
 		value = *info.defaultValue;
@@ -58,7 +58,7 @@ String Property::getJsonValue() const
 	if(!object) {
 		return nullptr;
 	}
-	String value = getStringValue();
+	String value = getValue();
 	if(!value) {
 		return "null";
 	}
