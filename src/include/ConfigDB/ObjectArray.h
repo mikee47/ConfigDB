@@ -43,4 +43,33 @@ public:
 	}
 };
 
+template <class BaseType, class ClassType, class Item> class ObjectArrayTemplate : public BaseType
+{
+public:
+	using BaseType::BaseType;
+
+	const Typeinfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+	Item getItem(unsigned index)
+	{
+		return Item(*this, index);
+	}
+
+	Item addItem()
+	{
+		return Item(*this);
+	}
+
+	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
+	{
+		if(index >= this->getObjectCount()) {
+			return nullptr;
+		}
+		return std::make_unique<Item>(*this, index);
+	}
+};
+
 } // namespace ConfigDB

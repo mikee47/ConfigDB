@@ -73,43 +73,7 @@ protected:
 	JsonArray array;
 };
 
-template <class ClassType, class Item> class ObjectArrayTemplate : public ObjectArray
-{
-public:
-	using ObjectArray::ObjectArray;
-
-	const Typeinfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
-	}
-
-	using ObjectArray::getObject;
-
-	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
-	{
-		if(index >= array.size()) {
-			return nullptr;
-		}
-		return std::make_unique<Item>(*this, index);
-	}
-
-	Item getItem(unsigned index)
-	{
-		return Item(*this, array[index]);
-	}
-
-	bool setItem(unsigned index, const Item& value)
-	{
-		if(index >= array.size()) {
-			return false;
-		}
-		return array[index].set(value.object);
-	}
-
-	Item addItem()
-	{
-		return Item(*this);
-	}
-};
+template <class ClassType, class Item>
+using ObjectArrayTemplate = ConfigDB::ObjectArrayTemplate<ObjectArray, ClassType, Item>;
 
 } // namespace ConfigDB::Json

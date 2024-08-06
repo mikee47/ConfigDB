@@ -62,10 +62,6 @@ public:
 		return nullptr;
 	}
 
-	// [CODEGEN]
-	// unsigned getPropertyCount() const override
-	// Property getProperty(unsigned index) override
-
 	template <typename T> bool setValue(const String& key, const T& value)
 	{
 		return object[key].set(value);
@@ -87,15 +83,6 @@ private:
 	JsonObject object;
 };
 
-template <class ClassType> class ObjectTemplate : public Object
-{
-public:
-	using Object::Object;
-
-	const Typeinfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
-	}
-};
+template <class ClassType> using ObjectTemplate = ConfigDB::ObjectTemplate<Object, ClassType>;
 
 } // namespace ConfigDB::Json

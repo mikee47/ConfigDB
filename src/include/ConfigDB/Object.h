@@ -91,6 +91,7 @@ public:
 
 	/**
 	 * @brief Get number of properties
+	 * @note Array types override this to return the number of items in the array.
 	 */
 	virtual unsigned getPropertyCount() const
 	{
@@ -100,6 +101,7 @@ public:
 
 	/**
 	 * @brief Get properties
+	 * @note Array types override this to return array elements
 	 */
 	virtual Property getProperty(unsigned index)
 	{
@@ -131,6 +133,17 @@ public:
 
 protected:
 	Object* parent{};
+};
+
+template <class BaseType, class ClassType> class ObjectTemplate : public BaseType
+{
+public:
+	using BaseType::BaseType;
+
+	const Typeinfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
+	}
 };
 
 } // namespace ConfigDB

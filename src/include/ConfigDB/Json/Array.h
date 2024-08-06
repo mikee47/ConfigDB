@@ -88,15 +88,6 @@ protected:
 	JsonArray array;
 };
 
-template <class ClassType> class ArrayTemplate : public Array
-{
-public:
-	using Array::Array;
-
-	const Typeinfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
-	}
-};
+template <class ClassType> using ArrayTemplate = ConfigDB::ArrayTemplate<Array, ClassType>;
 
 } // namespace ConfigDB::Json
