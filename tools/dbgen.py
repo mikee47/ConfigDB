@@ -611,13 +611,7 @@ def generate_outer_class(obj: Object) -> list:
 def generate_item_object(obj: Object) -> CodeLines:
     '''Generate code for Array Item Object implementation'''
 
-    lines = CodeLines(
-        [
-            f'class Contained{obj.parent.typename};',
-            *declare_templated_class(obj),
-        ],
-        []
-    )
+    lines = CodeLines(declare_templated_class(obj), [])
 
     # Append child object definitions
     for child in obj.children:
@@ -627,14 +621,6 @@ def generate_item_object(obj: Object) -> CodeLines:
         '',
         *generate_typeinfo(obj),
         '',
-        f'{obj.typename}({obj.store.typename}& store, const String& path):',
-        [', '.join([
-            f'{obj.classname}Template(store, path)',
-            *(f'{child.id}(*this)' for child in obj.children)
-        ])],
-        '{',
-        '}',
-        '',
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}):',
         [', '.join([
             f'{obj.classname}Template({obj.parent.id})',
@@ -643,9 +629,9 @@ def generate_item_object(obj: Object) -> CodeLines:
         '{',
         '}',
         '',
-        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& parent, unsigned index):',
+        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned index):',
         [', '.join([
-            f'{obj.classname}Template(parent, index)',
+            f'{obj.classname}Template({obj.parent.id}, index)',
             *(f'{child.id}(*this)' for child in obj.children)
         ])],
         '{',
