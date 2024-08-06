@@ -131,8 +131,12 @@ class Object:
         return f'{self.store.store_ns}::{self.classname}'
 
     @property
+    def is_root(self):
+        return isinstance(self.parent, Store)
+
+    @property
     def path(self):
-        return join_path(self.parent.path, self.name) if not isinstance(self.parent, Store) else self.name
+        return join_path(self.parent.path, self.name) if not self.is_root else self.name
 
     @property
     def relative_path(self):
@@ -446,9 +450,8 @@ def generate_typeinfo(obj: Object) -> list:
     else:
         propstr = 'nullptr'
 
-    is_root = isinstance(obj.parent, Store)
-    namestr = 'nullptr' if obj.is_item or is_root else f'{get_string_ptr(obj.name, True)}'
-    pathstr = 'nullptr' if is_root else f'{get_string_ptr(obj.parent.relative_path, True)}'
+    namestr = 'nullptr' if obj.is_item or obj.is_root else f'{get_string_ptr(obj.name, True)}'
+    pathstr = 'nullptr' if obj.is_root else f'{get_string_ptr(obj.parent.relative_path, True)}'
 
     header += [
         '',
@@ -563,7 +566,7 @@ def generate_contained_constructors(obj: Object) -> list:
         '}',
     ]
 
-    if not isinstance(obj.parent, Store):
+    if not obj.is_root:
         prefix = '' if obj.parent.is_item else 'Contained'
         headers += [
             '',
