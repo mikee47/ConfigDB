@@ -20,6 +20,18 @@
 #include "include/ConfigDB/Object.h"
 #include "include/ConfigDB/Store.h"
 
+String toString(ConfigDB::ObjectType type)
+{
+	switch(type) {
+#define XX(name)                                                                                                       \
+	case ConfigDB::ObjectType::name:                                                                                   \
+		return F(#name);
+		CONFIGDB_OBJECT_TYPE_MAP(XX)
+#undef XX
+	}
+	return nullptr;
+}
+
 namespace ConfigDB
 {
 bool Object::commit()

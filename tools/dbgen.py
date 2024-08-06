@@ -411,7 +411,7 @@ def generate_typeinfo(obj: Object) -> list:
     if obj.children:
         header += [
             '',
-            'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::Typeinfo,',
+            'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::ObjectInfo,',
             [f'&{child.typename}::typeinfo,' for child in obj.children],
             ')'
         ]
@@ -424,11 +424,11 @@ def generate_typeinfo(obj: Object) -> list:
     if obj.properties:
         header += [
             '',
-            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::Propinfo,',
+            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::PropertyInfo,',
             *(make_static_initializer([
                 get_string_ptr(prop.name),
                 prop.default_fstr,
-                f'ConfigDB::Proptype::{prop.ptype.capitalize()}'
+                f'ConfigDB::PropertyType::{prop.ptype.capitalize()}'
             ], ',') for prop in obj.properties),
             ')'
         ]
@@ -436,11 +436,11 @@ def generate_typeinfo(obj: Object) -> list:
         prop = obj.items
         header += [
             '',
-            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::Propinfo,',
+            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::PropertyInfo,',
             make_static_initializer([
                 'nullptr',
                 prop.default_fstr,
-                f'ConfigDB::Proptype::{prop.ptype.capitalize()}'
+                f'ConfigDB::PropertyType::{prop.ptype.capitalize()}'
             ], ')')
         ]
     else:
@@ -452,13 +452,13 @@ def generate_typeinfo(obj: Object) -> list:
 
     header += [
         '',
-        'static constexpr const ConfigDB::Typeinfo typeinfo PROGMEM',
+        'static constexpr const ConfigDB::ObjectInfo typeinfo PROGMEM',
         *make_static_initializer([
             namestr,
             pathstr,
             objstr,
             propstr,
-            f'ConfigDB::Proptype::{obj.classname}'
+            f'ConfigDB::ObjectType::{obj.classname}'
         ], ';')
     ]
 

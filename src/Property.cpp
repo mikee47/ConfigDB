@@ -21,11 +21,11 @@
 #include "include/ConfigDB/Object.h"
 #include <Data/Format/Standard.h>
 
-String toString(ConfigDB::Property::Type type)
+String toString(ConfigDB::PropertyType type)
 {
 	switch(type) {
 #define XX(name)                                                                                                       \
-	case ConfigDB::Property::Type::name:                                                                               \
+	case ConfigDB::PropertyType::name:                                                                                 \
 		return F(#name);
 		CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
@@ -53,32 +53,6 @@ String Property::getStringValue() const
 	return value;
 }
 
-std::unique_ptr<Object> Property::getObjectValue() const
-{
-	if(!object) {
-		return nullptr;
-	}
-
-	if(!info.name) {
-		return object->getObject(index);
-	}
-
-	assert(false);
-
-	auto& typeinfo = object->getTypeinfo();
-	if(!typeinfo.objinfo) {
-		return nullptr;
-	}
-	unsigned i = 0;
-	for(auto& obj : *typeinfo.objinfo) {
-		if(obj.name == info.name) {
-			return object->getObject(i);
-		}
-		++i;
-	}
-	return nullptr;
-}
-
 String Property::getJsonValue() const
 {
 	if(!object) {
@@ -94,10 +68,6 @@ String Property::getJsonValue() const
 		return value;
 	case Type::String:
 		break;
-	case Type::Object:
-	case Type::Array:
-	case Type::ObjectArray:
-		return value;
 	}
 	::Format::standard.quote(value);
 	return value;

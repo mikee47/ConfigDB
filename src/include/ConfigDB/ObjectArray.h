@@ -48,7 +48,7 @@ template <class BaseType, class ClassType, class Item> class ObjectArrayTemplate
 public:
 	using BaseType::BaseType;
 
-	const Typeinfo& getTypeinfo() const override
+	const ObjectInfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
 	}

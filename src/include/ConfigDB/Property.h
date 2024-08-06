@@ -25,9 +25,6 @@
 #include <memory>
 
 #define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
-	XX(Object)                                                                                                         \
-	XX(Array)                                                                                                          \
-	XX(ObjectArray)                                                                                                    \
 	XX(String)                                                                                                         \
 	XX(Integer)                                                                                                        \
 	XX(Boolean)
@@ -36,30 +33,16 @@ namespace ConfigDB
 {
 class Object;
 
-enum class Proptype {
+enum class PropertyType {
 #define XX(name) name,
 	CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
 };
 
-struct Propinfo {
+struct PropertyInfo {
 	const FlashString* name;
 	const FlashString* defaultValue;
-	Proptype type;
-};
-
-struct Typeinfo {
-	const FlashString* name; ///< Within store, root always nullptr
-	const FlashString* path; ///< Relative to store
-	const FSTR::Vector<Typeinfo>* objinfo;
-	const FSTR::Array<Propinfo>* propinfo;
-	Proptype type;
-
-	static const Typeinfo& empty()
-	{
-		static const Typeinfo PROGMEM emptyTypeinfo{};
-		return emptyTypeinfo;
-	}
+	PropertyType type;
 };
 
 /**
@@ -70,19 +53,19 @@ class Property
 public:
 	Property() = default;
 
-	using Type = Proptype;
+	using Type = PropertyType;
 
 	/**
 	 * @brief Property accessed by key
 	 */
-	Property(Object& object, const Propinfo& info) : object(&object), info(info)
+	Property(Object& object, const PropertyInfo& info) : object(&object), info(info)
 	{
 	}
 
 	/**
 	 * @brief Property accessed by index
 	 */
-	Property(Object& object, unsigned index, const Propinfo& info) : object(&object), info(info), index(index)
+	Property(Object& object, unsigned index, const PropertyInfo& info) : object(&object), info(info), index(index)
 	{
 	}
 
@@ -105,21 +88,6 @@ public:
 		return info.name != nullptr;
 	}
 
-	/**
-	 * @brief Check if this property refers to an Object or Array
-	 */
-	bool isObject() const
-	{
-		switch(getType()) {
-		case Type::Object:
-		case Type::Array:
-		case Type::ObjectArray:
-			return true;
-		default:
-			return false;
-		}
-	}
-
 	String getDefaultStringValue() const
 	{
 		if(info.defaultValue) {
@@ -129,8 +97,6 @@ public:
 	}
 
 	String getStringValue() const;
-
-	std::unique_ptr<Object> getObjectValue() const;
 
 	Type getType() const
 	{
@@ -146,10 +112,10 @@ public:
 
 private:
 	Object* object{};
-	Propinfo info{};
+	PropertyInfo info{};
 	uint16_t index{};
 };
 
 } // namespace ConfigDB
 
-String toString(ConfigDB::Property::Type type);
+String toString(ConfigDB::PropertyType type);

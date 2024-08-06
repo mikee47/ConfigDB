@@ -22,10 +22,35 @@
 #include "Property.h"
 #include <Printable.h>
 
+#define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
+	XX(Object)                                                                                                         \
+	XX(Array)                                                                                                          \
+	XX(ObjectArray)
+
 namespace ConfigDB
 {
 class Database;
 class Store;
+
+enum class ObjectType {
+#define XX(name) name,
+	CONFIGDB_OBJECT_TYPE_MAP(XX)
+#undef XX
+};
+
+struct ObjectInfo {
+	const FlashString* name; ///< Within store, root always nullptr
+	const FlashString* path; ///< Relative to store
+	const FSTR::Vector<ObjectInfo>* objinfo;
+	const FSTR::Array<PropertyInfo>* propinfo;
+	ObjectType type;
+
+	static const ObjectInfo& empty()
+	{
+		static const ObjectInfo PROGMEM emptyTypeinfo{};
+		return emptyTypeinfo;
+	}
+};
 
 /**
  * @brief An object can contain other objects, properties and arrays
@@ -121,7 +146,7 @@ public:
 	// Printable [STOREIMPL]
 	// virtual size_t printTo(Print& p) const = 0;
 
-	virtual const Typeinfo& getTypeinfo() const = 0;
+	virtual const ObjectInfo& getTypeinfo() const = 0;
 
 	String getName() const
 	{
@@ -140,10 +165,12 @@ template <class BaseType, class ClassType> class ObjectTemplate : public BaseTyp
 public:
 	using BaseType::BaseType;
 
-	const Typeinfo& getTypeinfo() const override
+	const ObjectInfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 };
 
 } // namespace ConfigDB
+
+String toString(ConfigDB::ObjectType type);
