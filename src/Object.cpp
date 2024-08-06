@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Property.cpp
+ * ConfigDB/Object.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,17 +17,16 @@
  *
  ****/
 
-#include "include/ConfigDB/Property.h"
 #include "include/ConfigDB/Object.h"
-#include <Data/Format/Standard.h>
+#include "include/ConfigDB/Store.h"
 
-String toString(ConfigDB::PropertyType type)
+String toString(ConfigDB::ObjectType type)
 {
 	switch(type) {
 #define XX(name)                                                                                                       \
-	case ConfigDB::PropertyType::name:                                                                                 \
+	case ConfigDB::ObjectType::name:                                                                                   \
 		return F(#name);
-		CONFIGDB_PROPERTY_TYPE_MAP(XX)
+		CONFIGDB_OBJECT_TYPE_MAP(XX)
 #undef XX
 	}
 	return nullptr;
@@ -35,34 +34,35 @@ String toString(ConfigDB::PropertyType type)
 
 namespace ConfigDB
 {
-String Property::getValue() const
+bool Object::commit()
 {
-	if(!object) {
-		return nullptr;
-	}
-
-	String value = isIndexed() ? object->getStoredArrayValue(index) : object->getStoredValue(info.getName());
-	return value ?: info.getDefaultValue();
+	return getStore().commit();
 }
 
-String Property::getJsonValue() const
+Database& Object::getDatabase()
 {
-	if(!object) {
-		return nullptr;
+	return getStore().getDatabase();
+}
+
+String Object::getPath() const
+{
+	String relpath;
+	auto& typeinfo = getTypeinfo();
+	if(typeinfo.path) {
+		relpath += *typeinfo.path;
 	}
-	String value = getValue();
-	if(!value) {
-		return "null";
+	if(typeinfo.name) {
+		if(relpath) {
+			relpath += '.';
+		}
+		relpath += *typeinfo.name;
 	}
-	switch(info.getType()) {
-	case Type::Integer:
-	case Type::Boolean:
-		return value;
-	case Type::String:
-		break;
+	String path = getStore().getName();
+	if(relpath) {
+		path += '.';
+		path += relpath;
 	}
-	::Format::standard.quote(value);
-	return value;
+	return path;
 }
 
 } // namespace ConfigDB

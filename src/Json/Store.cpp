@@ -18,8 +18,8 @@
  ****/
 
 #include <ConfigDB/Json/Store.h>
+#include <ConfigDB/Json/Object.h>
 #include <Data/CStringArray.h>
-#include <Data/Stream/MemoryDataStream.h>
 
 namespace ConfigDB::Json
 {
@@ -38,12 +38,12 @@ bool Store::load()
 	String filename = getFilename();
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
-		if(stream.getLastError() == IFS::Error::NotFound) {
-			// OK, we have an empty document
-			return true;
+		if(stream.getLastError() != IFS::Error::NotFound) {
+			debug_w("open('%s') failed", filename.c_str());
 		}
-		// Other errors indicate a problem
-		return false;
+		// Create new document
+		doc.to<JsonObject>();
+		return true;
 	}
 
 	/*
@@ -58,9 +58,11 @@ bool Store::load()
 	switch(error.code()) {
 	case DeserializationError::Ok:
 	case DeserializationError::EmptyInput:
+		debug_d("load('%s') OK, %s, %s", filename.c_str(), error.c_str(), ::Json::serialize(doc).c_str());
 		return true;
 	default:
 		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
+		doc.to<JsonObject>();
 		return false;
 	}
 }
@@ -71,7 +73,7 @@ bool Store::save()
 	if(!stream.open(getFilename(), File::WriteOnly | File::CreateNewAlways)) {
 		return false;
 	}
-	printTo(stream);
+	printObjectTo(doc, getDatabase().getFormat(), stream);
 
 	if(stream.getLastError() != FS_OK) {
 		debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());
@@ -83,40 +85,36 @@ bool Store::save()
 
 size_t Store::printTo(Print& p) const
 {
-	auto format = database().getFormat();
-	switch(format) {
-	case Format::Compact:
-		return serializeJson(doc, p);
-	case Format::Pretty:
-		return serializeJsonPretty(doc, p);
-	}
-	return 0;
-}
+	auto format = getDatabase().getFormat();
 
-size_t Store::printObjectTo(const Object& object, Print& p) const
-{
-	auto& db = database();
-	auto obj = getJsonObjectConst(object.getName());
-	switch(db.getFormat()) {
-	case Format::Compact:
-		return serializeJson(obj, p);
-	case Format::Pretty:
-		return serializeJsonPretty(obj, p);
-	}
-	return 0;
-}
+	size_t n{0};
 
-size_t Store::printArrayTo(const Array& array, Print& p) const
-{
-	auto& db = database();
-	auto arr = getJsonArrayConst(array.getName());
-	switch(db.getFormat()) {
-	case Format::Compact:
-		return serializeJson(arr, p);
-	case Format::Pretty:
-		return serializeJsonPretty(arr, p);
+	auto root = doc.as<JsonObjectConst>();
+
+	if(name) {
+		n += p.print('"');
+		n += p.print(name);
+		n += p.print("\":");
+		n += printObjectTo(root, format, p);
+		return n;
 	}
-	return 0;
+
+	// Nameless (root) store omits {}
+	for(JsonPairConst child : root) {
+		if(n > 0) {
+			n += p.print(',');
+			if(format == Format::Pretty) {
+				n += p.println();
+			}
+		}
+		n += p.print('"');
+		JsonString name = child.key();
+		n += p.write(name.c_str(), name.size());
+		n += p.print("\":");
+		JsonVariantConst value = child.value();
+		n += printObjectTo(value, format, p);
+	}
+	return n;
 }
 
 JsonObject Store::getJsonObject(const String& path)

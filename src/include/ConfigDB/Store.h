@@ -24,10 +24,12 @@
 
 namespace ConfigDB
 {
+class Object;
+
 /**
  * @brief Manages access to an object store, typically one file
  */
-class Store
+class Store : public Printable
 {
 public:
 	/**
@@ -40,45 +42,15 @@ public:
 		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
-	virtual ~Store()
+	~Store()
 	{
 		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
-	/**
-	 * @brief Commit changes
-	 */
-	virtual bool commit() = 0;
-
-	bool isRoot() const
+	const String& getName() const
 	{
-		return name.length() == 0;
+		return name;
 	}
-
-	/**
-	 * @brief Store a value
-	 * @param path JSONPath object location
-	 * @param key Key for value
-	 * @param value Value to store
-	 * @retval bool true on success
-	 */
-	// virtual bool setStringValue(const String& path, const String& key, const String& value) = 0;
-
-	/**
-	 * @brief Retrieve a value
-	 * @param path JSONPath object location
-	 * @param key Key for value
-	 * @retval String
-	 */
-	virtual String getStringValue(const String& path, const String& key) const = 0;
-
-	/**
-	 * @brief Retrieve a value
-	 * @param path JSONPath object location
-	 * @param key Index of value
-	 * @retval String
-	 */
-	virtual String getStringValue(const String& path, unsigned index) const = 0;
 
 	String getPath() const
 	{
@@ -88,48 +60,33 @@ public:
 		return path;
 	}
 
-	Database& database() const
+	Database& getDatabase() const
 	{
 		return db;
 	}
 
-	const String& getName() const
-	{
-		return name;
-	}
+	virtual bool commit() = 0;
 
-	/**
-	 * @brief Serialize entire store
-	 */
-	virtual size_t printTo(Print& p) const = 0;
+	virtual std::unique_ptr<Object> getObject() = 0;
 
-	/**
-	 * @brief Serialize a single object
-	 */
-	virtual size_t printObjectTo(const Object& object, Print& p) const = 0;
-
-	virtual size_t printArrayTo(const Array& array, Print& p) const = 0;
-
-	/**
-	 * @brief Get number of child objects
-	 */
-	virtual unsigned getObjectCount() const = 0;
-
-	/**
-	 * @brief Get top-level objects
-	 */
-	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
-
-private:
+protected:
 	Database& db;
 	String name;
 };
 
+/**
+ * @brief Used by store implemention to create specific template for `Store`
+ * @tparam BaseType The store's base `Store` class
+ * @tparam ClassType Concrete type provided by code generator (CRTP)
+ */
 template <class BaseType, class ClassType> class StoreTemplate : public BaseType
 {
 public:
 	using BaseType::BaseType;
 
+	/**
+	 * @brief Open a store instance, load it and return a shared pointer
+	 */
 	static std::shared_ptr<ClassType> open(Database& db)
 	{
 		auto inst = store.lock();
@@ -140,14 +97,10 @@ public:
 		return inst;
 	}
 
-	static std::shared_ptr<ClassType> getPointer()
-	{
-		return store.lock();
-	}
-
-private:
+protected:
 	static std::weak_ptr<ClassType> store;
 };
 
 template <class BaseType, class ClassType> std::weak_ptr<ClassType> StoreTemplate<BaseType, ClassType>::store;
+
 } // namespace ConfigDB

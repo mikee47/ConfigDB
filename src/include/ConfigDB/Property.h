@@ -20,6 +20,8 @@
 #pragma once
 
 #include <WString.h>
+#include <FlashString/Array.hpp>
+#include <FlashString/Vector.hpp>
 #include <memory>
 
 #define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
@@ -31,36 +33,68 @@ namespace ConfigDB
 {
 class Object;
 
+enum class PropertyType {
+#define XX(name) name,
+	CONFIGDB_PROPERTY_TYPE_MAP(XX)
+#undef XX
+};
+
 /**
- * @brief Manages a key/value pair
+ * @brief Property metadata
+ */
+struct PropertyInfo {
+	// Don't access these directly!
+	const FlashString* name;
+	const FlashString* defaultValue;
+	PropertyType type;
+
+	String getName() const
+	{
+		return name ? String(*name) : nullptr;
+	}
+
+	String getDefaultValue() const
+	{
+		return defaultValue ? String(*defaultValue) : nullptr;
+	}
+
+	PropertyType getType() const
+	{
+		return FSTR::readValue(&type);
+	}
+
+	explicit operator bool() const
+	{
+		return name != nullptr;
+	}
+};
+
+static constexpr const PropertyInfo emptyPropertyInfo{};
+
+/**
+ * @brief Manages a key/value pair stored in an object
  */
 class Property
 {
 public:
-	enum class Type {
-#define XX(name) name,
-		CONFIGDB_PROPERTY_TYPE_MAP(XX)
-#undef XX
-	};
-
-	Property() = default;
-
-	Property(Object& object, const FlashString& name, Type type, const FlashString* defaultValue)
-		: object(&object), name(&name), defaultValue(defaultValue), type(type)
+	Property() : info(emptyPropertyInfo)
 	{
 	}
 
-	Property(Object& object, unsigned index, Type type, const FlashString* defaultValue)
-		: object(&object), defaultValue(defaultValue), index(index), type(type)
+	using Type = PropertyType;
+
+	/**
+	 * @brief Property accessed by key
+	 */
+	Property(Object& object, const PropertyInfo& info) : info(info), object(&object)
 	{
 	}
 
-	String getName() const
+	/**
+	 * @brief Property accessed by index
+	 */
+	Property(Object& object, unsigned index, const PropertyInfo& info) : info(info), object(&object), index(index)
 	{
-		if(name) {
-			return *name;
-		}
-		return String(index);
 	}
 
 	unsigned getIndex() const
@@ -68,36 +102,31 @@ public:
 		return index;
 	}
 
-	String getDefaultStringValue() const
+	/**
+	 * @brief Check if this property is accessed by index
+	 * @retval bool true if this property is an array member, false if it's a named object property
+	 */
+	bool isIndexed() const
 	{
-		if(defaultValue) {
-			return *defaultValue;
-		}
-		return nullptr;
+		return index >= 0;
 	}
 
-	String getStringValue() const;
-
-	Type getType() const
-	{
-		return type;
-	}
+	String getValue() const;
 
 	explicit operator bool() const
 	{
-		return bool(object);
+		return object != nullptr;
 	}
 
 	String getJsonValue() const;
 
+	const PropertyInfo& info;
+
 private:
 	Object* object{};
-	const FlashString* name{};
-	const FlashString* defaultValue{};
-	uint16_t index{};
-	Type type{};
+	int index{-1};
 };
 
 } // namespace ConfigDB
 
-String toString(ConfigDB::Property::Type type);
+String toString(ConfigDB::PropertyType type);

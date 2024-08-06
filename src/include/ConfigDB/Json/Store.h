@@ -20,9 +20,9 @@
 #pragma once
 
 #include "../Store.h"
-#include "../Object.h"
-#include "../Array.h"
-#include <ArduinoJson.h>
+#include "Object.h"
+#include "Array.h"
+#include "ObjectArray.h"
 
 namespace ConfigDB::Json
 {
@@ -39,30 +39,6 @@ public:
 		return save();
 	}
 
-	String getStringValue(const String& path, const String& key) const override
-	{
-		JsonVariantConst value = getJsonObjectConst(path)[key];
-		if(value.isNull()) {
-			return nullptr;
-		}
-		return value;
-	}
-
-	String getStringValue(const String& path, unsigned index) const override
-	{
-		JsonVariantConst value = getJsonArrayConst(path)[index];
-		if(value.isNull()) {
-			return nullptr;
-		}
-		return value;
-	}
-
-	size_t printTo(Print& p) const override;
-
-	size_t printObjectTo(const Object& object, Print& p) const override;
-
-	size_t printArrayTo(const Array& array, Print& p) const override;
-
 	String getFilename() const
 	{
 		return getPath() + ".json";
@@ -77,7 +53,22 @@ public:
 	JsonArray getJsonArray(const String& path);
 	JsonArrayConst getJsonArrayConst(const String& path) const;
 
+	size_t printTo(Print& p) const override;
+
+	template <class T> static size_t printObjectTo(T& obj, Format format, Print& p)
+	{
+		switch(format) {
+		case Format::Compact:
+			return serializeJson(obj, p);
+		case Format::Pretty:
+			return serializeJsonPretty(obj, p);
+		}
+		return 0;
+	}
+
 private:
+	friend class Object;
+
 	bool load();
 	bool save();
 
@@ -85,170 +76,5 @@ private:
 };
 
 template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
-
-template <class ClassType> class ObjectTemplate : public ConfigDB::ObjectTemplate<Store, ClassType>
-{
-public:
-	ObjectTemplate(std::shared_ptr<Store> store, const String& path)
-		: ConfigDB::ObjectTemplate<Store, ClassType>(store, path)
-	{
-		object = store->getJsonObject(path);
-	}
-
-	template <typename T> bool setValue(const String& key, const T& value)
-	{
-		return object[key].set(value);
-	}
-
-	template <typename T> T getValue(const String& key, const T& defaultValue = {}) const
-	{
-		return object[key] | defaultValue;
-	}
-
-	JsonObject object;
-};
-
-template <class ClassType> class ArrayTemplate : public ConfigDB::ArrayTemplate<Store, ClassType>
-{
-public:
-	ArrayTemplate(std::shared_ptr<Store> store, const String& path)
-		: ConfigDB::ArrayTemplate<Store, ClassType>(store, path)
-	{
-		array = store->getJsonArray(path);
-	}
-
-	unsigned getObjectCount() const override
-	{
-		return 0;
-	}
-
-	unsigned getPropertyCount() const override
-	{
-		return array.size();
-	}
-
-	std::unique_ptr<Object> getObject(unsigned index) override
-	{
-		return nullptr;
-	}
-
-	template <typename T> T getItem(unsigned index, const T& defaultValue = {}) const
-	{
-		return array[index] | defaultValue;
-	}
-
-	template <typename T> bool setItem(unsigned index, const T& value)
-	{
-		return array[index].set(value);
-	}
-
-	template <typename T> bool addItem(const T& value)
-	{
-		return array.add(value);
-	}
-
-	template <typename T> bool removeItem(unsigned index)
-	{
-		array.remove(index);
-		return true;
-	}
-
-protected:
-	Property getArrayProperty(unsigned index, Property::Type type, const FlashString* defaultValue)
-	{
-		if(index >= array.size()) {
-			return {};
-		}
-		return Property(*this, index, type, defaultValue);
-	}
-
-	JsonArray array;
-};
-
-template <class ClassType> class ObjectArrayTemplate : public ConfigDB::ArrayTemplate<Store, ClassType>
-{
-public:
-	ObjectArrayTemplate(std::shared_ptr<Store> store, const String& path)
-		: ConfigDB::ArrayTemplate<Store, ClassType>(store, path)
-	{
-		array = store->getJsonArray(path);
-
-		// String s = ::Json::serialize(array);
-		// debug_i("%s(%s): %s", __FUNCTION__, path.c_str(), s.c_str());
-	}
-
-	unsigned getObjectCount() const override
-	{
-		return array.size();
-	}
-
-	std::unique_ptr<Object> getObject(unsigned index) override
-	{
-		auto item = static_cast<ClassType*>(this)->getItem(index);
-		if(item) {
-			return std::make_unique<decltype(item)>(item);
-		}
-		return nullptr;
-	}
-
-	unsigned getPropertyCount() const override
-	{
-		return 0;
-	}
-
-	Property getProperty(unsigned) override
-	{
-		return {};
-	}
-
-	template <class Item> Item addItem()
-	{
-		auto index = array.size();
-		array.createNestedObject();
-		return Item(*this, index);
-	}
-
-	template <class Item> Item getItem(unsigned index)
-	{
-		return Item(*this, index);
-	}
-
-	template <typename T> bool removeItem(unsigned index)
-	{
-		array.remove(index);
-		return true;
-	}
-
-	JsonArray array;
-};
-
-template <class ArrayType, class ClassType> class ItemObjectTemplate : public ObjectTemplate<ClassType>
-{
-public:
-	ItemObjectTemplate(ObjectArrayTemplate<ArrayType>& array, unsigned index)
-		: ObjectTemplate<ClassType>(std::static_pointer_cast<Store>(array.getStore()), nullptr),
-		  object(array.template array[index])
-	{
-	}
-
-	template <typename T> bool setValue(const String& key, const T& value)
-	{
-		object[key] = value;
-		return true;
-	}
-
-	template <typename T> T getValue(const String& key, const T& defaultValue = {}) const
-	{
-		return object[key] | defaultValue;
-	}
-
-	explicit operator bool() const
-	{
-		return !object.isNull();
-	}
-
-private:
-	JsonObject object;
-};
 
 } // namespace ConfigDB::Json

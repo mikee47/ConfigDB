@@ -28,6 +28,26 @@
               "name": {
                 "type": "string",
                 "default": "red"
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "default": "general"
+                  },
+                  "current-limit": {
+                    "type": "integer",
+                    "default": 15,
+                    "format": "ms"
+                  }
+                }
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             }
           }

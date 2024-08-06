@@ -26,7 +26,7 @@ namespace ConfigDB
 void DataStream::fillStream()
 {
 	stream.clear();
-	if(state == State::done) {
+	if(done) {
 		return;
 	}
 	auto format = db.getFormat();
@@ -35,47 +35,23 @@ void DataStream::fillStream()
 			stream << endl;
 		}
 	};
-	if(state == State::header) {
+	if(storeIndex == 0) {
 		stream << '{';
 		newline();
-		state = State::object;
-		storeIndex = 0;
-		objectIndex = 0;
-		store.reset();
-		store = db.getStore(0);
 	}
-	while(store) {
-		if(objectIndex == 0) {
-			if(storeIndex > 0) {
-				stream << ',';
-				newline();
-			}
-			if(auto& name = store->getName()) {
-				stream << '"' << name << "\":";
-			}
-		}
-		auto object = store->getObject(objectIndex);
-		if(!object) {
-			++storeIndex;
-			store.reset();
-			store = db.getStore(storeIndex);
-			objectIndex = 0;
-			continue;
-		}
-		if(objectIndex > 0) {
+	auto store = db.getStore(storeIndex);
+	if(store) {
+		if(storeIndex > 0) {
 			stream << ',';
 			newline();
 		}
-		if(auto& name = object->getName()) {
-			stream << '"' << name << "\":";
-		}
-		stream << *object;
-		++objectIndex;
+		stream << *store;
+		++storeIndex;
 		return;
 	}
 	newline();
 	stream << '}' << endl;
-	state = State::done;
+	done = true;
 }
 
 uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
@@ -84,7 +60,7 @@ uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
 		return 0;
 	}
 
-	if(state == State::header) {
+	if(storeIndex == 0) {
 		fillStream();
 	}
 
@@ -97,10 +73,14 @@ bool DataStream::seek(int len)
 		return false;
 	}
 
-	stream.seek(len);
+	if(!stream.seek(len)) {
+		return false;
+	}
+
 	if(stream.available() == 0) {
 		fillStream();
 	}
+
 	return true;
 }
 

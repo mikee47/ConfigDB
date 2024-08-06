@@ -39,7 +39,7 @@ void readWriteValues(BasicConfig& db)
 	Serial << endl << _F("** Read/Write Values **") << endl;
 
 	{
-		BasicConfig::Security sec(db);
+		BasicConfig::Root::Security sec(db);
 		sec.setApiSecured(true);
 		sec.commit();
 	}
@@ -74,6 +74,10 @@ void readWriteValues(BasicConfig& db)
 		auto item = channels.addItem();
 		item.setName("Channel Name");
 		item.setPin(12);
+		item.details.setCurrentLimit(400);
+		item.notes.addItem(_F("This is a nice pin"));
+		item.notes.addItem(_F("It is useful"));
+		item.notes.commit();
 		item.commit();
 		// item = channels.getItem(0);
 		Serial << channels.getPath() << " = " << item << endl;
@@ -85,35 +89,6 @@ void readWriteValues(BasicConfig& db)
 		models.commit();
 		Serial << models.getPath() << " = " << models << endl;
 	}
-}
-
-/*
- * Prints out database content.
- * Should be identical to stream output.
- */
-void inspect(BasicConfig& db)
-{
-	Serial << endl << _F("** Inspect **") << endl;
-
-	Serial << '{' << endl;
-	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
-		if(i > 0) {
-			Serial << ',' << endl;
-		}
-		if(auto& name = store->getName()) {
-			Serial << '"' << name << "\":";
-		}
-		for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
-			if(j > 0) {
-				Serial << ',' << endl;
-			}
-			if(auto& name = obj->getName()) {
-				Serial << '"' << name << "\":";
-			}
-			Serial << *obj;
-		}
-	}
-	Serial << endl << '}' << endl;
 }
 
 /*
@@ -147,13 +122,13 @@ void printItem(const String& tag, unsigned indent, const String& type, const Str
 
 void printObject(const String& tag, unsigned indent, ConfigDB::Object& obj)
 {
-	printItem(tag, indent, F("Object"), obj.getName());
+	printItem(tag, indent, toString(obj.getTypeinfo().getType()), obj.getName());
 	for(unsigned i = 0; auto prop = obj.getProperty(i); ++i) {
 		String value;
-		value += toString(prop.getType());
+		value += toString(prop.info.getType());
 		value += " = ";
 		value += prop.getJsonValue();
-		printItem(tag + '.' + i, indent + 1, F("Property"), prop.getName(), value);
+		printItem(tag + '.' + i, indent + 1, F("Property"), prop.info.getName(), value);
 	}
 	for(unsigned j = 0; auto child = obj.getObject(j); ++j) {
 		printObject(tag + '.' + j, indent + 1, *child);
@@ -163,7 +138,7 @@ void printObject(const String& tag, unsigned indent, ConfigDB::Object& obj)
 /*
  * Inspect database objects and properties recursively
  */
-void listProperties(BasicConfig& db)
+void listProperties(ConfigDB::Database& db)
 {
 	Serial << endl << _F("** Inspect Properties **") << endl;
 
@@ -171,9 +146,7 @@ void listProperties(BasicConfig& db)
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
 		String tag(i);
 		printItem(tag, 1, F("Store"), store->getName());
-		for(unsigned j = 0; auto obj = store->getObject(j); ++j) {
-			printObject(tag + '.' + j, 2, *obj);
-		}
+		printObject(tag + ".0", 2, *store->getObject());
 	}
 }
 
@@ -196,7 +169,6 @@ void init()
 
 	// checkConfig();
 	readWriteValues(db);
-	inspect(db);
 	stream(db);
 	listProperties(db);
 	// checkPerformance(db);

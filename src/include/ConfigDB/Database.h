@@ -25,8 +25,6 @@
 namespace ConfigDB
 {
 class Store;
-class Object;
-class Array;
 
 /**
  * @brief Serialisation format

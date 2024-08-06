@@ -1,3 +1,5 @@
+COMPONENT_DEPENDS := ArduinoJson6
+
 COMPONENT_INCDIRS := src/include
 COMPONENT_SRCDIRS := src src/Json
 

@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Array.h
+ * ConfigDB/ObjectArray.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -24,14 +24,14 @@
 namespace ConfigDB
 {
 /**
- * @brief Base class to provide array of properties
+ * @brief Base class to provide array of objects
  */
-class Array : public Object
+class ObjectArray : public Object
 {
 public:
-	Array() = default;
+	ObjectArray() = default;
 
-	Array(Object& parent) : Object(parent)
+	ObjectArray(Object& parent) : Object(parent)
 	{
 	}
 
@@ -40,28 +40,29 @@ public:
 		return nullptr;
 	}
 
-	std::unique_ptr<Object> getObject(unsigned) override
+	String getStoredArrayValue(unsigned) const override
 	{
 		return nullptr;
 	}
 
-	Property getProperty(unsigned index) override
+	unsigned getPropertyCount() const override
 	{
-		// Property info contains exactly one element
-		auto propinfo = getTypeinfo().propinfo;
-		if(index < getPropertyCount() && propinfo) {
-			return {*this, index, *propinfo->data()};
-		}
+		return 0;
+	}
+
+	Property getProperty(unsigned)
+	{
 		return {};
 	}
 };
 
 /**
- * @brief Used by store implemention to create specific template for `Array`
+ * @brief Used by store implemention to create specific template for `ObjectArray`
  * @tparam BaseType The store's base `Array` class
  * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @tparam Item Concrete type for array item provided by code generator
  */
-template <class BaseType, class ClassType> class ArrayTemplate : public BaseType
+template <class BaseType, class ClassType, class Item> class ObjectArrayTemplate : public BaseType
 {
 public:
 	using BaseType::BaseType;
@@ -69,6 +70,24 @@ public:
 	const ObjectInfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+	Item getItem(unsigned index)
+	{
+		return Item(*this, index);
+	}
+
+	Item addItem()
+	{
+		return Item(*this);
+	}
+
+	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
+	{
+		if(index >= this->getObjectCount()) {
+			return nullptr;
+		}
+		return std::make_unique<Item>(*this, index);
 	}
 };
 
