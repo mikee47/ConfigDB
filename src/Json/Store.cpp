@@ -20,6 +20,7 @@
 #include <ConfigDB/Json/Store.h>
 #include <ConfigDB/Json/Object.h>
 #include <Data/CStringArray.h>
+#include <Data/Buffer/PrintBuffer.h>
 
 namespace ConfigDB::Json
 {
@@ -73,7 +74,11 @@ bool Store::save()
 	if(!stream.open(getFilename(), File::WriteOnly | File::CreateNewAlways)) {
 		return false;
 	}
-	printObjectTo(doc, getDatabase().getFormat(), stream);
+
+	{
+		StaticPrintBuffer<256> buffer(stream);
+		printObjectTo(doc, getDatabase().getFormat(), buffer);
+	}
 
 	if(stream.getLastError() != FS_OK) {
 		debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());
