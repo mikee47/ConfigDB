@@ -4,6 +4,7 @@
 #include <basic-config.h>
 #include <ConfigDB/DataStream.h>
 
+extern void parseJson(Stream& stream);
 extern void listProperties(ConfigDB::Database& db, Print& output);
 extern void checkPerformance(BasicConfig& db);
 
@@ -110,6 +111,11 @@ void init()
 	Serial.begin(COM_SPEED_SERIAL);
 	Serial.systemDebugOutput(true);
 
+#if 1
+	FSTR::Stream stream(sampleConfig);
+	parseJson(stream);
+#else
+
 #ifdef ARCH_HOST
 	fileSetFileSystem(&IFS::Host::getFileSystem());
 #else
@@ -127,6 +133,7 @@ void init()
 	// checkPerformance(db);
 
 	Serial << endl << endl;
+#endif
 
 #ifdef ARCH_HOST
 	System.restart();

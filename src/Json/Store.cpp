@@ -19,6 +19,7 @@
 
 #include <ConfigDB/Json/Store.h>
 #include <ConfigDB/Json/Object.h>
+#include <ConfigDB/Database.h>
 #include <Data/CStringArray.h>
 #include <Data/Buffer/PrintBuffer.h>
 

@@ -18,9 +18,9 @@
  ****/
 
 #include <ConfigDB/Json/Object.h>
-#include <ConfigDB/Json/Array.h>
 #include <ConfigDB/Json/ObjectArray.h>
 #include <ConfigDB/Json/Store.h>
+#include <ConfigDB/Database.h>
 
 namespace ConfigDB::Json
 {

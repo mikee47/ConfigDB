@@ -53,6 +53,11 @@ struct PropertyInfo {
 		return name ? String(*name) : nullptr;
 	}
 
+	bool operator==(const String& s) const
+	{
+		return name && *name == s;
+	}
+
 	String getDefaultValue() const
 	{
 		return defaultValue ? String(*defaultValue) : nullptr;

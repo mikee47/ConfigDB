@@ -57,6 +57,11 @@ struct ObjectInfo {
 		return name ? String(*name) : nullptr;
 	}
 
+	bool operator==(const String& s) const
+	{
+		return s ? (name && *name == s) : !name;
+	}
+
 	String getPath() const
 	{
 		return path ? String(*path) : nullptr;

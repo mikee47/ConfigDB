@@ -19,25 +19,15 @@
 
 #pragma once
 
+#include "Store.h"
 #include <WString.h>
 #include <Data/CString.h>
 #include <FlashString/Vector.hpp>
 
 namespace ConfigDB
 {
-class Store;
-class StoreInfo;
-
-/**
- * @brief Serialisation format
- */
-enum class Format {
-	Compact,
-	Pretty,
-};
-
 struct DatabaseInfo {
-	const FSTR::Vector<StoreInfo>& storeInfo;
+	const FSTR::Vector<StoreInfo>& stores;
 };
 
 class Database

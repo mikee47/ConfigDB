@@ -353,7 +353,7 @@ def generate_database(db: Database) -> CodeLines:
             f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
             *make_static_initializer([
                 get_string_ptr(store.name),
-                f'&{store.namespace}::{store.children[0].typename}::typeinfo'
+                f'{store.namespace}::{store.children[0].typename}::typeinfo'
             ], ';')
         ]
 
@@ -389,6 +389,7 @@ def generate_database(db: Database) -> CodeLines:
     ]
 
     lines.header[:0] = [
+        '#include <ConfigDB/Database.h>',
         *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.stores}],
         '',
         f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',

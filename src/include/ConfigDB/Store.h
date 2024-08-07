@@ -19,28 +19,43 @@
 
 #pragma once
 
-#include "Database.h"
+#include "Object.h"
+#include <WString.h>
 #include <debug_progmem.h>
 
 namespace ConfigDB
 {
+class Database;
 class Object;
 class ObjectInfo;
+
+/**
+ * @brief Serialisation format
+ */
+enum class Format {
+	Compact,
+	Pretty,
+};
 
 struct StoreInfo {
 	// DO NOT access these directly!
 	const FlashString* name; ///< Within store, root always nullptr
-	const ObjectInfo* object;
+	const ObjectInfo& object;
 
 	static const StoreInfo& empty()
 	{
-		static const StoreInfo PROGMEM emptyInfo{};
+		static const StoreInfo PROGMEM emptyInfo{.object = ObjectInfo::empty()};
 		return emptyInfo;
 	}
 
 	String getName() const
 	{
 		return name ? String(*name) : nullptr;
+	}
+
+	bool operator==(const String& s) const
+	{
+		return s ? (name && *name == s) : !name;
 	}
 };
 
@@ -70,13 +85,7 @@ public:
 		return name;
 	}
 
-	String getPath() const
-	{
-		String path = db.getPath();
-		path += '/';
-		path += name ?: F("_root");
-		return path;
-	}
+	String getPath() const;
 
 	Database& getDatabase() const
 	{

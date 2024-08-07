@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Array.cpp
+ * ConfigDB/Property.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,19 +17,16 @@
  *
  ****/
 
-#include <ConfigDB/Json/Array.h>
-#include <ConfigDB/Json/Store.h>
-#include <ConfigDB/Database.h>
+#include "include/ConfigDB/Database.h"
 
-namespace ConfigDB::Json
+namespace ConfigDB
 {
-Array::Array(Store& store, const String& path) : ConfigDB::Array(), array(store.getJsonArray(path))
+String Store::getPath() const
 {
+	String path = db.getPath();
+	path += '/';
+	path += name ?: F("_root");
+	return path;
 }
 
-size_t Array::printTo(Print& p) const
-{
-	return Store::printObjectTo(array, getDatabase().getFormat(), p);
-}
-
-} // namespace ConfigDB::Json
+} // namespace ConfigDB
