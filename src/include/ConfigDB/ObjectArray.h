@@ -62,9 +62,11 @@ public:
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  * @tparam Item Concrete type for array item provided by code generator
  */
-template <class BaseType, class ClassType, class Item> class ObjectArrayTemplate : public BaseType
+template <class BaseType, class ClassType, class ItemType> class ObjectArrayTemplate : public BaseType
 {
 public:
+	using Item = ItemType;
+
 	using BaseType::BaseType;
 
 	const ObjectInfo& getTypeinfo() const override
