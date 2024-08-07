@@ -57,14 +57,14 @@ public:
 		return object[key].as<const char*>();
 	}
 
-	template <typename T> bool setValue(const String& key, const T& value)
+	template <typename T> bool setValue(const PropertyInfo& prop, const T& value)
 	{
-		return object[key].set(value);
+		return object[prop.getName()].set(value);
 	}
 
-	template <typename T> T getValue(const String& key, const T& defaultValue = {}) const
+	template <typename T> T getValue(const PropertyInfo& prop, const T& defaultValue = {}) const
 	{
-		return object[key] | defaultValue;
+		return object[prop.getName()] | defaultValue;
 	}
 
 	size_t printTo(Print& p) const override;

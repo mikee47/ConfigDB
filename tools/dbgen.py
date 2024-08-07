@@ -53,6 +53,7 @@ def get_string_ptr(value: str, null_if_empty: bool = False) -> str:
 @dataclass
 class Property:
     name: str
+    index: int
     fields: dict
 
     @property
@@ -280,7 +281,7 @@ def load_config(filename: str) -> Database:
         for key, value in properties.items():
             obj = obj_root
             # Filter out support property types
-            prop = Property(key, value)
+            prop = Property(key, len(obj.properties), value)
             if not prop.ctype:
                 print(f'*** "{obj.path}": {prop.ptype} type not yet implemented.')
                 continue
@@ -473,12 +474,12 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        [f'return getValue<{prop.ctype}>({get_string(prop.name)}, {prop.default_str});'],
+        [f'return getValue<{prop.ctype}>(propinfo[{prop.index}], {prop.default_str});'],
         '}',
         '',
         f'bool set{prop.typename}(const {prop.ctype}& value)',
         '{',
-        [f'return setValue({get_string(prop.name)}, value);'],
+        [f'return setValue(propinfo[{prop.index}], value);'],
         '}'
         ) for prop in obj.properties]
 
