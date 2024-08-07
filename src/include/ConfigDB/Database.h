@@ -21,10 +21,12 @@
 
 #include <WString.h>
 #include <Data/CString.h>
+#include <FlashString/Vector.hpp>
 
 namespace ConfigDB
 {
 class Store;
+class StoreInfo;
 
 /**
  * @brief Serialisation format
@@ -32,6 +34,10 @@ class Store;
 enum class Format {
 	Compact,
 	Pretty,
+};
+
+struct DatabaseInfo {
+	const FSTR::Vector<StoreInfo>& storeInfo;
 };
 
 class Database
@@ -80,9 +86,26 @@ public:
 	 */
 	virtual std::shared_ptr<Store> getStore(unsigned index) = 0;
 
+	virtual const DatabaseInfo& getTypeinfo() const = 0;
+
 private:
 	CString path;
 	Format format{};
+};
+
+/**
+ * @brief Used by code generator to create specific template for `Database`
+ * @tparam ClassType Concrete type provided by code generator (CRTP)
+ */
+template <class ClassType> class DatabaseTemplate : public Database
+{
+public:
+	using Database::Database;
+
+	const DatabaseInfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
+	}
 };
 
 } // namespace ConfigDB

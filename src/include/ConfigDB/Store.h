@@ -25,6 +25,24 @@
 namespace ConfigDB
 {
 class Object;
+class ObjectInfo;
+
+struct StoreInfo {
+	// DO NOT access these directly!
+	const FlashString* name; ///< Within store, root always nullptr
+	const ObjectInfo* object;
+
+	static const StoreInfo& empty()
+	{
+		static const StoreInfo PROGMEM emptyInfo{};
+		return emptyInfo;
+	}
+
+	String getName() const
+	{
+		return name ? String(*name) : nullptr;
+	}
+};
 
 /**
  * @brief Manages access to an object store, typically one file
@@ -69,6 +87,8 @@ public:
 
 	virtual std::unique_ptr<Object> getObject() = 0;
 
+	virtual const StoreInfo& getTypeinfo() const = 0;
+
 protected:
 	Database& db;
 	String name;
@@ -95,6 +115,11 @@ public:
 			store = inst;
 		}
 		return inst;
+	}
+
+	const StoreInfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 
 protected:

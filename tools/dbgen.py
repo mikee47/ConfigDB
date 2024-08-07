@@ -343,9 +343,19 @@ def generate_database(db: Database) -> CodeLines:
                 '{',
                 [f'return std::make_unique<{store.children[0].typename}>(store.lock());'],
                 '}',
+                '',
+                'static const ConfigDB::StoreInfo typeinfo;',
             ],
             '};',
         ]]
+        lines.source += [
+            '',
+            f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
+            *make_static_initializer([
+                get_string_ptr(store.name),
+                f'&{store.namespace}::{store.children[0].typename}::typeinfo'
+            ], ';')
+        ]
 
     for store in db.stores:
         for child in store.children:
@@ -354,9 +364,7 @@ def generate_database(db: Database) -> CodeLines:
     lines.header += [
         [
             '',
-            f'{db.typename}(const String& path): Database(path)',
-            '{',
-            '}',
+            'using DatabaseTemplate::DatabaseTemplate;',
             '',
             'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override',
             '{',
@@ -367,6 +375,15 @@ def generate_database(db: Database) -> CodeLines:
                 '}',
             ],
             '}',
+            '',
+            'DEFINE_FSTR_VECTOR_LOCAL(storeinfo, ConfigDB::StoreInfo,',
+            [f'&{store.typename}::typeinfo,' for store in db.stores],
+            ')',
+            '',
+            'static constexpr const ConfigDB::DatabaseInfo typeinfo PROGMEM',
+            *make_static_initializer([
+                'storeinfo',
+            ], ';'),
         ],
         '};'
     ]
@@ -374,7 +391,7 @@ def generate_database(db: Database) -> CodeLines:
     lines.header[:0] = [
         *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.stores}],
         '',
-        f'class {db.typename}: public ConfigDB::Database',
+        f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
         '{',
         'public:',
         [f'DEFINE_FSTR_LOCAL({STRING_PREFIX}{id}, {make_string(value)})' for value, id in strings.items()]
