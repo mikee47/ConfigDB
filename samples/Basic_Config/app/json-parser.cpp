@@ -35,10 +35,12 @@ public:
 
 	bool startElement(const Element& element) override
 	{
+		String indent = String().pad(element.level * 2);
+
 		String key = element.getKey();
 
-		Serial << "LEVEL " << element.level << ": " << key << endl;
-		Serial << (element.container.isObject ? "OBJ" : "ARR") << '(' << element.container.index << ") " << key <<endl;
+		Serial << indent << element.level << ". " << (element.container.isObject ? "OBJ" : "ARR") << '('
+			   << element.container.index << ") " << key << endl;
 
 		if(element.type == Element::Type::Object || element.type == Element::Type::Array) {
 			const ConfigDB::ObjectInfo* obj;
@@ -47,55 +49,50 @@ public:
 			} else {
 				auto parent = info[element.level - 1].object;
 				if(!parent->objinfo) {
-					Serial << "No objects for " << key << endl;
+					Serial << "** No objects for " << key << endl;
 					return true;
 				}
-				int i = parent->objinfo->indexOf(key);
-				if(i >= 0) {
-					obj = &parent->objinfo->valueAt(i);
-				} else if(element.level == 1) {
-					obj = rootSearch(key);
+				if(element.container.isObject) {
+					int i = parent->objinfo->indexOf(key);
+					if(i >= 0) {
+						obj = &parent->objinfo->valueAt(i);
+					} else if(element.level == 1) {
+						obj = rootSearch(key);
+					}
+				} else {
+					// ObjectArray defines single type
+					obj = &parent->objinfo->valueAt(0);
 				}
 			}
 			if(!obj) {
-				Serial << "Missing object " << key << endl;
+				Serial << "** Missing object " << key << endl;
 				return false;
 			}
-			Serial << "Found OBJECT " << obj->getName() << endl;
+			Serial << indent << "Found OBJECT " << obj->getName() << endl;
 			info[element.level].object = obj;
 		} else {
 			auto obj = info[element.level - 1].object;
 			if(!obj->propinfo) {
-				Serial << "No properties for " << key << endl;
-			} else {
+				Serial << "** No properties for " << key << endl;
+				return false;
+			}
+			const ConfigDB::PropertyInfo* prop;
+			if(element.container.isObject) {
 				int i = obj->propinfo->indexOf(key);
 				if(i < 0) {
-					Serial << "Missing PROPERTY " << key;
+					Serial << "** Missing PROPERTY " << key;
 					return false;
 				}
-				auto prop = obj->propinfo->data() + i;
-				Serial << "Found " << toString(prop->getType()) << " PROPERTY " << prop->getName() << endl;
+				prop = obj->propinfo->data() + i;
+			} else {
+				// Array
+				prop = obj->propinfo->data();
 			}
+			Serial << indent << "Found " << toString(prop->getType()) << " PROPERTY " << prop->getName() << endl;
 		}
 
-		output << (element.container.isObject ? "OBJ" : "ARR") << '(' << element.container.index << ") ";
-		if(element.keyLength > 0) {
-			output.write(element.key, element.keyLength);
-			output.print(": ");
-		}
-		String value(element.value, element.valueLength);
-		switch(element.type) {
-		case Element::Type::Object:
-			output.println('{');
-			return true;
-		case Element::Type::Array:
-			output.println('[');
-			return true;
-		case Element::Type::String:
-			// Format::standard.quote(value);
-			[[fallthrough]];
-		default:
-			output << toString(element.type) << " = " << value << endl;
+		if(element.valueLength) {
+			output << indent << " = " << element.as<String>() << endl;
 		}
 
 		// Continue parsing
