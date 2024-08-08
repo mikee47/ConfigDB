@@ -34,6 +34,21 @@ String toString(ConfigDB::ObjectType type)
 
 namespace ConfigDB
 {
+String ObjectInfo::getTypeDesc() const
+{
+	String s;
+	auto type = getType();
+	s += toString(type);
+	if(type == ObjectType::Array) {
+		s += '[';
+		s += toString(propinfo->valueAt(0).getType());
+		s += ']';
+	} else if(type == ObjectType::ObjectArray) {
+		s += "[]";
+	}
+	return s;
+}
+
 bool Object::commit()
 {
 	return getStore().commit();

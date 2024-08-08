@@ -13,6 +13,10 @@ public:
 	{
 	}
 
+	/*
+	 * Top level key can match against a store name or an entry in the root object.
+	 * Return the matching object, or nullptr.
+	 */
 	const ConfigDB::ObjectInfo* rootSearch(const String& key)
 	{
 		// Find store
@@ -20,17 +24,66 @@ public:
 		int i = dbinfo.stores.indexOf(key);
 		if(i >= 0) {
 			store = &dbinfo.stores[i];
-			Serial << "Found STORE " << store->getName() << endl;
 			return &store->object;
 		}
-		// Search in root store
+		// No matching store, so search inside root store
 		auto& root = dbinfo.stores[0].object;
 		i = root.objinfo->indexOf(key);
 		if(i < 0) {
 			return nullptr;
 		}
 		store = &dbinfo.stores[0];
-		return &root.objinfo->valueAt(i);
+		return root.objinfo->data()[i];
+	}
+
+	const ConfigDB::ObjectInfo* objectSearch(const Element& element)
+	{
+		String key = element.getKey();
+
+		if(element.level == 0) {
+			return rootSearch(key);
+		}
+
+		auto parent = info[element.level - 1].object;
+		if(!parent->objinfo) {
+			return nullptr;
+		}
+
+		if(!element.container.isObject) {
+			// ObjectArray defines single type
+			return parent->objinfo->data()[0];
+		}
+
+		int i = parent->objinfo->indexOf(key);
+		if(i >= 0) {
+			return parent->objinfo->data()[i];
+		}
+
+		if(element.level == 1 && parent->isRoot()) {
+			return rootSearch(key);
+		}
+
+		return nullptr;
+	}
+
+	const ConfigDB::PropertyInfo* propertySearch(const Element& element)
+	{
+		auto obj = info[element.level - 1].object;
+		if(!obj || !obj->propinfo) {
+			return nullptr;
+		}
+
+		if(element.container.isObject) {
+			String key = element.getKey();
+			int i = obj->propinfo->indexOf(key);
+			if(i >= 0) {
+				return obj->propinfo->data() + i;
+			}
+			return nullptr;
+		}
+
+		// Array
+		return obj->propinfo->data();
 	}
 
 	bool startElement(const Element& element) override
@@ -40,80 +93,37 @@ public:
 		String key = element.getKey();
 
 		Serial << indent << element.level << ". " << (element.container.isObject ? "OBJ" : "ARR") << '('
-			   << element.container.index << ") " << key << endl;
+			   << element.container.index << ") ";
 
 		if(element.type == Element::Type::Object || element.type == Element::Type::Array) {
-			const ConfigDB::ObjectInfo* obj;
-			if(element.level == 0) {
-				obj = rootSearch(key);
-			} else {
-				auto parent = info[element.level - 1].object;
-				if(!parent->objinfo) {
-					Serial << "** No objects for " << key << endl;
-					return true;
-				}
-				if(element.container.isObject) {
-					int i = parent->objinfo->indexOf(key);
-					if(i >= 0) {
-						obj = &parent->objinfo->valueAt(i);
-					} else if(element.level == 1) {
-						obj = rootSearch(key);
-					}
-				} else {
-					// ObjectArray defines single type
-					obj = &parent->objinfo->valueAt(0);
-				}
-			}
-			if(!obj) {
-				Serial << "** Missing object " << key << endl;
-				return false;
-			}
-			Serial << indent << "Found OBJECT " << obj->getName() << endl;
+			Serial << "OBJECT '" << key << "': ";
+			auto obj = objectSearch(element);
 			info[element.level].object = obj;
+			if(!obj) {
+				Serial << _F("not in schema") << endl;
+				return true;
+			}
+			Serial << obj->getTypeDesc() << endl;
 		} else {
-			auto obj = info[element.level - 1].object;
-			if(!obj->propinfo) {
-				Serial << "** No properties for " << key << endl;
-				return false;
+			Serial << "PROPERTY '" << key << "': ";
+			auto prop = propertySearch(element);
+			if(!prop) {
+				Serial << _F("not in schema") << endl;
+				return true;
 			}
-			const ConfigDB::PropertyInfo* prop;
-			if(element.container.isObject) {
-				int i = obj->propinfo->indexOf(key);
-				if(i < 0) {
-					Serial << "** Missing PROPERTY " << key;
-					return false;
-				}
-				prop = obj->propinfo->data() + i;
-			} else {
-				// Array
-				prop = obj->propinfo->data();
+			String value = element.as<String>();
+			if(prop->getType() == ConfigDB::PropertyType::String) {
+				Format::standard.quote(value);
 			}
-			Serial << indent << "Found " << toString(prop->getType()) << " PROPERTY " << prop->getName() << endl;
-		}
-
-		if(element.valueLength) {
-			output << indent << " = " << element.as<String>() << endl;
+			Serial << toString(prop->getType()) << " = " << value << endl;
 		}
 
 		// Continue parsing
 		return true;
 	}
 
-	bool endElement(const Element& element) override
+	bool endElement(const Element&) override
 	{
-		indentLine(element.level);
-		switch(element.type) {
-		case Element::Type::Object:
-			output.println('}');
-			break;
-
-		case Element::Type::Array:
-			output.println(']');
-			break;
-
-		default:; //
-		}
-
 		// Continue parsing
 		return true;
 	}

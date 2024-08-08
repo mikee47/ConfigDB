@@ -79,6 +79,8 @@ struct ObjectInfo {
 	{
 		return FSTR::readValue(&type);
 	}
+
+	String getTypeDesc() const;
 };
 
 /**

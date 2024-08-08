@@ -1,10 +1,17 @@
 {
+    "not-in-schema": 1234,
+    "also not in schema": {
+        "value": 0.1
+    },
     "network": {
         "connection": {
             "dhcp": true,
             "ip": "0.0.0.0",
             "netmask": "0.0.0.0",
             "gateway": "0.0.0.0"
+        },
+        "not in schema": {
+            "dhcp": 12
         },
         "ap": {
             "secured": false,
