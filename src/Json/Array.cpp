@@ -23,7 +23,7 @@
 
 namespace ConfigDB::Json
 {
-Array::Array(Store& store, const String& path) : ConfigDB::Array(), array(store.getJsonArray(path))
+Array::Array(Store& store, const String& path) : ConfigDB::Array() //, array(store.getJsonArray(path))
 {
 }
 

@@ -562,7 +562,7 @@ def generate_object_struct(obj: Object) -> list:
         return []
 
     def struct_type(x: Object) -> str:
-        return 'ConfigDB::ArrayRef' if is_array(x) else f'{x.typename}::Struct'
+        return 'ConfigDB::ArrayRef' if is_array(x) else f'Contained{x.typename}::Struct'
 
     return [
         '',
@@ -571,7 +571,7 @@ def generate_object_struct(obj: Object) -> list:
             *(f'{struct_type(child)} {child.id}{{}};' for child in obj.children),
             *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
         ],
-        '};'
+        '};',
     ]
 
 

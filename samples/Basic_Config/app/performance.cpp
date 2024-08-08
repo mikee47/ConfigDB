@@ -1,6 +1,7 @@
 #include <basic-config.h>
 #include <Services/Profiling/MinMaxTimes.h>
 #include <Data/Stream/MemoryDataStream.h>
+#include <HardwareSerial.h>
 
 namespace
 {

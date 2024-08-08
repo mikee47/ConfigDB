@@ -20,7 +20,6 @@
 #pragma once
 
 #include "../Object.h"
-#include <ArduinoJson.h>
 
 namespace ConfigDB::Json
 {
@@ -37,10 +36,10 @@ public:
 
 	Object(Object& parent, const String& name) : Object(parent)
 	{
-		object = parent.object[name];
-		if(object.isNull()) {
-			object = parent.object.createNestedObject(name);
-		}
+		// object = parent.object[name];
+		// if(object.isNull()) {
+		// 	object = parent.object.createNestedObject(name);
+		// }
 	}
 
 	Object(ObjectArray& parent, unsigned index);
@@ -49,22 +48,25 @@ public:
 
 	explicit operator bool() const
 	{
-		return !object.isNull();
+		return object != 0;
 	}
 
 	String getStoredValue(const String& key) const override
 	{
-		return object[key].as<const char*>();
+		return nullptr;
+		// return object[key].as<const char*>();
 	}
 
 	template <typename T> bool setValue(const PropertyInfo& prop, const T& value)
 	{
-		return object[prop.getName()].set(value);
+		return false;
+		// return object[prop.getName()].set(value);
 	}
 
 	template <typename T> T getValue(const PropertyInfo& prop, const T& defaultValue = {}) const
 	{
-		return object[prop.getName()] | defaultValue;
+		return defaultValue;
+		// return object[prop.getName()] | defaultValue;
 	}
 
 	size_t printTo(Print& p) const override;
@@ -75,7 +77,7 @@ private:
 	friend class ObjectArray;
 	friend class RootObject;
 
-	JsonObject object;
+	ObjectRef object;
 };
 
 template <class ClassType> using ObjectTemplate = ConfigDB::ObjectTemplate<Object, ClassType>;

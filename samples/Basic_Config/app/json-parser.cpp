@@ -1,6 +1,7 @@
 #include <basic-config.h>
 #include <JSON/StreamingParser.h>
 #include <Data/Format/Standard.h>
+#include <HardwareSerial.h>
 
 namespace
 {

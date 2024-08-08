@@ -24,15 +24,15 @@
 
 namespace ConfigDB::Json
 {
-Object::Object(Store& store, const String& path) : ConfigDB::Object(), object(store.getJsonObject(path))
+Object::Object(Store& store, const String& path) : ConfigDB::Object() //, object(store.getJsonObject(path))
 {
 }
 
-Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent), object(parent.array[index])
+Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent) //, object(parent.array[index])
 {
 }
 
-Object::Object(ObjectArray& parent) : ConfigDB::Object(parent), object(parent.array.createNestedObject())
+Object::Object(ObjectArray& parent) : ConfigDB::Object(parent) //, object(parent.array.createNestedObject())
 {
 }
 

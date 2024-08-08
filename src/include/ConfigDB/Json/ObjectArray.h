@@ -33,34 +33,35 @@ public:
 
 	ObjectArray(Json::Object& parent, const String& name) : ObjectArray(parent)
 	{
-		array = parent.object[name];
-		if(array.isNull()) {
-			array = parent.object.createNestedArray(name);
-		}
+		// array = parent.object[name];
+		// if(array.isNull()) {
+		// 	array = parent.object.createNestedArray(name);
+		// }
 	}
 
 	explicit operator bool() const
 	{
-		return !array.isNull();
+		return array != 0;
 	}
 
 	unsigned getObjectCount() const override
 	{
-		return array.size();
+		return 0;
+		// return array.size();
 	}
 
 	size_t printTo(Print& p) const override;
 
 	bool removeItem(unsigned index)
 	{
-		array.remove(index);
+		// array.remove(index);
 		return true;
 	}
 
 protected:
 	friend class Json::Object;
 
-	JsonArray array;
+	ArrayRef array;
 };
 
 template <class ClassType, class Item>

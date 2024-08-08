@@ -20,6 +20,7 @@
 #include <ConfigDB/Json/Store.h>
 #include <ConfigDB/Json/Object.h>
 #include <ConfigDB/Database.h>
+#include <Data/Stream/FileStream.h>
 #include <Data/CStringArray.h>
 #include <Data/Buffer/PrintBuffer.h>
 
@@ -44,7 +45,7 @@ bool Store::load()
 			debug_w("open('%s') failed", filename.c_str());
 		}
 		// Create new document
-		doc.to<JsonObject>();
+		// doc.to<JsonObject>();
 		return true;
 	}
 
@@ -56,17 +57,19 @@ bool Store::load()
 	 *
 	 * We want to load store only when needed to minimise RAM usage.
 	 */
-	DeserializationError error = deserializeJson(doc, stream);
-	switch(error.code()) {
-	case DeserializationError::Ok:
-	case DeserializationError::EmptyInput:
-		debug_d("load('%s') OK, %s, %s", filename.c_str(), error.c_str(), ::Json::serialize(doc).c_str());
-		return true;
-	default:
-		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
-		doc.to<JsonObject>();
-		return false;
-	}
+	// DeserializationError error = deserializeJson(doc, stream);
+	// switch(error.code()) {
+	// case DeserializationError::Ok:
+	// case DeserializationError::EmptyInput:
+	// 	debug_d("load('%s') OK, %s, %s", filename.c_str(), error.c_str(), ::Json::serialize(doc).c_str());
+	// 	return true;
+	// default:
+	// 	debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
+	// 	doc.to<JsonObject>();
+	// 	return false;
+	// }
+
+	return false;
 }
 
 bool Store::save()
@@ -78,7 +81,7 @@ bool Store::save()
 
 	{
 		StaticPrintBuffer<256> buffer(stream);
-		printObjectTo(doc, getDatabase().getFormat(), buffer);
+		// printObjectTo(doc, getDatabase().getFormat(), buffer);
 	}
 
 	if(stream.getLastError() != FS_OK) {
@@ -95,33 +98,35 @@ size_t Store::printTo(Print& p) const
 
 	size_t n{0};
 
-	auto root = doc.as<JsonObjectConst>();
+	// auto root = doc.as<JsonObjectConst>();
 
-	if(name) {
-		n += p.print('"');
-		n += p.print(name);
-		n += p.print("\":");
-		n += printObjectTo(root, format, p);
-		return n;
-	}
+	// if(name) {
+	// 	n += p.print('"');
+	// 	n += p.print(name);
+	// 	n += p.print("\":");
+	// 	n += printObjectTo(root, format, p);
+	// 	return n;
+	// }
 
-	// Nameless (root) store omits {}
-	for(JsonPairConst child : root) {
-		if(n > 0) {
-			n += p.print(',');
-			if(format == Format::Pretty) {
-				n += p.println();
-			}
-		}
-		n += p.print('"');
-		JsonString name = child.key();
-		n += p.write(name.c_str(), name.size());
-		n += p.print("\":");
-		JsonVariantConst value = child.value();
-		n += printObjectTo(value, format, p);
-	}
+	// // Nameless (root) store omits {}
+	// for(JsonPairConst child : root) {
+	// 	if(n > 0) {
+	// 		n += p.print(',');
+	// 		if(format == Format::Pretty) {
+	// 			n += p.println();
+	// 		}
+	// 	}
+	// 	n += p.print('"');
+	// 	JsonString name = child.key();
+	// 	n += p.write(name.c_str(), name.size());
+	// 	n += p.print("\":");
+	// 	JsonVariantConst value = child.value();
+	// 	n += printObjectTo(value, format, p);
+	// }
 	return n;
 }
+
+#if 0
 
 JsonObject Store::getJsonObject(const String& path)
 {
@@ -209,5 +214,7 @@ JsonArrayConst Store::getJsonArrayConst(const String& path) const
 
 	return obj[name];
 }
+
+#endif
 
 } // namespace ConfigDB::Json

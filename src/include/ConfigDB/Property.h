@@ -132,11 +132,6 @@ public:
 	{
 	}
 
-	unsigned getIndex() const
-	{
-		return index;
-	}
-
 	/**
 	 * @brief Check if this property is accessed by index
 	 * @retval bool true if this property is an array member, false if it's a named object property

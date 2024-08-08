@@ -47,22 +47,22 @@ public:
 	/**
 	 * @brief Resolve a path into the corresponding JSON object, creating it if required
 	 */
-	JsonObject getJsonObject(const String& path);
-	JsonObjectConst getJsonObjectConst(const String& path) const;
+	// JsonObject getJsonObject(const String& path);
+	// JsonObjectConst getJsonObjectConst(const String& path) const;
 
-	JsonArray getJsonArray(const String& path);
-	JsonArrayConst getJsonArrayConst(const String& path) const;
+	// JsonArray getJsonArray(const String& path);
+	// JsonArrayConst getJsonArrayConst(const String& path) const;
 
 	size_t printTo(Print& p) const override;
 
 	template <class T> static size_t printObjectTo(T& obj, Format format, Print& p)
 	{
-		switch(format) {
-		case Format::Compact:
-			return serializeJson(obj, p);
-		case Format::Pretty:
-			return serializeJsonPretty(obj, p);
-		}
+		// switch(format) {
+		// case Format::Compact:
+		// 	return serializeJson(obj, p);
+		// case Format::Pretty:
+		// 	return serializeJsonPretty(obj, p);
+		// }
 		return 0;
 	}
 
@@ -72,7 +72,7 @@ private:
 	bool load();
 	bool save();
 
-	StaticJsonDocument<1024> doc;
+	// StaticJsonDocument<1024> doc;
 };
 
 template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
