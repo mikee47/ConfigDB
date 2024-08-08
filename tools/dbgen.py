@@ -545,6 +545,7 @@ def generate_typeinfo(obj: Object) -> list:
             pathstr,
             objstr,
             propstr,
+            'sizeof(Struct)',
             f'ConfigDB::ObjectType::{obj.classname}'
         ], ';')
     ]
@@ -559,7 +560,9 @@ def generate_object_struct(obj: Object) -> list:
         return isinstance(x, Array) or isinstance(x, ObjectArray)
 
     if is_array(obj):
-        return []
+        return [
+            'using Struct = ConfigDB::ArrayRef;'
+        ]
 
     def struct_type(x: Object) -> str:
         return 'ConfigDB::ArrayRef' if is_array(x) else f'Contained{x.typename}::Struct'
@@ -619,6 +622,7 @@ def generate_object(obj: Object) -> CodeLines:
             *item_lines.header,
             *declare_templated_class(obj, 'Contained', [obj.items.typename]),
             generate_contained_constructors(obj),
+            generate_object_struct(obj),
             generate_typeinfo(obj),
             '};',
             *generate_outer_class(obj)
@@ -636,8 +640,8 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.header += [
         generate_contained_constructors(obj),
+        generate_object_struct(obj),
         generate_typeinfo(obj),
-        generate_object_struct(obj)
     ]
 
     if isinstance(obj, Array):
@@ -727,6 +731,7 @@ def generate_item_object(obj: Object) -> CodeLines:
 
     lines.header += [[
         '',
+        generate_object_struct(obj),
         *generate_typeinfo(obj),
         '',
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}):',
