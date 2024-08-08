@@ -352,7 +352,7 @@ def generate_database(db: Database) -> CodeLines:
             '',
             f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
             *make_static_initializer([
-                get_string_ptr(store.name),
+                get_string_ptr(store.name, True),
                 f'{store.namespace}::{store.children[0].typename}::typeinfo'
             ], ';')
         ]

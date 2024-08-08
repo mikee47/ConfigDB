@@ -39,7 +39,7 @@ enum class Format {
 
 struct StoreInfo {
 	// DO NOT access these directly!
-	const FlashString* name; ///< Within store, root always nullptr
+	const FlashString* name; ///< Root store always nullptr
 	const ObjectInfo& object;
 
 	static const StoreInfo& empty()
@@ -53,9 +53,17 @@ struct StoreInfo {
 		return name ? String(*name) : nullptr;
 	}
 
+	/**
+	 * @brief Root object in a store has no name
+	 */
+	bool isRoot() const
+	{
+		return name == nullptr;
+	}
+
 	bool operator==(const String& s) const
 	{
-		return s ? (name && *name == s) : !name;
+		return name ? *name == s : s.length() == 0;
 	}
 };
 

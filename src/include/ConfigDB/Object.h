@@ -57,9 +57,17 @@ struct ObjectInfo {
 		return name ? String(*name) : nullptr;
 	}
 
+	/**
+	 * @brief Root object in a store has no name
+	 */
+	bool isRoot() const
+	{
+		return name == nullptr;
+	}
+
 	bool operator==(const String& s) const
 	{
-		return s ? (name && *name == s) : !name;
+		return name ? *name == s : s.length() == 0;
 	}
 
 	String getPath() const
