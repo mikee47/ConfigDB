@@ -54,12 +54,8 @@ String Property::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	switch(info.getType()) {
-	case Type::Integer:
-	case Type::Boolean:
+	if(info.getType() < Type::String) {
 		return value;
-	case Type::String:
-		break;
 	}
 	::Format::standard.quote(value);
 	return value;

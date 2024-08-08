@@ -99,23 +99,33 @@
           "properties": {
             "red": {
               "type": "integer",
-              "default": 100
+              "default": 100,
+              "minimum": 0,
+              "maximum": 255
             },
             "ww": {
               "type": "integer",
-              "default": 100
+              "default": 100,
+              "minimum": 0,
+              "maximum": 255
             },
             "green": {
               "type": "integer",
-              "default": 100
+              "default": 100,
+              "minimum": 0,
+              "maximum": 255
             },
             "blue": {
               "type": "integer",
-              "default": 100
+              "default": 100,
+              "minimum": 0,
+              "maximum": 255
             },
             "cw": {
               "type": "integer",
-              "default": 100
+              "default": 100,
+              "minimum": 0,
+              "maximum": 255
             }
           }
         },
@@ -124,11 +134,15 @@
           "properties": {
             "ww": {
               "type": "integer",
-              "default": 2700
+              "default": 2700,
+              "minimum": 0,
+              "maximum": 10000
             },
             "cw": {
               "type": "integer",
-              "default": 6000
+              "default": 6000,
+              "minimum": 0,
+              "maximum": 10000
             }
           }
         },
@@ -141,31 +155,45 @@
           "properties": {
             "red": {
               "type": "integer",
-              "default": 0
+              "default": 0,
+              "minimum": 0,
+              "maximum": 255
             },
             "magenta": {
               "type": "integer",
-              "default": 0
+              "default": 0,
+              "minimum": 0,
+              "maximum": 255
             },
             "green": {
               "type": "integer",
-              "default": 0
+              "default": 0,
+              "minimum": 0,
+              "maximum": 255
             },
             "blue": {
               "type": "integer",
-              "default": 0
+              "default": 0,
+              "minimum": 0,
+              "maximum": 255
             },
             "yellow": {
               "type": "integer",
-              "default": 0
+              "default": 0,
+              "minimum": 0,
+              "maximum": 255
             },
             "model": {
               "type": "integer",
-              "default": 0
+              "default": 0,
+              "minimum": 0,
+              "maximum": 255
             },
             "cyan": {
               "type": "integer",
-              "default": 0
+              "default": 0,
+              "minimum": 0,
+              "maximum": 255
             }
           }
         }

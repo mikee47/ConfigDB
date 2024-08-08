@@ -25,9 +25,16 @@
 #include <memory>
 
 #define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
-	XX(String)                                                                                                         \
-	XX(Integer)                                                                                                        \
-	XX(Boolean)
+	XX(Boolean)                                                                                                        \
+	XX(Int8)                                                                                                           \
+	XX(Int16)                                                                                                          \
+	XX(Int32)                                                                                                          \
+	XX(Int64)                                                                                                          \
+	XX(UInt8)                                                                                                          \
+	XX(UInt16)                                                                                                         \
+	XX(UInt32)                                                                                                         \
+	XX(UInt64)                                                                                                         \
+	XX(String)
 
 namespace ConfigDB
 {

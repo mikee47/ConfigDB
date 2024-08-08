@@ -51,6 +51,25 @@ def get_string_ptr(value: str, null_if_empty: bool = False) -> str:
 
 
 @dataclass
+class IntRange:
+    is_signed: bool
+    bits: int
+    minimum: int
+    maximum: int
+
+    @property
+    def typemin(self):
+        return -(2 ** (self.bits - 1)) if self.is_signed else 0
+
+    @property
+    def typemax(self):
+        bits = self.bits
+        if self.is_signed:
+            bits -= 1
+        return (2 ** bits) - 1
+
+
+@dataclass
 class Property:
     name: str
     index: int
@@ -60,9 +79,37 @@ class Property:
     def ptype(self):
         return self.fields['type']
 
+    def get_intrange(self) -> IntRange | None:
+        if self.ptype != 'integer':
+            return None
+        int32 = IntRange(True, 32, 0, 0)
+        minval = self.fields.get('minimum', int32.typemin)
+        maxval = self.fields.get('maximum', int32.typemax)
+        r = IntRange(minval < 0, 8, minval, maxval)
+        while minval < r.typemin or maxval > r.typemax:
+            r.bits *= 2
+        return r
+
+
     @property
     def ctype(self):
-        return CPP_TYPENAMES[self.ptype]
+        if self.ptype != 'integer':
+            return CPP_TYPENAMES[self.ptype]
+        r = self.get_intrange()
+        return f'int{r.bits}_t' if r.is_signed else f'uint{r.bits}_t'
+
+    @property
+    def ctype_constref(self):
+        return f'const String&' if self.ptype == 'string' else self.ctype
+
+    @property
+    def property_type(self):
+        if self.ptype != 'integer':
+            tag = self.ptype.capitalize()
+        else:
+            r = self.get_intrange()
+            tag = f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
+        return 'PropertyType::' + tag
 
     @property
     def typename(self):
@@ -455,7 +502,7 @@ def generate_typeinfo(obj: Object) -> list:
             *(make_static_initializer([
                 get_string_ptr(prop.name),
                 prop.default_fstr,
-                f'ConfigDB::PropertyType::{prop.ptype.capitalize()}'
+                f'ConfigDB::{prop.property_type}'
             ], ',') for prop in obj.properties),
             ')'
         ]
@@ -466,7 +513,7 @@ def generate_typeinfo(obj: Object) -> list:
             make_static_initializer([
                 'nullptr',
                 obj.items.default_fstr,
-                f'ConfigDB::PropertyType::{obj.items.ptype.capitalize()}'
+                f'ConfigDB::{obj.items.property_type}'
             ], ')')
         ]
     else:
@@ -500,7 +547,7 @@ def generate_property_accessors(obj: Object) -> list:
         [f'return getValue<{prop.ctype}>(propinfo[{prop.index}], {prop.default_str});'],
         '}',
         '',
-        f'bool set{prop.typename}(const {prop.ctype}& value)',
+        f'bool set{prop.typename}({prop.ctype_constref} value)',
         '{',
         [f'return setValue(propinfo[{prop.index}], value);'],
         '}'
