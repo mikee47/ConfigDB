@@ -23,7 +23,9 @@
             "properties": {
               "pin": {
                 "type": "integer",
-                "default": 13
+                "default": 13,
+                "minimum": 0,
+                "maximum": 100
               },
               "name": {
                 "type": "string",
@@ -58,7 +60,9 @@
         },
         "buttons_debounce_ms": {
           "type": "integer",
-          "default": 50
+          "default": 50,
+          "minimum": 0,
+          "maximum": 1000
         },
         "supported_color_models": {
           "type": "array",
@@ -230,7 +234,9 @@
         },
         "color_master_interval_ms": {
           "type": "integer",
-          "default": 0
+          "default": 0,
+          "minimum": 0,
+          "maximum": 65535
         },
         "clock_slave_enabled": {
           "type": "boolean",
@@ -242,7 +248,9 @@
         },
         "clock_master_interval": {
           "type": "integer",
-          "default": 30
+          "default": 30,
+          "minimum": 0,
+          "maximum": 65535
         },
         "clock_slave_topic": {
           "type": "string",
@@ -264,15 +272,21 @@
       "properties": {
         "color_interval_ms": {
           "type": "integer",
-          "default": 500
+          "default": 500,
+          "minimum": 0,
+          "maximum": 10000
         },
         "color_mininterval_ms": {
           "type": "integer",
-          "default": 500
+          "default": 500,
+          "minimum": 0,
+          "maximum": 30000
         },
         "transfin_interval_ms": {
           "type": "integer",
-          "default": 1000
+          "default": 1000,
+          "minimum": 0,
+          "maximum": 30000
         },
         "server_enabled": {
           "type": "boolean",
@@ -296,7 +310,9 @@
             },
             "port": {
               "type": "integer",
-              "default": 1883
+              "default": 1883,
+              "minimum": 0,
+              "maximum": 65535
             },
             "topic_base": {
               "type": "string",
