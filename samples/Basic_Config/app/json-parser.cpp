@@ -1,6 +1,7 @@
 #include <basic-config.h>
 #include <JSON/StreamingParser.h>
 #include <Data/Format/Standard.h>
+#include <Data/CStringArray.h>
 #include <HardwareSerial.h>
 
 namespace
@@ -12,32 +13,36 @@ public:
 
 	ConfigListener(ConfigDB::Database& db, Print& output) : db(db), output(output)
 	{
+		memset(static_cast<void*>(&rootData), 0, sizeof(rootData));
 	}
 
 	/*
 	 * Top level key can match against a store name or an entry in the root object.
 	 * Return the matching object, or nullptr.
 	 */
-	const ConfigDB::ObjectInfo* rootSearch(const String& key)
+	std::pair<const ConfigDB::ObjectInfo*, size_t> rootSearch(const String& key)
 	{
 		// Find store
 		auto& dbinfo = db.getTypeinfo();
 		int i = dbinfo.stores.indexOf(key);
 		if(i >= 0) {
 			store = &dbinfo.stores[i];
-			return &store->object;
+			return {&store->object, 0};
 		}
 		// No matching store, so search inside root store
 		auto& root = dbinfo.stores[0].object;
-		i = root.objinfo->indexOf(key);
-		if(i < 0) {
-			return nullptr;
+		size_t offset{0};
+		for(auto& obj : *root.objinfo) {
+			if(obj == key) {
+				store = &dbinfo.stores[0];
+				return {&obj, offset};
+			}
+			offset += obj.structSize;
 		}
-		store = &dbinfo.stores[0];
-		return root.objinfo->data()[i];
+		return {};
 	}
 
-	const ConfigDB::ObjectInfo* objectSearch(const Element& element)
+	std::pair<const ConfigDB::ObjectInfo*, size_t> objectSearch(const Element& element)
 	{
 		String key = element.getKey();
 
@@ -47,44 +52,52 @@ public:
 
 		auto parent = info[element.level - 1].object;
 		if(!parent->objinfo) {
-			return nullptr;
+			return {};
 		}
 
 		if(!element.container.isObject) {
 			// ObjectArray defines single type
-			return parent->objinfo->data()[0];
+			return {parent->objinfo->data()[0], 0};
 		}
 
-		int i = parent->objinfo->indexOf(key);
-		if(i >= 0) {
-			return parent->objinfo->data()[i];
+		size_t offset{0};
+		for(auto& obj : *parent->objinfo) {
+			if(obj == key) {
+				return {&obj, offset};
+			}
+			offset += obj.structSize;
 		}
 
+		// NOTE: In practice this never happens since we load ONE store only
 		if(element.level == 1 && parent->isRoot()) {
 			return rootSearch(key);
 		}
 
-		return nullptr;
+		return {};
 	}
 
-	const ConfigDB::PropertyInfo* propertySearch(const Element& element)
+	std::pair<const ConfigDB::PropertyInfo*, size_t> propertySearch(const Element& element)
 	{
 		auto obj = info[element.level - 1].object;
 		if(!obj || !obj->propinfo) {
-			return nullptr;
+			return {};
 		}
 
 		if(element.container.isObject) {
 			String key = element.getKey();
-			int i = obj->propinfo->indexOf(key);
-			if(i >= 0) {
-				return obj->propinfo->data() + i;
+			size_t offset{0};
+			auto data = obj->propinfo->data();
+			for(unsigned i = 0; i < obj->propinfo->length(); ++i, ++data) {
+				if(*data == key) {
+					return {data, offset};
+				}
+				offset += data->getSize();
 			}
-			return nullptr;
+			return {};
 		}
 
 		// Array
-		return obj->propinfo->data();
+		return {obj->propinfo->data(), 0};
 	}
 
 	bool startElement(const Element& element) override
@@ -98,25 +111,46 @@ public:
 
 		if(element.type == Element::Type::Object || element.type == Element::Type::Array) {
 			Serial << "OBJECT '" << key << "': ";
-			auto obj = objectSearch(element);
-			info[element.level].object = obj;
+			auto [obj, offset] = objectSearch(element);
+			info[element.level] = {obj, offset};
+			if(element.level > 0) {
+				info[element.level].offset += info[element.level - 1].offset;
+			}
 			if(!obj) {
 				Serial << _F("not in schema") << endl;
 				return true;
 			}
 			Serial << obj->getTypeDesc() << endl;
 		} else {
-			Serial << "PROPERTY '" << key << "': ";
-			auto prop = propertySearch(element);
+			Serial << "PROPERTY '" << key << "' ";
+			auto [prop, offset] = propertySearch(element);
 			if(!prop) {
 				Serial << _F("not in schema") << endl;
 				return true;
 			}
+			if(element.level > 0) {
+				offset += info[element.level - 1].offset;
+			}
+			Serial << "@ " << offset << '[' << prop->getSize() << "]: ";
 			String value = element.as<String>();
+			ConfigDB::PropertyData data{};
 			if(prop->getType() == ConfigDB::PropertyType::String) {
+				int i = stringPool.indexOf(value);
+				if(i < 0) {
+					i = stringPool.count();
+					stringPool += value;
+				}
+				data.string = 1 + i;
 				Format::standard.quote(value);
+			} else {
+				data.uint64 = element.as<uint64_t>();
 			}
 			Serial << toString(prop->getType()) << " = " << value << endl;
+
+			if(store->isRoot()) {
+				memcpy(reinterpret_cast<uint8_t*>(&rootData) + offset, &data, prop->getSize());
+				Serial << "DATA " << data.uint64 << ", STRINGS " << stringPool.join() << endl;
+			}
 		}
 
 		// Continue parsing
@@ -137,9 +171,12 @@ private:
 
 	ConfigDB::Database& db;
 	Print& output;
+	BasicConfig::Root::Struct rootData;
+	CStringArray stringPool;
 	const ConfigDB::StoreInfo* store{};
 	struct Info {
 		const ConfigDB::ObjectInfo* object;
+		size_t offset;
 	};
 	Info info[JSON::StreamingParser::maxNesting]{};
 };
@@ -154,4 +191,9 @@ void parseJson(Stream& stream)
 	auto status = parser.parse(stream);
 	Serial << _F("Parser returned ") << toString(status) << endl;
 	// return status == JSON::Status::EndOfDocument;
+
+	Serial << "sizeof(Root) = " << sizeof(BasicConfig::Root::Struct) << endl;
+	Serial << "sizeof(General) = " << sizeof(BasicConfig::General::Struct) << endl;
+	Serial << "sizeof(Color) = " << sizeof(BasicConfig::Color::Struct) << endl;
+	Serial << "sizeof(Events) = " << sizeof(BasicConfig::Events::Struct) << endl;
 }
