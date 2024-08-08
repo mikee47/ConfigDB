@@ -24,24 +24,32 @@
 #include <FlashString/Vector.hpp>
 #include <memory>
 
+/**
+ * @brief Property types with storage size
+ */
 #define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
-	XX(Boolean)                                                                                                        \
-	XX(Int8)                                                                                                           \
-	XX(Int16)                                                                                                          \
-	XX(Int32)                                                                                                          \
-	XX(Int64)                                                                                                          \
-	XX(UInt8)                                                                                                          \
-	XX(UInt16)                                                                                                         \
-	XX(UInt32)                                                                                                         \
-	XX(UInt64)                                                                                                         \
-	XX(String)
+	XX(Boolean, 1)                                                                                                     \
+	XX(Int8, 1)                                                                                                        \
+	XX(Int16, 2)                                                                                                       \
+	XX(Int32, 4)                                                                                                       \
+	XX(Int64, 8)                                                                                                       \
+	XX(UInt8, 1)                                                                                                       \
+	XX(UInt16, 2)                                                                                                      \
+	XX(UInt32, 4)                                                                                                      \
+	XX(UInt64, 8)                                                                                                      \
+	XX(String, sizeof(StringRef))
 
 namespace ConfigDB
 {
 class Object;
 
+/**
+ * @brief Defines contained string data using index into string pool
+ */
+using StringRef = uint16_t;
+
 enum class PropertyType {
-#define XX(name) name,
+#define XX(name, ...) name,
 	CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
 };
@@ -73,6 +81,21 @@ struct PropertyInfo {
 	PropertyType getType() const
 	{
 		return FSTR::readValue(&type);
+	}
+
+	/**
+	 * @brief Get number of bytes required to store this property value within a structure
+	 */
+	uint8_t getSize() const
+	{
+		switch(getType()) {
+#define XX(tag, size)                                                                                                  \
+	case PropertyType::tag:                                                                                            \
+		return size;
+			CONFIGDB_PROPERTY_TYPE_MAP(XX)
+#undef XX
+		}
+		return 0;
 	}
 
 	explicit operator bool() const

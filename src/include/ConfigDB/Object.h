@@ -38,6 +38,16 @@ enum class ObjectType {
 #undef XX
 };
 
+/**
+ * @brief Identifies object storage within object pool
+ */
+using ObjectRef = uint16_t;
+
+/**
+ * @brief Identifies array storage within array pool
+ */
+using ArrayRef = uint16_t;
+
 struct ObjectInfo {
 	// DO NOT access these directly!
 	const FlashString* name; ///< Within store, root always nullptr

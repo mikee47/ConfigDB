@@ -103,6 +103,12 @@ class Property:
         return f'const String&' if self.ptype == 'string' else self.ctype
 
     @property
+    def ctype_struct(self):
+        if self.ptype == 'string':
+            return 'ConfigDB::StringRef';
+        return self.ctype
+
+    @property
     def property_type(self):
         if self.ptype != 'integer':
             tag = self.ptype.capitalize()
@@ -110,6 +116,10 @@ class Property:
             r = self.get_intrange()
             tag = f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
         return 'PropertyType::' + tag
+
+    @property
+    def id(self):
+        return make_identifier(self.name)
 
     @property
     def typename(self):
@@ -126,7 +136,12 @@ class Property:
             return get_string(default)
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
-        return str(default) if default else '{}'
+        return str(default) if default else 0
+
+    @property
+    def default_structval(self):
+        '''Value suitable for static initialisation {x}'''
+        return '' if self.ptype == 'string' else self.default_str
 
     @property
     def default_fstr(self):
@@ -537,6 +552,29 @@ def generate_typeinfo(obj: Object) -> list:
     return header;
 
 
+def generate_object_struct(obj: Object) -> list:
+    '''Generate struct definition for this object'''
+
+    def is_array(x: Object):
+        return isinstance(x, Array) or isinstance(x, ObjectArray)
+
+    if is_array(obj):
+        return []
+
+    def struct_type(x: Object) -> str:
+        return 'ConfigDB::ArrayRef' if is_array(x) else f'{x.typename}::Struct'
+
+    return [
+        '',
+        'struct __attribute((packed)) Struct {',
+        [
+            *(f'{struct_type(child)} {child.id}{{}};' for child in obj.children),
+            *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
+        ],
+        '};'
+    ]
+
+
 def generate_property_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
@@ -558,7 +596,7 @@ def generate_array_accessors(arr: Array) -> list:
     '''Generate typed get/set methods for each property'''
 
     prop = arr.items
-    return [
+    return [[
         '',
         f'{prop.ctype} getItem(unsigned index) const',
         '{',
@@ -569,7 +607,7 @@ def generate_array_accessors(arr: Array) -> list:
         '{',
         [f'return Array::setItem(index, value);'],
         '}'
-    ]
+    ]]
 
 
 def generate_object(obj: Object) -> CodeLines:
@@ -598,7 +636,8 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.header += [
         generate_contained_constructors(obj),
-        generate_typeinfo(obj)
+        generate_typeinfo(obj),
+        generate_object_struct(obj)
     ]
 
     if isinstance(obj, Array):

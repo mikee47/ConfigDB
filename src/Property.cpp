@@ -24,7 +24,7 @@
 String toString(ConfigDB::PropertyType type)
 {
 	switch(type) {
-#define XX(name)                                                                                                       \
+#define XX(name, ...)                                                                                                       \
 	case ConfigDB::PropertyType::name:                                                                                 \
 		return F(#name);
 		CONFIGDB_PROPERTY_TYPE_MAP(XX)
