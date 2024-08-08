@@ -437,6 +437,12 @@ def generate_typeinfo(obj: Object) -> list:
             ')'
         ]
         objstr = '&objinfo'
+    elif isinstance(obj, ObjectArray):
+        header += [
+            '',
+            f'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::ObjectInfo, &{obj.items.typename}::typeinfo)'
+        ]
+        objstr = '&objinfo'
     else:
         objstr = 'nullptr'
 
@@ -454,14 +460,13 @@ def generate_typeinfo(obj: Object) -> list:
             ')'
         ]
     elif isinstance(obj, Array):
-        prop = obj.items
         header += [
             '',
             'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::PropertyInfo,',
             make_static_initializer([
                 'nullptr',
-                prop.default_fstr,
-                f'ConfigDB::PropertyType::{prop.ptype.capitalize()}'
+                obj.items.default_fstr,
+                f'ConfigDB::PropertyType::{obj.items.ptype.capitalize()}'
             ], ')')
         ]
     else:
