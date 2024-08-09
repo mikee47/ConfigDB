@@ -14,7 +14,6 @@ public:
 
 	ConfigListener(ConfigDB::Database& db, Print& output) : db(db), output(output)
 	{
-		memset(static_cast<void*>(&rootData), 0, sizeof(rootData));
 	}
 
 	/*
@@ -113,9 +112,11 @@ public:
 		if(element.type == Element::Type::Object || element.type == Element::Type::Array) {
 			Serial << "OBJECT '" << key << "': ";
 			auto [obj, offset] = objectSearch(element);
-			info[element.level] = {obj, offset};
 			if(element.level > 0) {
-				info[element.level].offset += info[element.level - 1].offset;
+				info[element.level] = {obj, info[element.level - 1].data + offset};
+			} else {
+				auto& pool = objectPool.add(obj->defaultData, obj->structSize);
+				info[element.level] = {obj, &pool[offset]};
 			}
 			if(!obj) {
 				Serial << _F("not in schema") << endl;
@@ -128,9 +129,6 @@ public:
 			if(!prop) {
 				Serial << _F("not in schema") << endl;
 				return true;
-			}
-			if(element.level > 0) {
-				offset += info[element.level - 1].offset;
 			}
 			Serial << '[' << offset << ':' << (offset + prop->getSize()) << "]: ";
 			String value = element.as<String>();
@@ -145,7 +143,10 @@ public:
 			Serial << toString(prop->getType()) << " = " << value << endl;
 
 			if(store->isRoot()) {
-				memcpy(reinterpret_cast<uint8_t*>(&rootData) + offset, &data, prop->getSize());
+				assert(element.level > 0);
+				auto poolData = info[element.level - 1].data;
+				assert(poolData != nullptr);
+				memcpy(poolData + offset, &data, prop->getSize());
 				Serial << "DATA " << data.uint64 << ", STRINGS " << stringPool << endl;
 			}
 		}
@@ -160,6 +161,9 @@ public:
 		return true;
 	}
 
+	ConfigDB::ObjectPool objectPool;
+	ConfigDB::StringPool stringPool;
+
 private:
 	void indentLine(unsigned level)
 	{
@@ -168,12 +172,10 @@ private:
 
 	ConfigDB::Database& db;
 	Print& output;
-	BasicConfig::Root::Struct rootData;
-	ConfigDB::StringPool stringPool;
 	const ConfigDB::StoreInfo* store{};
 	struct Info {
 		const ConfigDB::ObjectInfo* object;
-		size_t offset;
+		uint8_t* data;
 	};
 	Info info[JSON::StreamingParser::maxNesting]{};
 };
@@ -187,6 +189,10 @@ void parseJson(Stream& stream)
 	JSON::StaticStreamingParser<128> parser(&listener);
 	auto status = parser.parse(stream);
 	Serial << _F("Parser returned ") << toString(status) << endl;
+
+	auto& pool = listener.objectPool[0];
+	auto root = reinterpret_cast<BasicConfig::Root::Struct*>(pool.get());
+
 	// return status == JSON::Status::EndOfDocument;
 
 	Serial << "sizeof(Root) = " << sizeof(BasicConfig::Root::Struct) << endl;

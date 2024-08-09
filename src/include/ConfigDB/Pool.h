@@ -20,8 +20,7 @@
 #pragma once
 
 #include "Object.h"
-#include <cstdint>
-#include <memory>
+#include <WVector.h>
 
 namespace ConfigDB
 {
@@ -29,7 +28,7 @@ namespace ConfigDB
  * @brief Pool for string data
  *
  * We store all string data in a single String object, NUL-separated.
- * A StringRef is the offset from the start of that object.
+ * A StringId is the offset from the start of that object.
  * Strings are appended but never removed.
  */
 class StringPool
@@ -37,26 +36,26 @@ class StringPool
 public:
 	/**
 	 * @brief Search for a string
-	 * @retval StringRef 0 if string is not found
+	 * @retval StringId 0 if string is not found
 	 */
-	StringRef find(const String& value)
+	StringId find(const String& value)
 	{
 		return 1 + strings.indexOf(value.c_str(), value.length() + 1);
 	}
 
-	StringRef add(const String& value)
+	StringId add(const String& value)
 	{
 		auto offset = strings.length();
 		strings.concat(value.c_str(), value.length() + 1);
 		return 1 + offset;
 	}
 
-	StringRef findOrAdd(const String& value)
+	StringId findOrAdd(const String& value)
 	{
 		return find(value) ?: add(value);
 	}
 
-	const char* operator[](StringRef ref)
+	const char* operator[](StringId ref)
 	{
 		return ref ? &strings[ref] : nullptr;
 	}
@@ -91,24 +90,52 @@ private:
  * Array data is stored as Vector, each item is of fixed size
  * This incldues ObjectArray whose items are references into the Object pool.
  */
-class Vector
+class PoolData : public std::unique_ptr<uint8_t[]>
 {
 public:
+	PoolData(uint16_t size) : unique_ptr(new uint8_t[size]), size(size)
+	{
+	}
+
+	uint16_t getSize() const
+	{
+		return size;
+	}
+
 private:
-	std::unique_ptr<uint8_t> data;
+	uint16_t size;
 };
 
 /**
  * @brief This pool stores object data
  */
-class ObjectPool : public Vector
+class ObjectPool
 {
+public:
+	PoolData& add(PGM_VOID_P defaultData, size_t size)
+	{
+		auto data = new PoolData(size);
+		memcpy_P(data->get(), defaultData, size);
+		pool.addElement(data);
+		return *data;
+	}
+
+	PoolData& operator[](unsigned index)
+	{
+		return pool[index];
+	}
+
+private:
+	Vector<PoolData> pool;
 };
 
 /**
  * @brief This pool stores array data
+ *
+ * An array has fixed-size items.
+ * These can be properties or Object references.
  */
-class ArrayPool : public Vector
+class ArrayPool : public Vector<PoolData>
 {
 };
 
