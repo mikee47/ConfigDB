@@ -173,12 +173,16 @@ class Object:
         return make_typename(self.name) if self.name else 'Root'
 
     @property
+    def typename_contained(self):
+        return self.typename if self.is_item else 'Contained' + self.typename
+
+    @property
     def namespace(self):
         obj = self.parent
         ns = []
         while obj:
             if not isinstance(obj, ObjectArray):
-                ns.insert(0, obj.typename)
+                ns.insert(0, obj.typename_contained)
             obj = obj.parent
         return '::'.join(ns)
 
@@ -228,6 +232,10 @@ class Store(Object):
         return f'{super().typename}Store'
 
     @property
+    def typename_contained(self):
+        return self.typename
+
+    @property
     def namespace(self):
         obj = self
         while obj.parent:
@@ -241,6 +249,10 @@ class Store(Object):
 @dataclass
 class Database(Object):
     stores: list[Store] = field(default_factory=list)
+
+    @property
+    def typename_contained(self):
+        return self.typename
 
     @property
     def database(self):
@@ -302,10 +314,10 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
     return [ '{', [e + ',' for e in entries], '}' + term_str]
 
 
-def declare_templated_class(obj: Object, prefix: str = '', tparams: list = []) -> list[str]:
+def declare_templated_class(obj: Object, tparams: list = []) -> list[str]:
     return [
         '',
-        f'class {prefix}{obj.typename}: public ConfigDB::{obj.base_class}Template<{", ".join([f'{prefix}{obj.typename}'] + tparams)}>',
+        f'class {obj.typename_contained}: public ConfigDB::{obj.base_class}Template<{", ".join([f'{obj.typename_contained}'] + tparams)}>',
         '{',
         'public:',
     ]
@@ -481,7 +493,7 @@ def generate_method_get_child_object(obj: Object) -> list:
             '{',
             [
                 'switch(index) {',
-                [f'case {i}: return std::make_unique<Contained{child.typename}>(*this);'
+                [f'case {i}: return std::make_unique<{child.typename_contained}>(*this);'
                     for i, child in enumerate(children)],
                 ['default: return nullptr;'],
                 '}',
@@ -569,7 +581,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
         return CodeLines(['using Struct = ConfigDB::ArrayId;'], [])
 
     def struct_type(x: Object) -> str:
-        return 'ConfigDB::ArrayId' if is_array(x) else f'Contained{x.typename}::Struct'
+        return 'ConfigDB::ArrayId' if is_array(x) else f'{x.typename_contained}::Struct'
 
     lines = CodeLines([
         '',
@@ -587,7 +599,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
         ]
         lines.source += [
             '',
-            f'const {obj.namespace}::{obj.typename}::Struct {obj.namespace}::{obj.typename}::defaultData;'
+            f'const {obj.namespace}::{obj.typename_contained}::Struct {obj.namespace}::{obj.typename_contained}::defaultData;'
         ]
     return lines
 
@@ -635,7 +647,7 @@ def generate_object(obj: Object) -> CodeLines:
         struct = generate_object_struct(obj)
         return CodeLines([
             *item_lines.header,
-            *declare_templated_class(obj, 'Contained', [obj.items.typename]),
+            *declare_templated_class(obj, [obj.items.typename]),
             generate_contained_constructors(obj),
             struct.header,
             generate_typeinfo(obj),
@@ -646,7 +658,7 @@ def generate_object(obj: Object) -> CodeLines:
 
 
     lines = CodeLines(
-        declare_templated_class(obj, 'Contained'),
+        declare_templated_class(obj),
         [])
 
     # Append child object definitions
@@ -673,7 +685,7 @@ def generate_object(obj: Object) -> CodeLines:
     if obj.children:
         lines.header += [
             '',
-            [f'Contained{child.typename} {child.id};' for child in obj.children],
+            [f'{child.typename_contained} {child.id};' for child in obj.children],
         ]
 
     lines.header += [
@@ -687,7 +699,7 @@ def generate_object(obj: Object) -> CodeLines:
 def generate_contained_constructors(obj: Object) -> list:
     headers = [
         '',
-        f'Contained{obj.typename}({obj.store.typename}& store): ' + ', '.join([
+        f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
             f'{obj.classname}Template(store, {get_string(obj.relative_path)})',
             *(f'{child.id}(*this)' for child in obj.children)
         ]),
@@ -696,10 +708,9 @@ def generate_contained_constructors(obj: Object) -> list:
     ]
 
     if not obj.is_root:
-        prefix = '' if obj.parent.is_item else 'Contained'
         headers += [
             '',
-            f'Contained{obj.typename}({prefix}{obj.parent.typename}& parent): ' + ', '.join([
+            f'{obj.typename_contained}({obj.parent.typename_contained}& parent): ' + ', '.join([
                 f'{obj.classname}Template(parent, {get_string(obj.name)})',
                 *(f'{child.id}(*this)' for child in obj.children)
             ]),
@@ -713,11 +724,11 @@ def generate_contained_constructors(obj: Object) -> list:
 def generate_outer_class(obj: Object) -> list:
     return [
         '',
-        f'class {obj.typename}: public Contained{obj.typename}',
+        f'class {obj.typename}: public {obj.typename_contained}',
         '{',
         'public:',
         [
-            f'{obj.typename}(std::shared_ptr<{obj.store.typename}> store): Contained{obj.typename}(*store), store(store)',
+            f'{obj.typename}(std::shared_ptr<{obj.store.typename}> store): {obj.typename_contained}(*store), store(store)',
             '{',
             '}',
             '',
