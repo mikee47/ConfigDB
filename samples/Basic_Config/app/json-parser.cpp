@@ -3,6 +3,7 @@
 #include <Data/Format/Standard.h>
 #include <Data/CStringArray.h>
 #include <HardwareSerial.h>
+#include <ConfigDB/Pool.h>
 
 namespace
 {
@@ -131,16 +132,12 @@ public:
 			if(element.level > 0) {
 				offset += info[element.level - 1].offset;
 			}
-			Serial << "@ " << offset << '[' << prop->getSize() << "]: ";
+			Serial << '[' << offset << ':' << (offset + prop->getSize()) << "]: ";
 			String value = element.as<String>();
 			ConfigDB::PropertyData data{};
 			if(prop->getType() == ConfigDB::PropertyType::String) {
-				int i = stringPool.indexOf(value);
-				if(i < 0) {
-					i = stringPool.count();
-					stringPool += value;
-				}
-				data.string = 1 + i;
+				auto ref = stringPool.findOrAdd(value);
+				data.string = ref;
 				Format::standard.quote(value);
 			} else {
 				data.uint64 = element.as<uint64_t>();
@@ -149,7 +146,7 @@ public:
 
 			if(store->isRoot()) {
 				memcpy(reinterpret_cast<uint8_t*>(&rootData) + offset, &data, prop->getSize());
-				Serial << "DATA " << data.uint64 << ", STRINGS " << stringPool.join() << endl;
+				Serial << "DATA " << data.uint64 << ", STRINGS " << stringPool << endl;
 			}
 		}
 
@@ -172,7 +169,7 @@ private:
 	ConfigDB::Database& db;
 	Print& output;
 	BasicConfig::Root::Struct rootData;
-	CStringArray stringPool;
+	ConfigDB::StringPool stringPool;
 	const ConfigDB::StoreInfo* store{};
 	struct Info {
 		const ConfigDB::ObjectInfo* object;
