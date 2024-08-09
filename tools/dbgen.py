@@ -177,7 +177,8 @@ class Object:
         obj = self.parent
         ns = []
         while obj:
-            ns.insert(0, obj.typename)
+            if not isinstance(obj, ObjectArray):
+                ns.insert(0, obj.typename)
             obj = obj.parent
         return '::'.join(ns)
 
@@ -195,7 +196,7 @@ class Object:
 
     @property
     def is_root(self):
-        return isinstance(self.parent, Store)
+        return isinstance(self.parent, Database)
 
     @property
     def path(self):
@@ -214,6 +215,9 @@ class Array(Object):
 @dataclass
 class ObjectArray(Object):
     items: Object = None
+
+def is_array(x: Object):
+    return isinstance(x, Array) or isinstance(x, ObjectArray)
 
 @dataclass
 class Store(Object):
@@ -335,8 +339,8 @@ def load_config(filename: str) -> Database:
         raise RuntimeError('Database requires root "store" value')
     db.store = Store(db, '', store_ns=make_typename(store_ns))
     db.stores.append(db.store)
-    root = Object(db.store, '', db.store)
-    db.store.children.append(root)
+    root = Object(db, '', db.store)
+    db.children.append(root)
 
     def parse(obj: Object, properties: dict):
         obj_root = obj
@@ -355,7 +359,7 @@ def load_config(filename: str) -> Database:
                     raise ValueError(f'{key} cannot have "store", not a root object')
                 store = Store(db, key, store_ns=make_typename(store_ns))
                 db.stores.append(store)
-                obj = store
+                obj = db
             else:
                 store = obj.store
             if prop.ptype == 'object':
@@ -393,9 +397,10 @@ def generate_database(db: Database) -> CodeLines:
             '',
             'using namespace ConfigDB;',
         ])
-    for store in db.stores:
+    for obj in db.children:
+        store = obj.store
         lines.header += [[
-            *declare_templated_class(store),
+            *declare_templated_class(obj.store),
             [
                 f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
                 '{',
@@ -403,7 +408,7 @@ def generate_database(db: Database) -> CodeLines:
                 '',
                 'std::unique_ptr<ConfigDB::Object> getObject() override',
                 '{',
-                [f'return std::make_unique<{store.children[0].typename}>(store.lock());'],
+                [f'return std::make_unique<{obj.typename}>(store.lock());'],
                 '}',
                 '',
                 'static const ConfigDB::StoreInfo typeinfo;',
@@ -415,13 +420,12 @@ def generate_database(db: Database) -> CodeLines:
             f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
             *make_static_initializer([
                 get_string_ptr(store.name, True),
-                f'{store.namespace}::{store.children[0].typename}::typeinfo'
+                f'{store.namespace}::{obj.typename}::typeinfo'
             ], ';')
         ]
 
-    for store in db.stores:
-        for child in store.children:
-            lines.append(generate_object(child))
+    for obj in db.children:
+        lines.append(generate_object(obj))
 
     lines.header += [
         [
@@ -466,7 +470,11 @@ def generate_database(db: Database) -> CodeLines:
 def generate_method_get_child_object(obj: Object) -> list:
     '''Generate *getChildObject* method'''
 
-    if obj.children:
+    if isinstance(obj, ObjectArray):
+        children = [obj.items]
+    else:
+        children = obj.children
+    if children:
         return [
             '',
             'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override',
@@ -474,7 +482,7 @@ def generate_method_get_child_object(obj: Object) -> list:
             [
                 'switch(index) {',
                 [f'case {i}: return std::make_unique<Contained{child.typename}>(*this);'
-                    for i, child in enumerate(obj.children)],
+                    for i, child in enumerate(children)],
                 ['default: return nullptr;'],
                 '}',
             ],
@@ -545,6 +553,7 @@ def generate_typeinfo(obj: Object) -> list:
             pathstr,
             objstr,
             propstr,
+            'nullptr' if is_array(obj) else '&defaultData',
             'sizeof(Struct)',
             f'ConfigDB::ObjectType::{obj.classname}'
         ], ';')
@@ -553,29 +562,34 @@ def generate_typeinfo(obj: Object) -> list:
     return header;
 
 
-def generate_object_struct(obj: Object) -> list:
+def generate_object_struct(obj: Object) -> CodeLines:
     '''Generate struct definition for this object'''
 
-    def is_array(x: Object):
-        return isinstance(x, Array) or isinstance(x, ObjectArray)
-
     if is_array(obj):
-        return [
-            'using Struct = ConfigDB::ArrayId;'
-        ]
+        return CodeLines(['using Struct = ConfigDB::ArrayId;'], [])
 
     def struct_type(x: Object) -> str:
         return 'ConfigDB::ArrayId' if is_array(x) else f'Contained{x.typename}::Struct'
 
-    return [
+    lines = CodeLines([
         '',
         'struct __attribute((packed)) Struct {',
         [
             *(f'{struct_type(child)} {child.id}{{}};' for child in obj.children),
             *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
         ],
-        '};',
-    ]
+        '};'
+    ], [])
+    if not is_array(obj):
+        lines.header += [
+            '',
+            'static const Struct defaultData;'
+        ]
+        lines.source += [
+            '',
+            f'const {obj.namespace}::{obj.typename}::Struct {obj.namespace}::{obj.typename}::defaultData;'
+        ]
+    return lines
 
 
 def generate_property_accessors(obj: Object) -> list:
@@ -618,16 +632,17 @@ def generate_object(obj: Object) -> CodeLines:
 
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
+        struct = generate_object_struct(obj)
         return CodeLines([
             *item_lines.header,
             *declare_templated_class(obj, 'Contained', [obj.items.typename]),
             generate_contained_constructors(obj),
-            generate_object_struct(obj),
+            struct.header,
             generate_typeinfo(obj),
             '};',
             *generate_outer_class(obj)
         ],
-        item_lines.source)
+        item_lines.source + struct.source)
 
 
     lines = CodeLines(
@@ -638,11 +653,13 @@ def generate_object(obj: Object) -> CodeLines:
     for child in obj.children:
         lines.append(generate_object(child))
 
+    struct = generate_object_struct(obj)
     lines.header += [
         generate_contained_constructors(obj),
-        generate_object_struct(obj),
+        struct.header,
         generate_typeinfo(obj),
     ]
+    lines.source += struct.source
 
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
@@ -729,9 +746,10 @@ def generate_item_object(obj: Object) -> CodeLines:
     for child in obj.children:
         lines.append(generate_object(child))
 
+    struct = generate_object_struct(obj)
     lines.header += [[
         '',
-        generate_object_struct(obj),
+        *struct.header,
         *generate_typeinfo(obj),
         '',
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}):',
@@ -750,6 +768,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         '{',
         '}',
     ]]
+    lines.source += struct.source
 
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
