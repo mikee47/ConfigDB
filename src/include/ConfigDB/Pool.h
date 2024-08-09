@@ -90,10 +90,10 @@ private:
  * Array data is stored as Vector, each item is of fixed size
  * This incldues ObjectArray whose items are references into the Object pool.
  */
-class PoolData : public std::unique_ptr<uint8_t[]>
+class ObjectData : public std::unique_ptr<uint8_t[]>
 {
 public:
-	PoolData(uint16_t size) : unique_ptr(new uint8_t[size]), size(size)
+	ObjectData(uint16_t size) : unique_ptr(new uint8_t[size]), size(size)
 	{
 	}
 
@@ -112,31 +112,115 @@ private:
 class ObjectPool
 {
 public:
-	PoolData& add(PGM_VOID_P defaultData, size_t size)
+	ObjectId add(size_t size)
 	{
-		auto data = new PoolData(size);
-		memcpy_P(data->get(), defaultData, size);
+		auto data = new ObjectData(size);
+		memset(data->get(), 0, size);
 		pool.addElement(data);
-		return *data;
+		return pool.size();
 	}
 
-	PoolData& operator[](unsigned index)
+	ObjectId add(PGM_VOID_P defaultData, size_t size)
 	{
-		return pool[index];
+		auto data = new ObjectData(size);
+		memcpy_P(data->get(), defaultData, size);
+		pool.addElement(data);
+		return pool.size();
+	}
+
+	ObjectData& operator[](ObjectId id)
+	{
+		return pool[id - 1];
 	}
 
 private:
-	Vector<PoolData> pool;
+	Vector<ObjectData> pool;
+};
+
+class ItemPool
+{
+public:
+	ItemPool(uint16_t itemSize) : itemSize(itemSize)
+	{
+	}
+
+	uint8_t* add(const void* data = nullptr)
+	{
+		if(capacity == count) {
+			auto newCapacity = capacity + 16;
+			auto newBuffer = realloc(buffer, newCapacity);
+			if(!newBuffer) {
+				return nullptr;
+			}
+			buffer = static_cast<uint8_t*>(newBuffer);
+			capacity = newCapacity;
+		}
+		auto item = &buffer[count * itemSize];
+		if(data) {
+			memcpy(item, data, itemSize);
+		} else {
+			memset(item, 0, itemSize);
+		}
+		++count;
+		return item;
+	}
+
+	uint8_t* operator[](unsigned index)
+	{
+		return (index < count) ? &buffer[index * itemSize] : nullptr;
+	}
+
+private:
+	uint8_t* buffer{};
+	size_t capacity{};
+	size_t count{};
+	uint16_t itemSize;
 };
 
 /**
  * @brief This pool stores array data
  *
  * An array has fixed-size items.
- * These can be properties or Object references.
  */
-class ArrayPool : public Vector<PoolData>
+class ArrayPool
 {
+public:
+	ArrayId add(size_t itemSize)
+	{
+		auto pool = new ItemPool(itemSize);
+		pools.addElement(pool);
+		return pools.size();
+	}
+
+	ItemPool& operator[](ArrayId id)
+	{
+		return pools[id - 1];
+	}
+
+private:
+	Vector<ItemPool> pools;
+};
+
+/**
+ * @brief This pool stores object pools
+ */
+class ObjectArrayPool
+{
+public:
+	ArrayId add()
+	{
+		auto pool = new ObjectPool();
+		pools.addElement(pool);
+		return pools.size();
+	}
+
+	ObjectPool& operator[](ArrayId id)
+	{
+		return pools[id - 1];
+	}
+
+private:
+	Vector<ObjectPool> pools;
 };
 
 } // namespace ConfigDB
