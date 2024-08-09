@@ -54,6 +54,7 @@ struct ObjectInfo {
 	const FlashString* path; ///< Relative to store
 	const FSTR::Vector<ObjectInfo>* objinfo;
 	const FSTR::Array<PropertyInfo>* propinfo;
+	PGM_VOID_P defaultData;
 	uint16_t structSize;
 	ObjectType type;
 
