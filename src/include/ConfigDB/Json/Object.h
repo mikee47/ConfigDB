@@ -77,7 +77,7 @@ private:
 	friend class ObjectArray;
 	friend class RootObject;
 
-	ObjectRef object;
+	ObjectId object;
 };
 
 template <class ClassType> using ObjectTemplate = ConfigDB::ObjectTemplate<Object, ClassType>;

@@ -85,7 +85,7 @@ public:
 protected:
 	friend class Json::Object;
 
-	ArrayRef array;
+	ArrayId array;
 };
 
 template <class ClassType> using ArrayTemplate = ConfigDB::ArrayTemplate<Array, ClassType>;

@@ -37,7 +37,7 @@
 	XX(UInt16, 2)                                                                                                      \
 	XX(UInt32, 4)                                                                                                      \
 	XX(UInt64, 8)                                                                                                      \
-	XX(String, sizeof(StringRef))
+	XX(String, sizeof(StringId))
 
 namespace ConfigDB
 {
@@ -46,7 +46,7 @@ class Object;
 /**
  * @brief Defines contained string data using index into string pool
  */
-using StringRef = uint16_t;
+using StringId = uint16_t;
 
 enum class PropertyType {
 #define XX(name, ...) name,
@@ -115,7 +115,7 @@ union PropertyData{
 	int16_t int64;
 	bool b;
 	float f;
-	StringRef string;
+	StringId string;
 };
 
 static constexpr const PropertyInfo emptyPropertyInfo{};

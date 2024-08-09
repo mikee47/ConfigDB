@@ -105,7 +105,7 @@ class Property:
     @property
     def ctype_struct(self):
         if self.ptype == 'string':
-            return 'ConfigDB::StringRef';
+            return 'ConfigDB::StringId';
         return self.ctype
 
     @property
@@ -561,11 +561,11 @@ def generate_object_struct(obj: Object) -> list:
 
     if is_array(obj):
         return [
-            'using Struct = ConfigDB::ArrayRef;'
+            'using Struct = ConfigDB::ArrayId;'
         ]
 
     def struct_type(x: Object) -> str:
-        return 'ConfigDB::ArrayRef' if is_array(x) else f'Contained{x.typename}::Struct'
+        return 'ConfigDB::ArrayId' if is_array(x) else f'Contained{x.typename}::Struct'
 
     return [
         '',

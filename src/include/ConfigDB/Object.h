@@ -41,12 +41,12 @@ enum class ObjectType {
 /**
  * @brief Identifies object storage within object pool
  */
-using ObjectRef = uint16_t;
+using ObjectId = uint16_t;
 
 /**
  * @brief Identifies array storage within array pool
  */
-using ArrayRef = uint16_t;
+using ArrayId = uint16_t;
 
 struct ObjectInfo {
 	// DO NOT access these directly!

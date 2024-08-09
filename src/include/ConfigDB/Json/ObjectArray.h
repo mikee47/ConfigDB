@@ -61,7 +61,7 @@ public:
 protected:
 	friend class Json::Object;
 
-	ArrayRef array;
+	ArrayId array;
 };
 
 template <class ClassType, class Item>
