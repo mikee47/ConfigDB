@@ -72,23 +72,7 @@ private:
 };
 
 /**
- * @brief Custom vector clas
- *
- * This class differs from a Vector or std::vector in the following ways:
- *  - no insert
- *  - no re-ordering
- *  - no item removal
- *
- * When an item is added it is referenced by index (slot).
- *
- * Supported operations:
- * 	- add item
- *  - clear item: de-allocates item storage and sets to 'null'
- *  - clear vector
- *
- * Object data is stored as simple uint8_t[], size is fixed
- * Array data is stored as Vector, each item is of fixed size
- * This incldues ObjectArray whose items are references into the Object pool.
+ * @brief Contains object data as a single heap allocation
  */
 class ObjectData : public std::unique_ptr<uint8_t[]>
 {
@@ -137,40 +121,87 @@ private:
 	Vector<ObjectData> pool;
 };
 
-class ItemPool
+/**
+ * @brief An array of fixed-sized items
+ *
+ * The `ArrayPool` class manages these instances.
+ * This isn't type-based but rather uses an item size, so it's difficult to implement with the STL.
+ */
+class ArrayData
 {
 public:
-	ItemPool(uint16_t itemSize) : itemSize(itemSize)
+	ArrayData(uint16_t itemSize) : itemSize(itemSize)
 	{
 	}
 
 	uint8_t* add(const void* data = nullptr)
 	{
-		if(capacity == count) {
-			auto newCapacity = capacity + 16;
-			auto newBuffer = realloc(buffer, newCapacity);
-			if(!newBuffer) {
-				return nullptr;
-			}
-			buffer = static_cast<uint8_t*>(newBuffer);
-			capacity = newCapacity;
+		return checkCapacity() ? newItem(count++, data) : nullptr;
+	}
+
+	bool remove(unsigned index)
+	{
+		if(index >= count) {
+			return false;
 		}
-		auto item = &buffer[count * itemSize];
+		memmove(getItemPtr(index), getItemPtr(index + 1), getItemSize(count - index - 1));
+		--count;
+		return true;
+	}
+
+	uint8_t* insert(unsigned index, const void* data = nullptr)
+	{
+		if(!checkCapacity()) {
+			return nullptr;
+		}
+		memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index - 1));
+		++count;
+		return newItem(index, data);
+	}
+
+	uint8_t* operator[](unsigned index)
+	{
+		return (index < count) ? getItemPtr(index) : nullptr;
+	}
+
+private:
+	bool checkCapacity()
+	{
+		if(count < capacity) {
+			return true;
+		}
+		auto newCapacity = capacity + increment;
+		auto newBuffer = realloc(buffer, newCapacity);
+		if(!newBuffer) {
+			return false;
+		}
+		buffer = static_cast<uint8_t*>(newBuffer);
+		capacity = newCapacity;
+		return true;
+	}
+
+	uint8_t* newItem(unsigned index, const void* data)
+	{
+		auto item = getItemPtr(index);
 		if(data) {
 			memcpy(item, data, itemSize);
 		} else {
 			memset(item, 0, itemSize);
 		}
-		++count;
 		return item;
 	}
 
-	uint8_t* operator[](unsigned index)
+	uint8_t* getItemPtr(unsigned index)
 	{
-		return (index < count) ? &buffer[index * itemSize] : nullptr;
+		return &buffer[index * itemSize];
 	}
 
-private:
+	size_t getItemSize(size_t count)
+	{
+		return count * itemSize;
+	}
+
+	static const size_t increment = 16;
 	uint8_t* buffer{};
 	size_t capacity{};
 	size_t count{};
@@ -187,40 +218,86 @@ class ArrayPool
 public:
 	ArrayId add(size_t itemSize)
 	{
-		auto pool = new ItemPool(itemSize);
-		pools.addElement(pool);
-		return pools.size();
+		auto data = new ArrayData(itemSize);
+		pool.addElement(data);
+		return pool.size();
 	}
 
-	ItemPool& operator[](ArrayId id)
+	ArrayData& operator[](ArrayId id)
 	{
-		return pools[id - 1];
+		return pool[id - 1];
 	}
 
 private:
-	Vector<ItemPool> pools;
+	Vector<ArrayData> pool;
 };
 
 /**
  * @brief This pool stores object pools
+ *
+ * Accessor objects (the generated classes) contain a reference to object data,
+ * so objects cannot be reallocated after creation.
+ *
+ * This class differs from a Vector or std::vector in the following ways:
+ *  - no insert
+ *  - no re-ordering
+ *  - no item removal
+ *
+ * When an item is added it is referenced by index (slot).
+ *
+ * Supported operations:
+ * 	- add item: use first free slot or add some more
+ *  - clear item: de-allocates item storage and sets to 'null'
+ *  - clear vector
+ *
+ * Object data is stored as simple uint8_t[], size is fixed
+ * Array data is stored as Vector, each item is of fixed size
+ * This incldues ObjectArray whose items are references into the Object pool.
  */
 class ObjectArrayPool
 {
 public:
+	~ObjectArrayPool()
+	{
+		for(auto& pool : pools) {
+			delete pool;
+			pool = nullptr;
+		}
+	}
+
 	ArrayId add()
 	{
-		auto pool = new ObjectPool();
-		pools.addElement(pool);
-		return pools.size();
+		ArrayId id = 1;
+		for(auto& pool : pools) {
+			if(pool == nullptr) {
+				pool = new ObjectPool();
+				return id;
+			}
+			++id;
+		}
+		pools.add(new ObjectPool());
+		return id;
+	}
+
+	/**
+	 * @brief Delete ObjectPool with given id and release slot
+	 */
+	void clearSlot(ArrayId id)
+	{
+		auto& pool = pools[id - 1];
+		delete pool;
+		pool = nullptr;
 	}
 
 	ObjectPool& operator[](ArrayId id)
 	{
-		return pools[id - 1];
+		auto pool = pools[id - 1];
+		assert(pool != nullptr);
+		return *pool;
 	}
 
 private:
-	Vector<ObjectPool> pools;
+	Vector<ObjectPool*> pools;
 };
 
 } // namespace ConfigDB
