@@ -192,8 +192,13 @@ public:
 		String value = element.as<String>();
 		ConfigDB::PropertyData propData{};
 		if(prop->getType() == ConfigDB::PropertyType::String) {
-			auto ref = stringPool.findOrAdd(value);
-			propData.string = ref;
+			if(prop->defaultValue && *prop->defaultValue == value) {
+				Serial << _F("DEFAULT ");
+				propData.string = 0;
+			} else {
+				auto ref = stringPool.findOrAdd(value);
+				propData.string = ref;
+			}
 			Format::standard.quote(value);
 		} else {
 			propData.uint64 = element.as<uint64_t>();
