@@ -67,6 +67,11 @@ public:
 		return p.print(s);
 	}
 
+	void clear()
+	{
+		strings = nullptr;
+	}
+
 private:
 	String strings;
 };
@@ -117,6 +122,11 @@ public:
 		return pool[id - 1];
 	}
 
+	void clear()
+	{
+		pool.clear();
+	}
+
 private:
 	Vector<ObjectData> pool;
 };
@@ -132,6 +142,11 @@ class ArrayData
 public:
 	ArrayData(uint16_t itemSize) : itemSize(itemSize)
 	{
+	}
+
+	~ArrayData()
+	{
+		free(buffer);
 	}
 
 	uint8_t* add(const void* data = nullptr)
@@ -228,6 +243,11 @@ public:
 		return pool[id - 1];
 	}
 
+	void clear()
+	{
+		pool.clear();
+	}
+
 private:
 	Vector<ArrayData> pool;
 };
@@ -259,10 +279,7 @@ class ObjectArrayPool
 public:
 	~ObjectArrayPool()
 	{
-		for(auto& pool : pools) {
-			delete pool;
-			pool = nullptr;
-		}
+		clear();
 	}
 
 	ArrayId add()
@@ -294,6 +311,15 @@ public:
 		auto pool = pools[id - 1];
 		assert(pool != nullptr);
 		return *pool;
+	}
+
+	void clear()
+	{
+		for(auto& pool : pools) {
+			delete pool;
+			pool = nullptr;
+		}
+		pools.clear();
 	}
 
 private:

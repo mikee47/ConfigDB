@@ -22,6 +22,7 @@
 #include "Object.h"
 #include "Array.h"
 #include "ObjectArray.h"
+#include "Pool.h"
 #include <WString.h>
 #include <debug_progmem.h>
 
@@ -117,7 +118,20 @@ public:
 
 	virtual const StoreInfo& getTypeinfo() const = 0;
 
+	ObjectPool objectPool;
+	ArrayPool arrayPool;
+	ObjectArrayPool objectArrayPool;
+	StringPool stringPool;
+
 protected:
+	void clear()
+	{
+		arrayPool.clear();
+		objectArrayPool.clear();
+		objectPool.clear();
+		stringPool.clear();
+	}
+
 	Database& db;
 	String name;
 };

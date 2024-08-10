@@ -55,8 +55,6 @@ public:
 	}
 
 private:
-	friend class Object;
-
 	bool load();
 	bool save();
 };

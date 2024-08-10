@@ -102,7 +102,7 @@ public:
 			return {};
 		}
 		if(obj->getType() == ConfigDB::ObjectType::Array) {
-			auto& pool = arrayPool[parent.id];
+			auto& pool = store.arrayPool[parent.id];
 			return {obj->propinfo->data(), pool.add(), 0};
 		}
 		assert(obj->getType() == ConfigDB::ObjectType::Object);
@@ -142,8 +142,8 @@ public:
 			}
 			if(element.level == 0) {
 				output << "{POOL} ";
-				auto id = objectPool.add(obj->defaultData, obj->getStructSize());
-				auto& pool = objectPool[id];
+				auto id = store.objectPool.add(obj->defaultData, obj->getStructSize());
+				auto& pool = store.objectPool[id];
 				info[element.level] = {obj, &pool[offset], id};
 			} else {
 				assert(element.level > 0);
@@ -155,7 +155,7 @@ public:
 						info[element.level] = {obj, parent.data + offset};
 					} else {
 						assert(parent.id != 0);
-						auto& pool = objectArrayPool[parent.id];
+						auto& pool = store.objectArrayPool[parent.id];
 						if(parent.object->getType() == ConfigDB::ObjectType::Array) {
 							auto items = parent.object->propinfo->data();
 							// auto id = objectArrayPool[parent.id].add(items->getSize());
@@ -172,20 +172,20 @@ public:
 				}
 				case ConfigDB::ObjectType::Array: {
 					auto prop = parent.object->propinfo->data();
-					auto id = arrayPool.add(prop->getSize());
+					auto id = store.arrayPool.add(prop->getSize());
 					assert(parent.data);
 					memcpy(parent.data + offset, &id, sizeof(id));
 					output << "DATA " << id << endl;
-					auto& pool = arrayPool[id];
+					auto& pool = store.arrayPool[id];
 					info[element.level] = {obj, nullptr, id};
 					break;
 				}
 				case ConfigDB::ObjectType::ObjectArray: {
-					auto id = objectArrayPool.add();
+					auto id = store.objectArrayPool.add();
 					assert(parent.data);
 					memcpy(parent.data + offset, &id, sizeof(id));
 					output << "DATA " << id << endl;
-					auto& pool = objectArrayPool[id];
+					auto& pool = store.objectArrayPool[id];
 					info[element.level] = {obj, nullptr, id};
 					break;
 				}
@@ -214,7 +214,7 @@ public:
 				output << _F("DEFAULT ");
 				propData.string = 0;
 			} else {
-				auto ref = stringPool.findOrAdd(value);
+				auto ref = store.stringPool.findOrAdd(value);
 				propData.string = ref;
 			}
 			::Format::standard.quote(value);
@@ -224,7 +224,7 @@ public:
 		output << toString(prop->getType()) << " = " << value << " (" << propData.int64 << ")" << endl;
 
 		memcpy(data + offset, &propData, prop->getSize());
-		output << "DATA " << propData.uint64 << ", STRINGS " << stringPool << endl;
+		output << "DATA " << propData.uint64 << ", STRINGS " << store.stringPool << endl;
 
 		return true;
 	}
@@ -234,11 +234,6 @@ public:
 		// Continue parsing
 		return true;
 	}
-
-	ConfigDB::ObjectPool objectPool;
-	ConfigDB::ArrayPool arrayPool;
-	ConfigDB::ObjectArrayPool objectArrayPool;
-	ConfigDB::StringPool stringPool;
 
 private:
 	void indentLine(unsigned level)
