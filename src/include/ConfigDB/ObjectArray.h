@@ -29,20 +29,31 @@ namespace ConfigDB
 class ObjectArray : public Object
 {
 public:
-	ObjectArray() = default;
+	// ObjectArray() = default;
 
-	ObjectArray(Object& parent) : Object(parent)
+	ObjectArray(Store& store, const ObjectInfo& typeinfo);
+
+	ObjectArray(Object& parent, ArrayId id) : Object(parent), id(id)
 	{
 	}
 
-	String getStoredValue(const String&) const override
+	void* getObjectDataPtr(unsigned index);
+
+	template <class Item> Item& getObjectData(unsigned index)
 	{
-		return nullptr;
+		return *reinterpret_cast<Item*>(getObjectDataPtr(index));
 	}
 
-	String getStoredArrayValue(unsigned) const override
+	bool removeItem(unsigned index)
 	{
-		return nullptr;
+		// array.remove(index);
+		return true;
+	}
+
+	unsigned getObjectCount() const override
+	{
+		return 0;
+		// return array.size();
 	}
 
 	unsigned getPropertyCount() const override
@@ -54,20 +65,22 @@ public:
 	{
 		return {};
 	}
+
+private:
+	ArrayId id;
 };
 
 /**
- * @brief Used by store implemention to create specific template for `ObjectArray`
- * @tparam BaseType The store's base `Array` class
+ * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  * @tparam Item Concrete type for array item provided by code generator
  */
-template <class BaseType, class ClassType, class ItemType> class ObjectArrayTemplate : public BaseType
+template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
 	using Item = ItemType;
 
-	using BaseType::BaseType;
+	using ObjectArray::ObjectArray;
 
 	const ObjectInfo& getTypeinfo() const override
 	{
@@ -81,7 +94,7 @@ public:
 
 	Item addItem()
 	{
-		return Item(*this);
+		return Item(*this, this->getObjectCount());
 	}
 
 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override

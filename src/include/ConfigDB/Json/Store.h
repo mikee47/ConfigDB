@@ -20,9 +20,6 @@
 #pragma once
 
 #include "../Store.h"
-#include "Object.h"
-#include "Array.h"
-#include "ObjectArray.h"
 
 namespace ConfigDB::Json
 {
@@ -34,13 +31,6 @@ public:
 		load();
 	}
 
-	void* getObjectDataPtr(const ObjectInfo& object);
-
-	template <typename T> T& getObjectData(const ObjectInfo& object)
-	{
-		return *reinterpret_cast<T*>(getObjectDataPtr(object));
-	}
-
 	bool commit() override
 	{
 		return save();
@@ -50,15 +40,6 @@ public:
 	{
 		return getPath() + ".json";
 	}
-
-	/**
-	 * @brief Resolve a path into the corresponding JSON object, creating it if required
-	 */
-	// JsonObject getJsonObject(const String& path);
-	// JsonObjectConst getJsonObjectConst(const String& path) const;
-
-	// JsonArray getJsonArray(const String& path);
-	// JsonArrayConst getJsonArrayConst(const String& path) const;
 
 	size_t printTo(Print& p) const override;
 
@@ -78,8 +59,6 @@ private:
 
 	bool load();
 	bool save();
-
-	// StaticJsonDocument<1024> doc;
 };
 
 template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;

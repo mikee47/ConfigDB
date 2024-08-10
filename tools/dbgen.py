@@ -177,6 +177,10 @@ class Object:
         return self.typename if self.is_item else 'Contained' + self.typename
 
     @property
+    def typename_struct(self):
+        return self.typename_contained + '::Struct'
+
+    @property
     def namespace(self):
         obj = self.parent
         ns = []
@@ -196,7 +200,7 @@ class Object:
 
     @property
     def base_class(self):
-        return f'{self.store.store_ns}::{self.classname}'
+        return f'{self.classname}'
 
     @property
     def is_root(self):
@@ -216,12 +220,23 @@ class Object:
 class Array(Object):
     items: Property = None
 
+    @property
+    def typename_struct(self):
+        return 'ConfigDB::ArrayId'
+
+
 @dataclass
 class ObjectArray(Object):
     items: Object = None
 
+    @property
+    def typename_struct(self):
+        return 'ConfigDB::ArrayId'
+
+
 def is_array(x: Object):
     return isinstance(x, Array) or isinstance(x, ObjectArray)
+
 
 @dataclass
 class Store(Object):
@@ -245,6 +260,7 @@ class Store(Object):
     @property
     def base_class(self):
         return f'{self.store_ns}::Store'
+
 
 @dataclass
 class Database(Object):
@@ -493,7 +509,9 @@ def generate_method_get_child_object(obj: Object) -> list:
             '{',
             [
                 'switch(index) {',
-                [f'case {i}: return std::make_unique<{child.typename_contained}>(*this);'
+                # Note: make_unique fails with packed argument - looks like a compiler bug
+                # [f'case {i}: return std::make_unique<{child.typename_contained}>(*this, data.{child.id});'
+                [f'case {i}: return std::unique_ptr<ConfigDB::Object>(new {child.typename_contained}(*this, data.{child.id}));'
                     for i, child in enumerate(children)],
                 ['default: return nullptr;'],
                 '}',
@@ -566,7 +584,7 @@ def generate_typeinfo(obj: Object) -> list:
             objstr,
             propstr,
             'nullptr' if is_array(obj) else '&defaultData',
-            'sizeof(Struct)',
+            f'sizeof({obj.typename_struct})',
             f'ConfigDB::ObjectType::{obj.classname}'
         ], ';')
     ]
@@ -578,23 +596,13 @@ def generate_object_struct(obj: Object) -> CodeLines:
     '''Generate struct definition for this object'''
 
     if is_array(obj):
-        # return CodeLines(['using Struct = ConfigDB::ArrayId __attribute__((packed));'], [])
-        return CodeLines(
-            [
-                'struct __attribute__((packed)) Struct {',
-                ['ConfigDB::ArrayId id;'],
-                '};'
-            ], [])
-
-    def struct_type(x: Object) -> str:
-        return f'{x.typename_contained}::Struct'
-        # return 'ConfigDB::ArrayId' if is_array(x) else f'{x.typename_contained}::Struct'
+        return CodeLines([], [])
 
     lines = CodeLines([
         '',
         'struct __attribute((packed)) Struct {',
         [
-            *(f'{struct_type(child)} {child.id}{{}};' for child in obj.children),
+            *(f'{child.typename_struct} {child.id}{{}};' for child in obj.children),
             *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
         ],
         '};'
@@ -658,20 +666,15 @@ def generate_object(obj: Object) -> CodeLines:
 
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
-        struct = generate_object_struct(obj)
         return CodeLines([
             *item_lines.header,
             *declare_templated_class(obj, [obj.items.typename]),
-            struct.header,
             generate_typeinfo(obj),
             generate_contained_constructors(obj),
-            '',
-            'private:',
-            ['Struct& data;'],
             '};',
             *generate_outer_class(obj)
         ],
-        item_lines.source + struct.source)
+        item_lines.source)
 
 
     lines = CodeLines(
@@ -684,9 +687,9 @@ def generate_object(obj: Object) -> CodeLines:
 
     struct = generate_object_struct(obj)
     lines.header += [
-        generate_contained_constructors(obj),
         struct.header,
         generate_typeinfo(obj),
+        generate_contained_constructors(obj),
     ]
     lines.source += struct.source
 
@@ -695,14 +698,11 @@ def generate_object(obj: Object) -> CodeLines:
     else:
         lines.header += [
             *generate_property_accessors(obj),
-            generate_method_get_child_object(obj)
+            generate_method_get_child_object(obj),
+            '',
+            'private:',
+            ['Struct& data;'],
         ]
-
-    lines.header += [
-        '',
-        'private:',
-        ['Struct& data;'],
-    ]
 
     # Contained children member variables
     if obj.children:
@@ -721,26 +721,46 @@ def generate_object(obj: Object) -> CodeLines:
 
 
 def generate_contained_constructors(obj: Object) -> list:
-    headers = [
-        '',
-        f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
-            f'{obj.classname}Template(), data(store.getObjectData<Struct>(typeinfo))',
-            *(f'{child.id}(*this)' for child in obj.children)
-        ]),
-        '{',
-        '}',
-    ]
-
-    if not obj.is_root:
-        headers += [
+    headers = []
+    if is_array(obj):
+        headers = [
             '',
-            f'{obj.typename_contained}({obj.parent.typename_contained}& parent): ' + ', '.join([
-                f'{obj.classname}Template(parent), data(parent.data.{obj.id})',
-                *(f'{child.id}(*this)' for child in obj.children)
+            f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
+                f'{obj.classname}Template(store, typeinfo)'
             ]),
             '{',
             '}',
         ]
+    else:
+        headers = [
+            '',
+            f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
+                f'{obj.classname}Template(), data(store.getObjectData<Struct>(typeinfo))',
+                *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+            ]),
+            '{',
+            '}',
+        ]
+
+    if not obj.is_root:
+        if is_array(obj):
+            headers += [
+                '',
+                f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {obj.typename_struct} id): ' +
+                f'{obj.classname}Template(parent, id)',
+                '{',
+                '}',
+            ]
+        else:
+            headers += [
+                '',
+                f'{obj.typename_contained}({obj.parent.typename_contained}& parent, Struct& data): ' + ', '.join([
+                    f'{obj.classname}Template(parent), data(data)',
+                    *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+                ]),
+                '{',
+                '}',
+            ]
 
     return headers
 
@@ -787,20 +807,11 @@ def generate_item_object(obj: Object) -> CodeLines:
         *struct.header,
         *generate_typeinfo(obj),
         '',
-        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}):',
-        [', '.join([
-            f'{obj.classname}Template({obj.parent.id})',
-            f'data({obj.parent.id}.getObjectData<Struct>(typeinfo))',
-            *(f'{child.id}(*this)' for child in obj.children)
-        ])],
-        '{',
-        '}',
-        '',
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned index):',
         [', '.join([
             f'{obj.classname}Template({obj.parent.id})',
-            f'data({obj.parent.id}.getObjectData<Struct>(typeinfo, index))',
-            *(f'{child.id}(*this)' for child in obj.children)
+            f'data({obj.parent.id}.getObjectData<Struct>(index))',
+            *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
         ])],
         '{',
         '}',

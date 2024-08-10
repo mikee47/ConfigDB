@@ -41,7 +41,7 @@ String Property::getValue() const
 		return nullptr;
 	}
 
-	String value = isIndexed() ? object->getStoredArrayValue(index) : object->getStoredValue(info.getName());
+	String value;// = isIndexed() ? object->getStoredArrayValue(index) : object->getStoredValue(info.getName());
 	return value ?: info.getDefaultValue();
 }
 

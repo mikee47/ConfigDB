@@ -29,15 +29,34 @@ namespace ConfigDB
 class Array : public Object
 {
 public:
-	Array() = default;
+	Array(Store& store, const ObjectInfo& typeinfo);
 
-	Array(Object& parent) : Object(parent)
+	Array(Object& parent, ArrayId id) : Object(parent), id(id)
 	{
 	}
 
-	String getStoredValue(const String&) const override
+	template <typename T> T getItem(unsigned index, const T& defaultValue = {}) const
 	{
-		return nullptr;
+		return defaultValue;
+		// return array[index] | defaultValue;
+	}
+
+	template <typename T> bool setItem(unsigned index, const T& value)
+	{
+		return false;
+		// return array[index].set(value);
+	}
+
+	template <typename T> bool addItem(const T& value)
+	{
+		return false;
+		// return array.add(value);
+	}
+
+	bool removeItem(unsigned index)
+	{
+		// array.remove(index);
+		return true;
 	}
 
 	std::unique_ptr<Object> getObject(unsigned) override
@@ -54,17 +73,19 @@ public:
 		}
 		return {};
 	}
+
+private:
+	ArrayId id;
 };
 
 /**
- * @brief Used by store implemention to create specific template for `Array`
- * @tparam BaseType The store's base `Array` class
+ * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  */
-template <class BaseType, class ClassType> class ArrayTemplate : public BaseType
+template <class ClassType> class ArrayTemplate : public Array
 {
 public:
-	using BaseType::BaseType;
+	using Array::Array;
 
 	const ObjectInfo& getTypeinfo() const override
 	{

@@ -104,7 +104,7 @@ struct ObjectInfo {
  * @brief An object can contain other objects, properties and arrays
  * @note This class is the base for concrete Object, Array and ObjectArray classes
  */
-class Object : public Printable
+class Object
 {
 public:
 	Object() = default;
@@ -113,27 +113,15 @@ public:
 	{
 	}
 
-	/**
-	 * @brief Retrieve a value
-	 * @param key Key for value
-	 * @retval String
-	 */
-	virtual String getStoredValue(const String& key) const = 0;
+	String getPropertyValue(unsigned propIndex) const
+	{
+		return nullptr;
+	}
 
-	/**
-	 * @brief Retrieve a value from an array
-	 * @param key Index of value
-	 * @retval String
-	 */
-	virtual String getStoredArrayValue(unsigned index) const = 0;
-
-	/**
-	 * @brief Store a value
-	 * @param key Key for value
-	 * @param value Value to store
-	 * @retval bool true on success
-	 */
-	// virtual bool setStringValue(const String& key, const String& value) = 0;
+	bool setPropertyValue(unsigned propIndex, const String& value) const
+	{
+		return false;
+	}
 
 	virtual Store& getStore()
 	{
@@ -209,28 +197,32 @@ public:
 
 	String getPath() const;
 
+	size_t printTo(Print& p) const
+	{
+		// TODO
+		return 0;
+	}
+
 protected:
 	Object* parent{};
 };
 
 /**
- * @brief Used by store implemention to create specific template for `Object` only (not array)
- * @tparam BaseType The store's base `Object` class
+ * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  */
-template <class BaseType, class ClassType> class ObjectTemplate : public BaseType
+template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	using BaseType::BaseType;
+	ObjectTemplate() = default;
+
+	explicit ObjectTemplate(Object& parent) : Object(parent)
+	{
+	}
 
 	const ObjectInfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
-	}
-
-	String getStoredArrayValue(unsigned) const override
-	{
-		return nullptr;
 	}
 };
 

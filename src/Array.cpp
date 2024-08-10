@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Object.cpp
+ * ConfigDB/Array.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,24 +17,13 @@
  *
  ****/
 
-#include <ConfigDB/Json/Object.h>
-#include <ConfigDB/Json/ObjectArray.h>
-#include <ConfigDB/Json/Store.h>
-#include <ConfigDB/Database.h>
+#include "include/ConfigDB/Array.h"
+#include "include/ConfigDB/Store.h"
 
-namespace ConfigDB::Json
+namespace ConfigDB
 {
-// Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent) //, object(parent.array[index])
-// {
-// }
-
-// Object::Object(ObjectArray& parent) : ConfigDB::Object(parent) //, object(parent.array.createNestedObject())
-// {
-// }
-
-size_t Object::printTo(Print& p) const
+Array::Array(Store& store, const ObjectInfo& typeinfo) : Object(), id(store.getObjectData<ArrayId>(typeinfo))
 {
-	return Store::printObjectTo(object, getDatabase().getFormat(), p);
 }
 
-} // namespace ConfigDB::Json
+} // namespace ConfigDB

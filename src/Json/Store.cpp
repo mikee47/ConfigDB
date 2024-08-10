@@ -18,7 +18,6 @@
  ****/
 
 #include <ConfigDB/Json/Store.h>
-#include <ConfigDB/Json/Object.h>
 #include <ConfigDB/Database.h>
 #include <ConfigDB/Pool.h>
 #include <Data/Stream/FileStream.h>
@@ -68,7 +67,7 @@ public:
 
 	std::pair<const ConfigDB::ObjectInfo*, size_t> objectSearch(const Element& element)
 	{
-		if(element.level == 0){
+		if(element.level == 0) {
 			return {&store.getTypeinfo().object, 0};
 		}
 

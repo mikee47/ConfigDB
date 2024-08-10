@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Array.cpp
+ * ConfigDB/ObjectArray.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,19 +17,19 @@
  *
  ****/
 
-#include <ConfigDB/Json/ObjectArray.h>
-#include <ConfigDB/Json/Store.h>
-#include <ConfigDB/Database.h>
+#include "include/ConfigDB/ObjectArray.h"
+#include "include/ConfigDB/Store.h"
 
-namespace ConfigDB::Json
+namespace ConfigDB
 {
-ObjectArray::ObjectArray(Store& store, const String& path) : ConfigDB::ObjectArray() //, array(store.getJsonArray(path))
+ObjectArray::ObjectArray(Store& store, const ObjectInfo& typeinfo)
+	: Object(), id(store.getObjectData<ArrayId>(typeinfo))
 {
 }
 
-size_t ObjectArray::printTo(Print& p) const
+void* ObjectArray::getObjectDataPtr(unsigned index)
 {
-	return Store::printObjectTo(array, getDatabase().getFormat(), p);
+	return getStore().getObjectArrayDataPtr(id, index);
 }
 
-} // namespace ConfigDB::Json
+} // namespace ConfigDB

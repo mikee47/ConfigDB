@@ -29,4 +29,18 @@ String Store::getPath() const
 	return path;
 }
 
+void* Store::getObjectDataPtr(const ObjectInfo& object)
+{
+	assert(false);
+	// TODO
+	return nullptr;
+}
+
+void* Store::getObjectArrayDataPtr(ArrayId arrayId, unsigned index)
+{
+	assert(false);
+	// TODO
+	return nullptr;
+}
+
 } // namespace ConfigDB

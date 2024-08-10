@@ -20,6 +20,8 @@
 #pragma once
 
 #include "Object.h"
+#include "Array.h"
+#include "ObjectArray.h"
 #include <WString.h>
 #include <debug_progmem.h>
 
@@ -98,6 +100,15 @@ public:
 	Database& getDatabase() const
 	{
 		return db;
+	}
+
+	void* getObjectDataPtr(const ObjectInfo& object);
+
+	void* getObjectArrayDataPtr(ArrayId arrayId, unsigned index);
+
+	template <typename T> T& getObjectData(const ObjectInfo& object)
+	{
+		return *reinterpret_cast<T*>(getObjectDataPtr(object));
 	}
 
 	virtual bool commit() = 0;
