@@ -87,6 +87,11 @@ struct ObjectInfo {
 		return path ? String(*path) : nullptr;
 	}
 
+	size_t getStructSize() const
+	{
+		return FSTR::readValue(&structSize);
+	}
+
 	ObjectType getType() const
 	{
 		return FSTR::readValue(&type);

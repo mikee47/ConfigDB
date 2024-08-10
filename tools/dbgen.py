@@ -599,7 +599,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
         ]
         lines.source += [
             '',
-            f'const {obj.namespace}::{obj.typename_contained}::Struct {obj.namespace}::{obj.typename_contained}::defaultData;'
+            f'const {obj.namespace}::{obj.typename_contained}::Struct PROGMEM {obj.namespace}::{obj.typename_contained}::defaultData;'
         ]
     return lines
 

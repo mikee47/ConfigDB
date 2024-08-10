@@ -37,7 +37,7 @@ public:
 				store = &dbinfo.stores[0];
 				return {&obj, offset};
 			}
-			offset += obj.structSize;
+			offset += obj.getStructSize();
 		}
 		return {};
 	}
@@ -65,7 +65,7 @@ public:
 			if(obj == key) {
 				return {&obj, offset};
 			}
-			offset += obj.structSize;
+			offset += obj.getStructSize();
 		}
 
 		// NOTE: In practice this never happens since we load ONE store only
@@ -124,7 +124,7 @@ public:
 			}
 			if(obj == &store->object) {
 				Serial << "{POOL} ";
-				auto id = objectPool.add(obj->defaultData, obj->structSize);
+				auto id = objectPool.add(obj->defaultData, obj->getStructSize());
 				auto& pool = objectPool[id];
 				info[element.level] = {obj, &pool[offset], id};
 			} else {
@@ -144,7 +144,7 @@ public:
 							// info[element.level] = {items, nullptr, 0};
 						} else if(parent.object->getType() == ConfigDB::ObjectType::ObjectArray) {
 							auto items = *parent.object->objinfo->data();
-							auto id = pool.add(items->defaultData, items->structSize);
+							auto id = pool.add(items->defaultData, items->getStructSize());
 							info[element.level] = {items, pool[id].get(), 0};
 						} else {
 							assert(false);
