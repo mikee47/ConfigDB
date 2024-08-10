@@ -90,7 +90,7 @@ void init()
 	Serial.begin(COM_SPEED_SERIAL);
 	Serial.systemDebugOutput(true);
 
-#if 1
+#if 0
 	FSTR::Stream stream(sampleConfig);
 	parseJson(stream);
 #else
@@ -107,7 +107,7 @@ void init()
 
 	readWriteValues(db);
 	stream(db);
-	listProperties(db, Serial);
+	// listProperties(db, Serial);
 	// checkPerformance(db);
 
 	Serial << endl << endl;

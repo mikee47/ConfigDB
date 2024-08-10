@@ -44,6 +44,13 @@ public:
 		return array != 0;
 	}
 
+	void* getObjectDataPtr(const ObjectInfo& object);
+
+	template <typename T> T& getObjectData(const ObjectInfo& object)
+	{
+		return *reinterpret_cast<T*>(getObjectDataPtr(object));
+	}
+
 	unsigned getObjectCount() const override
 	{
 		return 0;

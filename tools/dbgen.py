@@ -578,10 +578,17 @@ def generate_object_struct(obj: Object) -> CodeLines:
     '''Generate struct definition for this object'''
 
     if is_array(obj):
-        return CodeLines(['using Struct = ConfigDB::ArrayId;'], [])
+        # return CodeLines(['using Struct = ConfigDB::ArrayId __attribute__((packed));'], [])
+        return CodeLines(
+            [
+                'struct __attribute__((packed)) Struct {',
+                ['ConfigDB::ArrayId id;'],
+                '};'
+            ], [])
 
     def struct_type(x: Object) -> str:
-        return 'ConfigDB::ArrayId' if is_array(x) else f'{x.typename_contained}::Struct'
+        return f'{x.typename_contained}::Struct'
+        # return 'ConfigDB::ArrayId' if is_array(x) else f'{x.typename_contained}::Struct'
 
     lines = CodeLines([
         '',
@@ -611,12 +618,19 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        [f'return getValue<{prop.ctype}>(propinfo[{prop.index}], {prop.default_str});'],
+        [f'return getPropertyValue({prop.index});']
+        if prop.ptype == 'string' else
+        [f'return data.{prop.id};'],
         '}',
         '',
         f'bool set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'return setValue(propinfo[{prop.index}], value);'],
+        [f'return setPropertyValue({prop.index}, value);']
+        if prop.ptype == 'string' else
+        [
+            f'data.{prop.id} = value;',
+            'return true;'
+        ],
         '}'
         ) for prop in obj.properties]
 
@@ -651,6 +665,9 @@ def generate_object(obj: Object) -> CodeLines:
             generate_contained_constructors(obj),
             struct.header,
             generate_typeinfo(obj),
+            '',
+            'private:',
+            ['Struct& data;'],
             '};',
             *generate_outer_class(obj)
         ],
@@ -681,10 +698,17 @@ def generate_object(obj: Object) -> CodeLines:
             generate_method_get_child_object(obj)
         ]
 
+    lines.header += [
+        '',
+        'private:',
+        ['Struct& data;'],
+    ]
+
     # Contained children member variables
     if obj.children:
         lines.header += [
             '',
+            'public:',
             [f'{child.typename_contained} {child.id};' for child in obj.children],
         ]
 
@@ -700,7 +724,7 @@ def generate_contained_constructors(obj: Object) -> list:
     headers = [
         '',
         f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
-            f'{obj.classname}Template(store, {get_string(obj.relative_path)})',
+            f'{obj.classname}Template(), data(store.getObjectData<Struct>(typeinfo))',
             *(f'{child.id}(*this)' for child in obj.children)
         ]),
         '{',
@@ -711,7 +735,7 @@ def generate_contained_constructors(obj: Object) -> list:
         headers += [
             '',
             f'{obj.typename_contained}({obj.parent.typename_contained}& parent): ' + ', '.join([
-                f'{obj.classname}Template(parent, {get_string(obj.name)})',
+                f'{obj.classname}Template(parent), data(parent.data.{obj.id})',
                 *(f'{child.id}(*this)' for child in obj.children)
             ]),
             '{',
@@ -766,6 +790,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}):',
         [', '.join([
             f'{obj.classname}Template({obj.parent.id})',
+            f'data({obj.parent.id}.getObjectData<Struct>(typeinfo))',
             *(f'{child.id}(*this)' for child in obj.children)
         ])],
         '{',
@@ -774,6 +799,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned index):',
         [', '.join([
             f'{obj.classname}Template({obj.parent.id}, index)',
+            f'data({obj.parent.id}.getObjectData<Struct>(typeinfo))',
             *(f'{child.id}(*this)' for child in obj.children)
         ])],
         '{',
@@ -789,12 +815,20 @@ def generate_item_object(obj: Object) -> CodeLines:
             generate_method_get_child_object(obj)
         ]
 
-    # Contained children member variables
     lines.header += [
         '',
-        [f'Contained{child.typename} {child.id};' for child in obj.children],
-        '};'
+        'private:',
+        ['Struct& data;'],
     ]
+
+    # Contained children member variables
+    if obj.children:
+        lines.header += [
+            '',
+            'public:',
+            [f'{child.typename_contained} {child.id};' for child in obj.children],
+            '};'
+        ]
 
     return lines
 

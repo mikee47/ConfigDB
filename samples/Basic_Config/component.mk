@@ -1,7 +1,6 @@
 COMPONENT_DEPENDS := \
 	ConfigDB \
-	LittleFS \
-	JsonStreamingParser
+	LittleFS
 
 DISABLE_NETWORK := 1
 

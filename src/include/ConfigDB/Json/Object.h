@@ -32,15 +32,14 @@ class Object : public ConfigDB::Object
 public:
 	using ConfigDB::Object::Object;
 
-	explicit Object(Store& store, const String& path);
-
-	Object(Object& parent, const String& name) : Object(parent)
-	{
-		// object = parent.object[name];
-		// if(object.isNull()) {
-		// 	object = parent.object.createNestedObject(name);
-		// }
-	}
+	// explicit Object(Object& parent) : Object(parent)
+	// {
+	// 	// NB. Name, path, etc. all in typeinfo
+	// 	// object = parent.object[name];
+	// 	// if(object.isNull()) {
+	// 	// 	object = parent.object.createNestedObject(name);
+	// 	// }
+	// }
 
 	Object(ObjectArray& parent, unsigned index);
 
@@ -49,6 +48,16 @@ public:
 	explicit operator bool() const
 	{
 		return object != 0;
+	}
+
+	String getPropertyValue(unsigned propIndex) const
+	{
+		return nullptr;
+	}
+
+	bool setPropertyValue(unsigned propIndex, const String& value) const
+	{
+		return false;
 	}
 
 	String getStoredValue(const String& key) const override
@@ -63,9 +72,9 @@ public:
 		// return object[prop.getName()].set(value);
 	}
 
-	template <typename T> T getValue(const PropertyInfo& prop, const T& defaultValue = {}) const
+	template <typename T> T getValue(const PropertyInfo& prop) const
 	{
-		return defaultValue;
+		return {};
 		// return object[prop.getName()] | defaultValue;
 	}
 

@@ -34,6 +34,13 @@ public:
 		load();
 	}
 
+	void* getObjectDataPtr(const ObjectInfo& object);
+
+	template <typename T> T& getObjectData(const ObjectInfo& object)
+	{
+		return *reinterpret_cast<T*>(getObjectDataPtr(object));
+	}
+
 	bool commit() override
 	{
 		return save();
