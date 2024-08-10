@@ -107,23 +107,24 @@ private:
 class ObjectPool
 {
 public:
-	ObjectId add(size_t size)
+	ObjectId add(size_t size, PGM_VOID_P defaultData = nullptr)
 	{
 		auto data = new ObjectData(size);
-		memset(data->get(), 0, size);
-		pool.addElement(data);
-		return pool.size();
-	}
-
-	ObjectId add(PGM_VOID_P defaultData, size_t size)
-	{
-		auto data = new ObjectData(size);
-		memcpy_P(data->get(), defaultData, size);
+		if(defaultData) {
+			memcpy_P(data->get(), defaultData, size);
+		} else {
+			memset(data->get(), 0, size);
+		}
 		pool.addElement(data);
 		return pool.size();
 	}
 
 	ObjectData& operator[](ObjectId id)
+	{
+		return pool[id - 1];
+	}
+
+	const ObjectData& operator[](ObjectId id) const
 	{
 		return pool[id - 1];
 	}
@@ -185,6 +186,11 @@ public:
 		return (index < count) ? getItemPtr(index) : nullptr;
 	}
 
+	const uint8_t* operator[](unsigned index) const
+	{
+		return const_cast<ArrayData*>(this)->operator[](index);
+	}
+
 	size_t getCount() const
 	{
 		return count;
@@ -196,7 +202,7 @@ private:
 		if(count < capacity) {
 			return true;
 		}
-		auto newCapacity = capacity + increment;
+		auto newCapacity = capacity + getItemSize(increment);
 		auto newBuffer = realloc(buffer, newCapacity);
 		if(!newBuffer) {
 			return false;
@@ -222,7 +228,7 @@ private:
 		return &buffer[index * itemSize];
 	}
 
-	size_t getItemSize(size_t count)
+	size_t getItemSize(size_t count) const
 	{
 		return count * itemSize;
 	}
@@ -250,6 +256,11 @@ public:
 	}
 
 	ArrayData& operator[](ArrayId id)
+	{
+		return pool[id - 1];
+	}
+
+	const ArrayData& operator[](ArrayId id) const
 	{
 		return pool[id - 1];
 	}
@@ -322,6 +333,11 @@ public:
 		auto pool = pools[id - 1];
 		assert(pool != nullptr);
 		return *pool;
+	}
+
+	const ObjectPool& operator[](ArrayId id) const
+	{
+		return const_cast<ObjectArrayPool*>(this)->operator[](id);
 	}
 
 	void clear()

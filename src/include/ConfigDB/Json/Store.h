@@ -42,8 +42,9 @@ public:
 
 	size_t printTo(Print& p) const override;
 
-	void printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p);
-	void printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p);
+	void printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p) const;
+	void printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const;
+	void printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const;
 
 protected:
 	bool load();

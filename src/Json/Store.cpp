@@ -85,8 +85,8 @@ public:
 			return {};
 		}
 		if(obj->getType() == ConfigDB::ObjectType::Array) {
-			auto& pool = store.arrayPool[parent.id];
-			return {obj->propinfo->data(), pool.add(), 0};
+			auto& data = store.arrayPool[parent.id];
+			return {obj->propinfo->data(), data.add(), 0};
 		}
 		assert(obj->getType() == ConfigDB::ObjectType::Object);
 
@@ -125,7 +125,7 @@ public:
 			}
 			if(element.level == 0) {
 				output << "{POOL} ";
-				auto id = store.objectPool.add(obj->defaultData, obj->getStructSize());
+				auto id = store.objectPool.add(obj->getStructSize(), obj->defaultData);
 				auto& pool = store.objectPool[id];
 				info[element.level] = {obj, &pool[offset], id};
 			} else {
@@ -145,7 +145,7 @@ public:
 							// info[element.level] = {items, nullptr, 0};
 						} else if(parent.object->getType() == ConfigDB::ObjectType::ObjectArray) {
 							auto items = *parent.object->objinfo->data();
-							auto id = pool.add(items->defaultData, items->getStructSize());
+							auto id = pool.add(items->getStructSize(), items->defaultData);
 							info[element.level] = {items, pool[id].get(), 0};
 						} else {
 							assert(false);
@@ -247,7 +247,7 @@ private:
 bool Store::load()
 {
 	auto& root = getTypeinfo().object;
-	auto id = objectPool.add(root.defaultData, root.getStructSize());
+	auto id = objectPool.add(root.getStructSize(), root.defaultData);
 	assert(id == 1);
 
 	String filename = getFilename();
@@ -299,14 +299,7 @@ bool Store::save()
 
 	{
 		StaticPrintBuffer<256> buffer(stream);
-
-		buffer << "{" << endl;
-
-		auto& root = getTypeinfo().object;
-		const uint8_t* data = objectPool[1].get();
-		printObjectTo(root, data, 0, buffer);
-
-		buffer << endl << "}" << endl;
+		printTo(buffer);
 	}
 
 	if(stream.getLastError() != FS_OK) {
@@ -323,7 +316,7 @@ String Store::getValueJson(const PropertyInfo& info, const void* data) const
 	return s ? (info.getType() == PropertyType::String) ? quote(s) : s : "null";
 }
 
-void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p)
+void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p) const
 {
 	String indent;
 	indent.pad(indentCount * 2);
@@ -360,15 +353,19 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 		break;
 	}
 
-	case ObjectType::ObjectArray:
+	case ObjectType::ObjectArray: {
+		auto id = *reinterpret_cast<const ArrayId*>(data);
+		printObjectArrayTo(object, id, indentCount + 1, p);
 		break;
 	}
+	}
+
 	if(object.name) {
 		p << endl << indent << (isObject ? '}' : ']');
 	}
 }
 
-void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p)
+void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const
 {
 	if(id == 0) {
 		return;
@@ -382,37 +379,34 @@ void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCo
 	}
 }
 
+void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const
+{
+	if(id == 0) {
+		return;
+	}
+	String indent;
+	indent.pad(indentCount * 2);
+	auto& array = objectArrayPool[id];
+	auto& items = *object.objinfo->data();
+	// for(unsigned i = 0; i < array.getCount(); ++i) {
+	// 	p << indent << getValueJson(prop, array[i]) << endl;
+	// }
+}
+
 size_t Store::printTo(Print& p) const
 {
 	auto format = getDatabase().getFormat();
 
 	size_t n{0};
 
-	// auto root = doc.as<JsonObjectConst>();
+	p << "{" << endl;
 
-	// if(name) {
-	// 	n += p.print('"');
-	// 	n += p.print(name);
-	// 	n += p.print("\":");
-	// 	n += printObjectTo(root, format, p);
-	// 	return n;
-	// }
+	auto& root = getTypeinfo().object;
+	const uint8_t* data = objectPool[1].get();
+	printObjectTo(root, data, 0, p);
 
-	// // Nameless (root) store omits {}
-	// for(JsonPairConst child : root) {
-	// 	if(n > 0) {
-	// 		n += p.print(',');
-	// 		if(format == Format::Pretty) {
-	// 			n += p.println();
-	// 		}
-	// 	}
-	// 	n += p.print('"');
-	// 	JsonString name = child.key();
-	// 	n += p.write(name.c_str(), name.size());
-	// 	n += p.print("\":");
-	// 	JsonVariantConst value = child.value();
-	// 	n += printObjectTo(value, format, p);
-	// }
+	p << endl << "}" << endl;
+
 	return n;
 }
 
