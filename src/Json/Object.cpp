@@ -24,13 +24,13 @@
 
 namespace ConfigDB::Json
 {
-Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent) //, object(parent.array[index])
-{
-}
+// Object::Object(ObjectArray& parent, unsigned index) : ConfigDB::Object(parent) //, object(parent.array[index])
+// {
+// }
 
-Object::Object(ObjectArray& parent) : ConfigDB::Object(parent) //, object(parent.array.createNestedObject())
-{
-}
+// Object::Object(ObjectArray& parent) : ConfigDB::Object(parent) //, object(parent.array.createNestedObject())
+// {
+// }
 
 size_t Object::printTo(Print& p) const
 {

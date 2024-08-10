@@ -32,18 +32,18 @@ class Object : public ConfigDB::Object
 public:
 	using ConfigDB::Object::Object;
 
-	// explicit Object(Object& parent) : Object(parent)
-	// {
-	// 	// NB. Name, path, etc. all in typeinfo
-	// 	// object = parent.object[name];
-	// 	// if(object.isNull()) {
-	// 	// 	object = parent.object.createNestedObject(name);
-	// 	// }
-	// }
+	explicit Object(Object& parent) : ConfigDB::Object(parent)
+	{
+		// NB. Name, path, etc. all in typeinfo
+		// object = parent.object[name];
+		// if(object.isNull()) {
+		// 	object = parent.object.createNestedObject(name);
+		// }
+	}
 
-	Object(ObjectArray& parent, unsigned index);
+	// Object(ObjectArray& parent, unsigned index);
 
-	Object(ObjectArray& parent);
+	explicit Object(ObjectArray& parent);
 
 	explicit operator bool() const
 	{

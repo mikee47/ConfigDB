@@ -51,6 +51,13 @@ public:
 		return *reinterpret_cast<T*>(getObjectDataPtr(object));
 	}
 
+	void* getObjectDataPtr(const ObjectInfo& object, unsigned index);
+
+	template <typename T> T& getObjectData(const ObjectInfo& object, unsigned index)
+	{
+		return *reinterpret_cast<T*>(getObjectDataPtr(object, index));
+	}
+
 	unsigned getObjectCount() const override
 	{
 		return 0;

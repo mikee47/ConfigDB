@@ -662,9 +662,9 @@ def generate_object(obj: Object) -> CodeLines:
         return CodeLines([
             *item_lines.header,
             *declare_templated_class(obj, [obj.items.typename]),
-            generate_contained_constructors(obj),
             struct.header,
             generate_typeinfo(obj),
+            generate_contained_constructors(obj),
             '',
             'private:',
             ['Struct& data;'],
@@ -798,8 +798,8 @@ def generate_item_object(obj: Object) -> CodeLines:
         '',
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned index):',
         [', '.join([
-            f'{obj.classname}Template({obj.parent.id}, index)',
-            f'data({obj.parent.id}.getObjectData<Struct>(typeinfo))',
+            f'{obj.classname}Template({obj.parent.id})',
+            f'data({obj.parent.id}.getObjectData<Struct>(typeinfo, index))',
             *(f'{child.id}(*this)' for child in obj.children)
         ])],
         '{',
