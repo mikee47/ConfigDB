@@ -104,7 +104,7 @@ struct PropertyInfo {
 	}
 };
 
-union PropertyData{
+union __attribute__((packed)) PropertyData {
 	uint8_t uint8;
 	uint16_t uint16;
 	uint32_t uint32;

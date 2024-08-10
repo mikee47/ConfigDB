@@ -124,6 +124,8 @@ public:
 	StringPool stringPool;
 
 protected:
+	String getValueString(const PropertyInfo& info, const void* data) const;
+
 	void clear()
 	{
 		arrayPool.clear();

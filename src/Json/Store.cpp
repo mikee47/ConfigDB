@@ -28,6 +28,15 @@
 
 #include <HardwareSerial.h>
 
+namespace
+{
+String quote(String s)
+{
+	::Format::standard.quote(s);
+	return s;
+}
+} // namespace
+
 namespace ConfigDB::Json
 {
 class ConfigListener : public JSON::Listener
@@ -38,32 +47,6 @@ public:
 	ConfigListener(ConfigDB::Store& store, Print& output) : store(store), output(output)
 	{
 	}
-
-	/*
-	 * Top level key can match against a store name or an entry in the root object.
-	 * Return the matching object, or nullptr.
-	 */
-	// std::pair<const ConfigDB::ObjectInfo*, size_t> rootSearch(const String& key)
-	// {
-	// 	// Find store
-	// 	auto& dbinfo = db.getTypeinfo();
-	// 	int i = dbinfo.stores.indexOf(key);
-	// 	if(i >= 0) {
-	// 		store = &dbinfo.stores[i];
-	// 		return {&store->object, 0};
-	// 	}
-	// 	// No matching store, so search inside root store
-	// 	auto& root = dbinfo.stores[0].object;
-	// 	size_t offset{0};
-	// 	for(auto& obj : *root.objinfo) {
-	// 		if(obj == key) {
-	// 			store = &dbinfo.stores[0];
-	// 			return {&obj, offset};
-	// 		}
-	// 		offset += obj.getStructSize();
-	// 	}
-	// 	return {};
-	// }
 
 	std::pair<const ConfigDB::ObjectInfo*, size_t> objectSearch(const Element& element)
 	{
@@ -263,6 +246,10 @@ private:
  */
 bool Store::load()
 {
+	auto& root = getTypeinfo().object;
+	auto id = objectPool.add(root.defaultData, root.getStructSize());
+	assert(id == 1);
+
 	String filename = getFilename();
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
@@ -273,10 +260,6 @@ bool Store::load()
 		// doc.to<JsonObject>();
 		return true;
 	}
-
-	auto& root = getTypeinfo().object;
-	auto id = objectPool.add(root.defaultData, root.getStructSize());
-	assert(id == 1);
 
 	/*
 	 * If deserialization fails wipe document and fail.
@@ -316,7 +299,14 @@ bool Store::save()
 
 	{
 		StaticPrintBuffer<256> buffer(stream);
-		// printObjectTo(doc, getDatabase().getFormat(), buffer);
+
+		buffer << "{" << endl;
+
+		auto& root = getTypeinfo().object;
+		const uint8_t* data = objectPool[1].get();
+		printObjectTo(root, data, 0, buffer);
+
+		buffer << endl << "}" << endl;
 	}
 
 	if(stream.getLastError() != FS_OK) {
@@ -325,6 +315,71 @@ bool Store::save()
 	}
 
 	return true;
+}
+
+String Store::getValueJson(const PropertyInfo& info, const void* data) const
+{
+	String s = getValueString(info, data);
+	return s ? (info.getType() == PropertyType::String) ? quote(s) : s : "null";
+}
+
+void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p)
+{
+	String indent;
+	indent.pad(indentCount * 2);
+	bool isObject = (object.getType() == ObjectType::Object);
+	if(object.name) {
+		p << indent << quote(*object.name) << ": " << (isObject ? '{' : '[') << endl;
+	}
+	unsigned item = 0;
+	switch(object.getType()) {
+	case ObjectType::Object:
+		if(object.objinfo) {
+			for(auto& obj : *object.objinfo) {
+				if(item++) {
+					p << "," << endl;
+				}
+				printObjectTo(obj, data, indentCount + 1, p);
+				data += obj.getStructSize();
+			}
+		}
+		if(object.propinfo) {
+			for(auto& prop : *object.propinfo) {
+				if(item++) {
+					p << "," << endl;
+				}
+				p << indent << "  " << quote(prop.getName()) << ": " << getValueJson(prop, data);
+				data += prop.getSize();
+			}
+		}
+		break;
+
+	case ObjectType::Array: {
+		auto id = *reinterpret_cast<const ArrayId*>(data);
+		printArrayTo(object, id, indentCount + 1, p);
+		break;
+	}
+
+	case ObjectType::ObjectArray:
+		break;
+	}
+	if(object.name) {
+		p << endl << indent << (isObject ? '}' : ']');
+	}
+}
+
+void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p)
+{
+	if(id == 0) {
+		return;
+	}
+	String indent;
+	indent.pad(indentCount * 2);
+	auto& array = arrayPool[id];
+	auto& prop = *object.propinfo->data();
+	for(unsigned i = 0; i < array.getCount(); ++i) {
+		p << indent << getValueJson(prop, array[i]) << endl;
+	}
 }
 
 size_t Store::printTo(Print& p) const

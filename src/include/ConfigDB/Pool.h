@@ -22,6 +22,8 @@
 #include "Object.h"
 #include <WVector.h>
 
+#include <debug_progmem.h>
+
 namespace ConfigDB
 {
 /**
@@ -55,9 +57,13 @@ public:
 		return find(value) ?: add(value);
 	}
 
-	const char* operator[](StringId ref)
+	const char* operator[](StringId ref) const
 	{
-		return ref ? &strings[ref] : nullptr;
+		if(ref >= strings.length()) {
+			debug_e("Bad string ref %u (%u)", ref, strings.length());
+			return nullptr;
+		}
+		return ref ? (strings.c_str() + ref) : nullptr;
 	}
 
 	size_t printTo(Print& p) const
@@ -177,6 +183,11 @@ public:
 	uint8_t* operator[](unsigned index)
 	{
 		return (index < count) ? getItemPtr(index) : nullptr;
+	}
+
+	size_t getCount() const
+	{
+		return count;
 	}
 
 private:

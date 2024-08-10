@@ -34,8 +34,6 @@ void* Store::getObjectDataPtr(const ObjectInfo& object)
 	// Type information needs offset from start of parent object
 	// Also require parent typeinfo
 	auto& data = objectPool[1];
-	size_t offset{0};
-
 	return data.get() + object.getOffset();
 }
 
@@ -43,6 +41,34 @@ void* Store::getObjectArrayDataPtr(ArrayId arrayId, unsigned index)
 {
 	assert(false);
 	// TODO
+	return nullptr;
+}
+
+String Store::getValueString(const PropertyInfo& info, const void* data) const
+{
+	auto& propData = *reinterpret_cast<const PropertyData*>(data);
+	switch(info.getType()) {
+	case PropertyType::Boolean:
+		return propData.b ? "true" : "false";
+	case PropertyType::Int8:
+		return String(propData.int8);
+	case PropertyType::Int16:
+		return String(propData.int16);
+	case PropertyType::Int32:
+		return String(propData.int32);
+	case PropertyType::Int64:
+		return String(propData.int64);
+	case PropertyType::UInt8:
+		return String(propData.uint8);
+	case PropertyType::UInt16:
+		return String(propData.uint16);
+	case PropertyType::UInt32:
+		return String(propData.uint32);
+	case PropertyType::UInt64:
+		return String(propData.uint64);
+	case PropertyType::String:
+		return propData.string ? stringPool[propData.string] : info.getDefaultValue();
+	}
 	return nullptr;
 }
 
