@@ -28,7 +28,6 @@ class Store : public ConfigDB::Store
 public:
 	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
 	{
-		load();
 	}
 
 	bool commit() override
@@ -54,7 +53,7 @@ public:
 		return 0;
 	}
 
-private:
+protected:
 	bool load();
 	bool save();
 };

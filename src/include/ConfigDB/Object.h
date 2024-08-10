@@ -51,11 +51,12 @@ using ArrayId = uint16_t;
 struct ObjectInfo {
 	// DO NOT access these directly!
 	const FlashString* name; ///< Within store, root always nullptr
-	const FlashString* path; ///< Relative to store
+	const ObjectInfo* parent;
 	const FSTR::Vector<ObjectInfo>* objinfo;
 	const FSTR::Array<PropertyInfo>* propinfo;
 	PGM_VOID_P defaultData;
 	uint16_t structSize;
+	uint8_t index;
 	ObjectType type;
 
 	static const ObjectInfo& empty()
@@ -82,14 +83,14 @@ struct ObjectInfo {
 		return name ? *name == s : s.length() == 0;
 	}
 
-	String getPath() const
-	{
-		return path ? String(*path) : nullptr;
-	}
-
 	size_t getStructSize() const
 	{
 		return FSTR::readValue(&structSize);
+	}
+
+	uint8_t getIndex() const
+	{
+		return FSTR::readValue(&index);
 	}
 
 	ObjectType getType() const
@@ -98,6 +99,22 @@ struct ObjectInfo {
 	}
 
 	String getTypeDesc() const;
+
+	size_t getOffset() const
+	{
+		if(!parent) {
+			return 0;
+		}
+		size_t offset = parent->getOffset();
+		for(auto& obj : *parent->objinfo) {
+			if(&obj == this) {
+				break;
+			}
+			offset += obj.getStructSize();
+		}
+		return offset;
+	};
+
 };
 
 /**

@@ -31,9 +31,12 @@ String Store::getPath() const
 
 void* Store::getObjectDataPtr(const ObjectInfo& object)
 {
-	assert(false);
-	// TODO
-	return nullptr;
+	// Type information needs offset from start of parent object
+	// Also require parent typeinfo
+	auto& data = objectPool[1];
+	size_t offset{0};
+
+	return data.get() + object.getOffset();
 }
 
 void* Store::getObjectArrayDataPtr(ArrayId arrayId, unsigned index)

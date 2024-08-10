@@ -154,6 +154,7 @@ public:
 		auto inst = store.lock();
 		if(!inst) {
 			inst = std::make_shared<ClassType>(db);
+			inst->load();
 			store = inst;
 		}
 		return inst;

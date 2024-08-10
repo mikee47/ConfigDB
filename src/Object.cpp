@@ -62,15 +62,15 @@ Database& Object::getDatabase()
 String Object::getPath() const
 {
 	String relpath;
-	auto& typeinfo = getTypeinfo();
-	if(typeinfo.path) {
-		relpath += *typeinfo.path;
-	}
-	if(typeinfo.name) {
-		if(relpath) {
+	auto typeinfo = &getTypeinfo();
+	while(typeinfo) {
+		if(relpath && typeinfo->name) {
 			relpath += '.';
 		}
-		relpath += *typeinfo.name;
+		if(typeinfo->name) {
+			relpath += *typeinfo->name;
+		}
+		typeinfo = typeinfo->parent;
 	}
 	String path = getStore().getName();
 	if(relpath) {

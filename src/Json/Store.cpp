@@ -274,6 +274,10 @@ bool Store::load()
 		return true;
 	}
 
+	auto& root = getTypeinfo().object;
+	auto id = objectPool.add(root.defaultData, root.getStructSize());
+	assert(id == 1);
+
 	/*
 	 * If deserialization fails wipe document and fail.
 	 * All values for this store thus revert to their defaults.

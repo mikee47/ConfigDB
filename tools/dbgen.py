@@ -195,6 +195,13 @@ class Object:
         return make_identifier(self.name) if self.name else 'root'
 
     @property
+    def index(self):
+        try:
+            return self.parent.children.index(self)
+        except ValueError:
+            return 0
+
+    @property
     def classname(self):
         return type(self).__name__
 
@@ -327,7 +334,7 @@ def make_string(s: str):
 
 def make_static_initializer(entries: list, term_str: str = '') -> list:
     '''Create a static structured initialiser list from given items'''
-    return [ '{', [e + ',' for e in entries], '}' + term_str]
+    return [ '{', [str(e) + ',' for e in entries], '}' + term_str]
 
 
 def declare_templated_class(obj: Object, tparams: list = []) -> list[str]:
@@ -525,12 +532,12 @@ def generate_method_get_child_object(obj: Object) -> list:
     ]
 
 
-def generate_typeinfo(obj: Object) -> list:
+def generate_typeinfo(obj: Object) -> CodeLines:
     '''Generate type information'''
 
-    header = []
+    lines = CodeLines([], [])
     if obj.children:
-        header += [
+        lines.header += [
             '',
             'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::ObjectInfo,',
             [f'&{child.typename}::typeinfo,' for child in obj.children],
@@ -538,7 +545,7 @@ def generate_typeinfo(obj: Object) -> list:
         ]
         objstr = '&objinfo'
     elif isinstance(obj, ObjectArray):
-        header += [
+        lines.header += [
             '',
             f'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::ObjectInfo, &{obj.items.typename}::typeinfo)'
         ]
@@ -549,7 +556,7 @@ def generate_typeinfo(obj: Object) -> list:
 
     propstr = '&propinfo'
     if obj.properties:
-        header += [
+        lines.header += [
             '',
             'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::PropertyInfo,',
             *(make_static_initializer([
@@ -560,7 +567,7 @@ def generate_typeinfo(obj: Object) -> list:
             ')'
         ]
     elif isinstance(obj, Array):
-        header += [
+        lines.header += [
             '',
             'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::PropertyInfo,',
             make_static_initializer([
@@ -573,23 +580,28 @@ def generate_typeinfo(obj: Object) -> list:
         propstr = 'nullptr'
 
     namestr = 'nullptr' if obj.is_item or obj.is_root else f'{get_string_ptr(obj.name, True)}'
-    pathstr = 'nullptr' if obj.is_root else f'{get_string_ptr(obj.parent.relative_path, True)}'
 
-    header += [
+    lines.header += [
         '',
-        'static constexpr const ConfigDB::ObjectInfo typeinfo PROGMEM',
+        'static const ConfigDB::ObjectInfo typeinfo;'
+    ]
+
+    lines.source += [
+        '',
+        f'const ConfigDB::ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         *make_static_initializer([
             namestr,
-            pathstr,
+            'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             objstr,
             propstr,
             'nullptr' if is_array(obj) else '&defaultData',
             f'sizeof({obj.typename_struct})',
+            obj.index,
             f'ConfigDB::ObjectType::{obj.classname}'
         ], ';')
     ]
 
-    return header;
+    return lines
 
 
 def generate_object_struct(obj: Object) -> CodeLines:
@@ -664,17 +676,19 @@ def generate_array_accessors(arr: Array) -> list:
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
+    typeinfo = generate_typeinfo(obj)
+
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
         return CodeLines([
             *item_lines.header,
             *declare_templated_class(obj, [obj.items.typename]),
-            generate_typeinfo(obj),
+            typeinfo.header,
             generate_contained_constructors(obj),
             '};',
             *generate_outer_class(obj)
         ],
-        item_lines.source)
+        item_lines.source + typeinfo.source)
 
 
     lines = CodeLines(
@@ -688,10 +702,10 @@ def generate_object(obj: Object) -> CodeLines:
     struct = generate_object_struct(obj)
     lines.header += [
         struct.header,
-        generate_typeinfo(obj),
+        typeinfo.header,
         generate_contained_constructors(obj),
     ]
-    lines.source += struct.source
+    lines.source += struct.source + typeinfo.source
 
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
@@ -802,10 +816,11 @@ def generate_item_object(obj: Object) -> CodeLines:
         lines.append(generate_object(child))
 
     struct = generate_object_struct(obj)
+    typeinfo = generate_typeinfo(obj)
     lines.header += [[
         '',
         *struct.header,
-        *generate_typeinfo(obj),
+        *typeinfo.header,
         '',
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned index):',
         [', '.join([
@@ -816,7 +831,7 @@ def generate_item_object(obj: Object) -> CodeLines:
         '{',
         '}',
     ]]
-    lines.source += struct.source
+    lines.source += struct.source + typeinfo.source
 
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
