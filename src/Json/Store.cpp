@@ -124,12 +124,10 @@ public:
 				return true;
 			}
 			if(element.level == 0) {
-				output << "{POOL} ";
-				auto id = store.objectPool.add(obj->getStructSize(), obj->defaultData);
-				auto& pool = store.objectPool[id];
-				info[element.level] = {obj, &pool[offset], id};
+				const ObjectId rootObjectId = 1;
+				auto& pool = store.objectPool[rootObjectId];
+				info[element.level] = {obj, &pool[offset], rootObjectId};
 			} else {
-				assert(element.level > 0);
 				auto& parent = info[element.level - 1];
 				switch(obj->getType()) {
 				case ConfigDB::ObjectType::Object: {
@@ -154,11 +152,11 @@ public:
 					break;
 				}
 				case ConfigDB::ObjectType::Array: {
-					auto prop = parent.object->propinfo->data();
+					auto prop = obj->propinfo->data();
 					auto id = store.arrayPool.add(prop->getSize());
 					assert(parent.data);
 					memcpy(parent.data + offset, &id, sizeof(id));
-					output << "DATA " << id << endl;
+					output << "DATA " << id << " @ " << String(uintptr_t(parent.data), HEX) << "+" << offset << endl;
 					auto& pool = store.arrayPool[id];
 					info[element.level] = {obj, nullptr, id};
 					break;
@@ -188,8 +186,7 @@ public:
 		assert(element.level > 0);
 		auto& parent = info[element.level - 1];
 
-		output << '@' << String(uintptr_t(parent.data), HEX) << '[' << offset << ':' << (offset + prop->getSize())
-			   << "]: ";
+		output << '@' << String(uintptr_t(data), HEX) << '[' << offset << ':' << (offset + prop->getSize()) << "]: ";
 		String value = element.as<String>();
 		ConfigDB::PropertyData propData{};
 		if(prop->getType() == ConfigDB::PropertyType::String) {
@@ -375,7 +372,10 @@ void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCo
 	auto& array = arrayPool[id];
 	auto& prop = *object.propinfo->data();
 	for(unsigned i = 0; i < array.getCount(); ++i) {
-		p << indent << getValueJson(prop, array[i]) << endl;
+		if(i) {
+			p << ", " << endl;
+		}
+		p << indent << getValueJson(prop, array[i]);
 	}
 }
 

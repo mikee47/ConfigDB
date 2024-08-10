@@ -59,11 +59,12 @@ public:
 
 	const char* operator[](StringId ref) const
 	{
-		if(ref >= strings.length()) {
+		unsigned offset = ref - 1;
+		if(offset >= strings.length()) {
 			debug_e("Bad string ref %u (%u)", ref, strings.length());
 			return nullptr;
 		}
-		return ref ? (strings.c_str() + ref) : nullptr;
+		return strings.c_str() + offset;
 	}
 
 	size_t printTo(Print& p) const
