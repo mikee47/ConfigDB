@@ -108,7 +108,7 @@ private:
 class ObjectPool
 {
 public:
-	ObjectId add(size_t size, PGM_VOID_P defaultData = nullptr)
+	unsigned add(size_t size, PGM_VOID_P defaultData = nullptr)
 	{
 		auto data = new ObjectData(size);
 		if(defaultData) {
@@ -120,19 +120,24 @@ public:
 		return pool.size();
 	}
 
-	ObjectData& operator[](ObjectId id)
+	ObjectData& operator[](unsigned index)
 	{
-		return pool[id - 1];
+		return pool[index];
 	}
 
-	const ObjectData& operator[](ObjectId id) const
+	const ObjectData& operator[](unsigned index) const
 	{
-		return pool[id - 1];
+		return pool[index];
 	}
 
 	void clear()
 	{
 		pool.clear();
+	}
+
+	size_t getCount() const
+	{
+		return pool.count();
 	}
 
 private:

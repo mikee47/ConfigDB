@@ -93,7 +93,9 @@ public:
 		size_t offset{0};
 		// Skip over child objects
 		if(obj->objinfo) {
-			offset += obj->objinfo->length() * sizeof(ConfigDB::ObjectId);
+			for(auto& child : *obj->objinfo) {
+				offset += child.getStructSize();
+			}
 		}
 		// Find property by key
 		String key = element.getKey();
@@ -124,9 +126,7 @@ public:
 				return true;
 			}
 			if(element.level == 0) {
-				const ObjectId rootObjectId = 1;
-				auto& pool = store.objectPool[rootObjectId];
-				info[element.level] = {obj, &pool[offset], rootObjectId};
+				info[element.level] = {obj, store.rootObjectData.get()};
 			} else {
 				auto& parent = info[element.level - 1];
 				switch(obj->getType()) {
@@ -226,7 +226,7 @@ private:
 	struct Info {
 		const ConfigDB::ObjectInfo* object;
 		uint8_t* data;
-		ConfigDB::ObjectId id;
+		ConfigDB::ArrayId id;
 	};
 	Info info[JSON::StreamingParser::maxNesting]{};
 };
@@ -244,8 +244,8 @@ private:
 bool Store::load()
 {
 	auto& root = getTypeinfo().object;
-	auto id = objectPool.add(root.getStructSize(), root.defaultData);
-	assert(id == 1);
+	rootObjectData.reset(new uint8_t[root.getStructSize()]);
+	memcpy_P(rootObjectData.get(), root.defaultData, root.getStructSize());
 
 	String filename = getFilename();
 	FileStream stream;
@@ -387,10 +387,10 @@ void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned in
 	String indent;
 	indent.pad(indentCount * 2);
 	auto& array = objectArrayPool[id];
-	auto& items = *object.objinfo->data();
-	// for(unsigned i = 0; i < array.getCount(); ++i) {
-	// 	p << indent << getValueJson(prop, array[i]) << endl;
-	// }
+	auto& items = object.objinfo->valueAt(0);
+	for(unsigned i = 0; i < array.getCount(); ++i) {
+		printObjectTo(items, array[i].get(), indentCount, p);
+	}
 }
 
 size_t Store::printTo(Print& p) const
@@ -402,8 +402,7 @@ size_t Store::printTo(Print& p) const
 	p << "{" << endl;
 
 	auto& root = getTypeinfo().object;
-	const uint8_t* data = objectPool[1].get();
-	printObjectTo(root, data, 0, p);
+	printObjectTo(root, rootObjectData.get(), 0, p);
 
 	p << endl << "}" << endl;
 

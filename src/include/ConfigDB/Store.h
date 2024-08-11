@@ -105,7 +105,7 @@ public:
 
 	void* getObjectDataPtr(const ObjectInfo& object);
 
-	void* getObjectArrayDataPtr(ArrayId arrayId, unsigned index);
+	void* getObjectArrayDataPtr(const ObjectInfo& object, ArrayId arrayId, unsigned index);
 
 	template <typename T> T& getObjectData(const ObjectInfo& object)
 	{
@@ -118,7 +118,7 @@ public:
 
 	virtual const StoreInfo& getTypeinfo() const = 0;
 
-	ObjectPool objectPool;
+	std::unique_ptr<uint8_t[]> rootObjectData;
 	ArrayPool arrayPool;
 	ObjectArrayPool objectArrayPool;
 	StringPool stringPool;
@@ -130,7 +130,7 @@ protected:
 	{
 		arrayPool.clear();
 		objectArrayPool.clear();
-		objectPool.clear();
+		rootObjectData.reset();
 		stringPool.clear();
 	}
 

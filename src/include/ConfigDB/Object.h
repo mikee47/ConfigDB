@@ -39,11 +39,6 @@ enum class ObjectType {
 };
 
 /**
- * @brief Identifies object storage within object pool
- */
-using ObjectId = uint16_t;
-
-/**
  * @brief Identifies array storage within array pool
  */
 using ArrayId = uint16_t;

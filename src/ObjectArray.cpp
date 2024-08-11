@@ -29,7 +29,7 @@ ObjectArray::ObjectArray(Store& store, const ObjectInfo& typeinfo)
 
 void* ObjectArray::getObjectDataPtr(unsigned index)
 {
-	return getStore().getObjectArrayDataPtr(id, index);
+	return getStore().getObjectArrayDataPtr(getTypeinfo(), id, index);
 }
 
 } // namespace ConfigDB

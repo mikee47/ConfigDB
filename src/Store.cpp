@@ -31,17 +31,20 @@ String Store::getPath() const
 
 void* Store::getObjectDataPtr(const ObjectInfo& object)
 {
-	// Type information needs offset from start of parent object
-	// Also require parent typeinfo
-	auto& data = objectPool[1];
-	return data.get() + object.getOffset();
+	return rootObjectData.get() + object.getOffset();
 }
 
-void* Store::getObjectArrayDataPtr(ArrayId arrayId, unsigned index)
+void* Store::getObjectArrayDataPtr(const ObjectInfo& object, ArrayId arrayId, unsigned index)
 {
-	assert(false);
-	// TODO
-	return nullptr;
+	if(arrayId == 0) {
+		return nullptr;
+	}
+	auto& array = objectArrayPool[arrayId];
+	if(index == array.getCount()) {
+		auto& items = object.objinfo->valueAt(0);
+		array.add(items.getStructSize(), items.defaultData);
+	}
+	return array[index].get();
 }
 
 String Store::getValueString(const PropertyInfo& info, const void* data) const
