@@ -21,6 +21,7 @@
 
 #include "Property.h"
 #include <Printable.h>
+#include <memory>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
 	XX(Object)                                                                                                         \
@@ -32,7 +33,7 @@ namespace ConfigDB
 class Database;
 class Store;
 
-enum class ObjectType {
+enum class ObjectType : uint32_t {
 #define XX(name) name,
 	CONFIGDB_OBJECT_TYPE_MAP(XX)
 #undef XX
@@ -45,21 +46,17 @@ enum class ObjectType {
 using ArrayId = uint16_t alignas(1);
 
 struct ObjectInfo {
-	// DO NOT access these directly!
 	const FlashString* name; ///< Within store, root always nullptr
 	const ObjectInfo* parent;
-	const FSTR::Vector<ObjectInfo>* objinfo;
-	const FSTR::Array<PropertyInfo>* propinfo;
+	const ObjectInfo* const* objinfo;
+	const PropertyInfo* propinfo;
 	PGM_VOID_P defaultData;
-	uint16_t structSize;
-	uint8_t index;
-	ObjectType type;
+	volatile uint32_t structSize : 14;
+	volatile ObjectType type : 2;
+	volatile uint32_t objectCount : 8;
+	volatile uint32_t propertyCount : 8;
 
-	static const ObjectInfo& empty()
-	{
-		static const ObjectInfo PROGMEM emptyInfo{};
-		return emptyInfo;
-	}
+	static const ObjectInfo empty;
 
 	String getName() const
 	{
@@ -79,21 +76,6 @@ struct ObjectInfo {
 		return name ? *name == s : s.length() == 0;
 	}
 
-	size_t getStructSize() const
-	{
-		return FSTR::readValue(&structSize);
-	}
-
-	uint8_t getIndex() const
-	{
-		return FSTR::readValue(&index);
-	}
-
-	ObjectType getType() const
-	{
-		return FSTR::readValue(&type);
-	}
-
 	String getTypeDesc() const;
 
 	size_t getOffset() const
@@ -102,15 +84,18 @@ struct ObjectInfo {
 			return 0;
 		}
 		size_t offset = parent->getOffset();
-		for(auto& obj : *parent->objinfo) {
-			if(&obj == this) {
+		for(unsigned i = 0; i < parent->objectCount; ++i) {
+			auto obj = parent->objinfo[i];
+			if(obj == this) {
 				break;
 			}
-			offset += obj.getStructSize();
+			offset += obj->structSize;
 		}
 		return offset;
 	};
 };
+
+static_assert(sizeof(ObjectInfo) == 24, "Bad ObjectInfo size");
 
 /**
  * @brief An object can contain other objects, properties and arrays
@@ -153,8 +138,7 @@ public:
 	 */
 	virtual unsigned getObjectCount() const
 	{
-		auto& typeinfo = getTypeinfo();
-		return typeinfo.objinfo ? typeinfo.objinfo->length() : 0;
+		return getTypeinfo().objectCount;
 	}
 
 	/**
@@ -168,8 +152,7 @@ public:
 	 */
 	virtual unsigned getPropertyCount() const
 	{
-		auto& typeinfo = getTypeinfo();
-		return typeinfo.propinfo ? typeinfo.propinfo->length() : 0;
+		return getTypeinfo().propertyCount;
 	}
 
 	/**
@@ -179,10 +162,10 @@ public:
 	virtual Property getProperty(unsigned index)
 	{
 		auto& typeinfo = getTypeinfo();
-		if(!typeinfo.propinfo || index >= typeinfo.propinfo->length()) {
+		if(index >= typeinfo.propertyCount) {
 			return {};
 		}
-		return {*this, *(typeinfo.propinfo->data() + index)};
+		return {*this, typeinfo.propinfo[index]};
 	}
 
 	/**

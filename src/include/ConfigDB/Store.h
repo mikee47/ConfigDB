@@ -41,13 +41,12 @@ enum class Format {
 };
 
 struct StoreInfo {
-	// DO NOT access these directly!
 	const FlashString* name; ///< Root store always nullptr
 	const ObjectInfo& object;
 
 	static const StoreInfo& empty()
 	{
-		static const StoreInfo PROGMEM emptyInfo{.object = ObjectInfo::empty()};
+		static const StoreInfo PROGMEM emptyInfo{.object = ObjectInfo::empty};
 		return emptyInfo;
 	}
 

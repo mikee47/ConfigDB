@@ -467,26 +467,31 @@ def generate_database(db: Database) -> CodeLines:
             '',
             'using DatabaseTemplate::DatabaseTemplate;',
             '',
-            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override',
-            '{',
-            [
-                'switch(index) {',
-                [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
-                ['default: return nullptr;'],
-                '}',
-            ],
-            '}',
+            'static const ConfigDB::DatabaseInfo typeinfo;',
             '',
-            'DEFINE_FSTR_VECTOR_LOCAL(storeinfo, ConfigDB::StoreInfo,',
-            [f'&{store.typename}::typeinfo,' for store in db.stores],
-            ')',
-            '',
-            'static constexpr const ConfigDB::DatabaseInfo typeinfo PROGMEM',
-            *make_static_initializer([
-                'storeinfo',
-            ], ';'),
+            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override;',
         ],
         '};'
+    ]
+    lines.source += [
+        '',
+        f'std::shared_ptr<ConfigDB::Store> {db.typename}::getStore(unsigned index)',
+        '{',
+        [
+            'switch(index) {',
+            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
+            ['default: return nullptr;'],
+            '}',
+        ],
+        '}',
+        '',
+        f'const ConfigDB::DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
+        [
+            f'{len(db.stores)},',
+            '{',
+            [f'&{store.typename}::typeinfo,' for store in db.stores],
+            '}'
+        ], '};'
     ]
 
     lines.header[:0] = [
@@ -536,68 +541,59 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     '''Generate type information'''
 
     lines = CodeLines([], [])
-    if obj.children:
-        lines.header += [
-            '',
-            'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::ObjectInfo,',
-            [f'&{child.typename}::typeinfo,' for child in obj.children],
-            ')'
-        ]
-        objstr = '&objinfo'
-    elif isinstance(obj, ObjectArray):
-        lines.header += [
-            '',
-            f'DEFINE_FSTR_VECTOR_LOCAL(objinfo, ConfigDB::ObjectInfo, &{obj.items.typename}::typeinfo)'
-        ]
-        objstr = '&objinfo'
+    if isinstance(obj, ObjectArray):
+        objinfo = [obj.items]
     else:
-        objstr = 'nullptr'
-
-
-    propstr = '&propinfo'
-    if obj.properties:
+        objinfo = obj.children
+    if objinfo:
         lines.header += [
             '',
-            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::PropertyInfo,',
+            'static const ConfigDB::ObjectInfo* objinfo[];'
+        ]
+        lines.source += [
+            '',
+            f'const ConfigDB::ObjectInfo* {obj.namespace}::{obj.typename_contained}::objinfo[] PROGMEM {{',
+            [f'&{ob.typename}::typeinfo,' for ob in objinfo],
+            '};'
+        ]
+
+    if isinstance(obj, Array):
+        propinfo = [obj.items]
+    else:
+        propinfo = obj.properties
+    if propinfo:
+        lines.header += [
+            '',
+            'static const ConfigDB::PropertyInfo propinfo[];'
+        ]
+        lines.source += [
+            '',
+            f'const ConfigDB::PropertyInfo  {obj.namespace}::{obj.typename_contained}::propinfo[] PROGMEM {{',
             *(make_static_initializer([
                 get_string_ptr(prop.name),
                 prop.default_fstr,
                 f'ConfigDB::{prop.property_type}'
-            ], ',') for prop in obj.properties),
-            ')'
+            ], ',') for prop in propinfo),
+            '};'
         ]
-    elif isinstance(obj, Array):
-        lines.header += [
-            '',
-            'DEFINE_FSTR_ARRAY_LOCAL(propinfo, ConfigDB::PropertyInfo,',
-            make_static_initializer([
-                'nullptr',
-                obj.items.default_fstr,
-                f'ConfigDB::{obj.items.property_type}'
-            ], ')')
-        ]
-    else:
-        propstr = 'nullptr'
-
-    namestr = 'nullptr' if obj.is_item or obj.is_root else f'{get_string_ptr(obj.name, True)}'
 
     lines.header += [
         '',
         'static const ConfigDB::ObjectInfo typeinfo;'
     ]
-
     lines.source += [
         '',
         f'const ConfigDB::ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         *make_static_initializer([
-            namestr,
+            'nullptr' if obj.is_item or obj.is_root else f'{get_string_ptr(obj.name, True)}',
             'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
-            objstr,
-            propstr,
+            'objinfo' if objinfo else 'nullptr',
+            'propinfo' if propinfo else 'nullptr',
             'nullptr' if is_array(obj) else '&defaultData',
             f'sizeof({obj.typename_struct})',
-            obj.index,
-            f'ConfigDB::ObjectType::{obj.classname}'
+            f'ConfigDB::ObjectType::{obj.classname}',
+            len(objinfo),
+            len(propinfo),
         ], ';')
     ]
 

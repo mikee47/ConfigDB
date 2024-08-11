@@ -24,7 +24,7 @@
 String toString(ConfigDB::PropertyType type)
 {
 	switch(type) {
-#define XX(name, ...)                                                                                                       \
+#define XX(name, ...)                                                                                                  \
 	case ConfigDB::PropertyType::name:                                                                                 \
 		return F(#name);
 		CONFIGDB_PROPERTY_TYPE_MAP(XX)
@@ -35,13 +35,15 @@ String toString(ConfigDB::PropertyType type)
 
 namespace ConfigDB
 {
+const PropertyInfo PropertyInfo::empty PROGMEM{};
+
 String Property::getValue() const
 {
 	if(!object) {
 		return nullptr;
 	}
 
-	String value;// = isIndexed() ? object->getStoredArrayValue(index) : object->getStoredValue(info.getName());
+	String value; // = isIndexed() ? object->getStoredArrayValue(index) : object->getStoredValue(info.getName());
 	return value ?: info.getDefaultValue();
 }
 
@@ -54,7 +56,7 @@ String Property::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	if(info.getType() < Type::String) {
+	if(info.type < Type::String) {
 		return value;
 	}
 	::Format::standard.quote(value);

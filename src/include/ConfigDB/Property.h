@@ -20,9 +20,6 @@
 #pragma once
 
 #include <WString.h>
-#include <FlashString/Array.hpp>
-#include <FlashString/Vector.hpp>
-#include <memory>
 
 /**
  * @brief Property types with storage size
@@ -48,7 +45,7 @@ class Object;
  */
 using StringId = uint16_t;
 
-enum class PropertyType {
+enum class PropertyType : uint32_t {
 #define XX(name, ...) name,
 	CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
@@ -61,7 +58,9 @@ struct PropertyInfo {
 	// Don't access these directly!
 	const FlashString* name;
 	const FlashString* defaultValue;
-	PropertyType type;
+	volatile PropertyType type : 8;
+
+	static const PropertyInfo empty;
 
 	String getName() const
 	{
@@ -78,17 +77,12 @@ struct PropertyInfo {
 		return defaultValue ? String(*defaultValue) : nullptr;
 	}
 
-	PropertyType getType() const
-	{
-		return FSTR::readValue(&type);
-	}
-
 	/**
 	 * @brief Get number of bytes required to store this property value within a structure
 	 */
 	uint8_t getSize() const
 	{
-		switch(getType()) {
+		switch(type) {
 #define XX(tag, size)                                                                                                  \
 	case PropertyType::tag:                                                                                            \
 		return size;
@@ -96,11 +90,6 @@ struct PropertyInfo {
 #undef XX
 		}
 		return 0;
-	}
-
-	explicit operator bool() const
-	{
-		return name != nullptr;
 	}
 };
 
@@ -118,15 +107,13 @@ union __attribute__((packed)) PropertyData {
 	StringId string;
 };
 
-static constexpr const PropertyInfo emptyPropertyInfo{};
-
 /**
  * @brief Manages a key/value pair stored in an object
  */
 class Property
 {
 public:
-	Property() : info(emptyPropertyInfo)
+	Property() : info(PropertyInfo::empty)
 	{
 	}
 

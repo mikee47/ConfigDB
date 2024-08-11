@@ -34,14 +34,15 @@ String toString(ConfigDB::ObjectType type)
 
 namespace ConfigDB
 {
+const ObjectInfo PROGMEM ObjectInfo::empty{};
+
 String ObjectInfo::getTypeDesc() const
 {
 	String s;
-	auto type = getType();
 	s += toString(type);
 	if(type == ObjectType::Array) {
 		s += '[';
-		s += toString(propinfo->valueAt(0).getType());
+		s += toString(propinfo[0].type);
 		s += ']';
 	} else if(type == ObjectType::ObjectArray) {
 		s += "[]";
@@ -82,7 +83,7 @@ String Object::getPath() const
 
 String Object::getPropertyValue(const PropertyInfo& prop, const void* data) const
 {
-	if(prop.getType() != PropertyType::String) {
+	if(prop.type != PropertyType::String) {
 		return nullptr;
 	}
 	auto id = *reinterpret_cast<const StringId*>(data);
@@ -94,11 +95,11 @@ String Object::getPropertyValue(const PropertyInfo& prop, const void* data) cons
 
 bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const String& value)
 {
-	if(prop.getType() != PropertyType::String) {
+	if(prop.type != PropertyType::String) {
 		return false;
 	}
-	auto& id = *reinterpret_cast<StringId*>(data);
-	id = getStore().stringPool.findOrAdd(value);
+	StringId id = getStore().stringPool.findOrAdd(value);
+	memcpy(data, &id, sizeof(id));
 	return true;
 }
 

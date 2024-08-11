@@ -40,8 +40,10 @@ void* ObjectArray::getObjectDataPtr(unsigned index)
 	}
 	auto& array = store.objectArrayPool[id];
 	if(index == array.getCount()) {
-		auto& items = getTypeinfo().objinfo->valueAt(0);
-		array.add(items.getStructSize(), items.defaultData);
+		auto& typeinfo = getTypeinfo();
+		assert(typeinfo.objectCount == 1);
+		auto items = typeinfo.objinfo[0];
+		array.add(items->structSize, items->defaultData);
 	}
 	return array[index].get();
 }

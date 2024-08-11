@@ -63,15 +63,16 @@ public:
 
 		if(!element.container.isObject) {
 			// ObjectArray defines single type
-			return {parent->objinfo->data()[0], 0};
+			return {parent->objinfo[0], 0};
 		}
 
 		size_t offset{0};
-		for(auto& obj : *parent->objinfo) {
-			if(obj == key) {
-				return {&obj, offset};
+		for(unsigned i = 0; i < parent->objectCount; ++i) {
+			auto obj = parent->objinfo[i];
+			if(*obj == key) {
+				return {obj, offset};
 			}
-			offset += obj.getStructSize();
+			offset += obj->structSize;
 		}
 
 		return {};
@@ -84,27 +85,25 @@ public:
 		if(!obj || !obj->propinfo) {
 			return {};
 		}
-		if(obj->getType() == ConfigDB::ObjectType::Array) {
+		if(obj->type == ConfigDB::ObjectType::Array) {
 			auto& data = store.arrayPool[parent.id];
-			return {obj->propinfo->data(), data.add(), 0};
+			return {&obj->propinfo[0], data.add(), 0};
 		}
-		assert(obj->getType() == ConfigDB::ObjectType::Object);
+		assert(obj->type == ConfigDB::ObjectType::Object);
 
 		size_t offset{0};
 		// Skip over child objects
-		if(obj->objinfo) {
-			for(auto& child : *obj->objinfo) {
-				offset += child.getStructSize();
-			}
+		for(unsigned i = 0; i < obj->objectCount; ++i) {
+			offset += obj->objinfo[i]->structSize;
 		}
 		// Find property by key
 		String key = element.getKey();
-		auto data = obj->propinfo->data();
-		for(unsigned i = 0; i < obj->propinfo->length(); ++i, ++data) {
-			if(*data == key) {
-				return {data, parent.data, offset};
+		for(unsigned i = 0; i < obj->propertyCount; ++i) {
+			auto& prop = obj->propinfo[i];
+			if(prop == key) {
+				return {&prop, parent.data, offset};
 			}
-			offset += data->getSize();
+			offset += prop.getSize();
 		}
 		return {};
 	}
@@ -129,21 +128,21 @@ public:
 				info[element.level] = {obj, store.rootObjectData.get()};
 			} else {
 				auto& parent = info[element.level - 1];
-				switch(obj->getType()) {
+				switch(obj->type) {
 				case ConfigDB::ObjectType::Object: {
 					if(parent.data) {
-						assert(parent.object->getType() == ConfigDB::ObjectType::Object);
+						assert(parent.object->type == ConfigDB::ObjectType::Object);
 						info[element.level] = {obj, parent.data + offset};
 					} else {
 						assert(parent.id != 0);
 						auto& pool = store.objectArrayPool[parent.id];
-						if(parent.object->getType() == ConfigDB::ObjectType::Array) {
-							auto items = parent.object->propinfo->data();
+						if(parent.object->type == ConfigDB::ObjectType::Array) {
+							auto items = parent.object->propinfo[0];
 							// auto id = objectArrayPool[parent.id].add(items->getSize());
 							// info[element.level] = {items, nullptr, 0};
-						} else if(parent.object->getType() == ConfigDB::ObjectType::ObjectArray) {
-							auto items = *parent.object->objinfo->data();
-							unsigned index = pool.add(items->getStructSize(), items->defaultData);
+						} else if(parent.object->type == ConfigDB::ObjectType::ObjectArray) {
+							auto items = parent.object->objinfo[0];
+							unsigned index = pool.add(items->structSize, items->defaultData);
 							info[element.level] = {items, pool[index].get(), 0};
 						} else {
 							assert(false);
@@ -152,8 +151,8 @@ public:
 					break;
 				}
 				case ConfigDB::ObjectType::Array: {
-					auto prop = obj->propinfo->data();
-					auto id = store.arrayPool.add(prop->getSize());
+					auto& prop = obj->propinfo[0];
+					auto id = store.arrayPool.add(prop.getSize());
 					assert(parent.data);
 					memcpy(parent.data + offset, &id, sizeof(id));
 					output << "DATA " << id << " @ " << String(uintptr_t(parent.data), HEX) << "+" << offset << endl;
@@ -189,7 +188,7 @@ public:
 		output << '@' << String(uintptr_t(data), HEX) << '[' << offset << ':' << (offset + prop->getSize()) << "]: ";
 		String value = element.as<String>();
 		ConfigDB::PropertyData propData{};
-		if(prop->getType() == ConfigDB::PropertyType::String) {
+		if(prop->type == ConfigDB::PropertyType::String) {
 			if(prop->defaultValue && *prop->defaultValue == value) {
 				output << _F("DEFAULT ");
 				propData.string = 0;
@@ -201,7 +200,7 @@ public:
 		} else {
 			propData.uint64 = element.as<uint64_t>();
 		}
-		output << toString(prop->getType()) << " = " << value << " (" << propData.int64 << ")" << endl;
+		output << toString(prop->type) << " = " << value << " (" << propData.int64 << ")" << endl;
 
 		memcpy(data + offset, &propData, prop->getSize());
 		output << "DATA " << propData.uint64 << ", STRINGS " << store.stringPool << endl;
@@ -244,8 +243,8 @@ private:
 bool Store::load()
 {
 	auto& root = getTypeinfo().object;
-	rootObjectData.reset(new uint8_t[root.getStructSize()]);
-	memcpy_P(rootObjectData.get(), root.defaultData, root.getStructSize());
+	rootObjectData.reset(new uint8_t[root.structSize]);
+	memcpy_P(rootObjectData.get(), root.defaultData, root.structSize);
 
 	String filename = getFilename();
 	FileStream stream;
@@ -310,37 +309,35 @@ bool Store::save()
 String Store::getValueJson(const PropertyInfo& info, const void* data) const
 {
 	String s = getValueString(info, data);
-	return s ? (info.getType() == PropertyType::String) ? quote(s) : s : "null";
+	return s ? (info.type == PropertyType::String) ? quote(s) : s : "null";
 }
 
 void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p) const
 {
 	String indent;
 	indent.pad(indentCount * 2);
-	bool isObject = (object.getType() == ObjectType::Object);
+	bool isObject = (object.type == ObjectType::Object);
 	if(object.name) {
 		p << indent << quote(*object.name) << ": " << (isObject ? '{' : '[') << endl;
 	}
 	unsigned item = 0;
-	switch(object.getType()) {
+	switch(object.type) {
 	case ObjectType::Object:
-		if(object.objinfo) {
-			for(auto& obj : *object.objinfo) {
-				if(item++) {
-					p << "," << endl;
-				}
-				printObjectTo(obj, data, indentCount + 1, p);
-				data += obj.getStructSize();
+		for(unsigned i = 0; i < object.objectCount; ++i) {
+			auto obj = object.objinfo[i];
+			if(item++) {
+				p << "," << endl;
 			}
+			printObjectTo(*obj, data, indentCount + 1, p);
+			data += obj->structSize;
 		}
-		if(object.propinfo) {
-			for(auto& prop : *object.propinfo) {
-				if(item++) {
-					p << "," << endl;
-				}
-				p << indent << "  " << quote(prop.getName()) << ": " << getValueJson(prop, data);
-				data += prop.getSize();
+		for(unsigned i = 0; i < object.propertyCount; ++i) {
+			auto& prop = object.propinfo[i];
+			if(item++) {
+				p << "," << endl;
 			}
+			p << indent << "  " << quote(prop.getName()) << ": " << getValueJson(prop, data);
+			data += prop.getSize();
 		}
 		break;
 
@@ -370,7 +367,7 @@ void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCo
 	String indent;
 	indent.pad(indentCount * 2);
 	auto& array = arrayPool[id];
-	auto& prop = *object.propinfo->data();
+	auto& prop = object.propinfo[0];
 	for(unsigned i = 0; i < array.getCount(); ++i) {
 		if(i) {
 			p << ", " << endl;
@@ -387,13 +384,13 @@ void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned in
 	String indent;
 	indent.pad(indentCount * 2);
 	auto& array = objectArrayPool[id];
-	auto& items = object.objinfo->valueAt(0);
+	auto items = object.objinfo[0];
 	for(unsigned i = 0; i < array.getCount(); ++i) {
 		if(i) {
 			p << ',' << endl;
 		}
 		p << indent << '{' << endl;
-		printObjectTo(items, array[i].get(), indentCount + 1, p);
+		printObjectTo(*items, array[i].get(), indentCount + 1, p);
 		p << endl << indent << '}';
 	}
 }

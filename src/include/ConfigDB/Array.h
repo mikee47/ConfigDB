@@ -77,12 +77,13 @@ public:
 
 	Property getProperty(unsigned index) override
 	{
-		// Property info contains exactly one element
-		auto propinfo = getTypeinfo().propinfo;
-		if(index < getPropertyCount() && propinfo) {
-			return {*this, index, *propinfo->data()};
+		if(index >= getPropertyCount()) {
+			return {};
 		}
-		return {};
+		// Property info contains exactly one element
+		auto& typeinfo = getTypeinfo();
+		assert(typeinfo.propertyCount == 1);
+		return {*this, index, typeinfo.propinfo[0]};
 	}
 
 private:

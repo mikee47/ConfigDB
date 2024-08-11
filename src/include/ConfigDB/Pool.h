@@ -21,6 +21,7 @@
 
 #include "Object.h"
 #include <WVector.h>
+#include <Print.h>
 
 #include <debug_progmem.h>
 

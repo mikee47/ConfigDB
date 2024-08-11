@@ -78,11 +78,6 @@ public:
 
 	using ObjectArray::ObjectArray;
 
-	const ObjectInfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
-	}
-
 	Item getItem(unsigned index)
 	{
 		return Item(*this, index);
@@ -95,10 +90,16 @@ public:
 
 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
 	{
+		// if(index >= static_cast<const ClassType*>(this)->typeinfo.objectCount) {
 		if(index >= this->getObjectCount()) {
 			return nullptr;
 		}
 		return std::make_unique<Item>(*this, index);
+	}
+
+	const ObjectInfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 };
 

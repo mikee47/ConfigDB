@@ -22,12 +22,12 @@
 #include "Store.h"
 #include <WString.h>
 #include <Data/CString.h>
-#include <FlashString/Vector.hpp>
 
 namespace ConfigDB
 {
 struct DatabaseInfo {
-	const FSTR::Vector<StoreInfo>& stores;
+	volatile uint32_t storeCount : 8;
+	const StoreInfo* stores[];
 };
 
 class Database

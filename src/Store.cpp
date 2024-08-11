@@ -37,7 +37,7 @@ void* Store::getObjectDataPtr(const ObjectInfo& object)
 String Store::getValueString(const PropertyInfo& info, const void* data) const
 {
 	auto& propData = *reinterpret_cast<const PropertyData*>(data);
-	switch(info.getType()) {
+	switch(info.type) {
 	case PropertyType::Boolean:
 		return propData.b ? "true" : "false";
 	case PropertyType::Int8:
