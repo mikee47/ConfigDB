@@ -638,14 +638,14 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        [f'return getPropertyValue({prop.index});']
+        [f'return getPropertyValue(propinfo[{prop.index}], &data.{prop.id});']
         if prop.ptype == 'string' else
         [f'return data.{prop.id};'],
         '}',
         '',
         f'bool set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'return setPropertyValue({prop.index}, value);']
+        [f'return setPropertyValue(propinfo[{prop.index}], &data.{prop.id}, value);']
         if prop.ptype == 'string' else
         [
             f'data.{prop.id} = value;',
@@ -663,7 +663,7 @@ def generate_array_accessors(arr: Array) -> list:
         '',
         f'{prop.ctype} getItem(unsigned index) const',
         '{',
-        [f'return Array::getItem<{prop.ctype}>(index, {prop.default_str});'],
+        [f'return Array::getItem<{prop.ctype}>(index);'],
         '}',
         '',
         f'bool setItem(unsigned index, const {prop.ctype}& value)',

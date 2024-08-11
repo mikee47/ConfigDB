@@ -125,15 +125,9 @@ public:
 	{
 	}
 
-	String getPropertyValue(unsigned propIndex) const
-	{
-		return nullptr;
-	}
+	String getPropertyValue(const PropertyInfo& prop, const void* data) const;
 
-	bool setPropertyValue(unsigned propIndex, const String& value) const
-	{
-		return false;
-	}
+	bool setPropertyValue(const PropertyInfo& prop, void* data, const String& value);
 
 	virtual Store& getStore()
 	{

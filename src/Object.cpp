@@ -80,4 +80,26 @@ String Object::getPath() const
 	return path;
 }
 
+String Object::getPropertyValue(const PropertyInfo& prop, const void* data) const
+{
+	if(prop.getType() != PropertyType::String) {
+		return nullptr;
+	}
+	auto id = *reinterpret_cast<const StringId*>(data);
+	if(id == 0) {
+		return prop.getDefaultValue();
+	}
+	return getStore().stringPool[id];
+}
+
+bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const String& value)
+{
+	if(prop.getType() != PropertyType::String) {
+		return false;
+	}
+	auto& id = *reinterpret_cast<StringId*>(data);
+	id = getStore().stringPool.findOrAdd(value);
+	return true;
+}
+
 } // namespace ConfigDB
