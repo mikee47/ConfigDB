@@ -35,28 +35,40 @@ public:
 	{
 	}
 
-	template <typename T> T getItem(unsigned index) const
+	template <typename T> typename std::enable_if<std::is_integral<T>::value, T>::type getItem(unsigned index) const
 	{
-		return {};
+		return *static_cast<const T*>(getItemPtr(index));
 	}
 
-	template <typename T> bool setItem(unsigned index, const T& value)
+	template <typename T> typename std::enable_if<std::is_same<T, String>::value, T>::type getItem(unsigned index) const
 	{
-		return false;
-		// return array[index].set(value);
+		return static_cast<const char*>(getItemPtr(index));
 	}
 
-	template <typename T> bool addItem(const T& value)
+	template <typename T>
+	typename std::enable_if<std::is_integral<T>::value, bool>::type setItem(unsigned index, T value)
 	{
-		return false;
-		// return array.add(value);
+		return setItemPtr(index, &value);
 	}
 
-	bool removeItem(unsigned index)
+	bool setItem(unsigned index, const String& value)
 	{
-		// array.remove(index);
-		return true;
+		auto id = addString(value);
+		return setItemPtr(index, &id);
 	}
+
+	template <typename T> typename std::enable_if<std::is_integral<T>::value, bool>::type addItem(T value)
+	{
+		return addItemPtr(&value);
+	}
+
+	bool addItem(const String& value)
+	{
+		auto id = addString(value);
+		return addItemPtr(&id);
+	}
+
+	bool removeItem(unsigned index);
 
 	std::unique_ptr<Object> getObject(unsigned) override
 	{
@@ -74,6 +86,10 @@ public:
 	}
 
 private:
+	const void* getItemPtr(unsigned index) const;
+	bool setItemPtr(unsigned index, const void* value);
+	bool addItemPtr(const void* value);
+
 	ArrayId& id;
 };
 

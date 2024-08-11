@@ -102,4 +102,9 @@ bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const String
 	return true;
 }
 
+StringId Object::addString(const String& value)
+{
+	return getStore().stringPool.findOrAdd(value);
+}
+
 } // namespace ConfigDB

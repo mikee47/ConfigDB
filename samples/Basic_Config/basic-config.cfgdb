@@ -50,6 +50,14 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                }
               }
             }
           }

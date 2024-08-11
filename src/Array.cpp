@@ -26,4 +26,37 @@ Array::Array(Store& store, const ObjectInfo& typeinfo) : Object(), id(store.getO
 {
 }
 
+const void* Array::getItemPtr(unsigned index) const
+{
+	auto& object = getTypeinfo();
+	auto& prop = *object.propinfo->data();
+	auto itemSize = prop.getSize();
+	auto& array = getStore().arrayPool[id];
+	return array[index];
+}
+
+bool Array::setItemPtr(unsigned index, const void* value)
+{
+	auto& object = getTypeinfo();
+	auto& prop = *object.propinfo->data();
+	auto itemSize = prop.getSize();
+	auto& array = getStore().arrayPool[id];
+	memcpy(array[index], value, itemSize);
+	return true;
+}
+
+bool Array::addItemPtr(const void* value)
+{
+	auto& object = getTypeinfo();
+	auto& prop = *object.propinfo->data();
+	auto itemSize = prop.getSize();
+	auto& store = getStore();
+	if(id == 0) {
+		id = store.arrayPool.add(itemSize);
+	}
+	auto& array = store.arrayPool[id];
+	array.add(value);
+	return true;
+}
+
 } // namespace ConfigDB

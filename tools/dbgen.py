@@ -760,7 +760,7 @@ def generate_contained_constructors(obj: Object) -> list:
         if is_array(obj):
             headers += [
                 '',
-                f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {obj.typename_struct} id): ' +
+                f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {obj.typename_struct}& id): ' +
                 f'{obj.classname}Template(parent, id)',
                 '{',
                 '}',

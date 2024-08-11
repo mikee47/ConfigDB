@@ -40,8 +40,9 @@ enum class ObjectType {
 
 /**
  * @brief Identifies array storage within array pool
+ * @note alignas(1) required as value contained in packed structures
  */
-using ArrayId = uint16_t;
+using ArrayId = uint16_t alignas(1);
 
 struct ObjectInfo {
 	// DO NOT access these directly!
@@ -109,7 +110,6 @@ struct ObjectInfo {
 		}
 		return offset;
 	};
-
 };
 
 /**
@@ -210,6 +210,8 @@ public:
 	}
 
 protected:
+	StringId addString(const String& value);
+
 	Object* parent{};
 };
 
