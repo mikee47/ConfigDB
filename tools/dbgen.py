@@ -507,17 +507,21 @@ def generate_database(db: Database) -> CodeLines:
     return lines
 
 
-def generate_method_get_child_object(obj: Object) -> list:
+def generate_method_get_child_object(obj: Object) -> CodeLines:
     '''Generate *getChildObject* method'''
 
     if isinstance(obj, ObjectArray):
         children = [obj.items]
     else:
         children = obj.children
-    if children:
-        return [
+    return CodeLines(
+        [
             '',
-            'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override',
+            'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;',
+        ],
+        [
+            '',
+            f'std::unique_ptr<ConfigDB::Object> {obj.namespace}::{obj.typename_contained}::getObject(unsigned index)',
             '{',
             [
                 'switch(index) {',
@@ -527,14 +531,10 @@ def generate_method_get_child_object(obj: Object) -> list:
                     for i, child in enumerate(children)],
                 ['default: return nullptr;'],
                 '}',
-            ],
+            ] if children else ['return nullptr;'],
             '}'
         ]
-
-    return [
-        '',
-        'std::unique_ptr<ConfigDB::Object> getObject(unsigned) override { return nullptr; }',
-    ]
+    )
 
 
 def generate_typeinfo(obj: Object) -> CodeLines:
@@ -701,13 +701,15 @@ def generate_object(obj: Object) -> CodeLines:
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
     else:
+        get_child_object = generate_method_get_child_object(obj)
         lines.header += [
             *generate_property_accessors(obj),
-            generate_method_get_child_object(obj),
+            get_child_object.header,
             '',
             'private:',
             ['Struct& data;'],
         ]
+        lines.source += get_child_object.source
 
     # Contained children member variables
     if obj.children:
@@ -827,10 +829,12 @@ def generate_item_object(obj: Object) -> CodeLines:
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
     else:
+        get_child_object = generate_method_get_child_object(obj)
         lines.header += [
             *generate_property_accessors(obj),
-            generate_method_get_child_object(obj)
+            get_child_object.header
         ]
+        lines.source += get_child_object.source
 
     lines.header += [
         '',
