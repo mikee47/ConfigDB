@@ -67,6 +67,11 @@ struct PropertyInfo {
 		return name ? String(*name) : nullptr;
 	}
 
+	bool nameIs(const char* value, size_t length) const
+	{
+		return name ? name->equals(value, length) : (length == 0);
+	}
+
 	bool operator==(const String& s) const
 	{
 		return name && *name == s;

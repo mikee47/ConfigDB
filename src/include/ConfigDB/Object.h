@@ -63,6 +63,11 @@ struct ObjectInfo {
 		return name ? String(*name) : nullptr;
 	}
 
+	bool nameIs(const char* value, size_t length) const
+	{
+		return name ? name->equals(value, length) : (length == 0);
+	}
+
 	/**
 	 * @brief Root object in a store has no name
 	 */
@@ -78,21 +83,10 @@ struct ObjectInfo {
 
 	String getTypeDesc() const;
 
-	size_t getOffset() const
-	{
-		if(!parent) {
-			return 0;
-		}
-		size_t offset = parent->getOffset();
-		for(unsigned i = 0; i < parent->objectCount; ++i) {
-			auto obj = parent->objinfo[i];
-			if(obj == this) {
-				break;
-			}
-			offset += obj->structSize;
-		}
-		return offset;
-	};
+	/**
+	 * @brief Get offset of this object's data relative to root (not just parent)
+	 */
+	size_t getOffset() const;
 };
 
 static_assert(sizeof(ObjectInfo) == 20, "Bad ObjectInfo size");

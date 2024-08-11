@@ -45,6 +45,10 @@ public:
 	void printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const;
 
 protected:
+	/**
+	 * Loading starts with default data loaded from schema, which is then updated during load.
+	 * Failure indicates corrupt JSON file, but any readable data is available.
+	 */
 	bool load();
 	bool save();
 

@@ -36,6 +36,23 @@ namespace ConfigDB
 {
 const ObjectInfo PROGMEM ObjectInfo::empty{};
 
+size_t ObjectInfo::getOffset() const
+{
+	if(!parent) {
+		return 0;
+	}
+	size_t offset = parent->getOffset();
+	for(unsigned i = 0; i < parent->objectCount; ++i) {
+		auto obj = parent->objinfo[i];
+		if(obj == this) {
+			return offset;
+		}
+		offset += obj->structSize;
+	}
+	assert(false);
+	return 0;
+};
+
 String ObjectInfo::getTypeDesc() const
 {
 	String s;
