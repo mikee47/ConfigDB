@@ -27,9 +27,23 @@ ObjectArray::ObjectArray(Store& store, const ObjectInfo& typeinfo)
 {
 }
 
+unsigned ObjectArray::getObjectCount() const
+{
+	return id ? getStore().getObjectArray(id).getCount() : 0;
+}
+
 void* ObjectArray::getObjectDataPtr(unsigned index)
 {
-	return getStore().getObjectArrayDataPtr(getTypeinfo(), id, index);
+	auto& store = getStore();
+	if(id == 0) {
+		id = store.objectArrayPool.add();
+	}
+	auto& array = store.objectArrayPool[id];
+	if(index == array.getCount()) {
+		auto& items = getTypeinfo().objinfo->valueAt(0);
+		array.add(items.getStructSize(), items.defaultData);
+	}
+	return array[index].get();
 }
 
 } // namespace ConfigDB

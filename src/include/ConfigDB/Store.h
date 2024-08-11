@@ -103,9 +103,12 @@ public:
 		return db;
 	}
 
-	void* getObjectDataPtr(const ObjectInfo& object);
+	const ObjectPool& getObjectArray(ArrayId id) const
+	{
+		return objectArrayPool[id];
+	}
 
-	void* getObjectArrayDataPtr(const ObjectInfo& object, ArrayId arrayId, unsigned index);
+	void* getObjectDataPtr(const ObjectInfo& object);
 
 	template <typename T> T& getObjectData(const ObjectInfo& object)
 	{

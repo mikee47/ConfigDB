@@ -143,8 +143,8 @@ public:
 							// info[element.level] = {items, nullptr, 0};
 						} else if(parent.object->getType() == ConfigDB::ObjectType::ObjectArray) {
 							auto items = *parent.object->objinfo->data();
-							auto id = pool.add(items->getStructSize(), items->defaultData);
-							info[element.level] = {items, pool[id].get(), 0};
+							unsigned index = pool.add(items->getStructSize(), items->defaultData);
+							info[element.level] = {items, pool[index].get(), 0};
 						} else {
 							assert(false);
 						}
@@ -389,7 +389,12 @@ void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned in
 	auto& array = objectArrayPool[id];
 	auto& items = object.objinfo->valueAt(0);
 	for(unsigned i = 0; i < array.getCount(); ++i) {
-		printObjectTo(items, array[i].get(), indentCount, p);
+		if(i) {
+			p << ',' << endl;
+		}
+		p << indent << '{' << endl;
+		printObjectTo(items, array[i].get(), indentCount + 1, p);
+		p << endl << indent << '}';
 	}
 }
 

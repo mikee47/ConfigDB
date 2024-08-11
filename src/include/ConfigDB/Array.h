@@ -31,14 +31,13 @@ class Array : public Object
 public:
 	Array(Store& store, const ObjectInfo& typeinfo);
 
-	Array(Object& parent, ArrayId id) : Object(parent), id(id)
+	Array(Object& parent, ArrayId& id) : Object(parent), id(id)
 	{
 	}
 
-	template <typename T> T getItem(unsigned index, const T& defaultValue = {}) const
+	template <typename T> T getItem(unsigned index) const
 	{
-		return defaultValue;
-		// return array[index] | defaultValue;
+		return {};
 	}
 
 	template <typename T> bool setItem(unsigned index, const T& value)
@@ -75,7 +74,7 @@ public:
 	}
 
 private:
-	ArrayId id;
+	ArrayId& id;
 };
 
 /**

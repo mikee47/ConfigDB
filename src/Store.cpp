@@ -34,19 +34,6 @@ void* Store::getObjectDataPtr(const ObjectInfo& object)
 	return rootObjectData.get() + object.getOffset();
 }
 
-void* Store::getObjectArrayDataPtr(const ObjectInfo& object, ArrayId arrayId, unsigned index)
-{
-	if(arrayId == 0) {
-		return nullptr;
-	}
-	auto& array = objectArrayPool[arrayId];
-	if(index == array.getCount()) {
-		auto& items = object.objinfo->valueAt(0);
-		array.add(items.getStructSize(), items.defaultData);
-	}
-	return array[index].get();
-}
-
 String Store::getValueString(const PropertyInfo& info, const void* data) const
 {
 	auto& propData = *reinterpret_cast<const PropertyData*>(data);

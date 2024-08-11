@@ -117,7 +117,7 @@ public:
 			memset(data->get(), 0, size);
 		}
 		pool.addElement(data);
-		return pool.size();
+		return pool.size() - 1;
 	}
 
 	ObjectData& operator[](unsigned index)

@@ -33,7 +33,7 @@ public:
 
 	ObjectArray(Store& store, const ObjectInfo& typeinfo);
 
-	ObjectArray(Object& parent, ArrayId id) : Object(parent), id(id)
+	ObjectArray(Object& parent, ArrayId& id) : Object(parent), id(id)
 	{
 	}
 
@@ -50,11 +50,7 @@ public:
 		return true;
 	}
 
-	unsigned getObjectCount() const override
-	{
-		return 0;
-		// return array.size();
-	}
+	unsigned getObjectCount() const override;
 
 	unsigned getPropertyCount() const override
 	{
@@ -67,7 +63,7 @@ public:
 	}
 
 private:
-	ArrayId id;
+	ArrayId& id;
 };
 
 /**
