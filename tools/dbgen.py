@@ -561,21 +561,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         propinfo = [obj.items]
     else:
         propinfo = obj.properties
-    if propinfo:
-        lines.header += [
-            '',
-            'static const ConfigDB::PropertyInfo propinfo[];'
-        ]
-        lines.source += [
-            '',
-            f'const ConfigDB::PropertyInfo  {obj.namespace}::{obj.typename_contained}::propinfo[] PROGMEM {{',
-            *(make_static_initializer([
-                get_string_ptr(prop.name),
-                prop.default_fstr,
-                f'ConfigDB::{prop.property_type}'
-            ], ',') for prop in propinfo),
-            '};'
-        ]
 
     lines.header += [
         '',
@@ -584,17 +569,27 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     lines.source += [
         '',
         f'const ConfigDB::ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
-        *make_static_initializer([
+        '{',
+        *([str(e) + ','] for e in [
             'nullptr' if obj.is_item or obj.is_root else f'{get_string_ptr(obj.name, True)}',
             'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             'objinfo' if objinfo else 'nullptr',
-            'propinfo' if propinfo else 'nullptr',
             'nullptr' if is_array(obj) else '&defaultData',
             f'sizeof({obj.typename_struct})',
             f'ConfigDB::ObjectType::{obj.classname}',
             len(objinfo),
             len(propinfo),
-        ], ';')
+        ]),
+        [
+            '{',
+            *(make_static_initializer([
+                get_string_ptr(prop.name),
+                prop.default_fstr,
+                f'ConfigDB::{prop.property_type}'
+            ], ',') for prop in propinfo),
+            '}',
+        ],
+        '};'
     ]
 
     return lines
@@ -634,14 +629,14 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        [f'return getPropertyValue(propinfo[{prop.index}], &data.{prop.id});']
+        [f'return getPropertyValue(typeinfo.propinfo[{prop.index}], &data.{prop.id});']
         if prop.ptype == 'string' else
         [f'return data.{prop.id};'],
         '}',
         '',
         f'bool set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'return setPropertyValue(propinfo[{prop.index}], &data.{prop.id}, value);']
+        [f'return setPropertyValue(typeinfo.propinfo[{prop.index}], &data.{prop.id}, value);']
         if prop.ptype == 'string' else
         [
             f'data.{prop.id} = value;',

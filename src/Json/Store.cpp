@@ -82,7 +82,7 @@ public:
 	{
 		auto& parent = info[element.level - 1];
 		auto obj = parent.object;
-		if(!obj || !obj->propinfo) {
+		if(!obj || !obj->propertyCount) {
 			return {};
 		}
 		if(obj->type == ConfigDB::ObjectType::Array) {

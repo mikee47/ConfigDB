@@ -49,12 +49,12 @@ struct ObjectInfo {
 	const FlashString* name; ///< Within store, root always nullptr
 	const ObjectInfo* parent;
 	const ObjectInfo* const* objinfo;
-	const PropertyInfo* propinfo;
 	PGM_VOID_P defaultData;
 	volatile uint32_t structSize : 14;
 	volatile ObjectType type : 2;
 	volatile uint32_t objectCount : 8;
 	volatile uint32_t propertyCount : 8;
+	const PropertyInfo propinfo[];
 
 	static const ObjectInfo empty;
 
@@ -95,7 +95,7 @@ struct ObjectInfo {
 	};
 };
 
-static_assert(sizeof(ObjectInfo) == 24, "Bad ObjectInfo size");
+static_assert(sizeof(ObjectInfo) == 20, "Bad ObjectInfo size");
 
 /**
  * @brief An object can contain other objects, properties and arrays
