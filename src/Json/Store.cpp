@@ -114,14 +114,14 @@ public:
 
 		String key = element.getKey();
 
-		output << indent << element.level << ". " << (element.container.isObject ? "OBJ" : "ARR") << '('
-			   << element.container.index << ") ";
+		// output << indent << element.level << ". " << (element.container.isObject ? "OBJ" : "ARR") << '('
+		// 	   << element.container.index << ") ";
 
 		if(element.isContainer()) {
-			output << "OBJECT '" << key << "': ";
+			// output << "OBJECT '" << key << "': ";
 			auto [obj, offset] = objectSearch(element);
 			if(!obj) {
-				output << _F("not in schema") << endl;
+				// output << _F("not in schema") << endl;
 				return true;
 			}
 			if(element.level == 0) {
@@ -155,7 +155,7 @@ public:
 					auto id = store.arrayPool.add(prop.getSize());
 					assert(parent.data);
 					memcpy(parent.data + offset, &id, sizeof(id));
-					output << "DATA " << id << " @ " << String(uintptr_t(parent.data), HEX) << "+" << offset << endl;
+					// output << "DATA " << id << " @ " << String(uintptr_t(parent.data), HEX) << "+" << offset << endl;
 					auto& pool = store.arrayPool[id];
 					info[element.level] = {obj, nullptr, id};
 					break;
@@ -164,33 +164,33 @@ public:
 					auto id = store.objectArrayPool.add();
 					assert(parent.data);
 					memcpy(parent.data + offset, &id, sizeof(id));
-					output << "DATA " << id << endl;
+					// output << "DATA " << id << endl;
 					auto& pool = store.objectArrayPool[id];
 					info[element.level] = {obj, nullptr, id};
 					break;
 				}
 				}
 			}
-			output << obj->getTypeDesc() << endl;
+			// output << obj->getTypeDesc() << endl;
 			return true;
 		}
 
-		output << "PROPERTY '" << key << "' ";
+		// output << "PROPERTY '" << key << "' ";
 		auto [prop, data, offset] = propertySearch(element);
 		if(!prop) {
-			output << _F("not in schema") << endl;
+			// output << _F("not in schema") << endl;
 			return true;
 		}
 
 		assert(element.level > 0);
 		auto& parent = info[element.level - 1];
 
-		output << '@' << String(uintptr_t(data), HEX) << '[' << offset << ':' << (offset + prop->getSize()) << "]: ";
+		// output << '@' << String(uintptr_t(data), HEX) << '[' << offset << ':' << (offset + prop->getSize()) << "]: ";
 		String value = element.as<String>();
 		ConfigDB::PropertyData propData{};
 		if(prop->type == ConfigDB::PropertyType::String) {
 			if(prop->defaultValue && *prop->defaultValue == value) {
-				output << _F("DEFAULT ");
+				// output << _F("DEFAULT ");
 				propData.string = 0;
 			} else {
 				auto ref = store.stringPool.findOrAdd(value);
@@ -200,10 +200,10 @@ public:
 		} else {
 			propData.uint64 = element.as<uint64_t>();
 		}
-		output << toString(prop->type) << " = " << value << " (" << propData.int64 << ")" << endl;
+		// output << toString(prop->type) << " = " << value << " (" << propData.int64 << ")" << endl;
 
 		memcpy(data + offset, &propData, prop->getSize());
-		output << "DATA " << propData.uint64 << ", STRINGS " << store.stringPool << endl;
+		// output << "DATA " << propData.uint64 << ", STRINGS " << store.stringPool << endl;
 
 		return true;
 	}
@@ -217,7 +217,7 @@ public:
 private:
 	void indentLine(unsigned level)
 	{
-		output << String().pad(level * 2);
+		// output << String().pad(level * 2);
 	}
 
 	ConfigDB::Store& store;
@@ -265,11 +265,11 @@ bool Store::load()
 	 *
 	 * We want to load store only when needed to minimise RAM usage.
 	 */
-	debug_i("parsing '%s'", filename.c_str());
+	// debug_i("parsing '%s'", filename.c_str());
 	ConfigListener listener(*this, Serial);
 	JSON::StaticStreamingParser<128> parser(&listener);
 	auto status = parser.parse(stream);
-	Serial << _F("Parser returned ") << toString(status) << endl;
+	// Serial << _F("Parser returned ") << toString(status) << endl;
 
 	// DeserializationError error = deserializeJson(doc, stream);
 	// switch(error.code()) {
