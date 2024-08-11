@@ -25,7 +25,7 @@ String Store::getPath() const
 {
 	String path = db.getPath();
 	path += '/';
-	path += name ?: F("_root");
+	path += getName() ?: F("_root");
 	return path;
 }
 

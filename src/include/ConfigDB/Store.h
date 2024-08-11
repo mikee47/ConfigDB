@@ -80,19 +80,13 @@ public:
 	 * @param db Database to which this store belongs
 	 * @param name Name of store, used as key in JSONPath
 	 */
-	Store(Database& db, const String& name) : db(db), name(name)
+	Store(Database& db) : db(db)
 	{
-		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
-	~Store()
+	String getName() const
 	{
-		debug_d("%s(%s)", __FUNCTION__, name.c_str());
-	}
-
-	const String& getName() const
-	{
-		return name;
+		return getTypeinfo().getName();
 	}
 
 	String getPath() const;
@@ -137,7 +131,6 @@ protected:
 	}
 
 	Database& db;
-	String name;
 };
 
 /**

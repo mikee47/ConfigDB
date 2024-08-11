@@ -26,9 +26,7 @@ namespace ConfigDB::Json
 class Store : public ConfigDB::Store
 {
 public:
-	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
-	{
-	}
+	using ConfigDB::Store::Store;
 
 	bool commit() override
 	{

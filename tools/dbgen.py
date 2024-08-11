@@ -426,18 +426,23 @@ def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
 
     lines = CodeLines(
-        [],
         [
-            f'#include "{db.name}.h"',
+            '#include <ConfigDB/Database.h>',
+            *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.stores}],
             '',
-            'using namespace ConfigDB;',
-        ])
+            f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
+            '{',
+            'public:',
+            '',
+        ],
+        [])
+
     for obj in db.children:
         store = obj.store
         lines.header += [[
             *declare_templated_class(obj.store),
             [
-                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, {get_string(store.path, True)})',
+                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db)',
                 '{',
                 '}',
                 '',
@@ -475,7 +480,7 @@ def generate_database(db: Database) -> CodeLines:
     ]
     lines.source += [
         '',
-        f'std::shared_ptr<ConfigDB::Store> {db.typename}::getStore(unsigned index)',
+        f'std::shared_ptr<Store> {db.typename}::getStore(unsigned index)',
         '{',
         [
             'switch(index) {',
@@ -485,7 +490,7 @@ def generate_database(db: Database) -> CodeLines:
         ],
         '}',
         '',
-        f'const ConfigDB::DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
+        f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
         [
             f'{len(db.stores)},',
             '{',
@@ -494,14 +499,14 @@ def generate_database(db: Database) -> CodeLines:
         ], '};'
     ]
 
-    lines.header[:0] = [
-        '#include <ConfigDB/Database.h>',
-        *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.stores}],
+    lines.source[:0] = [
+        f'#include "{db.name}.h"',
         '',
-        f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
-        '{',
-        'public:',
-        [f'DEFINE_FSTR_LOCAL({STRING_PREFIX}{id}, {make_string(value)})' for value, id in strings.items()]
+        'namespace {',
+        [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for value, id in strings.items()],
+        '} // namespace',
+        '',
+        'using namespace ConfigDB;',
     ]
 
     return lines
@@ -521,13 +526,13 @@ def generate_method_get_child_object(obj: Object) -> CodeLines:
         ],
         [
             '',
-            f'std::unique_ptr<ConfigDB::Object> {obj.namespace}::{obj.typename_contained}::getObject(unsigned index)',
+            f'std::unique_ptr<Object> {obj.namespace}::{obj.typename_contained}::getObject(unsigned index)',
             '{',
             [
                 'switch(index) {',
                 # Note: make_unique fails with packed argument - looks like a compiler bug
                 # [f'case {i}: return std::make_unique<{child.typename_contained}>(*this, data.{child.id});'
-                [f'case {i}: return std::unique_ptr<ConfigDB::Object>(new {child.typename_contained}(*this, data.{child.id}));'
+                [f'case {i}: return std::unique_ptr<Object>(new {child.typename_contained}(*this, data.{child.id}));'
                     for i, child in enumerate(children)],
                 ['default: return nullptr;'],
                 '}',
@@ -552,7 +557,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         ]
         lines.source += [
             '',
-            f'const ConfigDB::ObjectInfo* {obj.namespace}::{obj.typename_contained}::objinfo[] PROGMEM {{',
+            f'const ObjectInfo* {obj.namespace}::{obj.typename_contained}::objinfo[] PROGMEM {{',
             [f'&{ob.typename}::typeinfo,' for ob in objinfo],
             '};'
         ]
@@ -568,7 +573,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     ]
     lines.source += [
         '',
-        f'const ConfigDB::ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
+        f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
             'nullptr' if obj.is_item or obj.is_root else f'{get_string_ptr(obj.name, True)}',
@@ -576,7 +581,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             'objinfo' if objinfo else 'nullptr',
             'nullptr' if is_array(obj) else '&defaultData',
             f'sizeof({obj.typename_struct})',
-            f'ConfigDB::ObjectType::{obj.classname}',
+            f'ObjectType::{obj.classname}',
             len(objinfo),
             len(propinfo),
         ]),
@@ -585,7 +590,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             *(make_static_initializer([
                 get_string_ptr(prop.name),
                 prop.default_fstr,
-                f'ConfigDB::{prop.property_type}'
+                f'{prop.property_type}'
             ], ',') for prop in propinfo),
             '}',
         ],
