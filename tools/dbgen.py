@@ -100,12 +100,12 @@ class Property:
 
     @property
     def ctype_constref(self):
-        return f'const String&' if self.ptype == 'string' else self.ctype
+        return 'const String&' if self.ptype == 'string' else self.ctype
 
     @property
     def ctype_struct(self):
         if self.ptype == 'string':
-            return 'ConfigDB::StringId';
+            return 'ConfigDB::StringId'
         return self.ctype
 
     @property
@@ -242,7 +242,7 @@ class ObjectArray(Object):
 
 
 def is_array(x: Object):
-    return isinstance(x, Array) or isinstance(x, ObjectArray)
+    return isinstance(x, (Array, ObjectArray))
 
 
 @dataclass
@@ -337,10 +337,13 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
     return [ '{', [str(e) + ',' for e in entries], '}' + term_str]
 
 
-def declare_templated_class(obj: Object, tparams: list = []) -> list[str]:
+def declare_templated_class(obj: Object, tparams: list = None) -> list[str]:
+    params = [f'{obj.typename_contained}']
+    if tparams:
+        params += tparams
     return [
         '',
-        f'class {obj.typename_contained}: public ConfigDB::{obj.base_class}Template<{", ".join([f'{obj.typename_contained}'] + tparams)}>',
+        f'class {obj.typename_contained}: public ConfigDB::{obj.base_class}Template<{", ".join(params)}>',
         '{',
         'public:',
     ]
@@ -664,7 +667,7 @@ def generate_array_accessors(arr: Array) -> list:
         '',
         f'bool setItem(unsigned index, const {prop.ctype}& value)',
         '{',
-        [f'return Array::setItem(index, value);'],
+        ['return Array::setItem(index, value);'],
         '}'
     ]]
 
