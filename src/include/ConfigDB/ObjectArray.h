@@ -62,6 +62,11 @@ public:
 		return {};
 	}
 
+	void* getData() override
+	{
+		return &id;
+	}
+
 private:
 	ArrayId& id;
 };

@@ -44,11 +44,6 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     return STRING_PREFIX + ident
 
 
-def get_string_ptr(value: str, null_if_empty: bool = False) -> str:
-    if value is None or (null_if_empty and value == ''):
-        return 'nullptr'
-    return '&' + get_string(value)
-
 
 @dataclass
 class IntRange:
@@ -142,17 +137,6 @@ class Property:
     def default_structval(self):
         '''Value suitable for static initialisation {x}'''
         return '' if self.ptype == 'string' else self.default_str
-
-    @property
-    def default_fstr(self):
-        default = self.default
-        if default is None:
-            return 'nullptr'
-        if self.ptype == 'string':
-            return get_string_ptr(default)
-        if self.ptype == 'boolean':
-            return get_string_ptr('True' if default else 'False')
-        return get_string_ptr(str(default))
 
 
 @dataclass
@@ -577,7 +561,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     ]
     lines.source += [
         '',
-        f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
+        f'constexpr const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
             'fstr_empty' if obj.is_item or obj.is_root else get_string(obj.name),
@@ -593,7 +577,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             '{',
             *(make_static_initializer([
                 get_string(prop.name),
-                prop.default_fstr,
+                'nullptr' if prop.default is None or prop.ptype != 'string' else f'&{get_string(prop.default)}',
                 f'{prop.property_type}'
             ], ',') for prop in propinfo),
             '}',
@@ -634,7 +618,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
 def generate_property_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
-    return [(
+    return [*((
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
@@ -652,7 +636,15 @@ def generate_property_accessors(obj: Object) -> list:
             'return true;'
         ],
         '}'
-        ) for prop in obj.properties]
+        ) for prop in obj.properties),
+        '',
+        [
+            'void* getData() override',
+            '{',
+            ['return &data;'],
+            '}'
+        ]
+    ]
 
 
 def generate_array_accessors(arr: Array) -> list:

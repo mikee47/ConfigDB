@@ -50,10 +50,10 @@ struct ObjectInfo {
 	const ObjectInfo* parent;
 	const ObjectInfo* const* objinfo;
 	PGM_VOID_P defaultData;
-	volatile uint32_t structSize : 14;
-	volatile ObjectType type : 2;
-	volatile uint32_t objectCount : 8;
-	volatile uint32_t propertyCount : 8;
+	uint32_t structSize;
+	ObjectType type;
+	uint32_t objectCount;
+	uint32_t propertyCount;
 	const PropertyInfo propinfo[];
 
 	static const ObjectInfo empty;
@@ -72,9 +72,14 @@ struct ObjectInfo {
 	 * @brief Get offset of this object's data relative to root (not just parent)
 	 */
 	size_t getOffset() const;
+
+	/**
+	 * @brief Get offset of data for a property from the start of *this* object's data
+	 */
+	size_t getPropertyOffset(unsigned index) const;
 };
 
-static_assert(sizeof(ObjectInfo) == 20, "Bad ObjectInfo size");
+static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
 
 /**
  * @brief An object can contain other objects, properties and arrays
@@ -144,7 +149,7 @@ public:
 		if(index >= typeinfo.propertyCount) {
 			return {};
 		}
-		return {*this, typeinfo.propinfo[index]};
+		return {*this, typeinfo.propinfo[index], static_cast<uint8_t*>(getData()) + typeinfo.getPropertyOffset(index)};
 	}
 
 	/**
@@ -156,6 +161,8 @@ public:
 	// virtual size_t printTo(Print& p) const = 0;
 
 	virtual const ObjectInfo& getTypeinfo() const = 0;
+
+	virtual void* getData() = 0;
 
 	String getName() const
 	{
@@ -193,6 +200,9 @@ public:
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
 	}
+
+private:
+	// typename ClassType::Struct* data2;
 };
 
 } // namespace ConfigDB

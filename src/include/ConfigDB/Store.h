@@ -103,13 +103,15 @@ public:
 
 	virtual const StoreInfo& getTypeinfo() const = 0;
 
+	String getValueString(const PropertyInfo& info, const void* data) const;
+	bool setValueString(const PropertyInfo& prop, void* data, const String& value);
+
 	std::unique_ptr<uint8_t[]> rootObjectData;
 	ArrayPool arrayPool;
 	ObjectArrayPool objectArrayPool;
 	StringPool stringPool;
 
 protected:
-	String getValueString(const PropertyInfo& info, const void* data) const;
 
 	void clear()
 	{

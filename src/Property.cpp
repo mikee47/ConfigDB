@@ -18,7 +18,7 @@
  ****/
 
 #include "include/ConfigDB/Property.h"
-#include "include/ConfigDB/Object.h"
+#include "include/ConfigDB/Store.h"
 #include <Data/Format/Standard.h>
 
 String toString(ConfigDB::PropertyType type)
@@ -35,18 +35,14 @@ String toString(ConfigDB::PropertyType type)
 
 namespace ConfigDB
 {
-DEFINE_FSTR(fstr_empty, "")
-
 const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
 
 String Property::getValue() const
 {
-	if(!object) {
-		return nullptr;
+	if(object && data) {
+		return object->getStore().getValueString(info, data);
 	}
-
-	String value; // = isIndexed() ? object->getStoredArrayValue(index) : object->getStoredValue(info.getName());
-	return value ?: info.getDefaultValue();
+	return nullptr;
 }
 
 String Property::getJsonValue() const
@@ -58,7 +54,7 @@ String Property::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	if(info.type < Type::String) {
+	if(info.type < PropertyType::String) {
 		return value;
 	}
 	::Format::standard.quote(value);

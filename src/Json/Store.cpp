@@ -149,29 +149,11 @@ public:
 	void handleProperty(const Element& element)
 	{
 		auto [prop, data] = findProperty(element);
-		if(!prop) {
-			debug_w("[JSON] '%s' not in schema", element.key);
-			return;
-		}
-
-		assert(element.level > 0);
-		auto& parent = info[element.level - 1];
-
-		String value = element.as<String>();
-		ConfigDB::PropertyData propData{};
-		if(prop->type == ConfigDB::PropertyType::String) {
-			if(prop->defaultValue && *prop->defaultValue == value) {
-				propData.string = 0;
-			} else {
-				auto ref = store.stringPool.findOrAdd(value);
-				propData.string = ref;
-			}
-			::Format::standard.quote(value);
+		if(prop) {
+			store.setValueString(*prop, data, element.as<String>());
 		} else {
-			propData.uint64 = element.as<uint64_t>();
+			debug_w("[JSON] '%s' not in schema", element.key);
 		}
-
-		memcpy(data, &propData, prop->getSize());
 	}
 
 	bool startElement(const Element& element) override
@@ -237,7 +219,7 @@ bool Store::save()
 	}
 
 	if(stream.getLastError() == FS_OK) {
-		debug_i("[JSON] Store saved '%s' OK", filename.c_str());
+		debug_d("[JSON] Store saved '%s' OK", filename.c_str());
 		return true;
 	}
 

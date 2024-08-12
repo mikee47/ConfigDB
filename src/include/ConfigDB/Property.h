@@ -40,7 +40,7 @@ namespace ConfigDB
 {
 class Object;
 
-DECLARE_FSTR(fstr_empty)
+DEFINE_FSTR_LOCAL(fstr_empty, "")
 
 /**
  * @brief Defines contained string data using index into string pool
@@ -59,15 +59,10 @@ enum class PropertyType : uint32_t {
 struct PropertyInfo {
 	// Don't access these directly!
 	const FlashString& name;
-	const FlashString* defaultValue;
-	volatile PropertyType type : 8;
+	const FlashString* defaultValue; ///< Only required for strings
+	PropertyType type;
 
 	static const PropertyInfo empty;
-
-	String getDefaultValue() const
-	{
-		return defaultValue ? String(*defaultValue) : nullptr;
-	}
 
 	/**
 	 * @brief Get number of bytes required to store this property value within a structure
@@ -109,29 +104,13 @@ public:
 	{
 	}
 
-	using Type = PropertyType;
-
 	/**
-	 * @brief Property accessed by key
+	 * @brief Create a Property instance
+	 * @param info Property information
+	 * @param data Pointer to location where value is stored
 	 */
-	Property(Object& object, const PropertyInfo& info) : info(info), object(&object)
+	Property(Object& object, const PropertyInfo& info, void* data) : info(info), object(&object), data(data)
 	{
-	}
-
-	/**
-	 * @brief Property accessed by index
-	 */
-	Property(Object& object, unsigned index, const PropertyInfo& info) : info(info), object(&object), index(index)
-	{
-	}
-
-	/**
-	 * @brief Check if this property is accessed by index
-	 * @retval bool true if this property is an array member, false if it's a named object property
-	 */
-	bool isIndexed() const
-	{
-		return index >= 0;
 	}
 
 	String getValue() const;
@@ -147,7 +126,7 @@ public:
 
 private:
 	Object* object{};
-	int index{-1};
+	void* data{};
 };
 
 } // namespace ConfigDB

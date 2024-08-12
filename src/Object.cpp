@@ -51,7 +51,23 @@ size_t ObjectInfo::getOffset() const
 	}
 	assert(false);
 	return 0;
-};
+}
+
+size_t ObjectInfo::getPropertyOffset(unsigned index) const
+{
+	size_t offset{0};
+	for(unsigned i = 0; i < objectCount; ++i) {
+		offset += objinfo[i]->structSize;
+	}
+	for(unsigned i = 0; i < propertyCount; ++i) {
+		if(i == index) {
+			return offset;
+		}
+		offset += propinfo[i].getSize();
+	}
+	assert(false);
+	return 0;
+}
 
 String ObjectInfo::getTypeDesc() const
 {
@@ -96,24 +112,12 @@ String Object::getPath() const
 
 String Object::getPropertyValue(const PropertyInfo& prop, const void* data) const
 {
-	if(prop.type != PropertyType::String) {
-		return nullptr;
-	}
-	auto id = *reinterpret_cast<const StringId*>(data);
-	if(id == 0) {
-		return prop.getDefaultValue();
-	}
-	return getStore().stringPool[id];
+	return getStore().getValueString(prop, data);
 }
 
 bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const String& value)
 {
-	if(prop.type != PropertyType::String) {
-		return false;
-	}
-	StringId id = getStore().stringPool.findOrAdd(value);
-	memcpy(data, &id, sizeof(id));
-	return true;
+	return getStore().setValueString(prop, data, value);
 }
 
 StringId Object::addString(const String& value)

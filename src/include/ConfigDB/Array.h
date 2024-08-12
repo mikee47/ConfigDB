@@ -83,7 +83,12 @@ public:
 		// Property info contains exactly one element
 		auto& typeinfo = getTypeinfo();
 		assert(typeinfo.propertyCount == 1);
-		return {*this, index, typeinfo.propinfo[0]};
+		return {*this, typeinfo.propinfo[0], nullptr};
+	}
+
+	void* getData() override
+	{
+		return &id;
 	}
 
 private:
