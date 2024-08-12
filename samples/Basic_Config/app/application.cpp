@@ -1,8 +1,12 @@
 #include <SmingCore.h>
 #include <LittleFS.h>
-
+#include <IFS/Debug.h>
 #include <basic-config.h>
 #include <ConfigDB/Json/DataStream.h>
+
+#ifdef ENABLE_MALLOC_COUNT
+#include <malloc_count.h>
+#endif
 
 extern void listProperties(ConfigDB::Database& db, Print& output);
 extern void checkPerformance(BasicConfig& db);
@@ -10,6 +14,18 @@ extern void checkPerformance(BasicConfig& db);
 namespace
 {
 IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
+
+[[maybe_unused]] void printHeap()
+{
+	Serial << _F("Heap statistics") << endl;
+	Serial << _F("  Free bytes:  ") << system_get_free_heap_size() << endl;
+#ifdef ENABLE_MALLOC_COUNT
+	Serial << _F("  Used:        ") << MallocCount::getCurrent() << endl;
+	Serial << _F("  Peak used:   ") << MallocCount::getPeak() << endl;
+	Serial << _F("  Allocations: ") << MallocCount::getAllocCount() << endl;
+	Serial << _F("  Total used:  ") << MallocCount::getTotal() << endl;
+#endif
+}
 
 /*
  * Read and write some values
@@ -61,7 +77,6 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 			item.values.addItem(os_random());
 		}
 		item.commit();
-		// item = channels.getItem(0);
 		Serial << channels.getPath() << " = " << item << endl;
 	}
 
@@ -91,11 +106,6 @@ void init()
 	Serial.begin(COM_SPEED_SERIAL);
 	Serial.systemDebugOutput(true);
 
-#if 0
-	FSTR::Stream stream(sampleConfig);
-	parseJson(stream);
-#else
-
 #ifdef ARCH_HOST
 	fileSetFileSystem(&IFS::Host::getFileSystem());
 #else
@@ -112,7 +122,10 @@ void init()
 	// checkPerformance(db);
 
 	Serial << endl << endl;
-#endif
+
+	printHeap();
+
+	IFS::Debug::listDirectory(Serial, *IFS::getDefaultFileSystem(), db.getPath());
 
 #ifdef ARCH_HOST
 	System.restart();
