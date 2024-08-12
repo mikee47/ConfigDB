@@ -94,6 +94,10 @@ public:
 	{
 	}
 
+	virtual ~Object()
+	{
+	}
+
 	String getPropertyValue(const PropertyInfo& prop, const void* data) const;
 
 	bool setPropertyValue(const PropertyInfo& prop, void* data, const String& value);

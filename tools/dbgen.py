@@ -518,9 +518,7 @@ def generate_method_get_child_object(obj: Object) -> CodeLines:
             '{',
             [
                 'switch(index) {',
-                # Note: make_unique fails with packed argument - looks like a compiler bug
-                # [f'case {i}: return std::make_unique<{child.typename_contained}>(*this, data.{child.id});'
-                [f'case {i}: return std::unique_ptr<Object>(new {child.typename_contained}(*this, data.{child.id}));'
+                [f'case {i}: return std::make_unique<{child.typename_contained}>(*this, data.{child.id});'
                     for i, child in enumerate(children)],
                 ['default: return nullptr;'],
                 '}',
