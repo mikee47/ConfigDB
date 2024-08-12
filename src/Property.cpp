@@ -35,7 +35,9 @@ String toString(ConfigDB::PropertyType type)
 
 namespace ConfigDB
 {
-const PropertyInfo PropertyInfo::empty PROGMEM{};
+DEFINE_FSTR(fstr_empty, "")
+
+const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
 
 String Property::getValue() const
 {

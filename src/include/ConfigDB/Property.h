@@ -40,6 +40,8 @@ namespace ConfigDB
 {
 class Object;
 
+DECLARE_FSTR(fstr_empty)
+
 /**
  * @brief Defines contained string data using index into string pool
  */
@@ -56,7 +58,7 @@ enum class PropertyType : uint32_t {
  */
 struct PropertyInfo {
 	// Don't access these directly!
-	const FlashString* name;
+	const FlashString& name;
 	const FlashString* defaultValue;
 	volatile PropertyType type : 8;
 
@@ -64,17 +66,17 @@ struct PropertyInfo {
 
 	String getName() const
 	{
-		return name ? String(*name) : nullptr;
+		return name;
 	}
 
 	bool nameIs(const char* value, size_t length) const
 	{
-		return name ? name->equals(value, length) : (length == 0);
+		return name.equals(value, length);
 	}
 
 	bool operator==(const String& s) const
 	{
-		return name && *name == s;
+		return name == s;
 	}
 
 	String getDefaultValue() const

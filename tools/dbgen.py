@@ -17,9 +17,7 @@ CPP_TYPENAMES = {
     'boolean': 'bool',
 }
 
-strings: dict[str, str] = {
-    "": 'empty',
-}
+strings: dict[str, str] = {}
 
 STRING_PREFIX = 'fstr_'
 
@@ -29,6 +27,8 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     '''
     if value is None or (null_if_empty and value == ''):
         return 'nullptr'
+    if value == '':
+        return STRING_PREFIX + 'empty'
     ident = strings.get(value)
     if ident:
         return STRING_PREFIX + ident
@@ -592,7 +592,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         [
             '{',
             *(make_static_initializer([
-                get_string_ptr(prop.name),
+                get_string(prop.name),
                 prop.default_fstr,
                 f'{prop.property_type}'
             ], ',') for prop in propinfo),
