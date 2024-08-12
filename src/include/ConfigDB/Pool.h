@@ -209,8 +209,8 @@ private:
 		if(count < capacity) {
 			return true;
 		}
-		auto newCapacity = capacity + getItemSize(increment);
-		auto newBuffer = realloc(buffer, newCapacity);
+		auto newCapacity = capacity + increment;
+		auto newBuffer = realloc(buffer, getItemSize(newCapacity));
 		if(!newBuffer) {
 			return false;
 		}
