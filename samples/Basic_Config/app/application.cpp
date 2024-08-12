@@ -2,7 +2,7 @@
 #include <LittleFS.h>
 
 #include <basic-config.h>
-#include <ConfigDB/DataStream.h>
+#include <ConfigDB/Json/DataStream.h>
 
 extern void listProperties(ConfigDB::Database& db, Print& output);
 extern void checkPerformance(BasicConfig& db);
@@ -57,7 +57,9 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 		item.details.setCurrentLimit(400);
 		item.notes.addItem(_F("This is a nice pin"));
 		item.notes.addItem(_F("It is useful"));
-		item.notes.commit();
+		for(unsigned i = 0; i < 16; ++i) {
+			item.values.addItem(os_random());
+		}
 		item.commit();
 		// item = channels.getItem(0);
 		Serial << channels.getPath() << " = " << item << endl;

@@ -38,11 +38,11 @@ public:
 		return getPath() + ".json";
 	}
 
-	size_t printTo(Print& p) const override;
+	size_t printTo(Print& p, unsigned nesting) const override;
 
-	void printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p) const;
-	void printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const;
-	void printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const;
+	void printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned nesting, Print& p) const;
+	void printArrayTo(const ObjectInfo& object, ArrayId id, unsigned nesting, Print& p) const;
+	void printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned nesting, Print& p) const;
 
 protected:
 	/**

@@ -17,9 +17,8 @@
  *
  ****/
 
-#include "include/ConfigDB/DataStream.h"
-#include "include/ConfigDB/Store.h"
-#include "include/ConfigDB/Object.h"
+#include <ConfigDB/Json/DataStream.h>
+#include <ConfigDB/Json/Store.h>
 
 namespace ConfigDB
 {
@@ -45,7 +44,7 @@ void DataStream::fillStream()
 			stream << ',';
 			newline();
 		}
-		stream << *store;
+		store->printTo(stream, 1);
 		++storeIndex;
 		return;
 	}

@@ -103,6 +103,13 @@ public:
 
 	virtual const StoreInfo& getTypeinfo() const = 0;
 
+	virtual size_t printTo(Print& p, unsigned nesting) const = 0;
+
+	size_t printTo(Print& p) const override
+	{
+		return printTo(p, 0);
+	}
+
 	String getValueString(const PropertyInfo& info, const void* data) const;
 	bool setValueString(const PropertyInfo& prop, void* data, const String& value);
 
@@ -112,7 +119,6 @@ public:
 	StringPool stringPool;
 
 protected:
-
 	void clear()
 	{
 		arrayPool.clear();

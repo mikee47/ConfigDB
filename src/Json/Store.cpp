@@ -215,7 +215,7 @@ bool Store::save()
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<256> buffer(stream);
-		printTo(buffer);
+		printTo(buffer, 0);
 	}
 
 	if(stream.getLastError() == FS_OK) {
@@ -233,12 +233,12 @@ String Store::getValueJson(const PropertyInfo& info, const void* data) const
 	return s ? (info.type == PropertyType::String) ? quote(s) : s : "null";
 }
 
-void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned indentCount, Print& p) const
+void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned nesting, Print& p) const
 {
 	String indent;
-	indent.pad(indentCount * 2);
+	indent.pad(nesting * 2);
 	bool isObject = (object.type == ObjectType::Object);
-	if(!object.isRoot()) {
+	if(nesting != 0 && !object.isRoot()) {
 		p << indent << quote(object.name) << ": " << (isObject ? '{' : '[') << endl;
 	}
 	unsigned item = 0;
@@ -249,7 +249,7 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 			if(item++) {
 				p << "," << endl;
 			}
-			printObjectTo(*obj, data, indentCount + 1, p);
+			printObjectTo(*obj, data, nesting + 1, p);
 			data += obj->structSize;
 		}
 		for(unsigned i = 0; i < object.propertyCount; ++i) {
@@ -264,29 +264,29 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 
 	case ObjectType::Array: {
 		auto id = *reinterpret_cast<const ArrayId*>(data);
-		printArrayTo(object, id, indentCount + 1, p);
+		printArrayTo(object, id, nesting + 1, p);
 		break;
 	}
 
 	case ObjectType::ObjectArray: {
 		auto id = *reinterpret_cast<const ArrayId*>(data);
-		printObjectArrayTo(object, id, indentCount + 1, p);
+		printObjectArrayTo(object, id, nesting, p);
 		break;
 	}
 	}
 
-	if(!object.isRoot()) {
+	if(nesting != 0 && !object.isRoot()) {
 		p << endl << indent << (isObject ? '}' : ']');
 	}
 }
 
-void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const
+void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned nesting, Print& p) const
 {
 	if(id == 0) {
 		return;
 	}
 	String indent;
-	indent.pad(indentCount * 2);
+	indent.pad(nesting * 2);
 	auto& array = arrayPool[id];
 	auto& prop = object.propinfo[0];
 	for(unsigned i = 0; i < array.getCount(); ++i) {
@@ -297,13 +297,13 @@ void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCo
 	}
 }
 
-void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned indentCount, Print& p) const
+void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned nesting, Print& p) const
 {
 	if(id == 0) {
 		return;
 	}
 	String indent;
-	indent.pad(indentCount * 2);
+	indent.pad(nesting * 2);
 	auto& array = objectArrayPool[id];
 	auto items = object.objinfo[0];
 	for(unsigned i = 0; i < array.getCount(); ++i) {
@@ -311,23 +311,34 @@ void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned in
 			p << ',' << endl;
 		}
 		p << indent << '{' << endl;
-		printObjectTo(*items, array[i].get(), indentCount + 1, p);
+		printObjectTo(*items, array[i].get(), nesting + 1, p);
 		p << endl << indent << '}';
 	}
 }
 
-size_t Store::printTo(Print& p) const
+size_t Store::printTo(Print& p, unsigned nesting) const
 {
 	auto format = getDatabase().getFormat();
 
 	size_t n{0};
 
-	p << "{" << endl;
+	String indent;
+	auto childIndent = nesting;
+	if(nesting == 0) {
+		p << "{" << endl;
+	} else if(isRoot()) {
+		--childIndent;
+	} else {
+		indent.pad(nesting * 2);
+		p << indent << quote(getName()) << ": {" << endl;
+	}
 
 	auto& root = getTypeinfo().object;
-	printObjectTo(root, rootObjectData.get(), 0, p);
+	printObjectTo(root, rootObjectData.get(), childIndent, p);
 
-	p << endl << "}" << endl;
+	if(nesting == 0 || !isRoot()) {
+		p << endl << indent << "}";
+	}
 
 	return n;
 }
