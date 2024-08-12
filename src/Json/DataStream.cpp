@@ -28,9 +28,9 @@ void DataStream::fillStream()
 	if(done) {
 		return;
 	}
-	auto format = db.getFormat();
+	auto pretty = (db.getFormat() == Format::Pretty);
 	auto newline = [&]() {
-		if(format == Format::Pretty) {
+		if(pretty) {
 			stream << endl;
 		}
 	};
@@ -49,7 +49,8 @@ void DataStream::fillStream()
 		return;
 	}
 	newline();
-	stream << '}' << endl;
+	stream << '}';
+	newline();
 	done = true;
 }
 

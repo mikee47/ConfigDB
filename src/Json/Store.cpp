@@ -235,11 +235,26 @@ String Store::getValueJson(const PropertyInfo& info, const void* data) const
 
 void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned nesting, Print& p) const
 {
+	auto pretty = (getDatabase().getFormat() == Format::Pretty);
+	auto newline = [&]() {
+		if(pretty) {
+			p << endl;
+		}
+	};
+
 	String indent;
-	indent.pad(nesting * 2);
+	if(pretty) {
+		indent.pad(nesting * 2);
+	}
 	bool isObject = (object.type == ObjectType::Object);
 	if(nesting != 0 && !object.isRoot()) {
-		p << indent << quote(object.name) << ": " << (isObject ? '{' : '[') << endl;
+		if(pretty) {
+			p << indent << quote(object.name) << ": ";
+		} else {
+			p << quote(object.name) << ':';
+		}
+		p << (isObject ? '{' : '[');
+		newline();
 	}
 	unsigned item = 0;
 	switch(object.type) {
@@ -247,7 +262,8 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 		for(unsigned i = 0; i < object.objectCount; ++i) {
 			auto obj = object.objinfo[i];
 			if(item++) {
-				p << "," << endl;
+				p << ',';
+				newline();
 			}
 			printObjectTo(*obj, data, nesting + 1, p);
 			data += obj->structSize;
@@ -255,9 +271,14 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 		for(unsigned i = 0; i < object.propertyCount; ++i) {
 			auto& prop = object.propinfo[i];
 			if(item++) {
-				p << "," << endl;
+				p << ',';
+				newline();
 			}
-			p << indent << "  " << quote(prop.name) << ": " << getValueJson(prop, data);
+			if(pretty) {
+				p << indent << "  " << quote(prop.name) << ": " << getValueJson(prop, data);
+			} else {
+				p << quote(prop.name) << ':' << getValueJson(prop, data);
+			}
 			data += prop.getSize();
 		}
 		break;
@@ -276,7 +297,10 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 	}
 
 	if(nesting != 0 && !object.isRoot()) {
-		p << endl << indent << (isObject ? '}' : ']');
+		if(pretty) {
+			p << endl << indent;
+		}
+		p << (isObject ? '}' : ']');
 	}
 }
 
@@ -285,15 +309,26 @@ void Store::printArrayTo(const ObjectInfo& object, ArrayId id, unsigned nesting,
 	if(id == 0) {
 		return;
 	}
+
+	auto pretty = (getDatabase().getFormat() == Format::Pretty);
+
 	String indent;
-	indent.pad(nesting * 2);
+	if(pretty) {
+		indent.pad(nesting * 2);
+	}
 	auto& array = arrayPool[id];
 	auto& prop = object.propinfo[0];
 	for(unsigned i = 0; i < array.getCount(); ++i) {
 		if(i) {
-			p << ", " << endl;
+			p << ',';
+			if(pretty) {
+				p << endl;
+			}
 		}
-		p << indent << getValueJson(prop, array[i]);
+		if(pretty) {
+			p << indent;
+		}
+		p << getValueJson(prop, array[i]);
 	}
 }
 
@@ -302,42 +337,68 @@ void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned ne
 	if(id == 0) {
 		return;
 	}
+
+	auto pretty = (getDatabase().getFormat() == Format::Pretty);
+
 	String indent;
-	indent.pad(nesting * 2);
+	if(pretty) {
+		indent.pad(nesting * 2);
+	}
 	auto& array = objectArrayPool[id];
 	auto items = object.objinfo[0];
 	for(unsigned i = 0; i < array.getCount(); ++i) {
 		if(i) {
-			p << ',' << endl;
+			p << ',';
+			if(pretty) {
+				p << endl;
+			}
 		}
-		p << indent << '{' << endl;
+		if(pretty) {
+			p << indent << '{' << endl;
+		} else {
+			p << '{';
+		}
 		printObjectTo(*items, array[i].get(), nesting + 1, p);
-		p << endl << indent << '}';
+		if(pretty) {
+			p << endl << indent << '}';
+		} else {
+			p << '}';
+		}
 	}
 }
 
 size_t Store::printTo(Print& p, unsigned nesting) const
 {
-	auto format = getDatabase().getFormat();
+	auto pretty = (getDatabase().getFormat() == Format::Pretty);
 
 	size_t n{0};
 
 	String indent;
 	auto childIndent = nesting;
 	if(nesting == 0) {
-		p << "{" << endl;
+		p << '{';
+		if(pretty) {
+			p << endl;
+		}
 	} else if(isRoot()) {
 		--childIndent;
 	} else {
-		indent.pad(nesting * 2);
-		p << indent << quote(getName()) << ": {" << endl;
+		if(pretty) {
+			indent.pad(nesting * 2);
+			p << indent << quote(getName()) << ": {" << endl;
+		} else {
+			p << quote(getName()) << ":{";
+		}
 	}
 
 	auto& root = getTypeinfo().object;
 	printObjectTo(root, rootObjectData.get(), childIndent, p);
 
 	if(nesting == 0 || !isRoot()) {
-		p << endl << indent << "}";
+		if(pretty) {
+			p << endl << indent;
+		}
+		p << '}';
 	}
 
 	return n;

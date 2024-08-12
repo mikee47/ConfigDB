@@ -114,11 +114,13 @@ void init()
 
 	createDirectory("test");
 	BasicConfig db("test");
-	db.setFormat(ConfigDB::Format::Pretty);
+	// db.setFormat(ConfigDB::Format::Pretty);
 
 	readWriteValues(db);
+
 	stream(db);
-	// listProperties(db, Serial);
+
+	listProperties(db, Serial);
 	// checkPerformance(db);
 
 	Serial << endl << endl;
