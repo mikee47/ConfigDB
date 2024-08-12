@@ -32,7 +32,7 @@ def get_string(value: str, null_if_empty: bool = False) -> str:
     ident = strings.get(value)
     if ident:
         return STRING_PREFIX + ident
-    ident = re.sub(r'[^A-Za-z0-9]+', '_', value)[:MAX_STRINGID_LEN]
+    ident = make_identifier(value)[:MAX_STRINGID_LEN]
     if not ident:
         ident = str(len(strings))
     if ident in strings.values():
@@ -305,6 +305,7 @@ class CodeLines:
 def make_identifier(s: str, is_type: bool = False):
     '''Form valid camelCase identifier for a variable (default) or type'''
     up = is_type
+    s = re.sub(r'[^A-Za-z0-9]+', '_', s)
     ident = ''
     for c in s:
         if c in ['-', '_']:
