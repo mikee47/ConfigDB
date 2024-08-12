@@ -63,6 +63,18 @@ void checkPerformance(BasicConfig& db)
 
 	const int rounds = 64;
 
+	Serial << _F("Evaluating load times ...") << endl;
+	{
+		Profiling::MicroTimes times(F("Load store"));
+		unsigned store = 0;
+		for(int i = 0; i < rounds; i++) {
+			times.start();
+			auto store = db.getStore(i % db.getTypeinfo().storeCount);
+			times.update();
+		}
+		Serial << times << endl;
+	}
+
 	/*
 	 * Open Color store
 	 *
