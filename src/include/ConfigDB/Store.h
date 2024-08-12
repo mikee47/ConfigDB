@@ -41,31 +41,15 @@ enum class Format {
 };
 
 struct StoreInfo {
-	const FlashString* name; ///< Root store always nullptr
+	const FlashString& name;
 	const ObjectInfo& object;
-
-	static const StoreInfo& empty()
-	{
-		static const StoreInfo PROGMEM emptyInfo{.object = ObjectInfo::empty};
-		return emptyInfo;
-	}
-
-	String getName() const
-	{
-		return name ? String(*name) : nullptr;
-	}
 
 	/**
 	 * @brief Root object in a store has no name
 	 */
 	bool isRoot() const
 	{
-		return name == nullptr;
-	}
-
-	bool operator==(const String& s) const
-	{
-		return name ? *name == s : s.length() == 0;
+		return name.length() == 0;
 	}
 };
 
@@ -84,9 +68,14 @@ public:
 	{
 	}
 
+	bool isRoot() const
+	{
+		return getTypeinfo().isRoot();
+	}
+
 	String getName() const
 	{
-		return getTypeinfo().getName();
+		return getTypeinfo().name;
 	}
 
 	String getPath() const;

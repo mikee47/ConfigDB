@@ -49,7 +49,7 @@ public:
 	std::pair<const ConfigDB::ObjectInfo*, uint8_t*> findObject(const Element& element)
 	{
 		auto& parent = info[element.level - 1];
-		if(!parent.object->objectCount) {
+		if(!parent.object || !parent.object->objectCount) {
 			return {};
 		}
 
@@ -61,7 +61,7 @@ public:
 		size_t offset{0};
 		for(unsigned i = 0; i < parent.object->objectCount; ++i) {
 			auto obj = parent.object->objinfo[i];
-			if(obj->nameIs(element.key, element.keyLength)) {
+			if(obj->name.equals(element.key, size_t(element.keyLength))) {
 				return {obj, parent.data + offset};
 			}
 			offset += obj->structSize;
@@ -91,7 +91,7 @@ public:
 		// Find property by key
 		for(unsigned i = 0; i < obj->propertyCount; ++i) {
 			auto& prop = obj->propinfo[i];
-			if(prop.nameIs(element.key, element.keyLength)) {
+			if(prop.name.equals(element.key, size_t(element.keyLength))) {
 				return {&prop, parent.data + offset};
 			}
 			offset += prop.getSize();
@@ -229,17 +229,19 @@ bool Store::load()
 
 bool Store::save()
 {
+	String filename = getFilename();
 	FileStream stream;
-	if(stream.open(getFilename(), File::WriteOnly | File::CreateNewAlways)) {
+	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<256> buffer(stream);
 		printTo(buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {
+		debug_i("[JSON] Store saved '%s' OK", filename.c_str());
 		return true;
 	}
 
-	debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());
+	debug_e("[JSON] Store save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
 	return false;
 }
 
@@ -254,8 +256,8 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 	String indent;
 	indent.pad(indentCount * 2);
 	bool isObject = (object.type == ObjectType::Object);
-	if(object.name) {
-		p << indent << quote(*object.name) << ": " << (isObject ? '{' : '[') << endl;
+	if(!object.isRoot()) {
+		p << indent << quote(object.name) << ": " << (isObject ? '{' : '[') << endl;
 	}
 	unsigned item = 0;
 	switch(object.type) {
@@ -273,7 +275,7 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 			if(item++) {
 				p << "," << endl;
 			}
-			p << indent << "  " << quote(prop.getName()) << ": " << getValueJson(prop, data);
+			p << indent << "  " << quote(prop.name) << ": " << getValueJson(prop, data);
 			data += prop.getSize();
 		}
 		break;
@@ -291,7 +293,7 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 	}
 	}
 
-	if(object.name) {
+	if(!object.isRoot()) {
 		p << endl << indent << (isObject ? '}' : ']');
 	}
 }

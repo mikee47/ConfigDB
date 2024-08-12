@@ -34,7 +34,7 @@ String toString(ConfigDB::ObjectType type)
 
 namespace ConfigDB
 {
-const ObjectInfo PROGMEM ObjectInfo::empty{};
+const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
 
 size_t ObjectInfo::getOffset() const
 {
@@ -80,15 +80,11 @@ Database& Object::getDatabase()
 String Object::getPath() const
 {
 	String relpath;
-	auto typeinfo = &getTypeinfo();
-	while(typeinfo) {
-		if(relpath && typeinfo->name) {
+	for(auto typeinfo = &getTypeinfo(); !typeinfo->isRoot(); typeinfo = typeinfo->parent) {
+		if(relpath) {
 			relpath += '.';
 		}
-		if(typeinfo->name) {
-			relpath += *typeinfo->name;
-		}
-		typeinfo = typeinfo->parent;
+		relpath += typeinfo->name;
 	}
 	String path = getStore().getName();
 	if(relpath) {

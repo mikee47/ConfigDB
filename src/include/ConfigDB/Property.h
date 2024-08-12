@@ -64,21 +64,6 @@ struct PropertyInfo {
 
 	static const PropertyInfo empty;
 
-	String getName() const
-	{
-		return name;
-	}
-
-	bool nameIs(const char* value, size_t length) const
-	{
-		return name.equals(value, length);
-	}
-
-	bool operator==(const String& s) const
-	{
-		return name == s;
-	}
-
 	String getDefaultValue() const
 	{
 		return defaultValue ? String(*defaultValue) : nullptr;

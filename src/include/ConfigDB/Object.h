@@ -46,7 +46,7 @@ enum class ObjectType : uint32_t {
 using ArrayId = uint16_t alignas(1);
 
 struct ObjectInfo {
-	const FlashString* name; ///< Within store, root always nullptr
+	const FlashString& name;
 	const ObjectInfo* parent;
 	const ObjectInfo* const* objinfo;
 	PGM_VOID_P defaultData;
@@ -58,27 +58,12 @@ struct ObjectInfo {
 
 	static const ObjectInfo empty;
 
-	String getName() const
-	{
-		return name ? String(*name) : nullptr;
-	}
-
-	bool nameIs(const char* value, size_t length) const
-	{
-		return name ? name->equals(value, length) : (length == 0);
-	}
-
 	/**
 	 * @brief Root object in a store has no name
 	 */
 	bool isRoot() const
 	{
-		return name == nullptr;
-	}
-
-	bool operator==(const String& s) const
-	{
-		return name ? *name == s : s.length() == 0;
+		return name.length() == 0;
 	}
 
 	String getTypeDesc() const;
@@ -174,8 +159,7 @@ public:
 
 	String getName() const
 	{
-		auto& typeinfo = getTypeinfo();
-		return typeinfo.name ? String(*typeinfo.name) : nullptr;
+		return getTypeinfo().name;
 	}
 
 	String getPath() const;

@@ -463,7 +463,7 @@ def generate_database(db: Database) -> CodeLines:
             '',
             f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
             *make_static_initializer([
-                get_string_ptr(store.name, True),
+                get_string(store.name),
                 f'{store.namespace}::{obj.typename}::typeinfo'
             ], ';')
         ]
@@ -580,7 +580,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            'nullptr' if obj.is_item or obj.is_root else f'{get_string_ptr(obj.name, True)}',
+            'fstr_empty' if obj.is_item or obj.is_root else get_string(obj.name),
             'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             'objinfo' if objinfo else 'nullptr',
             'nullptr' if is_array(obj) else '&defaultData',

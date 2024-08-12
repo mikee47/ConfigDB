@@ -28,7 +28,7 @@ void printObject(Print& output, const String& tag, unsigned indent, ConfigDB::Ob
 		value += toString(prop.info.type);
 		value += " = ";
 		value += prop.getJsonValue();
-		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.info.getName(), value);
+		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.info.name, value);
 	}
 	for(unsigned j = 0; auto child = obj.getObject(j); ++j) {
 		printObject(output, tag + '.' + j, indent + 1, *child);
