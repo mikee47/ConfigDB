@@ -121,7 +121,7 @@ public:
 				info[element.level] = {obj, data};
 			} else {
 				assert(parent.object->type == ConfigDB::ObjectType::ObjectArray);
-				auto& pool = store.objectArrayPool[parent.id];
+				auto& pool = store.arrayPool[parent.id];
 				auto items = parent.object->objinfo[0];
 				info[element.level] = {items, pool.add(*items), 0};
 			}
@@ -134,7 +134,7 @@ public:
 			break;
 		}
 		case ConfigDB::ObjectType::ObjectArray: {
-			auto id = store.objectArrayPool.add();
+			auto id = store.arrayPool.add(*obj->objinfo[0]);
 			memcpy(data, &id, sizeof(id));
 			info[element.level] = {obj, nullptr, id};
 			break;
@@ -340,7 +340,7 @@ void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned ne
 	if(pretty) {
 		indent.pad(nesting * 2);
 	}
-	auto& array = objectArrayPool[id];
+	auto& array = arrayPool[id];
 	auto items = object.objinfo[0];
 	for(unsigned i = 0; i < array.getCount(); ++i) {
 		if(i) {
@@ -354,7 +354,7 @@ void Store::printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned ne
 		} else {
 			p << '{';
 		}
-		printObjectTo(*items, array[i].get(), nesting + 1, p);
+		printObjectTo(*items, array[i], nesting + 1, p);
 		if(pretty) {
 			p << endl << indent << '}';
 		} else {

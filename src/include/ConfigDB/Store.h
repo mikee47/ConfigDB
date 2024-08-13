@@ -113,14 +113,12 @@ public:
 
 	std::unique_ptr<uint8_t[]> rootObjectData;
 	ArrayPool arrayPool;
-	ObjectArrayPool objectArrayPool;
 	StringPool stringPool;
 
 protected:
 	void clear()
 	{
 		arrayPool.clear();
-		objectArrayPool.clear();
 		rootObjectData.reset();
 		stringPool.clear();
 	}

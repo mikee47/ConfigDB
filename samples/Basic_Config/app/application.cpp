@@ -111,32 +111,11 @@ void printArrayPool(const ConfigDB::ArrayPool& pool)
 	}
 }
 
-void printObjectPool(const ConfigDB::ObjectPool& pool)
-{
-	auto n = pool.getCount();
-	Serial << "    ObjectPool: " << n << endl;
-	for(unsigned i = 1; i <= n; ++i) {
-		auto& data = pool[i];
-		Serial << "      [" << i << "]: *" << data.getSize() << endl;
-	}
-}
-
-void printObjectArrayPool(const ConfigDB::ObjectArrayPool& pool)
-{
-	auto n = pool.getCount();
-	Serial << "  ObjectArrayPool: " << n << endl;
-	for(unsigned i = 1; i <= n; ++i) {
-		Serial << "    [" << i << "]: *";
-		printObjectPool(pool[i]);
-	}
-}
-
 void printStoreStats(ConfigDB::Database& db)
 {
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
 		Serial << F("Store '") << store->getName() << "':" << endl;
 		printArrayPool(store->arrayPool);
-		printObjectArrayPool(store->objectArrayPool);
 	}
 }
 

@@ -85,73 +85,6 @@ private:
 };
 
 /**
- * @brief Contains object data as a single heap allocation
- */
-class ObjectData : public std::unique_ptr<uint8_t[]>
-{
-public:
-	ObjectData(uint16_t size) : unique_ptr(new uint8_t[size]), size(size)
-	{
-	}
-
-	uint16_t getSize() const
-	{
-		return size;
-	}
-
-private:
-	uint16_t size;
-};
-
-/**
- * @brief This pool stores object data
- */
-class ObjectPool
-{
-public:
-	uint8_t* add(const ObjectInfo& object)
-	{
-		auto size = object.structSize;
-		auto data = new ObjectData(size);
-		if(object.defaultData) {
-			memcpy_P(data->get(), object.defaultData, size);
-		} else {
-			memset(data->get(), 0, size);
-		}
-		pool.addElement(data);
-		return data->get();
-	}
-
-	ObjectData& operator[](unsigned index)
-	{
-		return pool[index];
-	}
-
-	const ObjectData& operator[](unsigned index) const
-	{
-		return pool[index];
-	}
-
-	bool remove(unsigned index)
-	{
-		return pool.remove(index);
-	}
-
-	void clear()
-	{
-		pool.clear();
-	}
-
-	size_t getCount() const
-	{
-		return pool.count();
-	}
-
-private:
-	Vector<ObjectData> pool;
-};
-
-/**
  * @brief An array of fixed-sized items
  *
  * The `ArrayPool` class manages these instances.
@@ -162,11 +95,18 @@ class ArrayData
 public:
 	ArrayData(uint16_t itemSize) : itemSize(itemSize)
 	{
+		assert(itemSize > 0 && itemSize <= 255);
 	}
 
 	~ArrayData()
 	{
 		free(buffer);
+	}
+
+	uint8_t* add(const ObjectInfo& object)
+	{
+		assert(itemSize == object.structSize);
+		return add(object.defaultData);
 	}
 
 	uint8_t* add(const void* data = nullptr)
@@ -276,6 +216,13 @@ private:
 class ArrayPool
 {
 public:
+	ArrayId add(const ObjectInfo& object)
+	{
+		auto data = new ArrayData(object.structSize);
+		pool.addElement(data);
+		return pool.size();
+	}
+
 	ArrayId add(const PropertyInfo& prop)
 	{
 		auto data = new ArrayData(prop.getSize());
@@ -305,90 +252,6 @@ public:
 
 private:
 	Vector<ArrayData> pool;
-};
-
-/**
- * @brief This pool stores object pools
- *
- * Accessor objects (the generated classes) contain a reference to object data,
- * so objects cannot be reallocated after creation.
- *
- * This class differs from a Vector or std::vector in the following ways:
- *  - no insert
- *  - no re-ordering
- *  - no item removal
- *
- * When an item is added it is referenced by index (slot).
- *
- * Supported operations:
- * 	- add item: use first free slot or add some more
- *  - clear item: de-allocates item storage and sets to 'null'
- *  - clear vector
- *
- * Object data is stored as simple uint8_t[], size is fixed
- * Array data is stored as Vector, each item is of fixed size
- * This incldues ObjectArray whose items are references into the Object pool.
- */
-class ObjectArrayPool
-{
-public:
-	~ObjectArrayPool()
-	{
-		clear();
-	}
-
-	ArrayId add()
-	{
-		ArrayId id = 1;
-		for(auto& pool : pools) {
-			if(pool == nullptr) {
-				pool = new ObjectPool();
-				return id;
-			}
-			++id;
-		}
-		pools.add(new ObjectPool());
-		return id;
-	}
-
-	/**
-	 * @brief Delete ObjectPool with given id and release slot
-	 */
-	void clearSlot(ArrayId id)
-	{
-		auto& pool = pools[id - 1];
-		delete pool;
-		pool = nullptr;
-	}
-
-	ObjectPool& operator[](ArrayId id)
-	{
-		auto pool = pools[id - 1];
-		assert(pool != nullptr);
-		return *pool;
-	}
-
-	const ObjectPool& operator[](ArrayId id) const
-	{
-		return const_cast<ObjectArrayPool*>(this)->operator[](id);
-	}
-
-	void clear()
-	{
-		for(auto& pool : pools) {
-			delete pool;
-			pool = nullptr;
-		}
-		pools.clear();
-	}
-
-	size_t getCount() const
-	{
-		return pools.count();
-	}
-
-private:
-	Vector<ObjectPool*> pools;
 };
 
 } // namespace ConfigDB

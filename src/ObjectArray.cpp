@@ -29,14 +29,14 @@ ObjectArray::ObjectArray(Store& store, const ObjectInfo& typeinfo)
 
 unsigned ObjectArray::getObjectCount() const
 {
-	return getStore().objectArrayPool[id].getCount();
+	return getStore().arrayPool[id].getCount();
 }
 
 void* ObjectArray::getObjectDataPtr(unsigned index)
 {
-	auto& array = getStore().objectArrayPool[id];
+	auto& array = getStore().arrayPool[id];
 	if(index < array.getCount()) {
-		return array[index].get();
+		return array[index];
 	}
 	auto& typeinfo = getTypeinfo();
 	assert(typeinfo.objectCount == 1);
@@ -45,7 +45,7 @@ void* ObjectArray::getObjectDataPtr(unsigned index)
 
 bool ObjectArray::removeItem(unsigned index)
 {
-	return getStore().objectArrayPool[id].remove(index);
+	return getStore().arrayPool[id].remove(index);
 }
 
 } // namespace ConfigDB
