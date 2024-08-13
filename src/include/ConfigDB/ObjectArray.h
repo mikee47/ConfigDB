@@ -44,11 +44,7 @@ public:
 		return *static_cast<Item*>(getObjectDataPtr(index));
 	}
 
-	bool removeItem(unsigned index)
-	{
-		// array.remove(index);
-		return true;
-	}
+	bool removeItem(unsigned index);
 
 	unsigned getObjectCount() const override;
 

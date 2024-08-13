@@ -29,11 +29,6 @@ String Store::getPath() const
 	return path;
 }
 
-void* Store::getObjectDataPtr(const ObjectInfo& object)
-{
-	return rootObjectData.get() + object.getOffset();
-}
-
 String Store::getValueString(const PropertyInfo& info, const void* data) const
 {
 	auto& propData = *static_cast<const PropertyData*>(data);

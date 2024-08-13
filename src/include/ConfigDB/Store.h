@@ -85,12 +85,10 @@ public:
 		return db;
 	}
 
-	const ObjectPool& getObjectArray(ArrayId id) const
+	void* getObjectDataPtr(const ObjectInfo& object)
 	{
-		return objectArrayPool[id];
+		return rootObjectData.get() + object.getOffset();
 	}
-
-	void* getObjectDataPtr(const ObjectInfo& object);
 
 	template <typename T> T& getObjectData(const ObjectInfo& object)
 	{

@@ -121,25 +121,21 @@ public:
 				info[element.level] = {obj, data};
 			} else {
 				assert(parent.object->type == ConfigDB::ObjectType::ObjectArray);
-				assert(parent.id != 0);
 				auto& pool = store.objectArrayPool[parent.id];
 				auto items = parent.object->objinfo[0];
-				unsigned index = pool.add(items->structSize, items->defaultData);
-				info[element.level] = {items, pool[index].get(), 0};
+				info[element.level] = {items, pool.add(*items), 0};
 			}
 			break;
 		case ConfigDB::ObjectType::Array: {
-			auto& prop = obj->propinfo[0];
-			auto id = store.arrayPool.add(prop.getSize());
+			assert(obj->propertyCount == 1);
+			auto id = store.arrayPool.add(obj->propinfo[0]);
 			memcpy(data, &id, sizeof(id));
-			auto& pool = store.arrayPool[id];
 			info[element.level] = {obj, nullptr, id};
 			break;
 		}
 		case ConfigDB::ObjectType::ObjectArray: {
 			auto id = store.objectArrayPool.add();
 			memcpy(data, &id, sizeof(id));
-			auto& pool = store.objectArrayPool[id];
 			info[element.level] = {obj, nullptr, id};
 			break;
 		}

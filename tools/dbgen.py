@@ -85,7 +85,6 @@ class Property:
             r.bits *= 2
         return r
 
-
     @property
     def ctype(self):
         if self.ptype != 'integer':
@@ -146,7 +145,6 @@ class Object:
     store: 'Store' = None
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
-    is_item: bool = False # Is an ObjectArray item ?
 
     @property
     def database(self):
@@ -198,6 +196,14 @@ class Object:
         return isinstance(self.parent, Database)
 
     @property
+    def is_array(self):
+        return False
+
+    @property
+    def is_item(self):
+        return self.parent.is_array
+
+    @property
     def path(self):
         return join_path(self.parent.path, self.name) if self.parent else self.name
 
@@ -205,6 +211,10 @@ class Object:
 @dataclass
 class Array(Object):
     items: Property = None
+
+    @property
+    def is_array(self):
+        return True
 
     @property
     def typename_struct(self):
@@ -216,12 +226,12 @@ class ObjectArray(Object):
     items: Object = None
 
     @property
+    def is_array(self):
+        return True
+
+    @property
     def typename_struct(self):
         return 'ConfigDB::ArrayId'
-
-
-def is_array(x: Object):
-    return isinstance(x, (Array, ObjectArray))
 
 
 @dataclass
@@ -385,7 +395,6 @@ def load_config(filename: str) -> Database:
                 if items['type'] == 'object':
                     arr = ObjectArray(obj, key, store)
                     arr.items = Object(arr, f'{arr.typename}Item', store)
-                    arr.items.is_item = True
                     parse(arr.items, items['properties'])
                 else:
                     arr = Array(obj, key, store)
@@ -557,7 +566,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             'fstr_empty' if obj.is_item or obj.is_root else get_string(obj.name),
             'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             'objinfo' if objinfo else 'nullptr',
-            'nullptr' if is_array(obj) else '&defaultData',
+            'nullptr' if obj.is_array else '&defaultData',
             f'sizeof({obj.typename_struct})',
             f'ObjectType::{obj.classname}',
             len(objinfo),
@@ -566,7 +575,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         [
             '{',
             *(make_static_initializer([
-                get_string(prop.name),
+                'fstr_empty' if obj.is_array else get_string(prop.name),
                 'nullptr' if prop.default is None or prop.ptype != 'string' else f'&{get_string(prop.default)}',
                 f'{prop.property_type}'
             ], ',') for prop in propinfo),
@@ -581,7 +590,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 def generate_object_struct(obj: Object) -> CodeLines:
     '''Generate struct definition for this object'''
 
-    if is_array(obj):
+    if obj.is_array:
         return CodeLines([], [])
 
     lines = CodeLines([
@@ -593,7 +602,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
         ],
         '};'
     ], [])
-    if not is_array(obj):
+    if not obj.is_array:
         lines.header += [
             '',
             'static const Struct defaultData;'
@@ -720,7 +729,7 @@ def generate_object(obj: Object) -> CodeLines:
 
 def generate_contained_constructors(obj: Object) -> list:
     headers = []
-    if is_array(obj):
+    if obj.is_array:
         params = '(store, typeinfo)'
     else:
         params = '(), data(store.getObjectData<Struct>(typeinfo))'
@@ -735,7 +744,7 @@ def generate_contained_constructors(obj: Object) -> list:
     ]
 
     if not obj.is_root:
-        if is_array(obj):
+        if obj.is_array:
             params = '(parent, data)'
         else:
             params = '(parent), data(data)'

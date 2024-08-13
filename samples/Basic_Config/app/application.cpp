@@ -42,7 +42,7 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 
 	{
 		BasicConfig::General general(db);
-		general.setDeviceName("Test Device");
+		general.setDeviceName(F("Test Device #") + os_random());
 		Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
 		general.commit();
 	}
@@ -68,11 +68,12 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 	{
 		BasicConfig::General::Channels channels(db);
 		auto item = channels.addItem();
-		item.setName("Channel Name");
+		item.setName(F("Channel #") + os_random());
 		item.setPin(12);
 		item.details.setCurrentLimit(400);
 		item.notes.addItem(_F("This is a nice pin"));
 		item.notes.addItem(_F("It is useful"));
+		item.notes.addItem(SystemClock.getSystemTimeString());
 		for(unsigned i = 0; i < 16; ++i) {
 			item.values.addItem(os_random());
 		}
@@ -82,7 +83,7 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 
 	{
 		BasicConfig::General::SupportedColorModels models(db);
-		models.addItem("New Model");
+		models.addItem(F("New Model #") + os_random());
 		models.commit();
 		Serial << models.getPath() << " = " << models << endl;
 	}

@@ -109,16 +109,17 @@ private:
 class ObjectPool
 {
 public:
-	unsigned add(size_t size, PGM_VOID_P defaultData = nullptr)
+	uint8_t* add(const ObjectInfo& object)
 	{
+		auto size = object.structSize;
 		auto data = new ObjectData(size);
-		if(defaultData) {
-			memcpy_P(data->get(), defaultData, size);
+		if(object.defaultData) {
+			memcpy_P(data->get(), object.defaultData, size);
 		} else {
 			memset(data->get(), 0, size);
 		}
 		pool.addElement(data);
-		return pool.size() - 1;
+		return data->get();
 	}
 
 	ObjectData& operator[](unsigned index)
@@ -129,6 +130,11 @@ public:
 	const ObjectData& operator[](unsigned index) const
 	{
 		return pool[index];
+	}
+
+	bool remove(unsigned index)
+	{
+		return pool.remove(index);
 	}
 
 	void clear()
@@ -165,7 +171,12 @@ public:
 
 	uint8_t* add(const void* data = nullptr)
 	{
-		return checkCapacity() ? newItem(count++, data) : nullptr;
+		return checkCapacity() ? setItem(count++, data) : nullptr;
+	}
+
+	uint8_t* set(unsigned index, const void* data)
+	{
+		return (index < count) ? setItem(index, data) : nullptr;
 	}
 
 	bool remove(unsigned index)
@@ -185,7 +196,7 @@ public:
 		}
 		memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index - 1));
 		++count;
-		return newItem(index, data);
+		return setItem(index, data);
 	}
 
 	uint8_t* operator[](unsigned index)
@@ -219,7 +230,7 @@ private:
 		return true;
 	}
 
-	uint8_t* newItem(unsigned index, const void* data)
+	uint8_t* setItem(unsigned index, const void* data)
 	{
 		auto item = getItemPtr(index);
 		if(data) {
@@ -255,9 +266,9 @@ private:
 class ArrayPool
 {
 public:
-	ArrayId add(size_t itemSize)
+	ArrayId add(const PropertyInfo& prop)
 	{
-		auto data = new ArrayData(itemSize);
+		auto data = new ArrayData(prop.getSize());
 		pool.addElement(data);
 		return pool.size();
 	}

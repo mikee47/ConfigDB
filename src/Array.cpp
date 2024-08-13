@@ -26,40 +26,38 @@ Array::Array(Store& store, const ObjectInfo& typeinfo) : Object(), id(store.getO
 {
 }
 
-const void* Array::getItemPtr(unsigned index) const
+unsigned Array::getPropertyCount() const
 {
-	auto& object = getTypeinfo();
-	assert(object.propertyCount == 1);
-	auto& prop = object.propinfo[0];
-	auto itemSize = prop.getSize();
+	return getStore().arrayPool[id].getCount();
+}
+
+void* Array::getItemPtr(unsigned index)
+{
 	auto& array = getStore().arrayPool[id];
 	return array[index];
 }
 
 bool Array::setItemPtr(unsigned index, const void* value)
 {
-	auto& object = getTypeinfo();
-	assert(object.propertyCount == 1);
-	auto& prop = object.propinfo[0];
-	auto itemSize = prop.getSize();
 	auto& array = getStore().arrayPool[id];
-	memcpy(array[index], value, itemSize);
-	return true;
+	return array.set(index, value);
 }
 
 bool Array::addItemPtr(const void* value)
 {
 	auto& object = getTypeinfo();
-	assert(object.propertyCount == 1);
-	auto& prop = object.propinfo[0];
-	auto itemSize = prop.getSize();
 	auto& store = getStore();
 	if(id == 0) {
-		id = store.arrayPool.add(itemSize);
+		assert(object.propertyCount == 1);
+		id = store.arrayPool.add(object.propinfo[0]);
 	}
 	auto& array = store.arrayPool[id];
-	array.add(value);
-	return true;
+	return array.add(value);
+}
+
+bool Array::removeItem(unsigned index)
+{
+	return getStore().arrayPool[id].remove(index);
 }
 
 } // namespace ConfigDB

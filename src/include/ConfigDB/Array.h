@@ -75,6 +75,8 @@ public:
 		return nullptr;
 	}
 
+	unsigned getPropertyCount() const override;
+
 	Property getProperty(unsigned index) override
 	{
 		if(index >= getPropertyCount()) {
@@ -83,7 +85,7 @@ public:
 		// Property info contains exactly one element
 		auto& typeinfo = getTypeinfo();
 		assert(typeinfo.propertyCount == 1);
-		return {*this, typeinfo.propinfo[0], nullptr};
+		return {*this, typeinfo.propinfo[0], getItemPtr(index)};
 	}
 
 	void* getData() override
@@ -92,7 +94,13 @@ public:
 	}
 
 private:
-	const void* getItemPtr(unsigned index) const;
+	void* getItemPtr(unsigned index);
+
+	const void* getItemPtr(unsigned index) const
+	{
+		return const_cast<Array*>(this)->getItemPtr(index);
+	}
+
 	bool setItemPtr(unsigned index, const void* value);
 	bool addItemPtr(const void* value);
 
