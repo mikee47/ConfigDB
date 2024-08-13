@@ -214,6 +214,16 @@ public:
 		return count;
 	}
 
+	size_t getCapacity() const
+	{
+		return capacity;
+	}
+
+	size_t getItemSize() const
+	{
+		return itemSize;
+	}
+
 private:
 	bool checkCapacity()
 	{
@@ -253,9 +263,9 @@ private:
 
 	static const size_t increment = 16;
 	uint8_t* buffer{};
-	size_t capacity{};
-	size_t count{};
-	uint16_t itemSize;
+	uint16_t capacity{};
+	uint16_t count{};
+	uint8_t itemSize;
 };
 
 /**
@@ -286,6 +296,11 @@ public:
 	void clear()
 	{
 		pool.clear();
+	}
+
+	size_t getCount() const
+	{
+		return pool.count();
 	}
 
 private:
@@ -365,6 +380,11 @@ public:
 			pool = nullptr;
 		}
 		pools.clear();
+	}
+
+	size_t getCount() const
+	{
+		return pools.count();
 	}
 
 private:
