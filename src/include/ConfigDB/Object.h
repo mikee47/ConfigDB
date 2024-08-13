@@ -204,9 +204,6 @@ public:
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
 	}
-
-private:
-	// typename ClassType::Struct* data2;
 };
 
 } // namespace ConfigDB

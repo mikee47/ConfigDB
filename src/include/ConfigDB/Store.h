@@ -94,7 +94,7 @@ public:
 
 	template <typename T> T& getObjectData(const ObjectInfo& object)
 	{
-		return *reinterpret_cast<T*>(getObjectDataPtr(object));
+		return *static_cast<T*>(getObjectDataPtr(object));
 	}
 
 	virtual bool commit() = 0;

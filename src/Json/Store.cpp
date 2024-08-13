@@ -233,7 +233,7 @@ String Store::getValueJson(const PropertyInfo& info, const void* data) const
 	return s ? (info.type == PropertyType::String) ? quote(s) : s : "null";
 }
 
-void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigned nesting, Print& p) const
+void Store::printObjectTo(const ObjectInfo& object, const void* data, unsigned nesting, Print& p) const
 {
 	auto pretty = (getDatabase().getFormat() == Format::Pretty);
 	auto newline = [&]() {
@@ -266,7 +266,7 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 				newline();
 			}
 			printObjectTo(*obj, data, nesting + 1, p);
-			data += obj->structSize;
+			data = static_cast<const uint8_t*>(data) + obj->structSize;
 		}
 		for(unsigned i = 0; i < object.propertyCount; ++i) {
 			auto& prop = object.propinfo[i];
@@ -279,18 +279,18 @@ void Store::printObjectTo(const ObjectInfo& object, const uint8_t* data, unsigne
 			} else {
 				p << quote(prop.name) << ':' << getValueJson(prop, data);
 			}
-			data += prop.getSize();
+			data = static_cast<const uint8_t*>(data) + prop.getSize();
 		}
 		break;
 
 	case ObjectType::Array: {
-		auto id = *reinterpret_cast<const ArrayId*>(data);
+		auto id = *static_cast<const ArrayId*>(data);
 		printArrayTo(object, id, nesting + 1, p);
 		break;
 	}
 
 	case ObjectType::ObjectArray: {
-		auto id = *reinterpret_cast<const ArrayId*>(data);
+		auto id = *static_cast<const ArrayId*>(data);
 		printObjectArrayTo(object, id, nesting, p);
 		break;
 	}

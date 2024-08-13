@@ -41,7 +41,7 @@ public:
 
 	template <class Item> Item& getObjectData(unsigned index)
 	{
-		return *reinterpret_cast<Item*>(getObjectDataPtr(index));
+		return *static_cast<Item*>(getObjectDataPtr(index));
 	}
 
 	bool removeItem(unsigned index)
