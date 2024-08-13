@@ -20,134 +20,21 @@
 #pragma once
 
 #include "Object.h"
-#include <WVector.h>
-#include <Print.h>
-
-#include <debug_progmem.h>
 
 namespace ConfigDB
 {
 /**
- * @brief Pool for string data
- *
- * We store all string data in a single String object, NUL-separated.
- * A StringId is the offset from the start of that object.
- * Strings are appended but never removed.
+ * @brief Base allocator, designed for good reallocation performance and low RAM footprint
  */
-class StringPool
+class PoolData
 {
 public:
-	/**
-	 * @brief Search for a string
-	 * @retval StringId 0 if string is not found
-	 */
-	StringId find(const String& value)
-	{
-		return 1 + strings.indexOf(value.c_str(), value.length() + 1);
-	}
-
-	StringId add(const String& value)
-	{
-		auto offset = strings.length();
-		strings.concat(value.c_str(), value.length() + 1);
-		return 1 + offset;
-	}
-
-	StringId findOrAdd(const String& value)
-	{
-		return find(value) ?: add(value);
-	}
-
-	const char* operator[](StringId ref) const
-	{
-		unsigned offset = ref - 1;
-		if(offset >= strings.length()) {
-			debug_e("Bad string ref %u (%u)", ref, strings.length());
-			return nullptr;
-		}
-		return strings.c_str() + offset;
-	}
-
-	size_t printTo(Print& p) const
-	{
-		String s(strings);
-		s.replace('\0', ';');
-		return p.print(s);
-	}
-
-	void clear()
-	{
-		strings = nullptr;
-	}
-
-private:
-	String strings;
-};
-
-/**
- * @brief An array of fixed-sized items
- *
- * The `ArrayPool` class manages these instances.
- * This isn't type-based but rather uses an item size, so it's difficult to implement with the STL.
- */
-class ArrayData
-{
-public:
-	ArrayData(uint16_t itemSize) : itemSize(itemSize)
+	PoolData(size_t itemSize) : capacity(0), count(0), itemSize(itemSize)
 	{
 		assert(itemSize > 0 && itemSize <= 255);
 	}
 
-	~ArrayData()
-	{
-		free(buffer);
-	}
-
-	uint8_t* add(const ObjectInfo& object)
-	{
-		assert(itemSize == object.structSize);
-		return add(object.defaultData);
-	}
-
-	uint8_t* add(const void* data = nullptr)
-	{
-		return checkCapacity() ? setItem(count++, data) : nullptr;
-	}
-
-	uint8_t* set(unsigned index, const void* data)
-	{
-		return (index < count) ? setItem(index, data) : nullptr;
-	}
-
-	bool remove(unsigned index)
-	{
-		if(index >= count) {
-			return false;
-		}
-		memmove(getItemPtr(index), getItemPtr(index + 1), getItemSize(count - index - 1));
-		--count;
-		return true;
-	}
-
-	uint8_t* insert(unsigned index, const void* data = nullptr)
-	{
-		if(!checkCapacity()) {
-			return nullptr;
-		}
-		memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index - 1));
-		++count;
-		return setItem(index, data);
-	}
-
-	uint8_t* operator[](unsigned index)
-	{
-		return (index < count) ? getItemPtr(index) : nullptr;
-	}
-
-	const uint8_t* operator[](unsigned index) const
-	{
-		return const_cast<ArrayData*>(this)->operator[](index);
-	}
+	PoolData(const PoolData&) = delete;
 
 	size_t getCount() const
 	{
@@ -164,48 +51,122 @@ public:
 		return itemSize;
 	}
 
-private:
-	bool checkCapacity()
-	{
-		if(count < capacity) {
-			return true;
-		}
-		auto newCapacity = capacity + increment;
-		auto newBuffer = realloc(buffer, getItemSize(newCapacity));
-		if(!newBuffer) {
-			return false;
-		}
-		buffer = static_cast<uint8_t*>(newBuffer);
-		capacity = newCapacity;
-		return true;
-	}
-
-	uint8_t* setItem(unsigned index, const void* data)
-	{
-		auto item = getItemPtr(index);
-		if(data) {
-			memcpy(item, data, itemSize);
-		} else {
-			memset(item, 0, itemSize);
-		}
-		return item;
-	}
-
-	uint8_t* getItemPtr(unsigned index)
-	{
-		return &buffer[index * itemSize];
-	}
-
 	size_t getItemSize(size_t count) const
 	{
 		return count * itemSize;
 	}
 
-	static const size_t increment = 16;
-	uint8_t* buffer{};
-	uint16_t capacity{};
-	uint16_t count{};
-	uint8_t itemSize;
+	void clear()
+	{
+		free(buffer);
+		buffer = nullptr;
+		count = capacity = 0;
+	}
+
+	size_t usage() const
+	{
+		return capacity * itemSize;
+	}
+
+protected:
+	bool ensureCapacity(size_t required);
+
+	void* getItemPtr(unsigned index)
+	{
+		return static_cast<uint8_t*>(buffer) + getItemSize(index);
+	}
+
+	void* buffer{};
+	uint32_t capacity : 12;
+	uint32_t count : 12;
+	uint32_t itemSize : 8;
+};
+
+/**
+ * @brief Pool for string data
+ *
+ * We store all string data in a single String object, NUL-separated.
+ * A StringId is the offset from the start of that object.
+ * Strings are appended but never removed.
+ */
+class StringPool : public PoolData
+{
+public:
+	StringPool() : PoolData(1)
+	{
+	}
+
+	~StringPool()
+	{
+		clear();
+	}
+
+	/**
+	 * @brief Search for a string
+	 * @retval StringId 0 if string is not found
+	 */
+	StringId find(const String& value) const;
+
+	StringId add(const String& value);
+
+	StringId findOrAdd(const String& value)
+	{
+		return find(value) ?: add(value);
+	}
+
+	const char* operator[](StringId ref) const
+	{
+		unsigned offset = ref - 1;
+		assert(offset < count);
+		return static_cast<const char*>(buffer) + offset;
+	}
+
+	String getStrings() const
+	{
+		return String(static_cast<const char*>(buffer), count);
+	}
+};
+
+/**
+ * @brief An array of fixed-sized items
+ *
+ * The `ArrayPool` class manages these instances.
+ * This isn't type-based but rather uses an item size, so it's difficult to implement with the STL.
+ */
+class ArrayData : public PoolData
+{
+public:
+	using PoolData::PoolData;
+
+	void* add(const ObjectInfo& object)
+	{
+		assert(itemSize == object.structSize);
+		return add(object.defaultData);
+	}
+
+	void* add(const void* data = nullptr);
+
+	void* set(unsigned index, const void* data)
+	{
+		return (index < count) ? setItem(index, data) : nullptr;
+	}
+
+	bool remove(unsigned index);
+
+	void* insert(unsigned index, const void* data = nullptr);
+
+	void* operator[](unsigned index)
+	{
+		return (index < count) ? getItemPtr(index) : nullptr;
+	}
+
+	const void* operator[](unsigned index) const
+	{
+		return const_cast<ArrayData*>(this)->operator[](index);
+	}
+
+private:
+	void* setItem(unsigned index, const void* data);
 };
 
 /**
@@ -213,45 +174,55 @@ private:
  *
  * An array has fixed-size items.
  */
-class ArrayPool
+class ArrayPool : public PoolData
 {
 public:
+	ArrayPool() : PoolData(sizeof(ArrayData))
+	{
+	}
+
+	~ArrayPool()
+	{
+		clear();
+	}
+
 	ArrayId add(const ObjectInfo& object)
 	{
-		auto data = new ArrayData(object.structSize);
-		pool.addElement(data);
-		return pool.size();
+		return add(object.structSize);
 	}
 
 	ArrayId add(const PropertyInfo& prop)
 	{
-		auto data = new ArrayData(prop.getSize());
-		pool.addElement(data);
-		return pool.size();
+		return add(prop.getSize());
 	}
 
 	ArrayData& operator[](ArrayId id)
 	{
-		return pool[id - 1];
+		auto index = id - 1;
+		assert(index < count);
+		return *static_cast<ArrayData*>(getItemPtr(index));
 	}
 
 	const ArrayData& operator[](ArrayId id) const
 	{
-		return pool[id - 1];
+		return const_cast<ArrayPool*>(this)->operator[](id);
 	}
 
-	void clear()
-	{
-		pool.clear();
-	}
+	void clear();
 
-	size_t getCount() const
+	size_t usage() const
 	{
-		return pool.count();
+		size_t n = PoolData::usage();
+		auto data = static_cast<const ArrayData*>(buffer);
+		for(unsigned i = 0; i < count; ++i) {
+			n += data->usage();
+			++data;
+		}
+		return n;
 	}
 
 private:
-	Vector<ArrayData> pool;
+	ArrayId add(size_t itemSize);
 };
 
 } // namespace ConfigDB

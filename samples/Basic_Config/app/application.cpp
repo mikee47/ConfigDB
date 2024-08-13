@@ -3,6 +3,7 @@
 #include <IFS/Debug.h>
 #include <basic-config.h>
 #include <ConfigDB/Json/DataStream.h>
+#include <Data/CStringArray.h>
 
 #ifdef ENABLE_MALLOC_COUNT
 #include <malloc_count.h>
@@ -100,22 +101,69 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 	Serial.copyFrom(&stream);
 }
 
-void printArrayPool(const ConfigDB::ArrayPool& pool)
+void printPoolData(const String& name, const ConfigDB::PoolData& data)
 {
-	auto n = pool.getCount();
-	Serial << "  ArrayPool: " << n << endl;
-	for(unsigned i = 1; i <= n; ++i) {
-		auto& data = pool[i];
-		Serial << "    [" << i << "]: *" << data.getItemSize() << ", " << data.getCount() << " / " << data.getCapacity()
-			   << endl;
+	Serial << "  " << String(name).pad(16) << ": " << data.usage() << " (*" << data.getItemSize() << ", "
+		   << data.getCount() << " / " << data.getCapacity() << ')' << endl;
+}
+
+void printStringPool(ConfigDB::StringPool& pool, bool detailed)
+{
+	CStringArray csa = pool.getStrings();
+	auto n = csa.count();
+	printPoolData(F("StringPool"), pool);
+
+	if(!detailed) {
+		return;
+	}
+
+	auto start = csa.c_str();
+	unsigned i{0};
+	for(auto s : csa) {
+		String tag;
+		tag += "    #";
+		tag.concat(i, DEC, 2, ' ');
+		tag += " [";
+		tag += s - start;
+		tag += ']';
+		Serial << tag.pad(18) << ": \"" << s << '"' << endl;
+		++i;
 	}
 }
 
-void printStoreStats(ConfigDB::Database& db)
+void printArrayPool(const ConfigDB::ArrayPool& pool, bool detailed)
+{
+	auto n = pool.getCount();
+	printPoolData(F("ArrayPool"), pool);
+	//  << pool.usage() << " (" << n << " / " << pool.getCapacity() << ')' << endl;
+	size_t used{0};
+	size_t capacity{0};
+	for(unsigned i = 1; i <= n; ++i) {
+		auto& data = pool[i];
+		if(detailed) {
+			String tag;
+			tag += "  [";
+			tag += i;
+			tag += ']';
+			printPoolData(tag, data);
+		}
+		used += data.getItemSize() * data.getCount();
+		capacity += data.getItemSize() * data.getCapacity();
+	}
+	Serial << "    Used:     " << used << endl;
+	Serial << "    Capacity: " << capacity << endl;
+}
+
+void printStoreStats(ConfigDB::Database& db, bool detailed)
 {
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
 		Serial << F("Store '") << store->getName() << "':" << endl;
-		printArrayPool(store->arrayPool);
+		Serial << F("  Root: ") << store->getTypeinfo().object.structSize << endl;
+		printStringPool(store->stringPool, detailed);
+		printArrayPool(store->arrayPool, detailed);
+
+		size_t usage = store->stringPool.usage() + store->arrayPool.usage();
+		Serial << "  Total usage = " << usage << endl;
 	}
 }
 
@@ -145,7 +193,7 @@ void init()
 
 	Serial << endl << endl;
 
-	printStoreStats(db);
+	printStoreStats(db, false);
 	printHeap();
 
 	IFS::Debug::listDirectory(Serial, *IFS::getDefaultFileSystem(), db.getPath());

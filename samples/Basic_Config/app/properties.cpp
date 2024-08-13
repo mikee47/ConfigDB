@@ -1,4 +1,5 @@
 #include <ConfigDB.h>
+#include <Print.h>
 
 namespace
 {

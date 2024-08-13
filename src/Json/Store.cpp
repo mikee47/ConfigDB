@@ -46,7 +46,7 @@ public:
 	{
 	}
 
-	std::pair<const ConfigDB::ObjectInfo*, uint8_t*> findObject(const Element& element)
+	std::pair<const ConfigDB::ObjectInfo*, void*> findObject(const Element& element)
 	{
 		auto& parent = info[element.level - 1];
 		if(!parent.object || !parent.object->objectCount) {
@@ -62,7 +62,7 @@ public:
 		for(unsigned i = 0; i < parent.object->objectCount; ++i) {
 			auto obj = parent.object->objinfo[i];
 			if(obj->name.equals(element.key, size_t(element.keyLength))) {
-				return {obj, parent.data + offset};
+				return {obj, static_cast<uint8_t*>(parent.data) + offset};
 			}
 			offset += obj->structSize;
 		}
@@ -70,7 +70,7 @@ public:
 		return {};
 	}
 
-	std::tuple<const ConfigDB::PropertyInfo*, uint8_t*> findProperty(const Element& element)
+	std::tuple<const ConfigDB::PropertyInfo*, void*> findProperty(const Element& element)
 	{
 		auto& parent = info[element.level - 1];
 		auto obj = parent.object;
@@ -92,7 +92,7 @@ public:
 		for(unsigned i = 0; i < obj->propertyCount; ++i) {
 			auto& prop = obj->propinfo[i];
 			if(prop.name.equals(element.key, size_t(element.keyLength))) {
-				return {&prop, parent.data + offset};
+				return {&prop, static_cast<uint8_t*>(parent.data) + offset};
 			}
 			offset += prop.getSize();
 		}
@@ -172,7 +172,7 @@ private:
 	ConfigDB::Store& store;
 	struct Info {
 		const ConfigDB::ObjectInfo* object;
-		uint8_t* data;
+		void* data;
 		ConfigDB::ArrayId id;
 	};
 	Info info[JSON::StreamingParser::maxNesting]{};
