@@ -21,11 +21,11 @@
 
 namespace ConfigDB
 {
-String Store::getPath() const
+String Store::getFilePath() const
 {
 	String path = db.getPath();
 	path += '/';
-	path += isRoot() ? F("_root") : getName();
+	path += getFileName();
 	return path;
 }
 
@@ -99,6 +99,12 @@ bool Store::setValueString(const PropertyInfo& prop, void* data, const String& v
 
 	memcpy(data, &propdata, prop.getSize());
 	return true;
+}
+
+size_t Store::printTo(Print& p, unsigned nesting) const
+{
+	auto& root = getTypeinfo().object;
+	return printObjectTo(root, &getTypeinfo().name, rootObjectData.get(), nesting, p);
 }
 
 } // namespace ConfigDB

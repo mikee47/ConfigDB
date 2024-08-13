@@ -43,14 +43,6 @@ enum class Format {
 struct StoreInfo {
 	const FlashString& name;
 	const ObjectInfo& object;
-
-	/**
-	 * @brief Root object in a store has no name
-	 */
-	bool isRoot() const
-	{
-		return name.length() == 0;
-	}
 };
 
 /**
@@ -68,9 +60,10 @@ public:
 	{
 	}
 
-	bool isRoot() const
+	String getFileName() const
 	{
-		return getTypeinfo().isRoot();
+		String name = getName();
+		return name.length() ? name : F("_root");
 	}
 
 	String getName() const
@@ -78,7 +71,7 @@ public:
 		return getTypeinfo().name;
 	}
 
-	String getPath() const;
+	String getFilePath() const;
 
 	Database& getDatabase() const
 	{
@@ -101,7 +94,18 @@ public:
 
 	virtual const StoreInfo& getTypeinfo() const = 0;
 
-	virtual size_t printTo(Print& p, unsigned nesting) const = 0;
+	/**
+	 * @brief Print object
+	 * @param object Type information
+	 * @param name Name to print with object. If nullptr, omit opening/closing braces.
+	 * @param nesting Nesting level for pretty-printing
+	 * @param p Output stream
+	 * @retval size_t Number of characters written
+	 */
+	virtual size_t printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
+								 Print& p) const = 0;
+
+	size_t printTo(Print& p, unsigned nesting) const;
 
 	size_t printTo(Print& p) const override
 	{

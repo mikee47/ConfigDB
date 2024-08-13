@@ -35,14 +35,13 @@ public:
 
 	String getFilename() const
 	{
-		return getPath() + ".json";
+		String path = getFilePath();
+		path += _F(".json");
+		return path;
 	}
 
-	size_t printTo(Print& p, unsigned nesting) const override;
-
-	void printObjectTo(const ObjectInfo& object, const void* data, unsigned nesting, Print& p) const;
-	void printArrayTo(const ObjectInfo& object, ArrayId id, unsigned nesting, Print& p) const;
-	void printObjectArrayTo(const ObjectInfo& object, ArrayId id, unsigned nesting, Print& p) const;
+	size_t printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
+						 Print& p) const override;
 
 protected:
 	/**

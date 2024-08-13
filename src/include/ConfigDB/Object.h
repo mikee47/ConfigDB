@@ -58,14 +58,6 @@ struct ObjectInfo {
 
 	static const ObjectInfo empty;
 
-	/**
-	 * @brief Root object in a store has no name
-	 */
-	bool isRoot() const
-	{
-		return name.length() == 0;
-	}
-
 	String getTypeDesc() const;
 
 	/**
@@ -172,11 +164,7 @@ public:
 
 	String getPath() const;
 
-	size_t printTo(Print& p) const
-	{
-		// TODO
-		return 0;
-	}
+	size_t printTo(Print& p) const;
 
 protected:
 	StringId addString(const String& value);

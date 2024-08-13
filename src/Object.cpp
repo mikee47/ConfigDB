@@ -96,7 +96,7 @@ Database& Object::getDatabase()
 String Object::getPath() const
 {
 	String relpath;
-	for(auto typeinfo = &getTypeinfo(); !typeinfo->isRoot(); typeinfo = typeinfo->parent) {
+	for(auto typeinfo = &getTypeinfo(); typeinfo->parent; typeinfo = typeinfo->parent) {
 		if(relpath) {
 			relpath += '.';
 		}
@@ -134,6 +134,11 @@ Property Object::getProperty(unsigned index)
 	auto data = static_cast<uint8_t*>(getData());
 	data += typeinfo.getPropertyOffset(index);
 	return {*this, typeinfo.propinfo[index], data};
+}
+
+size_t Object::printTo(Print& p) const
+{
+	return getStore().printObjectTo(getTypeinfo(), &getTypeinfo().name, const_cast<Object*>(this)->getData(), 0, p);
 }
 
 } // namespace ConfigDB
