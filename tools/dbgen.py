@@ -17,33 +17,45 @@ CPP_TYPENAMES = {
     'boolean': 'bool',
 }
 
-strings: dict[str, str] = {}
-
 STRING_PREFIX = 'fstr_'
 
-def get_string(value: str, null_if_empty: bool = False) -> str:
+class StringTable:
     '''All string data stored as FSTR values
     This de-duplicates strings and returns a unique C++ identifier to be used.
     '''
-    if value is None or (null_if_empty and value == ''):
-        return 'nullptr'
-    if value == '':
-        return STRING_PREFIX + 'empty'
-    ident = strings.get(value)
-    if ident:
-        return STRING_PREFIX + ident
-    ident = make_identifier(value)[:MAX_STRINGID_LEN]
-    if not ident:
-        ident = str(len(strings))
-    if ident in strings.values():
-        i = 0
-        while f'{ident}_{i}' in strings.values():
-            i += 1
-        ident = f'{ident}_{i}'
-    strings[value] = ident
-    return STRING_PREFIX + ident
+
+    def __init__(self):
+        self.keys = ['empty']
+        self.values = ['']
+
+    def __getitem__(self, value: str | None):
+        if value is None:
+            return 'nullptr'
+        return STRING_PREFIX + self.keys[self.get_index(value)]
+
+    def get_index(self, value: str) -> int:
+        try:
+            return self.values.index(value or '')
+        except ValueError:
+            pass
+        ident = make_identifier(value)[:MAX_STRINGID_LEN]
+        if not ident:
+            ident = str(len(self.values))
+        if ident in self.keys:
+            i = 0
+            while f'{ident}_{i}' in self.keys:
+                i += 1
+            ident = f'{ident}_{i}'
+        i = len(self.keys)
+        self.keys.append(ident)
+        self.values.append(value)
+        return i
+
+    def items(self):
+        return zip(self.keys, self.values)
 
 
+strings = StringTable()
 
 @dataclass
 class IntRange:
@@ -127,7 +139,7 @@ class Property:
     def default_str(self):
         default = self.default
         if self.ptype == 'string':
-            return get_string(default)
+            return strings[default]
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
         return str(default) if default else 0
@@ -448,7 +460,7 @@ def generate_database(db: Database) -> CodeLines:
             '',
             f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
             *make_static_initializer([
-                get_string(store.name),
+                strings[store.name],
                 f'{store.namespace}::{obj.typename}::typeinfo'
             ], ';')
         ]
@@ -492,7 +504,7 @@ def generate_database(db: Database) -> CodeLines:
         f'#include "{db.name}.h"',
         '',
         'namespace {',
-        [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for value, id in strings.items()],
+        [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for id, value in strings.items() if value],
         '} // namespace',
         '',
         'using namespace ConfigDB;',
@@ -563,7 +575,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'constexpr const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            'fstr_empty' if obj.is_item or obj.is_root else get_string(obj.name),
+            'fstr_empty' if obj.is_item or obj.is_root else strings[obj.name],
             'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             'objinfo' if objinfo else 'nullptr',
             'nullptr' if obj.is_array else '&defaultData',
@@ -575,8 +587,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         [
             '{',
             *(make_static_initializer([
-                'fstr_empty' if obj.is_array else get_string(prop.name),
-                'nullptr' if prop.default is None or prop.ptype != 'string' else f'&{get_string(prop.default)}',
+                'fstr_empty' if obj.is_array else strings[prop.name],
+                'nullptr' if prop.default is None or prop.ptype != 'string' else f'&{strings[prop.default]}',
                 f'{prop.property_type}'
             ], ',') for prop in propinfo),
             '}',
