@@ -199,12 +199,7 @@ class Object:
 
     @property
     def path(self):
-        return join_path(self.parent.path, self.name) if not self.is_root else self.name
-
-    @property
-    def relative_path(self):
-        path = self.path.removeprefix(self.store.path)
-        return path.removeprefix('.')
+        return join_path(self.parent.path, self.name) if self.parent else self.name
 
 
 @dataclass
@@ -243,10 +238,7 @@ class Store(Object):
 
     @property
     def namespace(self):
-        obj = self
-        while obj.parent:
-            obj = obj.parent
-        return obj.typename
+        return self.database.typename
 
     @property
     def base_class(self):
@@ -729,44 +721,33 @@ def generate_object(obj: Object) -> CodeLines:
 def generate_contained_constructors(obj: Object) -> list:
     headers = []
     if is_array(obj):
-        headers = [
-            '',
-            f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
-                f'{obj.classname}Template(store, typeinfo)'
-            ]),
-            '{',
-            '}',
-        ]
+        params = '(store, typeinfo)'
     else:
-        headers = [
+        params = '(), data(store.getObjectData<Struct>(typeinfo))'
+    headers = [
+        '',
+        f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
+            f'{obj.classname}Template{params}',
+            *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+        ]),
+        '{',
+        '}',
+    ]
+
+    if not obj.is_root:
+        if is_array(obj):
+            params = '(parent, data)'
+        else:
+            params = '(parent), data(data)'
+        headers += [
             '',
-            f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
-                f'{obj.classname}Template(), data(store.getObjectData<Struct>(typeinfo))',
+            f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {obj.typename_struct}& data): ' + ', '.join([
+                f'{obj.classname}Template{params}',
                 *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
             ]),
             '{',
             '}',
         ]
-
-    if not obj.is_root:
-        if is_array(obj):
-            headers += [
-                '',
-                f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {obj.typename_struct}& id): ' +
-                f'{obj.classname}Template(parent, id)',
-                '{',
-                '}',
-            ]
-        else:
-            headers += [
-                '',
-                f'{obj.typename_contained}({obj.parent.typename_contained}& parent, Struct& data): ' + ', '.join([
-                    f'{obj.classname}Template(parent), data(data)',
-                    *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
-                ]),
-                '{',
-                '}',
-            ]
 
     return headers
 
