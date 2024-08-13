@@ -86,13 +86,12 @@ public:
 
 	Item addItem()
 	{
-		return Item(*this, this->getObjectCount());
+		return Item(*this, getObjectCount());
 	}
 
 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
 	{
-		// if(index >= static_cast<const ClassType*>(this)->typeinfo.objectCount) {
-		if(index >= this->getObjectCount()) {
+		if(index >= getObjectCount()) {
 			return nullptr;
 		}
 		return std::make_unique<Item>(*this, index);

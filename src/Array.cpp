@@ -28,7 +28,7 @@ Array::Array(Store& store, const ObjectInfo& typeinfo) : Object(), id(store.getO
 
 unsigned Array::getPropertyCount() const
 {
-	return getStore().arrayPool[id].getCount();
+	return id ? getStore().arrayPool[id].getCount() : 0;
 }
 
 void* Array::getItemPtr(unsigned index)
