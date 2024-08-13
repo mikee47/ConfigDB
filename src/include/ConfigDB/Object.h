@@ -147,14 +147,7 @@ public:
 	 * @brief Get properties
 	 * @note Array types override this to return array elements
 	 */
-	virtual Property getProperty(unsigned index)
-	{
-		auto& typeinfo = getTypeinfo();
-		if(index >= typeinfo.propertyCount) {
-			return {};
-		}
-		return {*this, typeinfo.propinfo[index], static_cast<uint8_t*>(getData()) + typeinfo.getPropertyOffset(index)};
-	}
+	virtual Property getProperty(unsigned index);
 
 	/**
 	 * @brief Commit changes to the store
@@ -166,6 +159,10 @@ public:
 
 	virtual const ObjectInfo& getTypeinfo() const = 0;
 
+	/**
+	 * @brief Get a pointer to this object's data structure
+	 * @note Implemented by code generator
+	 */
 	virtual void* getData() = 0;
 
 	String getName() const

@@ -125,4 +125,15 @@ StringId Object::addString(const String& value)
 	return getStore().stringPool.findOrAdd(value);
 }
 
+Property Object::getProperty(unsigned index)
+{
+	auto& typeinfo = getTypeinfo();
+	if(index >= typeinfo.propertyCount) {
+		return {};
+	}
+	auto data = static_cast<uint8_t*>(getData());
+	data += typeinfo.getPropertyOffset(index);
+	return {*this, typeinfo.propinfo[index], data};
+}
+
 } // namespace ConfigDB
