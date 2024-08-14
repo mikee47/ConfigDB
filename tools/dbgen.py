@@ -216,6 +216,10 @@ class Object:
         return self.parent.is_array
 
     @property
+    def is_item_member(self):
+        return self.is_item or self.parent.is_item_member
+
+    @property
     def path(self):
         return join_path(self.parent.path, self.name) if self.parent else self.name
 
@@ -270,6 +274,10 @@ class Store(Object):
 @dataclass
 class Database(Object):
     stores: list[Store] = field(default_factory=list)
+
+    @property
+    def is_item_member(self):
+        return False
 
     @property
     def typename_contained(self):
@@ -564,7 +572,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         lines.source += [
             '',
             f'const ObjectInfo* {obj.namespace}::{obj.typename_contained}::objinfo[] PROGMEM {{',
-            [f'&{ob.typename}::typeinfo,' for ob in objinfo],
+            [f'&{ob.typename_contained}::typeinfo,' for ob in objinfo],
             '};'
         ]
 
@@ -744,19 +752,20 @@ def generate_object(obj: Object) -> CodeLines:
 
 def generate_contained_constructors(obj: Object) -> list:
     headers = []
-    if obj.is_array:
-        params = '(store, typeinfo)'
-    else:
-        params = '(), data(store.getObjectData<Struct>(typeinfo))'
-    headers = [
-        '',
-        f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
-            f'{obj.classname}Template{params}',
-            *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
-        ]),
-        '{',
-        '}',
-    ]
+    if not obj.is_item_member:
+        if obj.is_array:
+            params = '(store, typeinfo)'
+        else:
+            params = '(), data(store.getObjectData<Struct>(typeinfo))'
+        headers = [
+            '',
+            f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
+                f'{obj.classname}Template{params}',
+                *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+            ]),
+            '{',
+            '}',
+        ]
 
     if not obj.is_root:
         if obj.is_array:
@@ -779,7 +788,7 @@ def generate_contained_constructors(obj: Object) -> list:
 
 
 def generate_outer_class(obj: Object) -> list:
-    return [
+    return [] if obj.is_item_member else [
         '',
         f'class {obj.typename}: public {obj.typename_contained}',
         '{',
