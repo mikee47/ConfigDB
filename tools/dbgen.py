@@ -605,25 +605,21 @@ def generate_object_struct(obj: Object) -> CodeLines:
     if obj.is_array:
         return CodeLines([], [])
 
-    lines = CodeLines([
+    return CodeLines([
         '',
         'struct __attribute((packed)) Struct {',
         [
             *(f'{child.typename_struct} {child.id}{{}};' for child in obj.children),
             *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
         ],
-        '};'
-    ], [])
-    if not obj.is_array:
-        lines.header += [
-            '',
-            'static const Struct defaultData;'
-        ]
-        lines.source += [
-            '',
-            f'const {obj.namespace}::{obj.typename_contained}::Struct PROGMEM {obj.namespace}::{obj.typename_contained}::defaultData;'
-        ]
-    return lines
+        '};',
+        '',
+        'static const Struct defaultData;',
+    ],
+    [
+        '',
+        f'const {obj.namespace}::{obj.typename_contained}::Struct PROGMEM {obj.namespace}::{obj.typename_contained}::defaultData;'
+    ])
 
 
 def generate_property_accessors(obj: Object) -> list:
