@@ -452,10 +452,7 @@ def generate_database(db: Database) -> CodeLines:
                 '{',
                 '}',
                 '',
-                'std::unique_ptr<ConfigDB::Object> getObject() override',
-                '{',
-                [f'return std::make_unique<{obj.typename}>(store.lock());'],
-                '}',
+                'std::unique_ptr<ConfigDB::Object> getObject() override;',
                 '',
                 'static const ConfigDB::StoreInfo typeinfo;',
             ],
@@ -467,7 +464,12 @@ def generate_database(db: Database) -> CodeLines:
             *make_static_initializer([
                 strings[store.name],
                 f'{store.namespace}::{obj.typename}::typeinfo'
-            ], ';')
+            ], ';'),
+            '',
+            f'std::unique_ptr<Object> {store.namespace}::{store.typename}::getObject()',
+            '{',
+            [f'return std::make_unique<{obj.namespace}::{obj.typename}>(store.lock());'],
+            '}',
         ]
 
     for obj in db.children:
