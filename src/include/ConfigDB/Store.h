@@ -80,6 +80,12 @@ public:
 
 	void* getObjectDataPtr(const ObjectInfo& object)
 	{
+		/*
+		 * Verify this object actually belongs to this Store.
+		 * If this check fails then data corruption will result.
+		 * Generated code should ensure this can't happen.
+		 */
+		assert(object.getRoot() == &getTypeinfo().object);
 		return rootObjectData.get() + object.getOffset();
 	}
 

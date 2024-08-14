@@ -69,6 +69,15 @@ struct ObjectInfo {
 	 * @brief Get offset of data for a property from the start of *this* object's data
 	 */
 	size_t getPropertyOffset(unsigned index) const;
+
+	/**
+	 * @brief Get the topmost object which has no parent
+	 * Returns either a store root object or a containing ObjectArray.
+	 */
+	const ObjectInfo* getRoot() const
+	{
+		return parent ? parent->getRoot() : this;
+	}
 };
 
 static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
