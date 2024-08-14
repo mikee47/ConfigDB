@@ -34,6 +34,55 @@ String toString(ConfigDB::ObjectType type)
 
 namespace ConfigDB
 {
+const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
+
+size_t ObjectInfo::getOffset() const
+{
+	if(!parent) {
+		return 0;
+	}
+	size_t offset = parent->getOffset();
+	for(unsigned i = 0; i < parent->objectCount; ++i) {
+		auto obj = parent->objinfo[i];
+		if(obj == this) {
+			return offset;
+		}
+		offset += obj->structSize;
+	}
+	assert(false);
+	return 0;
+}
+
+size_t ObjectInfo::getPropertyOffset(unsigned index) const
+{
+	size_t offset{0};
+	for(unsigned i = 0; i < objectCount; ++i) {
+		offset += objinfo[i]->structSize;
+	}
+	for(unsigned i = 0; i < propertyCount; ++i) {
+		if(i == index) {
+			return offset;
+		}
+		offset += propinfo[i].getSize();
+	}
+	assert(false);
+	return 0;
+}
+
+String ObjectInfo::getTypeDesc() const
+{
+	String s;
+	s += toString(type);
+	if(type == ObjectType::Array) {
+		s += '[';
+		s += toString(propinfo[0].type);
+		s += ']';
+	} else if(type == ObjectType::ObjectArray) {
+		s += "[]";
+	}
+	return s;
+}
+
 bool Object::commit()
 {
 	return getStore().commit();
@@ -47,15 +96,11 @@ Database& Object::getDatabase()
 String Object::getPath() const
 {
 	String relpath;
-	auto& typeinfo = getTypeinfo();
-	if(typeinfo.path) {
-		relpath += *typeinfo.path;
-	}
-	if(typeinfo.name) {
+	for(auto typeinfo = &getTypeinfo(); typeinfo->parent; typeinfo = typeinfo->parent) {
 		if(relpath) {
 			relpath += '.';
 		}
-		relpath += *typeinfo.name;
+		relpath += typeinfo->name;
 	}
 	String path = getStore().getName();
 	if(relpath) {
@@ -63,6 +108,37 @@ String Object::getPath() const
 		path += relpath;
 	}
 	return path;
+}
+
+String Object::getPropertyValue(const PropertyInfo& prop, const void* data) const
+{
+	return getStore().getValueString(prop, data);
+}
+
+bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const String& value)
+{
+	return getStore().setValueString(prop, data, value);
+}
+
+StringId Object::addString(const String& value)
+{
+	return getStore().stringPool.findOrAdd(value);
+}
+
+Property Object::getProperty(unsigned index)
+{
+	auto& typeinfo = getTypeinfo();
+	if(index >= typeinfo.propertyCount) {
+		return {};
+	}
+	auto data = static_cast<uint8_t*>(getData());
+	data += typeinfo.getPropertyOffset(index);
+	return {*this, typeinfo.propinfo[index], data};
+}
+
+size_t Object::printTo(Print& p) const
+{
+	return getStore().printObjectTo(getTypeinfo(), &getTypeinfo().name, const_cast<Object*>(this)->getData(), 0, p);
 }
 
 } // namespace ConfigDB

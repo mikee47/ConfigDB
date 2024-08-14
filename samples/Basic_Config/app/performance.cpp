@@ -1,6 +1,7 @@
 #include <basic-config.h>
 #include <Services/Profiling/MinMaxTimes.h>
 #include <Data/Stream/MemoryDataStream.h>
+#include <HardwareSerial.h>
 
 namespace
 {
@@ -31,6 +32,7 @@ String __noinline testGetValueBuildString(BasicConfig& db, int value)
 {
 	BasicConfig::Color::Brightness bri(db);
 	String s;
+	s.reserve(128);
 	s += _F("read:");
 	s += value;
 	s += _F("{r:");
@@ -61,6 +63,18 @@ void checkPerformance(BasicConfig& db)
 	Serial << endl << _F("** Performance **") << endl;
 
 	const int rounds = 64;
+
+	Serial << _F("Evaluating load times ...") << endl;
+	{
+		Profiling::MicroTimes times(F("Load store"));
+		unsigned store = 0;
+		for(int i = 0; i < rounds; i++) {
+			times.start();
+			auto store = db.getStore(i % db.getTypeinfo().storeCount);
+			times.update();
+		}
+		Serial << times << endl;
+	}
 
 	/*
 	 * Open Color store
@@ -115,10 +129,11 @@ void checkPerformance(BasicConfig& db)
 	}
 
 	{
+		MemoryDataStream stream;
 		Profiling::MicroTimes times(F("getValue [Print]"));
 		for(int i = 0; i < rounds; i++) {
+			stream.clear();
 			times.start();
-			MemoryDataStream stream;
 			testGetValuePrint(db, i, stream);
 			times.update();
 		}

@@ -18,195 +18,306 @@
  ****/
 
 #include <ConfigDB/Json/Store.h>
-#include <ConfigDB/Json/Object.h>
+#include <ConfigDB/Database.h>
+#include <ConfigDB/Pool.h>
+#include <Data/Stream/FileStream.h>
 #include <Data/CStringArray.h>
 #include <Data/Buffer/PrintBuffer.h>
+#include <JSON/StreamingParser.h>
+#include <Data/Format/Standard.h>
+
+namespace
+{
+String quote(String s)
+{
+	::Format::standard.quote(s);
+	return s;
+}
+} // namespace
 
 namespace ConfigDB::Json
 {
-/**
- * TODO: How to handle failures?
- *
- * Any load failures here result in no JsonDocument being available.
- * Write/save operations will fail, and read operations will return default values.
- *
- * Recovery options:
- * 	- Revert store to default values and continue
- *  - On incomplete reads we can use values obtained at risk of inconsistencies
- */
+class ConfigListener : public JSON::Listener
+{
+public:
+	using Element = JSON::Element;
+
+	ConfigListener(ConfigDB::Store& store) : store(store)
+	{
+	}
+
+	std::pair<const ConfigDB::ObjectInfo*, void*> findObject(const Element& element)
+	{
+		auto& parent = info[element.level - 1];
+		if(!parent.object || !parent.object->objectCount) {
+			return {};
+		}
+
+		if(parent.object->type == ObjectType::ObjectArray) {
+			// ObjectArray defines single type
+			return {parent.object->objinfo[0], nullptr};
+		}
+
+		size_t offset{0};
+		for(unsigned i = 0; i < parent.object->objectCount; ++i) {
+			auto obj = parent.object->objinfo[i];
+			if(obj->name.equals(element.key, size_t(element.keyLength))) {
+				return {obj, static_cast<uint8_t*>(parent.data) + offset};
+			}
+			offset += obj->structSize;
+		}
+
+		return {};
+	}
+
+	std::tuple<const ConfigDB::PropertyInfo*, void*> findProperty(const Element& element)
+	{
+		auto& parent = info[element.level - 1];
+		auto obj = parent.object;
+		if(!obj || !obj->propertyCount) {
+			return {};
+		}
+		if(obj->type == ConfigDB::ObjectType::Array) {
+			auto& data = store.arrayPool[parent.id];
+			return {&obj->propinfo[0], data.add()};
+		}
+		assert(obj->type == ConfigDB::ObjectType::Object);
+
+		size_t offset{0};
+		// Skip over child objects
+		for(unsigned i = 0; i < obj->objectCount; ++i) {
+			offset += obj->objinfo[i]->structSize;
+		}
+		// Find property by key
+		for(unsigned i = 0; i < obj->propertyCount; ++i) {
+			auto& prop = obj->propinfo[i];
+			if(prop.name.equals(element.key, size_t(element.keyLength))) {
+				return {&prop, static_cast<uint8_t*>(parent.data) + offset};
+			}
+			offset += prop.getSize();
+		}
+		return {};
+	}
+
+	void handleContainer(const Element& element)
+	{
+		if(element.level == 0) {
+			auto obj = &store.getTypeinfo().object;
+			info[element.level] = {obj, store.rootObjectData.get()};
+			return;
+		}
+
+		auto [obj, data] = findObject(element);
+		if(!obj) {
+			debug_w("[JSON] '%s' not in schema", element.key);
+			return;
+		}
+
+		auto& parent = info[element.level - 1];
+		switch(obj->type) {
+		case ConfigDB::ObjectType::Object:
+			if(data) {
+				assert(parent.object->type == ConfigDB::ObjectType::Object);
+				info[element.level] = {obj, data};
+			} else {
+				assert(parent.object->type == ConfigDB::ObjectType::ObjectArray);
+				auto& pool = store.arrayPool[parent.id];
+				auto items = parent.object->objinfo[0];
+				info[element.level] = {items, pool.add(*items), 0};
+			}
+			break;
+		case ConfigDB::ObjectType::Array: {
+			assert(obj->propertyCount == 1);
+			auto id = store.arrayPool.add(obj->propinfo[0]);
+			memcpy(data, &id, sizeof(id));
+			info[element.level] = {obj, nullptr, id};
+			break;
+		}
+		case ConfigDB::ObjectType::ObjectArray: {
+			auto id = store.arrayPool.add(*obj->objinfo[0]);
+			memcpy(data, &id, sizeof(id));
+			info[element.level] = {obj, nullptr, id};
+			break;
+		}
+		}
+	}
+
+	void handleProperty(const Element& element)
+	{
+		auto [prop, data] = findProperty(element);
+		if(prop) {
+			store.setValueString(*prop, data, element.as<String>());
+		} else {
+			debug_w("[JSON] '%s' not in schema", element.key);
+		}
+	}
+
+	bool startElement(const Element& element) override
+	{
+		if(element.isContainer()) {
+			handleContainer(element);
+		} else {
+			handleProperty(element);
+		}
+		return true;
+	}
+
+	bool endElement(const Element&) override
+	{
+		// Continue parsing
+		return true;
+	}
+
+private:
+	ConfigDB::Store& store;
+	struct Info {
+		const ConfigDB::ObjectInfo* object;
+		void* data;
+		ConfigDB::ArrayId id;
+	};
+	Info info[JSON::StreamingParser::maxNesting]{};
+};
+
 bool Store::load()
 {
+	auto& root = getTypeinfo().object;
+	rootObjectData.reset(new uint8_t[root.structSize]);
+	memcpy_P(rootObjectData.get(), root.defaultData, root.structSize);
+
 	String filename = getFilename();
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
 		if(stream.getLastError() != IFS::Error::NotFound) {
 			debug_w("open('%s') failed", filename.c_str());
 		}
-		// Create new document
-		doc.to<JsonObject>();
 		return true;
 	}
 
-	/*
-	 * If deserialization fails wipe document and fail.
-	 * All values for this store thus revert to their defaults.
-	 *
-	 * TODO: Find a way to report this sort of problem to the user and indicate whether to proceed
-	 *
-	 * We want to load store only when needed to minimise RAM usage.
-	 */
-	DeserializationError error = deserializeJson(doc, stream);
-	switch(error.code()) {
-	case DeserializationError::Ok:
-	case DeserializationError::EmptyInput:
-		debug_d("load('%s') OK, %s, %s", filename.c_str(), error.c_str(), ::Json::serialize(doc).c_str());
+	ConfigListener listener(*this);
+	JSON::StaticStreamingParser<128> parser(&listener);
+	auto status = parser.parse(stream);
+
+	if(status == JSON::Status::EndOfDocument) {
 		return true;
-	default:
-		debug_e("[JSON] Store load '%s' failed: %s", filename.c_str(), error.c_str());
-		doc.to<JsonObject>();
-		return false;
 	}
+
+	debug_w("JSON load '%s': %s", filename.c_str(), toString(status).c_str());
+	return false;
 }
 
 bool Store::save()
 {
+	String filename = getFilename();
 	FileStream stream;
-	if(!stream.open(getFilename(), File::WriteOnly | File::CreateNewAlways)) {
-		return false;
-	}
-
-	{
+	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<256> buffer(stream);
-		printObjectTo(doc, getDatabase().getFormat(), buffer);
+		auto& root = getTypeinfo().object;
+		printObjectTo(root, &fstr_empty, rootObjectData.get(), 0, buffer);
 	}
 
-	if(stream.getLastError() != FS_OK) {
-		debug_e("[JSON] Store save failed: %s", stream.getLastErrorString().c_str());
-		return false;
+	if(stream.getLastError() == FS_OK) {
+		debug_d("[JSON] Store saved '%s' OK", filename.c_str());
+		return true;
 	}
 
-	return true;
+	debug_e("[JSON] Store save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+	return false;
 }
 
-size_t Store::printTo(Print& p) const
+String Store::getValueJson(const PropertyInfo& info, const void* data) const
 {
-	auto format = getDatabase().getFormat();
+	String s = getValueString(info, data);
+	return s ? (info.type == PropertyType::String) ? quote(s) : s : "null";
+}
 
-	size_t n{0};
+size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
+							Print& p) const
+{
+	size_t n;
 
-	auto root = doc.as<JsonObjectConst>();
+	bool isObject = (object.type == ObjectType::Object);
 
-	if(name) {
-		n += p.print('"');
-		n += p.print(name);
-		n += p.print("\":");
-		n += printObjectTo(root, format, p);
-		return n;
+	auto pretty = (getDatabase().getFormat() == Format::Pretty);
+	auto newline = [&]() {
+		if(pretty) {
+			n += p.println();
+		}
+	};
+
+	String indent;
+	if(pretty) {
+		indent.pad(nesting * 2);
 	}
-
-	// Nameless (root) store omits {}
-	for(JsonPairConst child : root) {
-		if(n > 0) {
-			n += p.print(',');
-			if(format == Format::Pretty) {
-				n += p.println();
+	const char* colon = pretty ? ": " : ":";
+	if(name) {
+		if(name->length()) {
+			if(pretty) {
+				n += p.print(indent);
+			}
+			n += p.print(quote(*name));
+			n += p.print(colon);
+		}
+		n += p.print(isObject ? '{' : '[');
+	} else {
+		--nesting;
+	}
+	unsigned itemCount = 0;
+	if(isObject) {
+		for(unsigned i = 0; i < object.objectCount; ++i) {
+			auto obj = object.objinfo[i];
+			if(itemCount++) {
+				n += p.print(',');
+			}
+			newline();
+			n += printObjectTo(*obj, &obj->name, data, nesting + 1, p);
+			data = static_cast<const uint8_t*>(data) + obj->structSize;
+		}
+		for(unsigned i = 0; i < object.propertyCount; ++i) {
+			auto& prop = object.propinfo[i];
+			if(itemCount++) {
+				n += p.print(',');
+			}
+			newline();
+			if(pretty) {
+				n += p.print(indent);
+				n += p.print("  ");
+			}
+			n += p.print(quote(prop.name));
+			n += p.print(colon);
+			n += p.print(getValueJson(prop, data));
+			data = static_cast<const uint8_t*>(data) + prop.getSize();
+		}
+	} else {
+		auto id = *static_cast<const ArrayId*>(data);
+		if(id) {
+			auto& array = arrayPool[id];
+			for(unsigned i = 0; i < array.getCount(); ++i) {
+				if(itemCount++) {
+					n += p.print(',');
+				}
+				newline();
+				if(pretty) {
+					n += p.print(indent);
+					n += p.print("  ");
+				}
+				if(object.type == ObjectType::Array) {
+					n += p.print(getValueJson(object.propinfo[0], array[i]));
+				} else {
+					n += printObjectTo(*object.objinfo[0], &fstr_empty, array[i], nesting + 1, p);
+				}
 			}
 		}
-		n += p.print('"');
-		JsonString name = child.key();
-		n += p.write(name.c_str(), name.size());
-		n += p.print("\":");
-		JsonVariantConst value = child.value();
-		n += printObjectTo(value, format, p);
 	}
+
+	if(name) {
+		if(pretty && itemCount) {
+			newline();
+			n += p.print(indent);
+		}
+		n += p.print(isObject ? '}' : ']');
+	}
+
 	return n;
-}
-
-JsonObject Store::getJsonObject(const String& path)
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObject>()) {
-			child = obj.createNestedObject(const_cast<char*>(key));
-		}
-		obj = child;
-	}
-	return obj;
-}
-
-JsonObjectConst Store::getJsonObjectConst(const String& path) const
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto obj = doc.as<JsonObjectConst>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObjectConst>()) {
-			obj = {};
-			break;
-		}
-		obj = child;
-	}
-
-	return obj;
-}
-
-JsonArray Store::getJsonArray(const String& path)
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto name = csa.popBack();
-	auto obj = doc.isNull() ? doc.to<JsonObject>() : doc.as<JsonObject>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObject>()) {
-			child = obj.createNestedObject(const_cast<char*>(key));
-		}
-		obj = child;
-	}
-
-	JsonArray arr = obj[name];
-	if(!arr) {
-		arr = obj.createNestedArray(name);
-	}
-	return arr;
-}
-
-JsonArrayConst Store::getJsonArrayConst(const String& path) const
-{
-	String s(path);
-	s.replace('.', '\0');
-	CStringArray csa(std::move(s));
-	auto name = csa.popBack();
-	auto obj = doc.as<JsonObjectConst>();
-	for(auto key : csa) {
-		if(!obj) {
-			break;
-		}
-		auto child = obj[key];
-		if(!child.is<JsonObjectConst>()) {
-			obj = {};
-			break;
-		}
-		obj = child;
-	}
-
-	return obj[name];
 }
 
 } // namespace ConfigDB::Json

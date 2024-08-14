@@ -19,19 +19,15 @@
 
 #pragma once
 
+#include "Store.h"
 #include <WString.h>
 #include <Data/CString.h>
 
 namespace ConfigDB
 {
-class Store;
-
-/**
- * @brief Serialisation format
- */
-enum class Format {
-	Compact,
-	Pretty,
+struct DatabaseInfo {
+	volatile uint32_t storeCount : 8;
+	const StoreInfo* stores[];
 };
 
 class Database
@@ -80,9 +76,26 @@ public:
 	 */
 	virtual std::shared_ptr<Store> getStore(unsigned index) = 0;
 
+	virtual const DatabaseInfo& getTypeinfo() const = 0;
+
 private:
 	CString path;
 	Format format{};
+};
+
+/**
+ * @brief Used by code generator to create specific template for `Database`
+ * @tparam ClassType Concrete type provided by code generator (CRTP)
+ */
+template <class ClassType> class DatabaseTemplate : public Database
+{
+public:
+	using Database::Database;
+
+	const DatabaseInfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
+	}
 };
 
 } // namespace ConfigDB

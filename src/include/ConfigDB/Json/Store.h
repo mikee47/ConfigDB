@@ -20,19 +20,13 @@
 #pragma once
 
 #include "../Store.h"
-#include "Object.h"
-#include "Array.h"
-#include "ObjectArray.h"
 
 namespace ConfigDB::Json
 {
 class Store : public ConfigDB::Store
 {
 public:
-	Store(Database& db, const String& name) : ConfigDB::Store(db, name)
-	{
-		load();
-	}
+	using ConfigDB::Store::Store;
 
 	bool commit() override
 	{
@@ -41,38 +35,23 @@ public:
 
 	String getFilename() const
 	{
-		return getPath() + ".json";
+		String path = getFilePath();
+		path += _F(".json");
+		return path;
 	}
 
+	size_t printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
+						 Print& p) const override;
+
+protected:
 	/**
-	 * @brief Resolve a path into the corresponding JSON object, creating it if required
+	 * Loading starts with default data loaded from schema, which is then updated during load.
+	 * Failure indicates corrupt JSON file, but any readable data is available.
 	 */
-	JsonObject getJsonObject(const String& path);
-	JsonObjectConst getJsonObjectConst(const String& path) const;
-
-	JsonArray getJsonArray(const String& path);
-	JsonArrayConst getJsonArrayConst(const String& path) const;
-
-	size_t printTo(Print& p) const override;
-
-	template <class T> static size_t printObjectTo(T& obj, Format format, Print& p)
-	{
-		switch(format) {
-		case Format::Compact:
-			return serializeJson(obj, p);
-		case Format::Pretty:
-			return serializeJsonPretty(obj, p);
-		}
-		return 0;
-	}
-
-private:
-	friend class Object;
-
 	bool load();
 	bool save();
 
-	StaticJsonDocument<1024> doc;
+	String getValueJson(const PropertyInfo& info, const void* data) const;
 };
 
 template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;

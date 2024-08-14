@@ -20,21 +20,35 @@
 #pragma once
 
 #include <WString.h>
-#include <FlashString/Array.hpp>
-#include <FlashString/Vector.hpp>
-#include <memory>
 
+/**
+ * @brief Property types with storage size
+ */
 #define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
-	XX(String)                                                                                                         \
-	XX(Integer)                                                                                                        \
-	XX(Boolean)
+	XX(Boolean, 1)                                                                                                     \
+	XX(Int8, 1)                                                                                                        \
+	XX(Int16, 2)                                                                                                       \
+	XX(Int32, 4)                                                                                                       \
+	XX(Int64, 8)                                                                                                       \
+	XX(UInt8, 1)                                                                                                       \
+	XX(UInt16, 2)                                                                                                      \
+	XX(UInt32, 4)                                                                                                      \
+	XX(UInt64, 8)                                                                                                      \
+	XX(String, sizeof(StringId))
 
 namespace ConfigDB
 {
 class Object;
 
-enum class PropertyType {
-#define XX(name) name,
+DEFINE_FSTR_LOCAL(fstr_empty, "")
+
+/**
+ * @brief Defines contained string data using index into string pool
+ */
+using StringId = uint16_t;
+
+enum class PropertyType : uint32_t {
+#define XX(name, ...) name,
 	CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
 };
@@ -44,32 +58,41 @@ enum class PropertyType {
  */
 struct PropertyInfo {
 	// Don't access these directly!
-	const FlashString* name;
-	const FlashString* defaultValue;
+	const FlashString& name;
+	const FlashString* defaultValue; ///< Only required for strings
 	PropertyType type;
 
-	String getName() const
-	{
-		return name ? String(*name) : nullptr;
-	}
+	static const PropertyInfo empty;
 
-	String getDefaultValue() const
+	/**
+	 * @brief Get number of bytes required to store this property value within a structure
+	 */
+	uint8_t getSize() const
 	{
-		return defaultValue ? String(*defaultValue) : nullptr;
-	}
-
-	PropertyType getType() const
-	{
-		return FSTR::readValue(&type);
-	}
-
-	explicit operator bool() const
-	{
-		return name != nullptr;
+		switch(type) {
+#define XX(tag, size)                                                                                                  \
+	case PropertyType::tag:                                                                                            \
+		return size;
+			CONFIGDB_PROPERTY_TYPE_MAP(XX)
+#undef XX
+		}
+		return 0;
 	}
 };
 
-static constexpr const PropertyInfo emptyPropertyInfo{};
+union __attribute__((packed)) PropertyData {
+	uint8_t uint8;
+	uint16_t uint16;
+	uint32_t uint32;
+	uint16_t uint64;
+	int8_t int8;
+	int16_t int16;
+	int32_t int32;
+	int16_t int64;
+	bool b;
+	float f;
+	StringId string;
+};
 
 /**
  * @brief Manages a key/value pair stored in an object
@@ -77,38 +100,17 @@ static constexpr const PropertyInfo emptyPropertyInfo{};
 class Property
 {
 public:
-	Property() : info(emptyPropertyInfo)
-	{
-	}
-
-	using Type = PropertyType;
-
-	/**
-	 * @brief Property accessed by key
-	 */
-	Property(Object& object, const PropertyInfo& info) : info(info), object(&object)
+	Property() : info(PropertyInfo::empty)
 	{
 	}
 
 	/**
-	 * @brief Property accessed by index
+	 * @brief Create a Property instance
+	 * @param info Property information
+	 * @param data Pointer to location where value is stored
 	 */
-	Property(Object& object, unsigned index, const PropertyInfo& info) : info(info), object(&object), index(index)
+	Property(Object& object, const PropertyInfo& info, void* data) : info(info), object(&object), data(data)
 	{
-	}
-
-	unsigned getIndex() const
-	{
-		return index;
-	}
-
-	/**
-	 * @brief Check if this property is accessed by index
-	 * @retval bool true if this property is an array member, false if it's a named object property
-	 */
-	bool isIndexed() const
-	{
-		return index >= 0;
 	}
 
 	String getValue() const;
@@ -124,7 +126,7 @@ public:
 
 private:
 	Object* object{};
-	int index{-1};
+	void* data{};
 };
 
 } // namespace ConfigDB

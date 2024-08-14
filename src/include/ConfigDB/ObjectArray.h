@@ -29,21 +29,19 @@ namespace ConfigDB
 class ObjectArray : public Object
 {
 public:
-	ObjectArray() = default;
+	// ObjectArray() = default;
 
-	ObjectArray(Object& parent) : Object(parent)
+	ObjectArray(Store& store, const ObjectInfo& typeinfo);
+
+	ObjectArray(Object& parent, ArrayId& id) : Object(parent), id(id)
 	{
 	}
 
-	String getStoredValue(const String&) const override
-	{
-		return nullptr;
-	}
+	void* getObjectDataPtr(unsigned index);
 
-	String getStoredArrayValue(unsigned) const override
-	{
-		return nullptr;
-	}
+	bool removeItem(unsigned index);
+
+	unsigned getObjectCount() const override;
 
 	unsigned getPropertyCount() const override
 	{
@@ -54,25 +52,27 @@ public:
 	{
 		return {};
 	}
+
+	void* getData() override
+	{
+		return &id;
+	}
+
+private:
+	ArrayId& id;
 };
 
 /**
- * @brief Used by store implemention to create specific template for `ObjectArray`
- * @tparam BaseType The store's base `Array` class
+ * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  * @tparam Item Concrete type for array item provided by code generator
  */
-template <class BaseType, class ClassType, class ItemType> class ObjectArrayTemplate : public BaseType
+template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
 	using Item = ItemType;
 
-	using BaseType::BaseType;
-
-	const ObjectInfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
-	}
+	using ObjectArray::ObjectArray;
 
 	Item getItem(unsigned index)
 	{
@@ -81,15 +81,26 @@ public:
 
 	Item addItem()
 	{
-		return Item(*this);
+		return Item(*this, getObjectData(getObjectCount()));
 	}
 
 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
 	{
-		if(index >= this->getObjectCount()) {
+		if(index >= getObjectCount()) {
 			return nullptr;
 		}
-		return std::make_unique<Item>(*this, index);
+		return std::make_unique<Item>(*this, getObjectData(index));
+	}
+
+	const ObjectInfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+private:
+	typename Item::Struct& getObjectData(unsigned index)
+	{
+		return *static_cast<typename Item::Struct*>(getObjectDataPtr(index));
 	}
 };
 

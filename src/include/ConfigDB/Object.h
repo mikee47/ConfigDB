@@ -21,6 +21,7 @@
 
 #include "Property.h"
 #include <Printable.h>
+#include <memory>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
 	XX(Object)                                                                                                         \
@@ -32,47 +33,60 @@ namespace ConfigDB
 class Database;
 class Store;
 
-enum class ObjectType {
+enum class ObjectType : uint32_t {
 #define XX(name) name,
 	CONFIGDB_OBJECT_TYPE_MAP(XX)
 #undef XX
 };
 
+/**
+ * @brief Identifies array storage within array pool
+ * @note alignas(1) required as value contained in packed structures
+ */
+using ArrayId = uint16_t alignas(1);
+
 struct ObjectInfo {
-	// DO NOT access these directly!
-	const FlashString* name; ///< Within store, root always nullptr
-	const FlashString* path; ///< Relative to store
-	const FSTR::Vector<ObjectInfo>* objinfo;
-	const FSTR::Array<PropertyInfo>* propinfo;
+	const FlashString& name;
+	const ObjectInfo* parent;
+	const ObjectInfo* const* objinfo;
+	PGM_VOID_P defaultData;
+	uint32_t structSize;
 	ObjectType type;
+	uint32_t objectCount;
+	uint32_t propertyCount;
+	const PropertyInfo propinfo[];
 
-	static const ObjectInfo& empty()
-	{
-		static const ObjectInfo PROGMEM emptyInfo{};
-		return emptyInfo;
-	}
+	static const ObjectInfo empty;
 
-	String getName() const
-	{
-		return name ? String(*name) : nullptr;
-	}
+	String getTypeDesc() const;
 
-	String getPath() const
-	{
-		return path ? String(*path) : nullptr;
-	}
+	/**
+	 * @brief Get offset of this object's data relative to root (not just parent)
+	 */
+	size_t getOffset() const;
 
-	ObjectType getType() const
+	/**
+	 * @brief Get offset of data for a property from the start of *this* object's data
+	 */
+	size_t getPropertyOffset(unsigned index) const;
+
+	/**
+	 * @brief Get the topmost object which has no parent
+	 * Returns either a store root object or a containing ObjectArray.
+	 */
+	const ObjectInfo* getRoot() const
 	{
-		return FSTR::readValue(&type);
+		return parent ? parent->getRoot() : this;
 	}
 };
+
+static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
 
 /**
  * @brief An object can contain other objects, properties and arrays
  * @note This class is the base for concrete Object, Array and ObjectArray classes
  */
-class Object : public Printable
+class Object
 {
 public:
 	Object() = default;
@@ -81,27 +95,13 @@ public:
 	{
 	}
 
-	/**
-	 * @brief Retrieve a value
-	 * @param key Key for value
-	 * @retval String
-	 */
-	virtual String getStoredValue(const String& key) const = 0;
+	virtual ~Object()
+	{
+	}
 
-	/**
-	 * @brief Retrieve a value from an array
-	 * @param key Index of value
-	 * @retval String
-	 */
-	virtual String getStoredArrayValue(unsigned index) const = 0;
+	String getPropertyValue(const PropertyInfo& prop, const void* data) const;
 
-	/**
-	 * @brief Store a value
-	 * @param key Key for value
-	 * @param value Value to store
-	 * @retval bool true on success
-	 */
-	// virtual bool setStringValue(const String& key, const String& value) = 0;
+	bool setPropertyValue(const PropertyInfo& prop, void* data, const String& value);
 
 	virtual Store& getStore()
 	{
@@ -127,8 +127,7 @@ public:
 	 */
 	virtual unsigned getObjectCount() const
 	{
-		auto& typeinfo = getTypeinfo();
-		return typeinfo.objinfo ? typeinfo.objinfo->length() : 0;
+		return getTypeinfo().objectCount;
 	}
 
 	/**
@@ -142,22 +141,14 @@ public:
 	 */
 	virtual unsigned getPropertyCount() const
 	{
-		auto& typeinfo = getTypeinfo();
-		return typeinfo.propinfo ? typeinfo.propinfo->length() : 0;
+		return getTypeinfo().propertyCount;
 	}
 
 	/**
 	 * @brief Get properties
 	 * @note Array types override this to return array elements
 	 */
-	virtual Property getProperty(unsigned index)
-	{
-		auto& typeinfo = getTypeinfo();
-		if(!typeinfo.propinfo || index >= typeinfo.propinfo->length()) {
-			return {};
-		}
-		return {*this, *(typeinfo.propinfo->data() + index)};
-	}
+	virtual Property getProperty(unsigned index);
 
 	/**
 	 * @brief Commit changes to the store
@@ -169,36 +160,43 @@ public:
 
 	virtual const ObjectInfo& getTypeinfo() const = 0;
 
+	/**
+	 * @brief Get a pointer to this object's data structure
+	 * @note Implemented by code generator
+	 */
+	virtual void* getData() = 0;
+
 	String getName() const
 	{
-		auto& typeinfo = getTypeinfo();
-		return typeinfo.name ? String(*typeinfo.name) : nullptr;
+		return getTypeinfo().name;
 	}
 
 	String getPath() const;
 
+	size_t printTo(Print& p) const;
+
 protected:
+	StringId addString(const String& value);
+
 	Object* parent{};
 };
 
 /**
- * @brief Used by store implemention to create specific template for `Object` only (not array)
- * @tparam BaseType The store's base `Object` class
+ * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  */
-template <class BaseType, class ClassType> class ObjectTemplate : public BaseType
+template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	using BaseType::BaseType;
+	ObjectTemplate() = default;
+
+	explicit ObjectTemplate(Object& parent) : Object(parent)
+	{
+	}
 
 	const ObjectInfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
-	}
-
-	String getStoredArrayValue(unsigned) const override
-	{
-		return nullptr;
 	}
 };
 

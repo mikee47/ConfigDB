@@ -19,12 +19,31 @@
 
 #pragma once
 
-#include "Database.h"
+#include "Object.h"
+#include "Array.h"
+#include "ObjectArray.h"
+#include "Pool.h"
+#include <WString.h>
 #include <debug_progmem.h>
 
 namespace ConfigDB
 {
+class Database;
 class Object;
+class ObjectInfo;
+
+/**
+ * @brief Serialisation format
+ */
+enum class Format {
+	Compact,
+	Pretty,
+};
+
+struct StoreInfo {
+	const FlashString& name;
+	const ObjectInfo& object;
+};
 
 /**
  * @brief Manages access to an object store, typically one file
@@ -37,41 +56,84 @@ public:
 	 * @param db Database to which this store belongs
 	 * @param name Name of store, used as key in JSONPath
 	 */
-	Store(Database& db, const String& name) : db(db), name(name)
+	Store(Database& db) : db(db)
 	{
-		debug_d("%s(%s)", __FUNCTION__, name.c_str());
 	}
 
-	~Store()
+	String getFileName() const
 	{
-		debug_d("%s(%s)", __FUNCTION__, name.c_str());
+		String name = getName();
+		return name.length() ? name : F("_root");
 	}
 
-	const String& getName() const
+	String getName() const
 	{
-		return name;
+		return getTypeinfo().name;
 	}
 
-	String getPath() const
-	{
-		String path = db.getPath();
-		path += '/';
-		path += name ?: F("_root");
-		return path;
-	}
+	String getFilePath() const;
 
 	Database& getDatabase() const
 	{
 		return db;
 	}
 
+	void* getObjectDataPtr(const ObjectInfo& object)
+	{
+		/*
+		 * Verify this object actually belongs to this Store.
+		 * If this check fails then data corruption will result.
+		 * Generated code should ensure this can't happen.
+		 */
+		assert(object.getRoot() == &getTypeinfo().object);
+		return rootObjectData.get() + object.getOffset();
+	}
+
+	template <typename T> T& getObjectData(const ObjectInfo& object)
+	{
+		return *static_cast<T*>(getObjectDataPtr(object));
+	}
+
 	virtual bool commit() = 0;
 
 	virtual std::unique_ptr<Object> getObject() = 0;
 
+	virtual const StoreInfo& getTypeinfo() const = 0;
+
+	/**
+	 * @brief Print object
+	 * @param object Type information
+	 * @param name Name to print with object. If nullptr, omit opening/closing braces.
+	 * @param nesting Nesting level for pretty-printing
+	 * @param p Output stream
+	 * @retval size_t Number of characters written
+	 */
+	virtual size_t printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
+								 Print& p) const = 0;
+
+	size_t printTo(Print& p, unsigned nesting) const;
+
+	size_t printTo(Print& p) const override
+	{
+		return printTo(p, 0);
+	}
+
+	String getValueString(const PropertyInfo& info, const void* data) const;
+	bool setValueString(const PropertyInfo& prop, void* data, const String& value);
+
+	std::unique_ptr<uint8_t[]> rootObjectData;
+	ArrayPool arrayPool;
+	StringPool stringPool;
+
 protected:
+	void clear()
+	{
+		arrayPool.clear();
+		rootObjectData.reset();
+		stringPool.clear();
+	}
+
 	Database& db;
-	String name;
 };
 
 /**
@@ -92,9 +154,15 @@ public:
 		auto inst = store.lock();
 		if(!inst) {
 			inst = std::make_shared<ClassType>(db);
+			inst->load();
 			store = inst;
 		}
 		return inst;
+	}
+
+	const StoreInfo& getTypeinfo() const override
+	{
+		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 
 protected:

@@ -17,9 +17,8 @@
  *
  ****/
 
-#include "include/ConfigDB/DataStream.h"
-#include "include/ConfigDB/Store.h"
-#include "include/ConfigDB/Object.h"
+#include <ConfigDB/Json/DataStream.h>
+#include <ConfigDB/Json/Store.h>
 
 namespace ConfigDB
 {
@@ -29,15 +28,14 @@ void DataStream::fillStream()
 	if(done) {
 		return;
 	}
-	auto format = db.getFormat();
+	auto pretty = (db.getFormat() == Format::Pretty);
 	auto newline = [&]() {
-		if(format == Format::Pretty) {
+		if(pretty) {
 			stream << endl;
 		}
 	};
 	if(storeIndex == 0) {
 		stream << '{';
-		newline();
 	}
 	auto store = db.getStore(storeIndex);
 	if(store) {
@@ -45,12 +43,15 @@ void DataStream::fillStream()
 			stream << ',';
 			newline();
 		}
-		stream << *store;
+		auto& root = store->getTypeinfo().object;
+		auto name = storeIndex ? &store->getTypeinfo().name : nullptr;
+		store->printObjectTo(root, name, store->rootObjectData.get(), 1, stream);
 		++storeIndex;
 		return;
 	}
 	newline();
-	stream << '}' << endl;
+	stream << '}';
+	newline();
 	done = true;
 }
 

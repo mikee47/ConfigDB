@@ -29,42 +29,92 @@ namespace ConfigDB
 class Array : public Object
 {
 public:
-	Array() = default;
+	Array(Store& store, const ObjectInfo& typeinfo);
 
-	Array(Object& parent) : Object(parent)
+	Array(Object& parent, ArrayId& id) : Object(parent), id(id)
 	{
 	}
 
-	String getStoredValue(const String&) const override
+	template <typename T> typename std::enable_if<std::is_integral<T>::value, T>::type getItem(unsigned index) const
 	{
-		return nullptr;
+		return *static_cast<const T*>(getItemPtr(index));
 	}
+
+	template <typename T> typename std::enable_if<std::is_same<T, String>::value, T>::type getItem(unsigned index) const
+	{
+		return static_cast<const char*>(getItemPtr(index));
+	}
+
+	template <typename T>
+	typename std::enable_if<std::is_integral<T>::value, bool>::type setItem(unsigned index, T value)
+	{
+		return setItemPtr(index, &value);
+	}
+
+	bool setItem(unsigned index, const String& value)
+	{
+		auto id = addString(value);
+		return setItemPtr(index, &id);
+	}
+
+	template <typename T> typename std::enable_if<std::is_integral<T>::value, bool>::type addItem(T value)
+	{
+		return addItemPtr(&value);
+	}
+
+	bool addItem(const String& value)
+	{
+		auto id = addString(value);
+		return addItemPtr(&id);
+	}
+
+	bool removeItem(unsigned index);
 
 	std::unique_ptr<Object> getObject(unsigned) override
 	{
 		return nullptr;
 	}
 
+	unsigned getPropertyCount() const override;
+
 	Property getProperty(unsigned index) override
 	{
-		// Property info contains exactly one element
-		auto propinfo = getTypeinfo().propinfo;
-		if(index < getPropertyCount() && propinfo) {
-			return {*this, index, *propinfo->data()};
+		if(index >= getPropertyCount()) {
+			return {};
 		}
-		return {};
+		// Property info contains exactly one element
+		auto& typeinfo = getTypeinfo();
+		assert(typeinfo.propertyCount == 1);
+		return {*this, typeinfo.propinfo[0], getItemPtr(index)};
 	}
+
+	void* getData() override
+	{
+		return &id;
+	}
+
+private:
+	void* getItemPtr(unsigned index);
+
+	const void* getItemPtr(unsigned index) const
+	{
+		return const_cast<Array*>(this)->getItemPtr(index);
+	}
+
+	bool setItemPtr(unsigned index, const void* value);
+	bool addItemPtr(const void* value);
+
+	ArrayId& id;
 };
 
 /**
- * @brief Used by store implemention to create specific template for `Array`
- * @tparam BaseType The store's base `Array` class
+ * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  */
-template <class BaseType, class ClassType> class ArrayTemplate : public BaseType
+template <class ClassType> class ArrayTemplate : public Array
 {
 public:
-	using BaseType::BaseType;
+	using Array::Array;
 
 	const ObjectInfo& getTypeinfo() const override
 	{
