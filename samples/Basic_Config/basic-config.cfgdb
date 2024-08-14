@@ -42,6 +42,10 @@
                     "type": "integer",
                     "default": 15,
                     "format": "ms"
+                  },
+                  "garbage": {
+                    "type": "string",
+                    "default": "This is potentially\na problem\nstring /* with stuff inside\b\b it */"
                   }
                 }
               },

@@ -147,7 +147,7 @@ class Property:
     @property
     def default_structval(self):
         '''Value suitable for static initialisation {x}'''
-        return '' if self.ptype == 'string' else self.default_str
+        return make_comment(self.default) if self.ptype == 'string' else self.default_str
 
 
 @dataclass
@@ -314,6 +314,11 @@ def make_identifier(s: str, is_type: bool = False):
     return ident
 
 
+def make_comment(s: str):
+    '''Make a valid C++ comment containing the given string'''
+    return '/* ' + s.replace('*/', '-/') + ' */'
+
+
 def join_path(path: str, name: str):
     '''Make path string using JSONPath syntax'''
     if path:
@@ -328,7 +333,7 @@ def make_typename(s: str):
 
 def make_string(s: str):
     '''Encode a string value'''
-    return f'"{s.replace('"', '\\"')}"'
+    return '"' + s.replace('"', '\\"').encode('unicode-escape').decode('utf-8') + '"'
 
 
 def make_static_initializer(entries: list, term_str: str = '') -> list:
