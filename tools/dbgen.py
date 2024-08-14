@@ -754,11 +754,13 @@ def generate_contained_constructors(obj: Object) -> list:
     if not obj.is_root:
         if obj.is_array:
             params = '(parent, data)'
+            data_type = 'ConfigDB::ArrayId'
         else:
             params = '(parent), data(data)'
+            data_type = 'Struct'
         headers += [
             '',
-            f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {obj.typename_struct}& data): ' + ', '.join([
+            f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {data_type}& data): ' + ', '.join([
                 f'{obj.classname}Template{params}',
                 *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
             ]),
@@ -812,10 +814,10 @@ def generate_item_object(obj: Object) -> CodeLines:
         *struct.header,
         *typeinfo.header,
         '',
-        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned index):',
+        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, Struct& data):',
         [', '.join([
             f'{obj.classname}Template({obj.parent.id})',
-            f'data({obj.parent.id}.getObjectData<Struct>(index))',
+            f'data(data)',
             *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
         ])],
         '{',

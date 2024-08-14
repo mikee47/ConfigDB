@@ -39,11 +39,6 @@ public:
 
 	void* getObjectDataPtr(unsigned index);
 
-	template <class Item> Item& getObjectData(unsigned index)
-	{
-		return *static_cast<Item*>(getObjectDataPtr(index));
-	}
-
 	bool removeItem(unsigned index);
 
 	unsigned getObjectCount() const override;
@@ -86,7 +81,7 @@ public:
 
 	Item addItem()
 	{
-		return Item(*this, getObjectCount());
+		return Item(*this, getObjectData(getObjectCount()));
 	}
 
 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
@@ -94,12 +89,18 @@ public:
 		if(index >= getObjectCount()) {
 			return nullptr;
 		}
-		return std::make_unique<Item>(*this, index);
+		return std::make_unique<Item>(*this, getObjectData(index));
 	}
 
 	const ObjectInfo& getTypeinfo() const override
 	{
 		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+private:
+	typename Item::Struct& getObjectData(unsigned index)
+	{
+		return *static_cast<typename Item::Struct*>(getObjectDataPtr(index));
 	}
 };
 
