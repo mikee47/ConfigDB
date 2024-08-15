@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Object.h"
+#include "Pool.h"
 
 namespace ConfigDB
 {
@@ -37,56 +38,53 @@ public:
 
 	template <typename T> typename std::enable_if<std::is_integral<T>::value, T>::type getItem(unsigned index) const
 	{
-		return *static_cast<const T*>(getItemPtr(index));
+		return *static_cast<const T*>(getArray()[index]);
 	}
 
 	template <typename T> typename std::enable_if<std::is_same<T, String>::value, T>::type getItem(unsigned index) const
 	{
-		return static_cast<const char*>(getItemPtr(index));
+		return static_cast<const char*>(getArray()[index]);
 	}
 
 	template <typename T>
 	typename std::enable_if<std::is_integral<T>::value, bool>::type setItem(unsigned index, T value)
 	{
-		return setItemPtr(index, &value);
+		return getArray().set(index, value);
 	}
 
 	bool setItem(unsigned index, const String& value)
 	{
-		auto id = addString(value);
-		return setItemPtr(index, &id);
+		return getArray().set(index, addString(value));
 	}
+
+	bool addNewItem(const char* value, size_t valueLength);
 
 	template <typename T> typename std::enable_if<std::is_integral<T>::value, bool>::type addItem(T value)
 	{
-		return addItemPtr(&value);
+		return getArray().add(value);
 	}
 
 	bool addItem(const String& value)
 	{
-		auto id = addString(value);
-		return addItemPtr(&id);
+		return getArray().add(addString(value));
 	}
 
-	bool removeItem(unsigned index);
+	bool removeItem(unsigned index) override
+	{
+		return getArray().remove(index);
+	}
 
 	std::unique_ptr<Object> getObject(unsigned) override
 	{
 		return nullptr;
 	}
 
-	unsigned getPropertyCount() const override;
-
-	Property getProperty(unsigned index) override
+	unsigned getPropertyCount() const override
 	{
-		if(index >= getPropertyCount()) {
-			return {};
-		}
-		// Property info contains exactly one element
-		auto& typeinfo = getTypeinfo();
-		assert(typeinfo.propertyCount == 1);
-		return {*this, typeinfo.propinfo[0], getItemPtr(index)};
+		return getArray().getCount();
 	}
+
+	Property getProperty(unsigned index) override;
 
 	void* getData() override
 	{
@@ -94,15 +92,15 @@ public:
 	}
 
 private:
-	void* getItemPtr(unsigned index);
+	ArrayData& getArray();
 
-	const void* getItemPtr(unsigned index) const
+	const ArrayData& getArray() const
 	{
-		return const_cast<Array*>(this)->getItemPtr(index);
+		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
+		return const_cast<Array*>(this)->getArray();
 	}
 
-	bool setItemPtr(unsigned index, const void* value);
-	bool addItemPtr(const void* value);
+	StringId addString(const String& value);
 
 	ArrayId& id;
 };

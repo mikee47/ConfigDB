@@ -24,15 +24,18 @@ void printItem(Print& output, const String& tag, unsigned indent, const String& 
 void printObject(Print& output, const String& tag, unsigned indent, ConfigDB::Object& obj)
 {
 	printItem(output, tag, indent, toString(obj.getTypeinfo().type), obj.getName());
-	for(unsigned i = 0; auto prop = obj.getProperty(i); ++i) {
+	auto n = obj.getPropertyCount();
+	for(unsigned i = 0; i < n; ++i) {
+		auto prop = obj.getProperty(i);
 		String value;
-		value += toString(prop.info.type);
+		value += toString(prop.getInfo()->type);
 		value += " = ";
 		value += prop.getJsonValue();
-		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.info.name, value);
+		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.getInfo()->name, value);
 	}
-	for(unsigned j = 0; auto child = obj.getObject(j); ++j) {
-		printObject(output, tag + '.' + j, indent + 1, *child);
+	n = obj.getObjectCount();
+	for(unsigned i = 0; i < n; ++i) {
+		printObject(output, tag + '.' + i, indent + 1, *obj.getObject(i));
 	}
 }
 

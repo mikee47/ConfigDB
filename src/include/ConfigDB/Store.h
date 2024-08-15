@@ -85,7 +85,12 @@ public:
 		 * If this check fails then data corruption will result.
 		 * Generated code should ensure this can't happen.
 		 */
-		assert(object.getRoot() == &getTypeinfo().object);
+		auto root = object.getRoot();
+		auto expected = &getTypeinfo().object;
+		if(root != expected) {
+			debug_e("Root is %s, expected %s", String(root->name).c_str(), String(expected->name).c_str());
+			assert(false);
+		}
 		return rootObjectData.get() + object.getOffset();
 	}
 
@@ -119,7 +124,7 @@ public:
 	}
 
 	String getValueString(const PropertyInfo& info, const void* data) const;
-	bool setValueString(const PropertyInfo& prop, void* data, const String& value);
+	bool setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
 
 	std::unique_ptr<uint8_t[]> rootObjectData;
 	ArrayPool arrayPool;
@@ -154,8 +159,8 @@ public:
 		auto inst = store.lock();
 		if(!inst) {
 			inst = std::make_shared<ClassType>(db);
-			inst->load();
 			store = inst;
+			inst->load();
 		}
 		return inst;
 	}

@@ -100,16 +100,14 @@ union __attribute__((packed)) PropertyData {
 class Property
 {
 public:
-	Property() : info(PropertyInfo::empty)
-	{
-	}
+	Property() = default;
 
 	/**
 	 * @brief Create a Property instance
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	Property(Object& object, const PropertyInfo& info, void* data) : info(info), object(&object), data(data)
+	Property(Object& object, const PropertyInfo& info, void* data) : info(&info), object(&object), data(data)
 	{
 	}
 
@@ -117,14 +115,20 @@ public:
 
 	explicit operator bool() const
 	{
-		return object != nullptr;
+		return info != nullptr;
 	}
 
 	String getJsonValue() const;
 
-	const PropertyInfo& info;
+	bool setValueString(const char* value, size_t valueLength);
+
+	const PropertyInfo* getInfo() const
+	{
+		return info;
+	}
 
 private:
+	const PropertyInfo* info{};
 	Object* object{};
 	void* data{};
 };

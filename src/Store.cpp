@@ -63,34 +63,34 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 	return nullptr;
 }
 
-bool Store::setValueString(const PropertyInfo& prop, void* data, const String& value)
+bool Store::setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength)
 {
 	ConfigDB::PropertyData propdata{};
 	switch(prop.type) {
 	case PropertyType::Boolean:
-		propdata.b = value.equalsIgnoreCase("true");
+		propdata.b = (valueLength == 4) && memicmp(value, "true", 4) == 0;
 		break;
 	case PropertyType::Int8:
 	case PropertyType::Int16:
 	case PropertyType::Int32:
-		propdata.int32 = strtol(value.c_str(), nullptr, 0);
+		propdata.int32 = strtol(value, nullptr, 0);
 		break;
 	case PropertyType::Int64:
-		propdata.int32 = strtoll(value.c_str(), nullptr, 0);
+		propdata.int32 = strtoll(value, nullptr, 0);
 		break;
 	case PropertyType::UInt8:
 	case PropertyType::UInt16:
 	case PropertyType::UInt32:
-		propdata.uint32 = strtoul(value.c_str(), nullptr, 0);
+		propdata.uint32 = strtoul(value, nullptr, 0);
 		break;
 	case PropertyType::UInt64:
-		propdata.uint64 = strtoull(value.c_str(), nullptr, 0);
+		propdata.uint64 = strtoull(value, nullptr, 0);
 		break;
 	case PropertyType::String: {
 		if(prop.defaultValue && *prop.defaultValue == value) {
 			propdata.string = 0;
 		} else {
-			auto ref = stringPool.findOrAdd(value);
+			auto ref = stringPool.findOrAdd(value, valueLength);
 			propdata.string = ref;
 		}
 		break;

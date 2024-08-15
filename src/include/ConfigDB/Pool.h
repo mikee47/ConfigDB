@@ -76,6 +76,11 @@ protected:
 		return static_cast<uint8_t*>(buffer) + getItemSize(index);
 	}
 
+	const void* getItemPtr(unsigned index) const
+	{
+		return static_cast<const uint8_t*>(buffer) + getItemSize(index);
+	}
+
 	void* buffer{};
 	uint32_t capacity : 12;
 	uint32_t count : 12;
@@ -105,13 +110,13 @@ public:
 	 * @brief Search for a string
 	 * @retval StringId 0 if string is not found
 	 */
-	StringId find(const String& value) const;
+	StringId find(const char* value, size_t valueLength) const;
 
-	StringId add(const String& value);
+	StringId add(const char* value, size_t valueLength);
 
-	StringId findOrAdd(const String& value)
+	StringId findOrAdd(const char* value, size_t valueLength)
 	{
-		return find(value) ?: add(value);
+		return find(value, valueLength) ?: add(value, valueLength);
 	}
 
 	const char* operator[](StringId ref) const
@@ -121,9 +126,9 @@ public:
 		return static_cast<const char*>(buffer) + offset;
 	}
 
-	String getStrings() const
+	const char* getBuffer()
 	{
-		return String(static_cast<const char*>(buffer), count);
+		return static_cast<const char*>(buffer);
 	}
 };
 
@@ -138,35 +143,56 @@ class ArrayData : public PoolData
 public:
 	using PoolData::PoolData;
 
+	template <typename T> typename std::enable_if<std::is_integral<T>::value, void*>::type add(T value)
+	{
+		assert(itemSize == sizeof(T));
+		return addItem(&value);
+	}
+
 	void* add(const ObjectInfo& object)
 	{
 		assert(itemSize == object.structSize);
-		return add(object.defaultData);
+		return addItem(object.defaultData);
 	}
 
-	void* add(const void* data = nullptr);
-
-	void* set(unsigned index, const void* data)
+	template <typename T> typename std::enable_if<std::is_integral<T>::value, void*>::type set(unsigned index, T value)
 	{
-		return (index < count) ? setItem(index, data) : nullptr;
+		assert(itemSize == sizeof(T));
+		return setItem(index, &value);
+	}
+
+	template <typename T>
+	typename std::enable_if<std::is_integral<T>::value, void*>::type insert(unsigned index, T value)
+	{
+		assert(itemSize == sizeof(T));
+		return insertItem(index, &value);
 	}
 
 	bool remove(unsigned index);
 
-	void* insert(unsigned index, const void* data = nullptr);
-
 	void* operator[](unsigned index)
 	{
-		return (index < count) ? getItemPtr(index) : nullptr;
+		if(index == count) {
+			return addItem(nullptr);
+		}
+		if(index < count) {
+			return getItemPtr(index);
+		}
+		return nullptr;
 	}
 
 	const void* operator[](unsigned index) const
 	{
-		return const_cast<ArrayData*>(this)->operator[](index);
+		return (index < count) ? getItemPtr(index) : nullptr;
 	}
 
 private:
+	void* addItem(const void* data)
+	{
+		return insertItem(count, data);
+	}
 	void* setItem(unsigned index, const void* data);
+	void* insertItem(unsigned index, const void* data);
 };
 
 /**
@@ -205,7 +231,9 @@ public:
 
 	const ArrayData& operator[](ArrayId id) const
 	{
-		return const_cast<ArrayPool*>(this)->operator[](id);
+		auto index = id - 1;
+		assert(index < count);
+		return *static_cast<const ArrayData*>(getItemPtr(index));
 	}
 
 	void clear();

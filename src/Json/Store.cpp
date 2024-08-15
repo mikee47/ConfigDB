@@ -46,119 +46,42 @@ public:
 	{
 	}
 
-	std::pair<const ObjectInfo*, void*> findObject(const Element& element)
-	{
-		auto& parent = info[element.level - 1];
-		if(!parent.object || !parent.object->objectCount) {
-			return {};
-		}
-
-		if(parent.object->type == ObjectType::ObjectArray) {
-			// ObjectArray defines single type
-			return {parent.object->objinfo[0], nullptr};
-		}
-
-		size_t offset{0};
-		for(unsigned i = 0; i < parent.object->objectCount; ++i) {
-			auto obj = parent.object->objinfo[i];
-			if(obj->name.equals(element.key, size_t(element.keyLength))) {
-				return {obj, static_cast<uint8_t*>(parent.data) + offset};
-			}
-			offset += obj->structSize;
-		}
-
-		return {};
-	}
-
-	std::tuple<const PropertyInfo*, void*> findProperty(const Element& element)
-	{
-		auto& parent = info[element.level - 1];
-		auto obj = parent.object;
-		if(!obj || !obj->propertyCount) {
-			return {};
-		}
-		if(obj->type == ObjectType::Array) {
-			auto& data = store.arrayPool[parent.id];
-			return {&obj->propinfo[0], data.add()};
-		}
-		assert(obj->type == ObjectType::Object);
-
-		size_t offset{0};
-		// Skip over child objects
-		for(unsigned i = 0; i < obj->objectCount; ++i) {
-			offset += obj->objinfo[i]->structSize;
-		}
-		// Find property by key
-		for(unsigned i = 0; i < obj->propertyCount; ++i) {
-			auto& prop = obj->propinfo[i];
-			if(prop.name.equals(element.key, size_t(element.keyLength))) {
-				return {&prop, static_cast<uint8_t*>(parent.data) + offset};
-			}
-			offset += prop.getSize();
-		}
-		return {};
-	}
-
-	void handleContainer(const Element& element)
-	{
-		if(element.level == 0) {
-			auto obj = &store.getTypeinfo().object;
-			info[element.level] = {obj, store.rootObjectData.get()};
-			return;
-		}
-
-		auto [obj, data] = findObject(element);
-		if(!obj) {
-			debug_w("[JSON] '%s' not in schema", element.key);
-			return;
-		}
-
-		auto& parent = info[element.level - 1];
-		switch(obj->type) {
-		case ObjectType::Object:
-			if(data) {
-				assert(parent.object->type == ObjectType::Object);
-				info[element.level] = {obj, data};
-			} else {
-				assert(parent.object->type == ObjectType::ObjectArray);
-				auto& pool = store.arrayPool[parent.id];
-				auto items = parent.object->objinfo[0];
-				info[element.level] = {items, pool.add(*items), 0};
-			}
-			break;
-		case ObjectType::Array: {
-			assert(obj->propertyCount == 1);
-			auto id = store.arrayPool.add(obj->propinfo[0]);
-			memcpy(data, &id, sizeof(id));
-			info[element.level] = {obj, nullptr, id};
-			break;
-		}
-		case ObjectType::ObjectArray: {
-			auto id = store.arrayPool.add(*obj->objinfo[0]);
-			memcpy(data, &id, sizeof(id));
-			info[element.level] = {obj, nullptr, id};
-			break;
-		}
-		}
-	}
-
-	void handleProperty(const Element& element)
-	{
-		auto [prop, data] = findProperty(element);
-		if(prop) {
-			store.setValueString(*prop, data, element.as<String>());
-		} else {
-			debug_w("[JSON] '%s' not in schema", element.key);
-		}
-	}
-
 	bool startElement(const Element& element) override
 	{
-		if(element.isContainer()) {
-			handleContainer(element);
-		} else {
-			handleProperty(element);
+		if(element.level == 0) {
+			info[element.level] = store.getObject();
+			return true;
 		}
+
+		auto& parent = info[element.level - 1];
+		if(!parent) {
+			return true;
+		}
+
+		if(element.isContainer()) {
+			std::unique_ptr<Object> obj;
+			if(parent->getTypeinfo().type == ObjectType::ObjectArray) {
+				obj = static_cast<ObjectArray*>(parent.get())->addNewObject();
+			} else {
+				obj = parent->findObject(element.key, element.keyLength);
+				if(!obj) {
+					debug_w("[JSON] Object '%s' not in schema", element.key);
+				}
+			}
+			info[element.level] = std::move(obj);
+			return true;
+		}
+
+		if(parent->getTypeinfo().type == ObjectType::Array) {
+			static_cast<Array*>(parent.get())->addNewItem(element.value, element.valueLength);
+			return true;
+		}
+		auto prop = parent->findProperty(element.key, element.keyLength);
+		if(!prop) {
+			debug_w("[JSON] Property '%s' not in schema", element.key);
+			return true;
+		}
+		prop.setValueString(element.value, element.valueLength);
 		return true;
 	}
 
@@ -170,12 +93,7 @@ public:
 
 private:
 	Store& store;
-	struct Info {
-		const ObjectInfo* object;
-		void* data;
-		ArrayId id;
-	};
-	Info info[JSON::StreamingParser::maxNesting]{};
+	std::unique_ptr<Object> info[JSON::StreamingParser::maxNesting]{};
 };
 
 bool Store::load()
@@ -194,7 +112,7 @@ bool Store::load()
 	}
 
 	ConfigListener listener(*this);
-	JSON::StaticStreamingParser<128> parser(&listener);
+	JSON::StaticStreamingParser<1024> parser(&listener);
 	auto status = parser.parse(stream);
 
 	if(status == JSON::Status::EndOfDocument) {
@@ -210,7 +128,7 @@ bool Store::save()
 	String filename = getFilename();
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
-		StaticPrintBuffer<256> buffer(stream);
+		StaticPrintBuffer<512> buffer(stream);
 		auto& root = getTypeinfo().object;
 		printObjectTo(root, &fstr_empty, rootObjectData.get(), 0, buffer);
 	}
@@ -320,4 +238,4 @@ size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, c
 	return n;
 }
 
-} // namespace Json
+} // namespace ConfigDB::Json

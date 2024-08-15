@@ -109,7 +109,7 @@ void printPoolData(const String& name, const ConfigDB::PoolData& data)
 
 void printStringPool(ConfigDB::StringPool& pool, bool detailed)
 {
-	CStringArray csa = pool.getStrings();
+	CStringArray csa(pool.getBuffer(), pool.getCount());
 	auto n = csa.count();
 	printPoolData(F("StringPool"), pool);
 

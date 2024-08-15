@@ -101,7 +101,12 @@ public:
 
 	String getPropertyValue(const PropertyInfo& prop, const void* data) const;
 
-	bool setPropertyValue(const PropertyInfo& prop, void* data, const String& value);
+	bool setPropertyValue(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
+
+	bool setPropertyValue(const PropertyInfo& prop, void* data, const String& value)
+	{
+		return setPropertyValue(prop, data, value.c_str(), value.length());
+	}
 
 	virtual Store& getStore()
 	{
@@ -136,6 +141,20 @@ public:
 	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
 
 	/**
+	 * @brief Remove child item
+	 * @note Only supported by Array and ObjectArray
+	 */
+	virtual bool removeItem(unsigned index)
+	{
+		return false;
+	}
+
+	/**
+	 * @brief Find child object by name
+	 */
+	std::unique_ptr<Object> findObject(const char* name, size_t length);
+
+	/**
 	 * @brief Get number of properties
 	 * @note Array types override this to return the number of items in the array.
 	 */
@@ -149,6 +168,11 @@ public:
 	 * @note Array types override this to return array elements
 	 */
 	virtual Property getProperty(unsigned index);
+
+	/**
+	 * @brief Find property by name
+	 */
+	Property findProperty(const char* name, size_t length);
 
 	/**
 	 * @brief Commit changes to the store
@@ -176,8 +200,6 @@ public:
 	size_t printTo(Print& p) const;
 
 protected:
-	StringId addString(const String& value);
-
 	Object* parent{};
 };
 

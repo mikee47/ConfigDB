@@ -83,6 +83,35 @@ String ObjectInfo::getTypeDesc() const
 	return s;
 }
 
+std::unique_ptr<Object> Object::findObject(const char* name, size_t length)
+{
+	auto& typeinfo = getTypeinfo();
+	if(typeinfo.type != ObjectType::Object) {
+		return nullptr;
+	}
+	for(unsigned i = 0; i < typeinfo.objectCount; ++i) {
+		if(typeinfo.objinfo[i]->name.equals(name, length)) {
+			return getObject(i);
+		}
+	}
+	return nullptr;
+}
+
+Property Object::findProperty(const char* name, size_t length)
+{
+	auto& typeinfo = getTypeinfo();
+	if(typeinfo.type != ObjectType::Object) {
+		return {};
+	}
+	for(unsigned i = 0; i < typeinfo.propertyCount; ++i) {
+		if(typeinfo.propinfo[i].name.equals(name, length)) {
+			return getProperty(i);
+		}
+	}
+
+	return {};
+}
+
 bool Object::commit()
 {
 	return getStore().commit();
@@ -115,14 +144,9 @@ String Object::getPropertyValue(const PropertyInfo& prop, const void* data) cons
 	return getStore().getValueString(prop, data);
 }
 
-bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const String& value)
+bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const char* value, size_t valueLength)
 {
-	return getStore().setValueString(prop, data, value);
-}
-
-StringId Object::addString(const String& value)
-{
-	return getStore().stringPool.findOrAdd(value);
+	return getStore().setValueString(prop, data, value, valueLength);
 }
 
 Property Object::getProperty(unsigned index)

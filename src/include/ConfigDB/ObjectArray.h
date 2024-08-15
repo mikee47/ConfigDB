@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Object.h"
+#include "Pool.h"
 
 namespace ConfigDB
 {
@@ -39,9 +40,10 @@ public:
 
 	void* getObjectDataPtr(unsigned index);
 
-	bool removeItem(unsigned index);
-
-	unsigned getObjectCount() const override;
+	unsigned getObjectCount() const override
+	{
+		return id ? getArray().getCount() : 0;
+	}
 
 	unsigned getPropertyCount() const override
 	{
@@ -58,7 +60,25 @@ public:
 		return &id;
 	}
 
+	std::unique_ptr<Object> addNewObject()
+	{
+		return getObject(getObjectCount());
+	}
+
+	bool removeItem(unsigned index) override
+	{
+		return id && getArray().remove(index);
+	}
+
 private:
+	ArrayData& getArray();
+
+	const ArrayData& getArray() const
+	{
+		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
+		return const_cast<ObjectArray*>(this)->getArray();
+	}
+
 	ArrayId& id;
 };
 
@@ -86,7 +106,7 @@ public:
 
 	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
 	{
-		if(index >= getObjectCount()) {
+		if(index > getObjectCount()) {
 			return nullptr;
 		}
 		return std::make_unique<Item>(*this, getObjectData(index));

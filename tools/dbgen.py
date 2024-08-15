@@ -684,6 +684,16 @@ def generate_array_accessors(arr: Array) -> list:
         '{',
         ['return Array::setItem(index, value);'],
         '}'
+        '',
+        f'bool insertItem(unsigned index, const {prop.ctype}& value)',
+        '{',
+        ['return Array::setItem(index, value);'],
+        '}'
+        '',
+        f'bool addItem(const {prop.ctype}& value)',
+        '{',
+        ['return Array::addItem(value);'],
+        '}'
     ]]
 
 

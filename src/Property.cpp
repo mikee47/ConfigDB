@@ -39,26 +39,34 @@ const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
 
 String Property::getValue() const
 {
-	if(object && data) {
-		return object->getStore().getValueString(info, data);
+	if(info) {
+		return object->getStore().getValueString(*info, data);
 	}
 	return nullptr;
 }
 
 String Property::getJsonValue() const
 {
-	if(!object) {
+	if(!info) {
 		return nullptr;
 	}
 	String value = getValue();
 	if(!value) {
 		return "null";
 	}
-	if(info.type < PropertyType::String) {
+	if(info->type < PropertyType::String) {
 		return value;
 	}
 	::Format::standard.quote(value);
 	return value;
+}
+
+bool Property::setValueString(const char* value, size_t valueLength)
+{
+	if(!info) {
+		return false;
+	}
+	return object->setPropertyValue(*info, data, value, valueLength);
 }
 
 } // namespace ConfigDB
