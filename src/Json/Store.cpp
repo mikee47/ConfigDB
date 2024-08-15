@@ -21,7 +21,6 @@
 #include <ConfigDB/Database.h>
 #include <ConfigDB/Pool.h>
 #include <Data/Stream/FileStream.h>
-#include <Data/CStringArray.h>
 #include <Data/Buffer/PrintBuffer.h>
 #include <JSON/StreamingParser.h>
 #include <Data/Format/Standard.h>
@@ -42,11 +41,11 @@ class ConfigListener : public JSON::Listener
 public:
 	using Element = JSON::Element;
 
-	ConfigListener(ConfigDB::Store& store) : store(store)
+	ConfigListener(Store& store) : store(store)
 	{
 	}
 
-	std::pair<const ConfigDB::ObjectInfo*, void*> findObject(const Element& element)
+	std::pair<const ObjectInfo*, void*> findObject(const Element& element)
 	{
 		auto& parent = info[element.level - 1];
 		if(!parent.object || !parent.object->objectCount) {
@@ -70,18 +69,18 @@ public:
 		return {};
 	}
 
-	std::tuple<const ConfigDB::PropertyInfo*, void*> findProperty(const Element& element)
+	std::tuple<const PropertyInfo*, void*> findProperty(const Element& element)
 	{
 		auto& parent = info[element.level - 1];
 		auto obj = parent.object;
 		if(!obj || !obj->propertyCount) {
 			return {};
 		}
-		if(obj->type == ConfigDB::ObjectType::Array) {
+		if(obj->type == ObjectType::Array) {
 			auto& data = store.arrayPool[parent.id];
 			return {&obj->propinfo[0], data.add()};
 		}
-		assert(obj->type == ConfigDB::ObjectType::Object);
+		assert(obj->type == ObjectType::Object);
 
 		size_t offset{0};
 		// Skip over child objects
@@ -115,25 +114,25 @@ public:
 
 		auto& parent = info[element.level - 1];
 		switch(obj->type) {
-		case ConfigDB::ObjectType::Object:
+		case ObjectType::Object:
 			if(data) {
-				assert(parent.object->type == ConfigDB::ObjectType::Object);
+				assert(parent.object->type == ObjectType::Object);
 				info[element.level] = {obj, data};
 			} else {
-				assert(parent.object->type == ConfigDB::ObjectType::ObjectArray);
+				assert(parent.object->type == ObjectType::ObjectArray);
 				auto& pool = store.arrayPool[parent.id];
 				auto items = parent.object->objinfo[0];
 				info[element.level] = {items, pool.add(*items), 0};
 			}
 			break;
-		case ConfigDB::ObjectType::Array: {
+		case ObjectType::Array: {
 			assert(obj->propertyCount == 1);
 			auto id = store.arrayPool.add(obj->propinfo[0]);
 			memcpy(data, &id, sizeof(id));
 			info[element.level] = {obj, nullptr, id};
 			break;
 		}
-		case ConfigDB::ObjectType::ObjectArray: {
+		case ObjectType::ObjectArray: {
 			auto id = store.arrayPool.add(*obj->objinfo[0]);
 			memcpy(data, &id, sizeof(id));
 			info[element.level] = {obj, nullptr, id};
@@ -169,11 +168,11 @@ public:
 	}
 
 private:
-	ConfigDB::Store& store;
+	Store& store;
 	struct Info {
-		const ConfigDB::ObjectInfo* object;
+		const ObjectInfo* object;
 		void* data;
-		ConfigDB::ArrayId id;
+		ArrayId id;
 	};
 	Info info[JSON::StreamingParser::maxNesting]{};
 };
@@ -320,4 +319,4 @@ size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, c
 	return n;
 }
 
-} // namespace ConfigDB::Json
+} // namespace Json
