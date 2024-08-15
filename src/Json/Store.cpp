@@ -23,13 +23,14 @@
 #include <Data/Stream/FileStream.h>
 #include <Data/Buffer/PrintBuffer.h>
 #include <JSON/StreamingParser.h>
-#include <Data/Format/Standard.h>
+#include <Data/Format/Json.h>
 
 namespace
 {
 String quote(String s)
 {
-	::Format::standard.quote(s);
+	::Format::json.escape(s);
+	::Format::json.quote(s);
 	return s;
 }
 } // namespace
