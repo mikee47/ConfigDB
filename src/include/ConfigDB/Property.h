@@ -97,17 +97,19 @@ union __attribute__((packed)) PropertyData {
 /**
  * @brief Manages a key/value pair stored in an object
  */
-class Property
+class PropertyConst
 {
 public:
-	Property() = default;
+	PropertyConst() : info(&PropertyInfo::empty)
+	{
+	}
 
 	/**
 	 * @brief Create a Property instance
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	Property(Object& object, const PropertyInfo& info, void* data) : info(&info), object(&object), data(data)
+	PropertyConst(Object& object, const PropertyInfo& info, void* data) : info(&info), object(&object), data(data)
 	{
 	}
 
@@ -120,17 +122,23 @@ public:
 
 	String getJsonValue() const;
 
-	bool setValueString(const char* value, size_t valueLength);
-
-	const PropertyInfo* getInfo() const
+	const PropertyInfo& typeinfo() const
 	{
-		return info;
+		return *info;
 	}
 
-private:
-	const PropertyInfo* info{};
+protected:
+	const PropertyInfo* info;
 	Object* object{};
 	void* data{};
+};
+
+class Property : public PropertyConst
+{
+public:
+	using PropertyConst::PropertyConst;
+
+	bool setValueString(const char* value, size_t valueLength);
 };
 
 } // namespace ConfigDB

@@ -30,11 +30,13 @@ namespace ConfigDB
 class Array : public Object
 {
 public:
-	Array(Store& store, const ObjectInfo& typeinfo);
+	using Object::Object;
 
-	Array(Object& parent, ArrayId& id) : Object(parent), id(id)
-	{
-	}
+	// Array(const ObjectInfo& typeinfo, Store& store);
+
+	// Array(const ObjectInfo& typeinfo, Object& parent, ArrayId& id) : Object(typeinfo, parent), id(id)
+	// {
+	// }
 
 	template <typename T> typename std::enable_if<std::is_integral<T>::value, T>::type getItem(unsigned index) const
 	{
@@ -69,26 +71,21 @@ public:
 		return getArray().add(addString(value));
 	}
 
-	bool removeItem(unsigned index) override
+	bool removeItem(unsigned index)
 	{
 		return getArray().remove(index);
 	}
 
-	std::unique_ptr<Object> getObject(unsigned) override
-	{
-		return nullptr;
-	}
-
-	unsigned getPropertyCount() const override
+	unsigned getPropertyCount() const
 	{
 		return getArray().getCount();
 	}
 
-	Property getProperty(unsigned index) override;
+	Property getProperty(unsigned index);
 
-	void* getData() override
+	ArrayId id() const
 	{
-		return &id;
+		return *static_cast<ArrayId*>(data);
 	}
 
 private:
@@ -101,8 +98,6 @@ private:
 	}
 
 	StringId addString(const String& value);
-
-	ArrayId& id;
 };
 
 /**
@@ -112,11 +107,12 @@ private:
 template <class ClassType> class ArrayTemplate : public Array
 {
 public:
-	using Array::Array;
-
-	const ObjectInfo& getTypeinfo() const override
+	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
 	{
-		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+	ArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, parent, id)
+	{
 	}
 };
 

@@ -22,18 +22,13 @@
 
 namespace ConfigDB
 {
-ObjectArray::ObjectArray(Store& store, const ObjectInfo& typeinfo)
-	: Object(), id(store.getObjectData<ArrayId>(typeinfo))
-{
-}
-
 ArrayData& ObjectArray::getArray()
 {
 	auto& store = getStore();
-	if(id == 0) {
-		id = store.arrayPool.add(*getTypeinfo().objinfo[0]);
+	if(id() == 0) {
+		*static_cast<ArrayId*>(data) = store.arrayPool.add(*typeinfo().objinfo[0]);
 	}
-	return store.arrayPool[id];
+	return store.arrayPool[id()];
 }
 
 void* ObjectArray::getObjectDataPtr(unsigned index)
@@ -42,7 +37,7 @@ void* ObjectArray::getObjectDataPtr(unsigned index)
 	if(index < array.getCount()) {
 		return array[index];
 	}
-	return array.add(*getTypeinfo().objinfo[0]);
+	return array.add(*typeinfo().objinfo[0]);
 }
 
 } // namespace ConfigDB

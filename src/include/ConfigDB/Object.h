@@ -89,14 +89,23 @@ static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
 class Object
 {
 public:
-	Object() = default;
-
-	explicit Object(Object& parent) : parent(&parent)
+	Object() : typeinfo_(&ObjectInfo::empty)
 	{
 	}
 
-	virtual ~Object()
+	explicit Object(const ObjectInfo& typeinfo) : typeinfo_(&typeinfo)
 	{
+	}
+
+	Object(const ObjectInfo& typeinfo, Store& store);
+
+	Object(const ObjectInfo& typeinfo, Object& parent, void* data) : typeinfo_(&typeinfo), parent(&parent), data(data)
+	{
+	}
+
+	explicit operator bool() const
+	{
+		return typeinfo_ != &ObjectInfo::empty;
 	}
 
 	String getPropertyValue(const PropertyInfo& prop, const void* data) const;
@@ -108,11 +117,23 @@ public:
 		return setPropertyValue(prop, data, value.c_str(), value.length());
 	}
 
-	virtual Store& getStore()
-	{
-		assert(parent != nullptr);
-		return parent->getStore();
-	}
+	/*
+
+An Object has `ObjectInfo` plus `void*` data.
+The `shared_ptr<Store>` also exists in the constructed object, which overrides this method.
+
+We can do this without virtual methods by adding a `RootObject` type which contains this value.
+Thus:
+
+if (typeinfo().type == ObjectType::RootObject) {
+	return static_cast<RootObject*>(this)->store;
+} else {
+	return parent->getStore();
+}
+
+*/
+
+	Store& getStore();
 
 	const Store& getStore() const
 	{
@@ -130,44 +151,37 @@ public:
 	 * @brief Get number of child objects
 	 * @note ObjectArray overrides this to return number of items in the array
 	 */
-	virtual unsigned getObjectCount() const
-	{
-		return getTypeinfo().objectCount;
-	}
+	unsigned getObjectCount() const;
 
 	/**
 	 * @brief Get child object by index
 	 */
-	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
-
-	/**
-	 * @brief Remove child item
-	 * @note Only supported by Array and ObjectArray
-	 */
-	virtual bool removeItem(unsigned index)
-	{
-		return false;
-	}
+	Object getObject(unsigned index);
 
 	/**
 	 * @brief Find child object by name
 	 */
-	std::unique_ptr<Object> findObject(const char* name, size_t length);
+	Object findObject(const char* name, size_t length);
 
 	/**
 	 * @brief Get number of properties
 	 * @note Array types override this to return the number of items in the array.
 	 */
-	virtual unsigned getPropertyCount() const
+	unsigned getPropertyCount() const
 	{
-		return getTypeinfo().propertyCount;
+		return typeinfo().propertyCount;
 	}
 
 	/**
 	 * @brief Get properties
 	 * @note Array types override this to return array elements
 	 */
-	virtual Property getProperty(unsigned index);
+	Property getProperty(unsigned index);
+
+	PropertyConst getProperty(unsigned index) const
+	{
+		return const_cast<Object*>(this)->getProperty(index);
+	}
 
 	/**
 	 * @brief Find property by name
@@ -179,28 +193,34 @@ public:
 	 */
 	bool commit();
 
-	// Printable [STOREIMPL]
-	// virtual size_t printTo(Print& p) const = 0;
-
-	virtual const ObjectInfo& getTypeinfo() const = 0;
-
-	/**
-	 * @brief Get a pointer to this object's data structure
-	 * @note Implemented by code generator
-	 */
-	virtual void* getData() = 0;
-
 	String getName() const
 	{
-		return getTypeinfo().name;
+		return typeinfo().name;
 	}
 
 	String getPath() const;
 
 	size_t printTo(Print& p) const;
 
+	const ObjectInfo& typeinfo() const
+	{
+		return *typeinfo_;
+	}
+
 protected:
+	const ObjectInfo* typeinfo_;
 	Object* parent{};
+	void* data{};
+};
+
+/**
+ * @brief Non-contained objects are generated so they can be cast to this type.
+ * These objects are identified by a null `parent`.
+ */
+class RootObject : public Object
+{
+public:
+	std::shared_ptr<Store> store;
 };
 
 /**
@@ -210,17 +230,26 @@ protected:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate() = default;
-
-	explicit ObjectTemplate(Object& parent) : Object(parent)
+	ObjectTemplate() : Object(ClassType::typeinfo)
 	{
 	}
 
-	const ObjectInfo& getTypeinfo() const override
+	explicit ObjectTemplate(Store& store) : Object(ClassType::typeinfo, store)
 	{
-		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+	explicit ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, parent, data)
+	{
 	}
 };
+
+inline Store& Object::getStore()
+{
+	if(parent) {
+		return parent->getStore();
+	}
+	return *static_cast<RootObject*>(this)->store;
+}
 
 } // namespace ConfigDB
 

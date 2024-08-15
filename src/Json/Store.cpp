@@ -59,11 +59,11 @@ public:
 		}
 
 		if(element.isContainer()) {
-			std::unique_ptr<Object> obj;
-			if(parent->getTypeinfo().type == ObjectType::ObjectArray) {
-				obj = static_cast<ObjectArray*>(parent.get())->addNewObject();
+			Object obj;
+			if(parent.typeinfo().type == ObjectType::ObjectArray) {
+				obj = static_cast<ObjectArray&>(parent).addNewObject();
 			} else {
-				obj = parent->findObject(element.key, element.keyLength);
+				obj = parent.findObject(element.key, element.keyLength);
 				if(!obj) {
 					debug_w("[JSON] Object '%s' not in schema", element.key);
 				}
@@ -72,11 +72,11 @@ public:
 			return true;
 		}
 
-		if(parent->getTypeinfo().type == ObjectType::Array) {
-			static_cast<Array*>(parent.get())->addNewItem(element.value, element.valueLength);
+		if(parent.typeinfo().type == ObjectType::Array) {
+			static_cast<Array&>(parent).addNewItem(element.value, element.valueLength);
 			return true;
 		}
-		auto prop = parent->findProperty(element.key, element.keyLength);
+		auto prop = parent.findProperty(element.key, element.keyLength);
 		if(!prop) {
 			debug_w("[JSON] Property '%s' not in schema", element.key);
 			return true;
@@ -93,7 +93,7 @@ public:
 
 private:
 	Store& store;
-	std::unique_ptr<Object> info[JSON::StreamingParser::maxNesting]{};
+	Object info[JSON::StreamingParser::maxNesting]{};
 };
 
 bool Store::load()

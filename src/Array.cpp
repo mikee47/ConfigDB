@@ -22,19 +22,14 @@
 
 namespace ConfigDB
 {
-Array::Array(Store& store, const ObjectInfo& typeinfo) : Object(), id(store.getObjectData<ArrayId>(typeinfo))
-{
-}
-
 ArrayData& Array::getArray()
 {
 	auto& store = getStore();
-	if(id == 0) {
-		auto& object = getTypeinfo();
-		assert(object.propertyCount == 1);
-		id = store.arrayPool.add(object.propinfo[0]);
+	if(id() == 0) {
+		assert(typeinfo().propertyCount == 1);
+		*static_cast<ArrayId*>(data) = store.arrayPool.add(typeinfo().propinfo[0]);
 	}
-	return store.arrayPool[id];
+	return store.arrayPool[id()];
 }
 
 StringId Array::addString(const String& value)
@@ -49,18 +44,16 @@ Property Array::getProperty(unsigned index)
 		return {};
 	}
 	// Property info contains exactly one element
-	auto& typeinfo = getTypeinfo();
-	assert(typeinfo.propertyCount == 1);
-	return {*this, typeinfo.propinfo[0], array[index]};
+	assert(typeinfo().propertyCount == 1);
+	return {*this, typeinfo().propinfo[0], array[index]};
 }
 
 bool Array::addNewItem(const char* value, size_t valueLength)
 {
-	auto& typeinfo = getTypeinfo();
-	assert(typeinfo.propertyCount == 1);
+	assert(typeinfo().propertyCount == 1);
 	auto& array = getArray();
 	auto data = array[array.getCount()];
-	return setPropertyValue(typeinfo.propinfo[0], data, value, valueLength);
+	return setPropertyValue(typeinfo().propinfo[0], data, value, valueLength);
 }
 
 } // namespace ConfigDB

@@ -30,44 +30,43 @@ namespace ConfigDB
 class ObjectArray : public Object
 {
 public:
+	using Object::Object;
 	// ObjectArray() = default;
 
-	ObjectArray(Store& store, const ObjectInfo& typeinfo);
+	// ObjectArray(Store& store, const ObjectInfo& typeinfo);
 
-	ObjectArray(Object& parent, ArrayId& id) : Object(parent), id(id)
+	// ObjectArray(Object& parent, ArrayId& id) : Object(parent), id(id)
+	// {
+	// }
+
+	Object getObject(unsigned index)
 	{
+		if(index > getObjectCount()) {
+			return {};
+		}
+		return Object(*typeinfo().objinfo[0], *this, getObjectDataPtr(index));
 	}
 
 	void* getObjectDataPtr(unsigned index);
 
-	unsigned getObjectCount() const override
+	unsigned getObjectCount() const
 	{
-		return id ? getArray().getCount() : 0;
+		return id() ? getArray().getCount() : 0;
 	}
 
-	unsigned getPropertyCount() const override
-	{
-		return 0;
-	}
-
-	Property getProperty(unsigned)
-	{
-		return {};
-	}
-
-	void* getData() override
-	{
-		return &id;
-	}
-
-	std::unique_ptr<Object> addNewObject()
+	Object addNewObject()
 	{
 		return getObject(getObjectCount());
 	}
 
-	bool removeItem(unsigned index) override
+	bool removeItem(unsigned index)
 	{
-		return id && getArray().remove(index);
+		return id() && getArray().remove(index);
+	}
+
+	ArrayId id() const
+	{
+		return *static_cast<ArrayId*>(data);
 	}
 
 private:
@@ -78,8 +77,6 @@ private:
 		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
 		return const_cast<ObjectArray*>(this)->getArray();
 	}
-
-	ArrayId& id;
 };
 
 /**
@@ -92,7 +89,13 @@ template <class ClassType, class ItemType> class ObjectArrayTemplate : public Ob
 public:
 	using Item = ItemType;
 
-	using ObjectArray::ObjectArray;
+	explicit ObjectArrayTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
+	{
+	}
+
+	ObjectArrayTemplate(Object& parent, void* data) : ObjectArray(ClassType::typeinfo, parent, data)
+	{
+	}
 
 	Item getItem(unsigned index)
 	{
@@ -102,19 +105,6 @@ public:
 	Item addItem()
 	{
 		return Item(*this, getObjectData(getObjectCount()));
-	}
-
-	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
-	{
-		if(index > getObjectCount()) {
-			return nullptr;
-		}
-		return std::make_unique<Item>(*this, getObjectData(index));
-	}
-
-	const ObjectInfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 
 private:

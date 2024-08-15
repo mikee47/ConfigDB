@@ -18,6 +18,7 @@
  ****/
 
 #include "include/ConfigDB/Object.h"
+#include "include/ConfigDB/ObjectArray.h"
 #include "include/ConfigDB/Store.h"
 
 String toString(ConfigDB::ObjectType type)
@@ -83,28 +84,53 @@ String ObjectInfo::getTypeDesc() const
 	return s;
 }
 
-std::unique_ptr<Object> Object::findObject(const char* name, size_t length)
+Object::Object(const ObjectInfo& typeinfo, Store& store) : typeinfo_(&typeinfo), data(store.getObjectDataPtr(typeinfo))
 {
-	auto& typeinfo = getTypeinfo();
-	if(typeinfo.type != ObjectType::Object) {
-		return nullptr;
+}
+
+unsigned Object::getObjectCount() const
+{
+	if(typeinfo().type == ObjectType::ObjectArray) {
+		return static_cast<const ObjectArray*>(this)->getObjectCount();
 	}
-	for(unsigned i = 0; i < typeinfo.objectCount; ++i) {
-		if(typeinfo.objinfo[i]->name.equals(name, length)) {
+	return typeinfo().objectCount;
+}
+
+Object Object::getObject(unsigned index)
+{
+	if(typeinfo().type == ObjectType::ObjectArray) {
+		return static_cast<ObjectArray*>(this)->getObject(index);
+	}
+
+	if(index >= typeinfo().objectCount) {
+		return {};
+	}
+
+	auto typ = typeinfo().objinfo[index];
+	auto offset = typ->getOffset();
+	return Object(*typ, *this, static_cast<uint8_t*>(data) + offset);
+}
+
+Object Object::findObject(const char* name, size_t length)
+{
+	if(typeinfo().type != ObjectType::Object) {
+		return {};
+	}
+	for(unsigned i = 0; i < typeinfo().objectCount; ++i) {
+		if(typeinfo().objinfo[i]->name.equals(name, length)) {
 			return getObject(i);
 		}
 	}
-	return nullptr;
+	return {};
 }
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	auto& typeinfo = getTypeinfo();
-	if(typeinfo.type != ObjectType::Object) {
+	if(typeinfo().type != ObjectType::Object) {
 		return {};
 	}
-	for(unsigned i = 0; i < typeinfo.propertyCount; ++i) {
-		if(typeinfo.propinfo[i].name.equals(name, length)) {
+	for(unsigned i = 0; i < typeinfo().propertyCount; ++i) {
+		if(typeinfo().propinfo[i].name.equals(name, length)) {
 			return getProperty(i);
 		}
 	}
@@ -125,11 +151,11 @@ Database& Object::getDatabase()
 String Object::getPath() const
 {
 	String relpath;
-	for(auto typeinfo = &getTypeinfo(); typeinfo->parent; typeinfo = typeinfo->parent) {
+	for(auto typ = typeinfo_; typ->parent; typ = typ->parent) {
 		if(relpath) {
 			relpath += '.';
 		}
-		relpath += typeinfo->name;
+		relpath += typ->name;
 	}
 	String path = getStore().getName();
 	if(relpath) {
@@ -151,18 +177,21 @@ bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const char* 
 
 Property Object::getProperty(unsigned index)
 {
-	auto& typeinfo = getTypeinfo();
-	if(index >= typeinfo.propertyCount) {
+	if(typeinfo().type == ObjectType::Array) {
+		return static_cast<Array*>(this)->getProperty(index);
+	}
+
+	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
-	auto data = static_cast<uint8_t*>(getData());
-	data += typeinfo.getPropertyOffset(index);
-	return {*this, typeinfo.propinfo[index], data};
+	auto propData = static_cast<uint8_t*>(data);
+	propData += typeinfo().getPropertyOffset(index);
+	return {*this, typeinfo().propinfo[index], propData};
 }
 
 size_t Object::printTo(Print& p) const
 {
-	return getStore().printObjectTo(getTypeinfo(), &getTypeinfo().name, const_cast<Object*>(this)->getData(), 0, p);
+	return getStore().printObjectTo(typeinfo(), &typeinfo().name, data, 0, p);
 }
 
 } // namespace ConfigDB

@@ -37,7 +37,7 @@ namespace ConfigDB
 {
 const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
 
-String Property::getValue() const
+String PropertyConst::getValue() const
 {
 	if(info) {
 		return object->getStore().getValueString(*info, data);
@@ -45,7 +45,7 @@ String Property::getValue() const
 	return nullptr;
 }
 
-String Property::getJsonValue() const
+String PropertyConst::getJsonValue() const
 {
 	if(!info) {
 		return nullptr;
