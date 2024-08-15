@@ -591,7 +591,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         '{',
         *([str(e) + ','] for e in [
             'fstr_empty' if obj.is_item or obj.is_root else strings[obj.name],
-            'nullptr' if obj.is_root or obj.is_array else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
+            'nullptr' if obj.is_root or obj.is_item_member else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             'objinfo' if objinfo else 'nullptr',
             'nullptr' if obj.is_array else '&defaultData',
             f'sizeof({obj.typename_struct})',
