@@ -115,9 +115,9 @@ protected:
 };
 
 /**
- * @brief Used by store implemention to create specific template for `Store`
- * @tparam BaseType The store's base `Store` class
- * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @brief Used by code generator for store class
+ * @tparam BaseType The store's base `Store` class (e.g. `Json::Store`)
+ * @tparam ClassType Concrete type being generated
  */
 template <class BaseType, class ClassType> class StoreTemplate : public BaseType
 {

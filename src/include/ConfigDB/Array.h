@@ -32,53 +32,6 @@ class Array : public Object
 public:
 	using Object::Object;
 
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, T>::type getItem(unsigned index) const
-	{
-		return *static_cast<const T*>(getArray()[index]);
-	}
-
-	template <typename T> typename std::enable_if<std::is_same<T, String>::value, T>::type getItem(unsigned index) const
-	{
-		return static_cast<const char*>(getArray()[index]);
-	}
-
-	template <typename T>
-	typename std::enable_if<std::is_integral<T>::value, void>::type setItem(unsigned index, T value)
-	{
-		getArray().set(index, value);
-	}
-
-	void setItem(unsigned index, const String& value)
-	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().set(index, getStringId(value));
-	}
-
-	void addNewItem(const char* value, size_t valueLength);
-
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, void>::type addItem(T value)
-	{
-		getArray().add(value);
-	}
-
-	void addItem(const String& value)
-	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().add(getStringId(value));
-	}
-
-	template <typename T>
-	typename std::enable_if<std::is_integral<T>::value, void>::type insertItem(unsigned index, T value)
-	{
-		getArray().insert(index, value);
-	}
-
-	void insertItem(unsigned index, const String& value)
-	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().insert(index, getStringId(value));
-	}
-
 	bool removeItem(unsigned index)
 	{
 		return getArray().remove(index);
@@ -91,12 +44,14 @@ public:
 
 	Property getProperty(unsigned index);
 
+	void addNewItem(const char* value, size_t valueLength);
+
 	ArrayId id() const
 	{
 		return *static_cast<ArrayId*>(data);
 	}
 
-private:
+protected:
 	ArrayData& getArray();
 
 	const ArrayData& getArray() const
@@ -107,10 +62,11 @@ private:
 };
 
 /**
- * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @brief Used by code generator for integral-typed arrays
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam ItemType Type of item
  */
-template <class ClassType> class ArrayTemplate : public Array
+template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
 	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
@@ -119,6 +75,66 @@ public:
 
 	ArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, parent, id)
 	{
+	}
+
+	ItemType getItem(unsigned index) const
+	{
+		return *static_cast<const ItemType*>(getArray()[index]);
+	}
+
+	void setItem(unsigned index, ItemType value)
+	{
+		getArray().set(index, value);
+	}
+
+	void addItem(ItemType value)
+	{
+		getArray().add(value);
+	}
+
+	void insertItem(unsigned index, ItemType value)
+	{
+		getArray().insert(index, value);
+	}
+};
+
+/**
+ * @brief Used by code generator for String-typed arrays
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam ItemType Type of item, not used (always String)
+ */
+template <class ClassType, typename ItemType> class StringArrayTemplate : public Array
+{
+public:
+	explicit StringArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
+	{
+	}
+
+	StringArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, parent, id)
+	{
+	}
+
+	String getItem(unsigned index) const
+	{
+		return static_cast<const char*>(getArray()[index]);
+	}
+
+	void setItem(unsigned index, const String& value)
+	{
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().set(index, getStringId(value));
+	}
+
+	void addItem(const String& value)
+	{
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().add(getStringId(value));
+	}
+
+	void insertItem(unsigned index, const String& value)
+	{
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().insert(index, getStringId(value));
 	}
 };
 

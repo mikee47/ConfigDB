@@ -85,7 +85,7 @@ private:
 
 /**
  * @brief Used by code generator to create specific template for `Database`
- * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @tparam ClassType Concrete type provided by code generator
  */
 template <class ClassType> class DatabaseTemplate : public Database
 {

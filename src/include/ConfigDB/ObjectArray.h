@@ -72,8 +72,8 @@ protected:
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator (CRTP)
- * @tparam Item Concrete type for array item provided by code generator
+ * @tparam ClassType Concrete class type
+ * @tparam ItemType Array item class type
  */
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {

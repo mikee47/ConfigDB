@@ -193,7 +193,7 @@ protected:
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @tparam ClassType Concrete type provided by code generator
  */
 template <class ClassType> class ObjectTemplate : public Object
 {

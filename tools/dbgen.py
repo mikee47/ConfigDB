@@ -233,6 +233,10 @@ class Array(Object):
         return True
 
     @property
+    def base_class(self):
+        return 'StringArray' if self.items.ptype == 'string' else 'Array'
+
+    @property
     def typename_struct(self):
         return 'ConfigDB::ArrayId'
 
@@ -610,34 +614,6 @@ def generate_property_accessors(obj: Object) -> list:
     ]
 
 
-def generate_array_accessors(arr: Array) -> list:
-    '''Generate typed get/set methods for each property'''
-
-    prop = arr.items
-    return [[
-        '',
-        f'{prop.ctype} getItem(unsigned index) const',
-        '{',
-        [f'return Array::getItem<{prop.ctype}>(index);'],
-        '}',
-        '',
-        f'void setItem(unsigned index, const {prop.ctype}& value)',
-        '{',
-        ['Array::setItem(index, value);'],
-        '}',
-        '',
-        f'void insertItem(unsigned index, const {prop.ctype}& value)',
-        '{',
-        ['Array::insertItem(index, value);'],
-        '}',
-        '',
-        f'void addItem(const {prop.ctype}& value)',
-        '{',
-        ['Array::addItem(value);'],
-        '}'
-    ]]
-
-
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
@@ -645,20 +621,29 @@ def generate_object(obj: Object) -> CodeLines:
 
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
-        return CodeLines([
-            *item_lines.header,
-            *declare_templated_class(obj, [obj.items.typename]),
-            typeinfo.header,
-            generate_contained_constructors(obj),
-            '};',
-            *generate_outer_class(obj)
-        ],
-        item_lines.source + typeinfo.source)
+        return CodeLines(
+            [
+                *item_lines.header,
+                *declare_templated_class(obj, [obj.items.typename]),
+                typeinfo.header,
+                generate_contained_constructors(obj),
+                '};',
+                *generate_outer_class(obj)
+            ],
+            item_lines.source + typeinfo.source)
 
+    if isinstance(obj, Array):
+        return CodeLines(
+            [
+                *declare_templated_class(obj, [obj.items.ctype]),
+                typeinfo.header,
+                generate_contained_constructors(obj),
+                '};',
+                *generate_outer_class(obj)
+            ],
+            typeinfo.source)
 
-    lines = CodeLines(
-        declare_templated_class(obj),
-        [])
+    lines = CodeLines(declare_templated_class(obj), [])
 
     # Append child object definitions
     for child in obj.children:
@@ -672,25 +657,22 @@ def generate_object(obj: Object) -> CodeLines:
     ]
     lines.source += struct.source + typeinfo.source
 
-    if isinstance(obj, Array):
-        lines.header += generate_array_accessors(obj)
-    else:
-        lines.header += [
-            *generate_property_accessors(obj),
+    lines.header += [
+        *generate_property_accessors(obj),
+        '',
+        'private:',
+        [
+            'Struct& getData()',
+            '{',
+            ['return *static_cast<Struct*>(Object::data);'],
+            '}',
             '',
-            'private:',
-            [
-                'Struct& getData()',
-                '{',
-                ['return *static_cast<Struct*>(Object::data);'],
-                '}',
-                '',
-                'const Struct& getData() const',
-                '{',
-                ['return *static_cast<const Struct*>(Object::data);'],
-                '}',
-            ],
-        ]
+            'const Struct& getData() const',
+            '{',
+            ['return *static_cast<const Struct*>(Object::data);'],
+            '}',
+        ],
+    ]
 
     # Contained children member variables
     if obj.children:
@@ -714,7 +696,7 @@ def generate_contained_constructors(obj: Object) -> list:
         headers = [
             '',
             f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
-                f'{obj.classname}Template(store)',
+                f'{obj.base_class}Template(store)',
                 *(f'{child.id}(*this, getData().{child.id})' for child in obj.children)
             ]),
             '{',
@@ -726,7 +708,7 @@ def generate_contained_constructors(obj: Object) -> list:
         headers += [
             '',
             f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {data_type}& data): ' + ', '.join([
-                f'{obj.classname}Template(parent, &data)',
+                f'{obj.base_class}Template(parent, &data)',
                 *(f'{child.id}(*this, getData().{child.id})' for child in obj.children)
             ]),
             '{',
