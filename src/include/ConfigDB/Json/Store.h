@@ -40,8 +40,7 @@ public:
 		return path;
 	}
 
-	size_t printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
-						 Print& p) const override;
+	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
 
 protected:
 	/**

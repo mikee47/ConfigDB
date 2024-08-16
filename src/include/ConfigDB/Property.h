@@ -53,6 +53,8 @@ enum class PropertyType : uint32_t {
 #undef XX
 };
 
+String toString(PropertyType type);
+
 /**
  * @brief Property metadata
  */
@@ -142,5 +144,3 @@ public:
 };
 
 } // namespace ConfigDB
-
-String toString(ConfigDB::PropertyType type);

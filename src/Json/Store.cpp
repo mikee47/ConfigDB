@@ -48,8 +48,8 @@ public:
 
 	bool startElement(const Element& element) override
 	{
-		debug_i("%s %u %s: '%s' = %u / %s", __FUNCTION__, element.level, toString(element.type).c_str(), element.key,
-				element.valueLength, element.value);
+		// debug_i("%s %u %s: '%s' = %u / %s", __FUNCTION__, element.level, toString(element.type).c_str(), element.key,
+		// 		element.valueLength, element.value);
 
 		if(element.level == 0) {
 			info[0] = Object(*store.typeinfo().objinfo[0], store);
@@ -133,8 +133,8 @@ bool Store::save()
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		auto root = typeinfo().objinfo[0];
-		printObjectTo(*root, &fstr_empty, rootObjectData.get(), 0, buffer);
+		auto root = getObject(0);
+		printObjectTo(root, &fstr_empty, 0, buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {
@@ -152,12 +152,13 @@ String Store::getValueJson(const PropertyInfo& info, const void* data) const
 	return s ? (info.type == PropertyType::String) ? quote(s) : s : "null";
 }
 
-size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
-							Print& p) const
+size_t Store::printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const
 {
-	size_t n;
+debug_i("%s %s %s, %p (parent %p)", __FUNCTION__, object.typeinfo().name.data(), object.getName().c_str(), object.data, object.parent->data );
 
-	bool isObject = (object.type == ObjectType::Object);
+	size_t n{0};
+
+	bool isObject = (object.typeinfo().type == ObjectType::Object);
 
 	auto pretty = (getDatabase().getFormat() == Format::Pretty);
 	auto newline = [&]() {
@@ -185,17 +186,18 @@ size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, c
 	}
 	unsigned itemCount = 0;
 	if(isObject) {
-		for(unsigned i = 0; i < object.objectCount; ++i) {
-			auto obj = object.objinfo[i];
+		auto objectCount = object.getObjectCount();
+		for(unsigned i = 0; i < objectCount; ++i) {
+			auto obj = const_cast<Object&>(object).getObject(i);
 			if(itemCount++) {
 				n += p.print(',');
 			}
 			newline();
-			n += printObjectTo(*obj, &obj->name, data, nesting + 1, p);
-			data = static_cast<const uint8_t*>(data) + obj->structSize;
+			n += printObjectTo(obj, &obj.typeinfo().name, nesting + 1, p);
 		}
-		for(unsigned i = 0; i < object.propertyCount; ++i) {
-			auto& prop = object.propinfo[i];
+	} else if(object.typeinfo().type == ObjectType::ObjectArray) {
+		auto objectCount = object.getObjectCount();
+		for(unsigned i = 0; i < objectCount; ++i) {
 			if(itemCount++) {
 				n += p.print(',');
 			}
@@ -204,31 +206,27 @@ size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, c
 				n += p.print(indent);
 				n += p.print("  ");
 			}
-			n += p.print(quote(prop.name));
+			auto obj = const_cast<Object&>(object).getObject(i);
+			n += printObjectTo(obj, &fstr_empty, nesting + 1, p);
+		}
+	}
+
+	auto propertyCount = object.getPropertyCount();
+	for(unsigned i = 0; i < propertyCount; ++i) {
+		auto prop = const_cast<Object&>(object).getProperty(i);
+		if(itemCount++) {
+			n += p.print(',');
+		}
+		newline();
+		if(pretty) {
+			n += p.print(indent);
+			n += p.print("  ");
+		}
+		if(prop.typeinfo().name.length()) {
+			n += p.print(quote(prop.typeinfo().name));
 			n += p.print(colon);
-			n += p.print(getValueJson(prop, data));
-			data = static_cast<const uint8_t*>(data) + prop.getSize();
 		}
-	} else {
-		auto id = *static_cast<const ArrayId*>(data);
-		if(id) {
-			auto& array = arrayPool[id];
-			for(unsigned i = 0; i < array.getCount(); ++i) {
-				if(itemCount++) {
-					n += p.print(',');
-				}
-				newline();
-				if(pretty) {
-					n += p.print(indent);
-					n += p.print("  ");
-				}
-				if(object.type == ObjectType::Array) {
-					n += p.print(getValueJson(object.propinfo[0], array[i]));
-				} else {
-					n += printObjectTo(*object.objinfo[0], &fstr_empty, array[i], nesting + 1, p);
-				}
-			}
-		}
+		n += p.print(prop.getJsonValue());
 	}
 
 	if(name) {

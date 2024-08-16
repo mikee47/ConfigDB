@@ -24,7 +24,7 @@
 #include "ObjectArray.h"
 #include "Pool.h"
 #include <WString.h>
-#include <debug_progmem.h>
+#include <memory>
 
 namespace ConfigDB
 {
@@ -75,13 +75,21 @@ public:
 		 * If this check fails then data corruption will result.
 		 * Generated code should ensure this can't happen.
 		 */
-		auto root = object.getRoot();
-		auto expected = typeinfo().objinfo[0];
-		if(root != expected) {
-			debug_e("Root is %s, expected %s", String(root->name).c_str(), String(expected->name).c_str());
-			assert(false);
+		// auto root = object.getRoot();
+		// auto expected = typeinfo().objinfo[0];
+		// if(root != expected) {
+		// 	debug_e("Root is %s, expected %s", String(root->name).c_str(), String(expected->name).c_str());
+		// 	assert(false);
+		// }
+
+		size_t offset{0};
+		for(auto obj = &object; obj; obj = obj->parent){
+			offset += obj->getOffset();
 		}
-		return rootObjectData.get() + object.getOffset();
+
+debug_i("%s %s @ %u", toString(object.type).c_str(), String(object.name).c_str(), offset);
+
+		return rootObjectData.get() + offset;
 	}
 
 	template <typename T> T& getObjectData(const ObjectInfo& object)
@@ -93,14 +101,13 @@ public:
 
 	/**
 	 * @brief Print object
-	 * @param object Type information
+	 * @param object Object to print
 	 * @param name Name to print with object. If nullptr, omit opening/closing braces.
 	 * @param nesting Nesting level for pretty-printing
 	 * @param p Output stream
 	 * @retval size_t Number of characters written
 	 */
-	virtual size_t printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
-								 Print& p) const = 0;
+	virtual size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const = 0;
 
 	size_t printTo(Print& p, unsigned nesting) const;
 

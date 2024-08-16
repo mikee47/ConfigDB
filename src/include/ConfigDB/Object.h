@@ -21,7 +21,8 @@
 
 #include "Property.h"
 #include <Printable.h>
-#include <memory>
+
+#include <debug_progmem.h>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
 	XX(Object)                                                                                                         \
@@ -39,6 +40,8 @@ enum class ObjectType : uint32_t {
 	CONFIGDB_OBJECT_TYPE_MAP(XX)
 #undef XX
 };
+
+String toString(ObjectType type);
 
 /**
  * @brief Identifies array storage within array pool
@@ -152,10 +155,7 @@ public:
 	 * @brief Get number of properties
 	 * @note Array types override this to return the number of items in the array.
 	 */
-	unsigned getPropertyCount() const
-	{
-		return typeinfo().propertyCount;
-	}
+	unsigned getPropertyCount() const;
 
 	/**
 	 * @brief Get properties
@@ -192,7 +192,7 @@ public:
 		return *typeinfo_;
 	}
 
-protected:
+// protected:
 	const ObjectInfo* typeinfo_;
 	Object* parent{};
 	void* data{};
@@ -219,5 +219,3 @@ public:
 };
 
 } // namespace ConfigDB
-
-String toString(ConfigDB::ObjectType type);

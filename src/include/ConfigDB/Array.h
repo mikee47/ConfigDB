@@ -32,12 +32,6 @@ class Array : public Object
 public:
 	using Object::Object;
 
-	// Array(const ObjectInfo& typeinfo, Store& store);
-
-	// Array(const ObjectInfo& typeinfo, Object& parent, ArrayId& id) : Object(typeinfo, parent), id(id)
-	// {
-	// }
-
 	template <typename T> typename std::enable_if<std::is_integral<T>::value, T>::type getItem(unsigned index) const
 	{
 		return *static_cast<const T*>(getArray()[index]);

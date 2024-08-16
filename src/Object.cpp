@@ -21,21 +21,21 @@
 #include "include/ConfigDB/ObjectArray.h"
 #include "include/ConfigDB/Store.h"
 
-String toString(ConfigDB::ObjectType type)
+namespace ConfigDB
+{
+const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
+
+String toString(ObjectType type)
 {
 	switch(type) {
 #define XX(name)                                                                                                       \
-	case ConfigDB::ObjectType::name:                                                                                   \
+	case ObjectType::name:                                                                                             \
 		return F(#name);
 		CONFIGDB_OBJECT_TYPE_MAP(XX)
 #undef XX
 	}
 	return nullptr;
 }
-
-namespace ConfigDB
-{
-const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
 
 size_t ObjectInfo::getOffset() const
 {
@@ -84,8 +84,7 @@ String ObjectInfo::getTypeDesc() const
 	return s;
 }
 
-Object::Object(const ObjectInfo& typeinfo, Store& store)
-	: typeinfo_(&typeinfo), parent(&store), data(store.getObjectDataPtr(typeinfo))
+Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store, store.getObjectDataPtr(typeinfo))
 {
 }
 
@@ -187,6 +186,14 @@ bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const char* 
 	return getStore().setValueString(prop, data, value, valueLength);
 }
 
+unsigned Object::getPropertyCount() const
+{
+	if(typeinfo().type == ObjectType::Array) {
+		return static_cast<const Array*>(this)->getPropertyCount();
+	}
+	return typeinfo().propertyCount;
+}
+
 Property Object::getProperty(unsigned index)
 {
 	if(typeinfo().type == ObjectType::Array) {
@@ -203,7 +210,7 @@ Property Object::getProperty(unsigned index)
 
 size_t Object::printTo(Print& p) const
 {
-	return getStore().printObjectTo(typeinfo(), &typeinfo().name, data, 0, p);
+	return getStore().printObjectTo(*this, &typeinfo().name, 0, p);
 }
 
 } // namespace ConfigDB

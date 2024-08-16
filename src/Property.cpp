@@ -19,23 +19,23 @@
 
 #include "include/ConfigDB/Property.h"
 #include "include/ConfigDB/Store.h"
-#include <Data/Format/Standard.h>
+#include <Data/Format/Json.h>
 
-String toString(ConfigDB::PropertyType type)
+namespace ConfigDB
+{
+const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
+
+String toString(PropertyType type)
 {
 	switch(type) {
 #define XX(name, ...)                                                                                                  \
-	case ConfigDB::PropertyType::name:                                                                                 \
+	case PropertyType::name:                                                                                           \
 		return F(#name);
 		CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
 	}
 	return nullptr;
 }
-
-namespace ConfigDB
-{
-const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
 
 String PropertyConst::getValue() const
 {
@@ -59,7 +59,8 @@ String PropertyConst::getJsonValue() const
 	if(info->type < PropertyType::String) {
 		return value;
 	}
-	::Format::standard.quote(value);
+	::Format::json.escape(value);
+	::Format::json.quote(value);
 	return value;
 }
 

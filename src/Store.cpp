@@ -103,8 +103,8 @@ bool Store::setValueString(const PropertyInfo& prop, void* data, const char* val
 
 size_t Store::printTo(Print& p, unsigned nesting) const
 {
-	auto root = typeinfo().objinfo[0];
-	return printObjectTo(*root, &root->name, rootObjectData.get(), nesting, p);
+	auto root = const_cast<Store*>(this)->getObject(0);
+	return printObjectTo(root, &root.typeinfo().name, nesting, p);
 }
 
 } // namespace ConfigDB
