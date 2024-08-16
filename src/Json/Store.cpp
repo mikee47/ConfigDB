@@ -154,8 +154,6 @@ String Store::getValueJson(const PropertyInfo& info, const void* data) const
 
 size_t Store::printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const
 {
-debug_i("%s %s %s, %p (parent %p)", __FUNCTION__, object.typeinfo().name.data(), object.getName().c_str(), object.data, object.parent->data );
-
 	size_t n{0};
 
 	bool isObject = (object.typeinfo().type == ObjectType::Object);
@@ -185,30 +183,19 @@ debug_i("%s %s %s, %p (parent %p)", __FUNCTION__, object.typeinfo().name.data(),
 		--nesting;
 	}
 	unsigned itemCount = 0;
-	if(isObject) {
-		auto objectCount = object.getObjectCount();
-		for(unsigned i = 0; i < objectCount; ++i) {
-			auto obj = const_cast<Object&>(object).getObject(i);
-			if(itemCount++) {
-				n += p.print(',');
-			}
-			newline();
-			n += printObjectTo(obj, &obj.typeinfo().name, nesting + 1, p);
+
+	auto objectCount = object.getObjectCount();
+	for(unsigned i = 0; i < objectCount; ++i) {
+		auto obj = const_cast<Object&>(object).getObject(i);
+		if(itemCount++) {
+			n += p.print(',');
 		}
-	} else if(object.typeinfo().type == ObjectType::ObjectArray) {
-		auto objectCount = object.getObjectCount();
-		for(unsigned i = 0; i < objectCount; ++i) {
-			if(itemCount++) {
-				n += p.print(',');
-			}
-			newline();
-			if(pretty) {
-				n += p.print(indent);
-				n += p.print("  ");
-			}
-			auto obj = const_cast<Object&>(object).getObject(i);
-			n += printObjectTo(obj, &fstr_empty, nesting + 1, p);
+		newline();
+		if(pretty && object.typeinfo().type == ObjectType::ObjectArray) {
+			n += p.print(indent);
+			n += p.print("  ");
 		}
+		n += printObjectTo(obj, &obj.typeinfo().name, nesting + 1, p);
 	}
 
 	auto propertyCount = object.getPropertyCount();

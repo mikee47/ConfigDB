@@ -70,25 +70,10 @@ public:
 
 	void* getObjectDataPtr(const ObjectInfo& object)
 	{
-		/*
-		 * Verify this object actually belongs to this Store.
-		 * If this check fails then data corruption will result.
-		 * Generated code should ensure this can't happen.
-		 */
-		// auto root = object.getRoot();
-		// auto expected = typeinfo().objinfo[0];
-		// if(root != expected) {
-		// 	debug_e("Root is %s, expected %s", String(root->name).c_str(), String(expected->name).c_str());
-		// 	assert(false);
-		// }
-
 		size_t offset{0};
-		for(auto obj = &object; obj; obj = obj->parent){
+		for(auto obj = &object; obj; obj = obj->parent) {
 			offset += obj->getOffset();
 		}
-
-debug_i("%s %s @ %u", toString(object.type).c_str(), String(object.name).c_str(), offset);
-
 		return rootObjectData.get() + offset;
 	}
 
