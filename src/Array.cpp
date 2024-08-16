@@ -32,11 +32,6 @@ ArrayData& Array::getArray()
 	return store.arrayPool[id()];
 }
 
-StringId Array::addString(const String& value)
-{
-	return getStore().stringPool.findOrAdd(value.c_str(), value.length());
-}
-
 Property Array::getProperty(unsigned index)
 {
 	auto& array = getArray();

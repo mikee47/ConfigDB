@@ -50,7 +50,7 @@ public:
 
 	bool setItem(unsigned index, const String& value)
 	{
-		return getArray().set(index, addString(value));
+		return getArray().set(index, getStringId(value));
 	}
 
 	bool addNewItem(const char* value, size_t valueLength);
@@ -62,7 +62,7 @@ public:
 
 	bool addItem(const String& value)
 	{
-		return getArray().add(addString(value));
+		return getArray().add(getStringId(value));
 	}
 
 	bool removeItem(unsigned index)
@@ -90,8 +90,6 @@ private:
 		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
 		return const_cast<Array*>(this)->getArray();
 	}
-
-	StringId addString(const String& value);
 };
 
 /**

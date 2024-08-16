@@ -599,19 +599,12 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        [f'return getPropertyValue({prop.index}, &getData().{prop.id});']
-        if prop.ptype == 'string' else
-        [f'return getData().{prop.id};'],
+        ['return ' + ('getString(' if prop.ptype == 'string' else '(') + f'getData().{prop.id});'],
         '}',
         '',
-        f'bool set{prop.typename}({prop.ctype_constref} value)',
+        f'void set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'return setPropertyValue({prop.index}, &getData().{prop.id}, value);']
-        if prop.ptype == 'string' else
-        [
-            f'getData().{prop.id} = value;',
-            'return true;'
-        ],
+        [f'getData().{prop.id} = ' + ('getStringId(value);' if prop.ptype == 'string' else 'value;')],
         '}'
         ) for prop in obj.properties),
     ]
@@ -631,12 +624,12 @@ def generate_array_accessors(arr: Array) -> list:
         f'bool setItem(unsigned index, const {prop.ctype}& value)',
         '{',
         ['return Array::setItem(index, value);'],
-        '}'
+        '}',
         '',
         f'bool insertItem(unsigned index, const {prop.ctype}& value)',
         '{',
         ['return Array::setItem(index, value);'],
-        '}'
+        '}',
         '',
         f'bool addItem(const {prop.ctype}& value)',
         '{',

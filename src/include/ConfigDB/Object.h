@@ -192,7 +192,16 @@ public:
 		return *typeinfo_;
 	}
 
-// protected:
+protected:
+	String getString(StringId id) const;
+
+	StringId getStringId(const char* value, size_t valueLength);
+
+	StringId getStringId(const String& value)
+	{
+		return getStringId(value.c_str(), value.length());
+	}
+
 	const ObjectInfo* typeinfo_;
 	Object* parent{};
 	void* data{};

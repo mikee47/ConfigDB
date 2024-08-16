@@ -176,6 +176,16 @@ String Object::getPath() const
 	return path;
 }
 
+String Object::getString(StringId id) const
+{
+	return getStore().stringPool[id];
+}
+
+StringId Object::getStringId(const char* value, size_t valueLength)
+{
+	return getStore().stringPool.findOrAdd(value, valueLength);
+}
+
 String Object::getPropertyValue(unsigned index, const void* data) const
 {
 	return getStore().getValueString(typeinfo().propinfo[index], data);
