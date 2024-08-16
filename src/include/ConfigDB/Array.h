@@ -43,26 +43,40 @@ public:
 	}
 
 	template <typename T>
-	typename std::enable_if<std::is_integral<T>::value, bool>::type setItem(unsigned index, T value)
+	typename std::enable_if<std::is_integral<T>::value, void>::type setItem(unsigned index, T value)
 	{
-		return getArray().set(index, value);
+		getArray().set(index, value);
 	}
 
-	bool setItem(unsigned index, const String& value)
+	void setItem(unsigned index, const String& value)
 	{
-		return getArray().set(index, getStringId(value));
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().set(index, getStringId(value));
 	}
 
-	bool addNewItem(const char* value, size_t valueLength);
+	void addNewItem(const char* value, size_t valueLength);
 
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, bool>::type addItem(T value)
+	template <typename T> typename std::enable_if<std::is_integral<T>::value, void>::type addItem(T value)
 	{
-		return getArray().add(value);
+		getArray().add(value);
 	}
 
-	bool addItem(const String& value)
+	void addItem(const String& value)
 	{
-		return getArray().add(getStringId(value));
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().add(getStringId(value));
+	}
+
+	template <typename T>
+	typename std::enable_if<std::is_integral<T>::value, void>::type insertItem(unsigned index, T value)
+	{
+		getArray().insert(index, value);
+	}
+
+	void insertItem(unsigned index, const String& value)
+	{
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().insert(index, getStringId(value));
 	}
 
 	bool removeItem(unsigned index)

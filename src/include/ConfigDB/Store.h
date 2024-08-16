@@ -97,7 +97,7 @@ public:
 	}
 
 	String getValueString(const PropertyInfo& info, const void* data) const;
-	bool setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
+	void setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
 
 	std::unique_ptr<uint8_t[]> rootObjectData;
 	ArrayPool arrayPool;

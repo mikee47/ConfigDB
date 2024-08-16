@@ -43,12 +43,12 @@ Property Array::getProperty(unsigned index)
 	return {getStore(), typeinfo().propinfo[0], array[index]};
 }
 
-bool Array::addNewItem(const char* value, size_t valueLength)
+void Array::addNewItem(const char* value, size_t valueLength)
 {
 	assert(typeinfo().propertyCount == 1);
 	auto& array = getArray();
 	auto data = array[array.getCount()];
-	return getStore().setValueString(typeinfo().propinfo[0], data, value, valueLength);
+	getStore().setValueString(typeinfo().propinfo[0], data, value, valueLength);
 }
 
 } // namespace ConfigDB

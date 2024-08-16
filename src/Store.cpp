@@ -63,7 +63,7 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 	return nullptr;
 }
 
-bool Store::setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength)
+void Store::setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength)
 {
 	ConfigDB::PropertyData propdata{};
 	switch(prop.type) {
@@ -98,7 +98,6 @@ bool Store::setValueString(const PropertyInfo& prop, void* data, const char* val
 	}
 
 	memcpy(data, &propdata, prop.getSize());
-	return true;
 }
 
 size_t Store::printTo(Print& p, unsigned nesting) const

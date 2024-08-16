@@ -41,7 +41,8 @@ public:
 
 	Object addItem()
 	{
-		return getObject(getObjectCount());
+		auto& itemType = getItemType();
+		return Object(itemType, *this, getArray().add(itemType));
 	}
 
 	bool removeItem(unsigned index)
@@ -55,6 +56,11 @@ public:
 	}
 
 protected:
+	const ObjectInfo& getItemType() const
+	{
+		return *typeinfo().objinfo[0];
+	}
+
 	ArrayData& getArray();
 
 	const ArrayData& getArray() const
@@ -84,17 +90,22 @@ public:
 
 	Item getItem(unsigned index)
 	{
-		return Item(*this, index);
+		return makeItem(getArray()[index]);
+	}
+
+	Item operator[](unsigned index)
+	{
+		return getItem(index);
 	}
 
 	Item addItem()
 	{
-		return makeItem(getArray().add(*typeinfo().objinfo[0]));
+		return makeItem(getArray().add(Item::typeinfo));
 	}
 
 	Item insertItem(unsigned index)
 	{
-		return makeItem(getArray().insert(index, *typeinfo().objinfo[0]));
+		return makeItem(getArray().insert(index, Item::typeinfo));
 	}
 
 private:

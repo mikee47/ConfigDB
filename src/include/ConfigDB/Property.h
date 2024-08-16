@@ -66,6 +66,8 @@ struct PropertyInfo {
 
 	static const PropertyInfo empty;
 
+	PropertyInfo(const PropertyInfo&) = delete;
+
 	/**
 	 * @brief Get number of bytes required to store this property value within a structure
 	 */

@@ -62,6 +62,8 @@ struct ObjectInfo {
 
 	static const ObjectInfo empty;
 
+	ObjectInfo(const ObjectInfo&) = delete;
+
 	String getTypeDesc() const;
 
 	/**
@@ -73,15 +75,6 @@ struct ObjectInfo {
 	 * @brief Get offset of data for a property from the start of *this* object's data
 	 */
 	size_t getPropertyOffset(unsigned index) const;
-
-	/**
-	 * @brief Get the topmost object which has no parent
-	 * Returns either a store root object or a containing ObjectArray.
-	 */
-	const ObjectInfo* getRoot() const
-	{
-		return parent ? parent->getRoot() : this;
-	}
 };
 
 static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
@@ -93,23 +86,23 @@ static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
 class Object
 {
 public:
-	Object() : typeinfo_(&ObjectInfo::empty)
+	Object() : typeinfoPtr(&ObjectInfo::empty)
 	{
 	}
 
-	explicit Object(const ObjectInfo& typeinfo) : typeinfo_(&typeinfo)
+	explicit Object(const ObjectInfo& typeinfo) : typeinfoPtr(&typeinfo)
 	{
 	}
 
 	Object(const ObjectInfo& typeinfo, Store& store);
 
-	Object(const ObjectInfo& typeinfo, Object& parent, void* data) : typeinfo_(&typeinfo), parent(&parent), data(data)
+	Object(const ObjectInfo& typeinfo, Object& parent, void* data) : typeinfoPtr(&typeinfo), parent(&parent), data(data)
 	{
 	}
 
 	explicit operator bool() const
 	{
-		return typeinfo_ != &ObjectInfo::empty;
+		return typeinfoPtr != &ObjectInfo::empty;
 	}
 
 	Store& getStore();
@@ -180,7 +173,7 @@ public:
 
 	const ObjectInfo& typeinfo() const
 	{
-		return *typeinfo_;
+		return *typeinfoPtr;
 	}
 
 protected:
@@ -193,7 +186,7 @@ protected:
 		return getStringId(value.c_str(), value.length());
 	}
 
-	const ObjectInfo* typeinfo_;
+	const ObjectInfo* typeinfoPtr;
 	Object* parent{};
 	void* data{};
 };

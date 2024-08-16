@@ -162,7 +162,7 @@ Database& Object::getDatabase()
 String Object::getPath() const
 {
 	String relpath;
-	for(auto typ = typeinfo_; typ->parent; typ = typ->parent) {
+	for(auto typ = typeinfoPtr; typ->parent; typ = typ->parent) {
 		if(relpath) {
 			relpath += '.';
 		}

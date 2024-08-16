@@ -66,7 +66,8 @@ bool Property::setValueString(const char* value, size_t valueLength)
 	if(!store) {
 		return false;
 	}
-	return store->setValueString(*info, data, value, valueLength);
+	store->setValueString(*info, data, value, valueLength);
+	return true;
 }
 
 } // namespace ConfigDB
