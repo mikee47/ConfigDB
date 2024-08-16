@@ -64,7 +64,7 @@ public:
 		if(element.isContainer()) {
 			Object obj;
 			if(parent.typeinfo().type == ObjectType::ObjectArray) {
-				obj = static_cast<ObjectArray&>(parent).addNewObject();
+				obj = static_cast<ObjectArray&>(parent).addItem();
 			} else {
 				obj = parent.findObject(element.key, element.keyLength);
 				if(!obj) {

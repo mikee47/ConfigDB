@@ -112,15 +112,6 @@ public:
 		return typeinfo_ != &ObjectInfo::empty;
 	}
 
-	String getPropertyValue(unsigned index, const void* data) const;
-
-	bool setPropertyValue(unsigned index, void* data, const char* value, size_t valueLength);
-
-	bool setPropertyValue(unsigned index, void* data, const String& value)
-	{
-		return setPropertyValue(index, data, value.c_str(), value.length());
-	}
-
 	Store& getStore();
 
 	const Store& getStore() const
@@ -214,10 +205,6 @@ protected:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate() : Object(ClassType::typeinfo)
-	{
-	}
-
 	explicit ObjectTemplate(Store& store) : Object(ClassType::typeinfo, store)
 	{
 	}

@@ -32,22 +32,14 @@ class ObjectArray : public Object
 public:
 	using Object::Object;
 
-	Object getObject(unsigned index)
-	{
-		if(index > getObjectCount()) {
-			return {};
-		}
-		return Object(*typeinfo().objinfo[0], *this, getObjectDataPtr(index));
-	}
-
-	void* getObjectDataPtr(unsigned index);
+	Object getObject(unsigned index);
 
 	unsigned getObjectCount() const
 	{
 		return id() ? getArray().getCount() : 0;
 	}
 
-	Object addNewObject()
+	Object addItem()
 	{
 		return getObject(getObjectCount());
 	}
@@ -62,7 +54,7 @@ public:
 		return *static_cast<ArrayId*>(data);
 	}
 
-private:
+protected:
 	ArrayData& getArray();
 
 	const ArrayData& getArray() const
@@ -97,13 +89,18 @@ public:
 
 	Item addItem()
 	{
-		return Item(*this, getObjectData(getObjectCount()));
+		return makeItem(getArray().add(*typeinfo().objinfo[0]));
+	}
+
+	Item insertItem(unsigned index)
+	{
+		return makeItem(getArray().insert(index, *typeinfo().objinfo[0]));
 	}
 
 private:
-	typename Item::Struct& getObjectData(unsigned index)
+	Item makeItem(void* itemData)
 	{
-		return *static_cast<typename Item::Struct*>(getObjectDataPtr(index));
+		return Item(*this, *static_cast<typename Item::Struct*>(itemData));
 	}
 };
 

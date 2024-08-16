@@ -77,11 +77,6 @@ public:
 		return rootObjectData.get() + offset;
 	}
 
-	template <typename T> T& getObjectData(const ObjectInfo& object)
-	{
-		return *static_cast<T*>(getObjectDataPtr(object));
-	}
-
 	virtual bool commit() = 0;
 
 	/**

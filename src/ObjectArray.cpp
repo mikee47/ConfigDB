@@ -31,13 +31,15 @@ ArrayData& ObjectArray::getArray()
 	return store.arrayPool[id()];
 }
 
-void* ObjectArray::getObjectDataPtr(unsigned index)
+Object ObjectArray::getObject(unsigned index)
 {
 	auto& array = getArray();
-	if(index < array.getCount()) {
-		return array[index];
+	if(index > array.getCount()) {
+		return {};
 	}
-	return array.add(*typeinfo().objinfo[0]);
+	auto& itemType = *typeinfo().objinfo[0];
+	auto itemData = (index < array.getCount()) ? array[index] : array.add(itemType);
+	return Object(itemType, *this, itemData);
 }
 
 } // namespace ConfigDB

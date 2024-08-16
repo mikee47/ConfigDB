@@ -168,6 +168,12 @@ public:
 		return insertItem(index, &value);
 	}
 
+	void* insert(unsigned index, const ObjectInfo& object)
+	{
+		assert(itemSize == object.structSize);
+		return insertItem(index, object.defaultData);
+	}
+
 	bool remove(unsigned index);
 
 	void* operator[](unsigned index)

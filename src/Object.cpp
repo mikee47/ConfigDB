@@ -186,16 +186,6 @@ StringId Object::getStringId(const char* value, size_t valueLength)
 	return getStore().stringPool.findOrAdd(value, valueLength);
 }
 
-String Object::getPropertyValue(unsigned index, const void* data) const
-{
-	return getStore().getValueString(typeinfo().propinfo[index], data);
-}
-
-bool Object::setPropertyValue(unsigned index, void* data, const char* value, size_t valueLength)
-{
-	return getStore().setValueString(typeinfo().propinfo[index], data, value, valueLength);
-}
-
 unsigned Object::getPropertyCount() const
 {
 	if(typeinfo().type == ObjectType::Array) {
