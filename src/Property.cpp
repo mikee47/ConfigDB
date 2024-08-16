@@ -39,19 +39,15 @@ String toString(PropertyType type)
 
 String PropertyConst::getValue() const
 {
-	assert(*this);
-	if(!*this) {
+	assert(info && store && data);
+	if(!store) {
 		return nullptr;
 	}
-	return object->getStore().getValueString(*info, data);
+	return store->getValueString(*info, data);
 }
 
 String PropertyConst::getJsonValue() const
 {
-	assert(*this);
-	if(!*this) {
-		return nullptr;
-	}
 	String value = getValue();
 	if(!value) {
 		return "null";
@@ -66,12 +62,11 @@ String PropertyConst::getJsonValue() const
 
 bool Property::setValueString(const char* value, size_t valueLength)
 {
-	assert(*this);
-	assert(info && object && data);
-	if(!*this) {
+	assert(info && store && data);
+	if(!store) {
 		return false;
 	}
-	return object->setPropertyValue(*info, data, value, valueLength);
+	return store->setValueString(*info, data, value, valueLength);
 }
 
 } // namespace ConfigDB

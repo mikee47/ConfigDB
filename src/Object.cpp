@@ -176,14 +176,14 @@ String Object::getPath() const
 	return path;
 }
 
-String Object::getPropertyValue(const PropertyInfo& prop, const void* data) const
+String Object::getPropertyValue(unsigned index, const void* data) const
 {
-	return getStore().getValueString(prop, data);
+	return getStore().getValueString(typeinfo().propinfo[index], data);
 }
 
-bool Object::setPropertyValue(const PropertyInfo& prop, void* data, const char* value, size_t valueLength)
+bool Object::setPropertyValue(unsigned index, void* data, const char* value, size_t valueLength)
 {
-	return getStore().setValueString(prop, data, value, valueLength);
+	return getStore().setValueString(typeinfo().propinfo[index], data, value, valueLength);
 }
 
 unsigned Object::getPropertyCount() const
@@ -205,7 +205,7 @@ Property Object::getProperty(unsigned index)
 	}
 	auto propData = static_cast<uint8_t*>(data);
 	propData += typeinfo().getPropertyOffset(index);
-	return {*this, typeinfo().propinfo[index], propData};
+	return {getStore(), typeinfo().propinfo[index], propData};
 }
 
 size_t Object::printTo(Print& p) const

@@ -464,9 +464,6 @@ def generate_database(db: Database) -> CodeLines:
                 '};',
             ]]
             lines.source += typeinfo.source
-
-    for store in db.children:
-        for obj in store.children:
             lines.append(generate_object(obj))
 
     lines.header += [
@@ -602,14 +599,14 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        [f'return getPropertyValue(typeinfo.propinfo[{prop.index}], &getData().{prop.id});']
+        [f'return getPropertyValue({prop.index}, &getData().{prop.id});']
         if prop.ptype == 'string' else
         [f'return getData().{prop.id};'],
         '}',
         '',
         f'bool set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'return setPropertyValue(typeinfo.propinfo[{prop.index}], &getData().{prop.id}, value);']
+        [f'return setPropertyValue({prop.index}, &getData().{prop.id}, value);']
         if prop.ptype == 'string' else
         [
             f'getData().{prop.id} = value;',

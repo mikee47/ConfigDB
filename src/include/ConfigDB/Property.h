@@ -38,7 +38,7 @@
 
 namespace ConfigDB
 {
-class Object;
+class Store;
 
 DEFINE_FSTR_LOCAL(fstr_empty, "")
 
@@ -111,7 +111,7 @@ public:
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	PropertyConst(Object& object, const PropertyInfo& info, void* data) : info(&info), object(&object), data(data)
+	PropertyConst(Store& store, const PropertyInfo& info, void* data) : info(&info), store(&store), data(data)
 	{
 	}
 
@@ -119,7 +119,7 @@ public:
 
 	explicit operator bool() const
 	{
-		return info != &PropertyInfo::empty;
+		return store;
 	}
 
 	String getJsonValue() const;
@@ -131,7 +131,7 @@ public:
 
 protected:
 	const PropertyInfo* info;
-	Object* object{};
+	Store* store{};
 	void* data{};
 };
 

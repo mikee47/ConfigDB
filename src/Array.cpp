@@ -45,7 +45,7 @@ Property Array::getProperty(unsigned index)
 	}
 	// Property info contains exactly one element
 	assert(typeinfo().propertyCount == 1);
-	return {*this, typeinfo().propinfo[0], array[index]};
+	return {getStore(), typeinfo().propinfo[0], array[index]};
 }
 
 bool Array::addNewItem(const char* value, size_t valueLength)
@@ -53,7 +53,7 @@ bool Array::addNewItem(const char* value, size_t valueLength)
 	assert(typeinfo().propertyCount == 1);
 	auto& array = getArray();
 	auto data = array[array.getCount()];
-	return setPropertyValue(typeinfo().propinfo[0], data, value, valueLength);
+	return getStore().setValueString(typeinfo().propinfo[0], data, value, valueLength);
 }
 
 } // namespace ConfigDB

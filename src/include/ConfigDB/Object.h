@@ -112,13 +112,13 @@ public:
 		return typeinfo_ != &ObjectInfo::empty;
 	}
 
-	String getPropertyValue(const PropertyInfo& prop, const void* data) const;
+	String getPropertyValue(unsigned index, const void* data) const;
 
-	bool setPropertyValue(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
+	bool setPropertyValue(unsigned index, void* data, const char* value, size_t valueLength);
 
-	bool setPropertyValue(const PropertyInfo& prop, void* data, const String& value)
+	bool setPropertyValue(unsigned index, void* data, const String& value)
 	{
-		return setPropertyValue(prop, data, value.c_str(), value.length());
+		return setPropertyValue(index, data, value.c_str(), value.length());
 	}
 
 	Store& getStore();
