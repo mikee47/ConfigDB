@@ -31,13 +31,6 @@ class ObjectArray : public Object
 {
 public:
 	using Object::Object;
-	// ObjectArray() = default;
-
-	// ObjectArray(Store& store, const ObjectInfo& typeinfo);
-
-	// ObjectArray(Object& parent, ArrayId& id) : Object(parent), id(id)
-	// {
-	// }
 
 	Object getObject(unsigned index)
 	{

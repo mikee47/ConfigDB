@@ -26,7 +26,8 @@
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
 	XX(Object)                                                                                                         \
 	XX(Array)                                                                                                          \
-	XX(ObjectArray)
+	XX(ObjectArray)                                                                                                    \
+	XX(Store)
 
 namespace ConfigDB
 {
@@ -46,12 +47,12 @@ enum class ObjectType : uint32_t {
 using ArrayId = uint16_t alignas(1);
 
 struct ObjectInfo {
+	ObjectType type;
 	const FlashString& name;
 	const ObjectInfo* parent;
 	const ObjectInfo* const* objinfo;
 	PGM_VOID_P defaultData;
 	uint32_t structSize;
-	ObjectType type;
 	uint32_t objectCount;
 	uint32_t propertyCount;
 	const PropertyInfo propinfo[];
@@ -61,7 +62,7 @@ struct ObjectInfo {
 	String getTypeDesc() const;
 
 	/**
-	 * @brief Get offset of this object's data relative to root (not just parent)
+	 * @brief Get offset of this object's data relative to its parent
 	 */
 	size_t getOffset() const;
 
@@ -116,22 +117,6 @@ public:
 	{
 		return setPropertyValue(prop, data, value.c_str(), value.length());
 	}
-
-	/*
-
-An Object has `ObjectInfo` plus `void*` data.
-The `shared_ptr<Store>` also exists in the constructed object, which overrides this method.
-
-We can do this without virtual methods by adding a `RootObject` type which contains this value.
-Thus:
-
-if (typeinfo().type == ObjectType::RootObject) {
-	return static_cast<RootObject*>(this)->store;
-} else {
-	return parent->getStore();
-}
-
-*/
 
 	Store& getStore();
 
@@ -214,16 +199,6 @@ protected:
 };
 
 /**
- * @brief Non-contained objects are generated so they can be cast to this type.
- * These objects are identified by a null `parent`.
- */
-class RootObject : public Object
-{
-public:
-	std::shared_ptr<Store> store;
-};
-
-/**
  * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator (CRTP)
  */
@@ -238,18 +213,10 @@ public:
 	{
 	}
 
-	explicit ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, parent, data)
+	ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, parent, data)
 	{
 	}
 };
-
-inline Store& Object::getStore()
-{
-	if(parent) {
-		return parent->getStore();
-	}
-	return *static_cast<RootObject*>(this)->store;
-}
 
 } // namespace ConfigDB
 

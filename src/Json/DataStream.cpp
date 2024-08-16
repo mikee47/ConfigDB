@@ -43,9 +43,9 @@ void DataStream::fillStream()
 			stream << ',';
 			newline();
 		}
-		auto& root = store->getTypeinfo().object;
-		auto name = storeIndex ? &store->getTypeinfo().name : nullptr;
-		store->printObjectTo(root, name, store->rootObjectData.get(), 1, stream);
+		auto root = store->typeinfo().objinfo[0];
+		auto name = storeIndex ? &store->typeinfo().name : nullptr;
+		store->printObjectTo(*root, name, store->rootObjectData.get(), 1, stream);
 		++storeIndex;
 		return;
 	}

@@ -39,15 +39,17 @@ const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
 
 String PropertyConst::getValue() const
 {
-	if(info) {
-		return object->getStore().getValueString(*info, data);
+	assert(*this);
+	if(!*this) {
+		return nullptr;
 	}
-	return nullptr;
+	return object->getStore().getValueString(*info, data);
 }
 
 String PropertyConst::getJsonValue() const
 {
-	if(!info) {
+	assert(*this);
+	if(!*this) {
 		return nullptr;
 	}
 	String value = getValue();
@@ -63,7 +65,9 @@ String PropertyConst::getJsonValue() const
 
 bool Property::setValueString(const char* value, size_t valueLength)
 {
-	if(!info) {
+	assert(*this);
+	assert(info && object && data);
+	if(!*this) {
 		return false;
 	}
 	return object->setPropertyValue(*info, data, value, valueLength);

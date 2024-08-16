@@ -117,7 +117,7 @@ public:
 
 	explicit operator bool() const
 	{
-		return info != nullptr;
+		return info != &PropertyInfo::empty;
 	}
 
 	String getJsonValue() const;

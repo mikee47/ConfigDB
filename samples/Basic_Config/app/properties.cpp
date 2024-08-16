@@ -51,9 +51,6 @@ void listProperties(ConfigDB::Database& db, Print& output)
 
 	output << _F("Database \"") << db.getName() << '"' << endl;
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
-		String tag(i);
-		printItem(output, tag, 1, F("Store"), store->getName());
-		auto obj = store->getObject();
-		printObject(output, tag + ".0", 2, obj);
+		printObject(output, nullptr, 2, *store);
 	}
 }

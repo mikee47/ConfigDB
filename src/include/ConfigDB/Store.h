@@ -40,15 +40,10 @@ enum class Format {
 	Pretty,
 };
 
-struct StoreInfo {
-	const FlashString& name;
-	const ObjectInfo& object;
-};
-
 /**
  * @brief Manages access to an object store, typically one file
  */
-class Store : public Printable
+class Store : public Object, public Printable
 {
 public:
 	/**
@@ -56,7 +51,7 @@ public:
 	 * @param db Database to which this store belongs
 	 * @param name Name of store, used as key in JSONPath
 	 */
-	Store(Database& db) : db(db)
+	Store(Database& db, const ObjectInfo& typeinfo) : Object(typeinfo), db(db)
 	{
 	}
 
@@ -64,11 +59,6 @@ public:
 	{
 		String name = getName();
 		return name.length() ? name : F("_root");
-	}
-
-	String getName() const
-	{
-		return getTypeinfo().name;
 	}
 
 	String getFilePath() const;
@@ -86,7 +76,7 @@ public:
 		 * Generated code should ensure this can't happen.
 		 */
 		auto root = object.getRoot();
-		auto expected = &getTypeinfo().object;
+		auto expected = typeinfo().objinfo[0];
 		if(root != expected) {
 			debug_e("Root is %s, expected %s", String(root->name).c_str(), String(expected->name).c_str());
 			assert(false);
@@ -100,10 +90,6 @@ public:
 	}
 
 	virtual bool commit() = 0;
-
-	virtual Object getObject() = 0;
-
-	virtual const StoreInfo& getTypeinfo() const = 0;
 
 	/**
 	 * @brief Print object
@@ -163,11 +149,6 @@ public:
 			inst->load();
 		}
 		return inst;
-	}
-
-	const StoreInfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 
 protected:

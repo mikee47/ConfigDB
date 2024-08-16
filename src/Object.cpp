@@ -42,7 +42,7 @@ size_t ObjectInfo::getOffset() const
 	if(!parent) {
 		return 0;
 	}
-	size_t offset = parent->getOffset();
+	size_t offset{0};
 	for(unsigned i = 0; i < parent->objectCount; ++i) {
 		auto obj = parent->objinfo[i];
 		if(obj == this) {
@@ -84,8 +84,20 @@ String ObjectInfo::getTypeDesc() const
 	return s;
 }
 
-Object::Object(const ObjectInfo& typeinfo, Store& store) : typeinfo_(&typeinfo), data(store.getObjectDataPtr(typeinfo))
+Object::Object(const ObjectInfo& typeinfo, Store& store)
+	: typeinfo_(&typeinfo), parent(&store), data(store.getObjectDataPtr(typeinfo))
 {
+}
+
+Store& Object::getStore()
+{
+	auto obj = this;
+	while(obj->parent) {
+		obj = obj->parent;
+	}
+	assert(obj->typeinfo().type == ObjectType::Store);
+	auto store = static_cast<Store*>(obj);
+	return *store;
 }
 
 unsigned Object::getObjectCount() const

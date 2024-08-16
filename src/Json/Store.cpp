@@ -48,8 +48,11 @@ public:
 
 	bool startElement(const Element& element) override
 	{
+		debug_i("%s %u %s: '%s' = %u / %s", __FUNCTION__, element.level, toString(element.type).c_str(), element.key,
+				element.valueLength, element.value);
+
 		if(element.level == 0) {
-			info[element.level] = store.getObject();
+			info[0] = Object(*store.typeinfo().objinfo[0], store);
 			return true;
 		}
 
@@ -68,7 +71,7 @@ public:
 					debug_w("[JSON] Object '%s' not in schema", element.key);
 				}
 			}
-			info[element.level] = std::move(obj);
+			info[element.level] = obj;
 			return true;
 		}
 
@@ -81,7 +84,7 @@ public:
 			debug_w("[JSON] Property '%s' not in schema", element.key);
 			return true;
 		}
-		prop.setValueString(element.value, element.valueLength);
+		// prop.setValueString(element.value, element.valueLength);
 		return true;
 	}
 
@@ -98,9 +101,10 @@ private:
 
 bool Store::load()
 {
-	auto& root = getTypeinfo().object;
-	rootObjectData.reset(new uint8_t[root.structSize]);
-	memcpy_P(rootObjectData.get(), root.defaultData, root.structSize);
+	auto root = typeinfo().objinfo[0];
+	rootObjectData.reset(new uint8_t[root->structSize]);
+	data = rootObjectData.get();
+	memcpy_P(data, root->defaultData, root->structSize);
 
 	String filename = getFilename();
 	FileStream stream;
@@ -129,8 +133,8 @@ bool Store::save()
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		auto& root = getTypeinfo().object;
-		printObjectTo(root, &fstr_empty, rootObjectData.get(), 0, buffer);
+		auto root = typeinfo().objinfo[0];
+		printObjectTo(*root, &fstr_empty, rootObjectData.get(), 0, buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {

@@ -27,7 +27,7 @@ namespace ConfigDB
 {
 struct DatabaseInfo {
 	volatile uint32_t storeCount : 8;
-	const StoreInfo* stores[];
+	const ObjectInfo* stores[];
 };
 
 class Database

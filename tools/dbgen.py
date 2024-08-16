@@ -179,7 +179,7 @@ class Object:
         obj = self.parent
         ns = []
         while obj:
-            if not isinstance(obj, ObjectArray):
+            if not isinstance(obj, (Store, ObjectArray)):
                 ns.insert(0, obj.typename_contained)
             obj = obj.parent
         return '::'.join(ns)
@@ -205,7 +205,7 @@ class Object:
 
     @property
     def is_root(self):
-        return isinstance(self.parent, Database)
+        return isinstance(self.parent, Store)
 
     @property
     def is_array(self):
@@ -273,8 +273,6 @@ class Store(Object):
 
 @dataclass
 class Database(Object):
-    stores: list[Store] = field(default_factory=list)
-
     @property
     def is_item_member(self):
         return False
@@ -388,9 +386,9 @@ def load_config(filename: str) -> Database:
     if store_ns is None:
         raise RuntimeError('Database requires root "store" value')
     db.store = Store(db, '', store_ns=make_typename(store_ns))
-    db.stores.append(db.store)
-    root = Object(db, '', db.store)
-    db.children.append(root)
+    db.children.append(db.store)
+    root = Object(db.store, '', db.store)
+    db.store.children.append(root)
 
     def parse(obj: Object, properties: dict):
         obj_root = obj
@@ -408,8 +406,8 @@ def load_config(filename: str) -> Database:
                 if obj is not root:
                     raise ValueError(f'{key} cannot have "store", not a root object')
                 store = Store(db, key, store_ns=make_typename(store_ns))
-                db.stores.append(store)
-                obj = db
+                db.children.append(store)
+                obj = store
             else:
                 store = obj.store
             if prop.ptype == 'object':
@@ -442,7 +440,7 @@ def generate_database(db: Database) -> CodeLines:
     lines = CodeLines(
         [
             '#include <ConfigDB/Database.h>',
-            *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.stores}],
+            *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.children}],
             '',
             f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
             '{',
@@ -451,37 +449,25 @@ def generate_database(db: Database) -> CodeLines:
         ],
         [])
 
-    for obj in db.children:
-        store = obj.store
-        lines.header += [[
-            *declare_templated_class(obj.store),
-            [
-                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db)',
-                '{',
-                '}',
-                '',
-                'ConfigDB::Object getObject();',
-                '',
-                'static const ConfigDB::StoreInfo typeinfo;',
-            ],
-            '};',
-        ]]
-        lines.source += [
-            '',
-            f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
-            *make_static_initializer([
-                strings[store.name],
-                f'{store.namespace}::{obj.typename}::typeinfo'
-            ], ';'),
-            '',
-            f'Object {store.namespace}::{store.typename}::getObject()',
-            '{',
-            [f'return {obj.namespace}::{obj.typename}(store.lock());'],
-            '}',
-        ]
+    for store in db.children:
+        for obj in store.children:
+            store = obj.store
+            typeinfo = generate_typeinfo(store)
+            lines.header += [[
+                *declare_templated_class(obj.store),
+                [
+                    f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, typeinfo)',
+                    '{',
+                    '}',
+                    *typeinfo.header,
+                ],
+                '};',
+            ]]
+            lines.source += typeinfo.source
 
-    for obj in db.children:
-        lines.append(generate_object(obj))
+    for store in db.children:
+        for obj in store.children:
+            lines.append(generate_object(obj))
 
     lines.header += [
         [
@@ -500,7 +486,7 @@ def generate_database(db: Database) -> CodeLines:
         '{',
         [
             'switch(index) {',
-            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
+            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.children)],
             ['default: return nullptr;'],
             '}',
         ],
@@ -508,9 +494,9 @@ def generate_database(db: Database) -> CodeLines:
         '',
         f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
         [
-            f'{len(db.stores)},',
+            f'{len(db.children)},',
             '{',
-            [f'&{store.typename}::typeinfo,' for store in db.stores],
+            [f'&{store.typename}::typeinfo,' for store in db.children],
             '}'
         ], '};'
     ]
@@ -526,34 +512,6 @@ def generate_database(db: Database) -> CodeLines:
     ]
 
     return lines
-
-
-def generate_method_get_child_object(obj: Object) -> CodeLines:
-    '''Generate *getChildObject* method'''
-
-    if isinstance(obj, ObjectArray):
-        children = [obj.items]
-    else:
-        children = obj.children
-    return CodeLines(
-        [
-            '',
-            'ConfigDB::Object getObject(unsigned index);',
-        ],
-        [
-            '',
-            f'Object {obj.namespace}::{obj.typename_contained}::getObject(unsigned index)',
-            '{',
-            [
-                'switch(index) {',
-                [f'case {i}: return {child.typename_contained}(*this, getData().{child.id});'
-                    for i, child in enumerate(children)],
-                ['default: return {};'],
-                '}',
-            ] if children else ['return {};'],
-            '}'
-        ]
-    )
 
 
 def generate_typeinfo(obj: Object) -> CodeLines:
@@ -590,12 +548,12 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'constexpr const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            'fstr_empty' if obj.is_item or obj.is_root else strings[obj.name],
-            'nullptr' if obj.is_root or obj.is_item_member else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
-            'objinfo' if objinfo else 'nullptr',
-            'nullptr' if obj.is_array else '&defaultData',
-            f'sizeof({obj.typename_struct})',
             f'ObjectType::{obj.classname}',
+            'fstr_empty' if obj.is_item or obj.is_root else strings[obj.name],
+            'nullptr' if obj.is_root or obj.is_item_member or isinstance(obj, Store) else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
+            'objinfo' if objinfo else 'nullptr',
+            'nullptr' if obj.is_array or isinstance(obj, Store) else '&defaultData',
+            0 if isinstance(obj, Store) else f'sizeof({obj.typename_struct})',
             len(objinfo),
             len(propinfo),
         ]),
@@ -727,10 +685,8 @@ def generate_object(obj: Object) -> CodeLines:
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
     else:
-        get_child_object = generate_method_get_child_object(obj)
         lines.header += [
             *generate_property_accessors(obj),
-            get_child_object.header,
             '',
             'private:',
             [
@@ -745,7 +701,6 @@ def generate_object(obj: Object) -> CodeLines:
                 '}',
             ],
         ]
-        lines.source += get_child_object.source
 
     # Contained children member variables
     if obj.children:
@@ -842,12 +797,7 @@ def generate_item_object(obj: Object) -> CodeLines:
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
     else:
-        get_child_object = generate_method_get_child_object(obj)
-        lines.header += [
-            *generate_property_accessors(obj),
-            get_child_object.header
-        ]
-        lines.source += get_child_object.source
+        lines.header += generate_property_accessors(obj)
 
     lines.header += [
         '',
