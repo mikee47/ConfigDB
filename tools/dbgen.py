@@ -454,20 +454,19 @@ def generate_database(db: Database) -> CodeLines:
         [])
 
     for store in db.children:
+        typeinfo = generate_typeinfo(store)
+        lines.header += [[
+            *declare_templated_class(store),
+            [
+                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, typeinfo)',
+                '{',
+                '}',
+                *typeinfo.header,
+            ],
+            '};',
+        ]]
+        lines.source += typeinfo.source
         for obj in store.children:
-            store = obj.store
-            typeinfo = generate_typeinfo(store)
-            lines.header += [[
-                *declare_templated_class(obj.store),
-                [
-                    f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, typeinfo)',
-                    '{',
-                    '}',
-                    *typeinfo.header,
-                ],
-                '};',
-            ]]
-            lines.source += typeinfo.source
             lines.append(generate_object(obj))
 
     lines.header += [
@@ -493,7 +492,7 @@ def generate_database(db: Database) -> CodeLines:
         ],
         '}',
         '',
-        f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
+        f'constexpr const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
         [
             f'{len(db.children)},',
             '{',
