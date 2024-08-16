@@ -42,17 +42,16 @@ StringId StringPool::find(const char* value, size_t valueLength) const
 	if(!buffer || !value || !valueLength) {
 		return 0;
 	}
-	auto ptr = static_cast<char*>(buffer);
-	for(;;) {
-		ptr = static_cast<char*>(memmem(ptr, count, value, valueLength));
+	for(size_t offset = 0;;) {
+		auto ptr = static_cast<char*>(buffer) + offset;
+		ptr = static_cast<char*>(memmem(ptr, count - offset, value, valueLength));
 		if(!ptr) {
 			return 0;
 		}
+		offset = uintptr_t(ptr) - uintptr_t(buffer) + 1;
 		if(ptr[valueLength + 1] == '\0') {
-			auto offset = uintptr_t(ptr) - uintptr_t(buffer);
-			return 1 + offset;
+			return offset;
 		}
-		++ptr;
 	}
 }
 
