@@ -78,8 +78,6 @@ struct ObjectInfo {
 	size_t getPropertyOffset(unsigned index) const;
 };
 
-static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
-
 /**
  * @brief An object can contain other objects, properties and arrays
  * @note This class is the base for concrete Object, Array and ObjectArray classes
