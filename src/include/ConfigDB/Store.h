@@ -48,11 +48,13 @@ class Store : public Object, public Printable
 public:
 	/**
 	 * @brief Storage instance
-	 * @param db Database to which this store belongs
-	 * @param name Name of store, used as key in JSONPath
+	 * @param db Database which manages this store
+	 * @param typeinfo Store type information
 	 */
-	Store(Database& db, const ObjectInfo& typeinfo) : Object(typeinfo), db(db)
+	Store(Database& db, const ObjectInfo& typeinfo)
+		: Object(typeinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo.structSize))
 	{
+		Object::data = rootData.get();
 	}
 
 	String getFileName() const
@@ -74,10 +76,25 @@ public:
 		for(auto obj = &object; obj; obj = obj->parent) {
 			offset += obj->getOffset();
 		}
-		return rootObjectData.get() + offset;
+		return rootData.get() + offset;
 	}
 
-	virtual bool commit() = 0;
+	/**
+	 * @brief Load store into RAM
+	 *
+	 * Not normally called directly by applications.
+	 *
+	 * Loading starts with default data loaded from schema, which is then updated during load.
+	 * Failure indicates corrupt JSON file, but any readable data is available.
+	 *
+	 * @note All existing objects are invalidated
+	 */
+	virtual bool load() = 0;
+
+	/**
+	 * @brief Save store contents
+	 */
+	virtual bool save() = 0;
 
 	/**
 	 * @brief Print object
@@ -99,49 +116,12 @@ public:
 	String getValueString(const PropertyInfo& info, const void* data) const;
 	void setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
 
-	std::unique_ptr<uint8_t[]> rootObjectData;
 	ArrayPool arrayPool;
 	StringPool stringPool;
 
 protected:
-	void clear()
-	{
-		arrayPool.clear();
-		rootObjectData.reset();
-		stringPool.clear();
-	}
-
 	Database& db;
+	std::unique_ptr<uint8_t[]> rootData;
 };
-
-/**
- * @brief Used by code generator for store class
- * @tparam BaseType The store's base `Store` class (e.g. `Json::Store`)
- * @tparam ClassType Concrete type being generated
- */
-template <class BaseType, class ClassType> class StoreTemplate : public BaseType
-{
-public:
-	using BaseType::BaseType;
-
-	/**
-	 * @brief Open a store instance, load it and return a shared pointer
-	 */
-	static std::shared_ptr<ClassType> open(Database& db)
-	{
-		auto inst = store.lock();
-		if(!inst) {
-			inst = std::make_shared<ClassType>(db);
-			store = inst;
-			inst->load();
-		}
-		return inst;
-	}
-
-protected:
-	static std::weak_ptr<ClassType> store;
-};
-
-template <class BaseType, class ClassType> std::weak_ptr<ClassType> StoreTemplate<BaseType, ClassType>::store;
 
 } // namespace ConfigDB

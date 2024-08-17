@@ -444,28 +444,20 @@ def generate_database(db: Database) -> CodeLines:
     lines = CodeLines(
         [
             '#include <ConfigDB/Database.h>',
-            *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.children}],
+            # *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.children}],
             '',
             f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
             '{',
             'public:',
-            '',
+            [
+                f'{db.typename}(const String& path): DatabaseTemplate(typeinfo, path)',
+                '{',
+                '}'
+            ],
         ],
         [])
 
     for store in db.children:
-        typeinfo = generate_typeinfo(store)
-        lines.header += [[
-            *declare_templated_class(store),
-            [
-                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, typeinfo)',
-                '{',
-                '}',
-                *typeinfo.header,
-            ],
-            '};',
-        ]]
-        lines.source += typeinfo.source
         for obj in store.children:
             lines.append(generate_object(obj))
 
@@ -475,28 +467,18 @@ def generate_database(db: Database) -> CodeLines:
             'using DatabaseTemplate::DatabaseTemplate;',
             '',
             'static const ConfigDB::DatabaseInfo typeinfo;',
-            '',
-            'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override;',
+            # '',
+            # 'std::shared_ptr<ConfigDB::Store> getStore(unsigned index) override;',
         ],
         '};'
     ]
     lines.source += [
         '',
-        f'std::shared_ptr<Store> {db.typename}::getStore(unsigned index)',
-        '{',
-        [
-            'switch(index) {',
-            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.children)],
-            ['default: return nullptr;'],
-            '}',
-        ],
-        '}',
-        '',
-        f'constexpr const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
+        f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
         [
             f'{len(db.children)},',
             '{',
-            [f'&{store.typename}::typeinfo,' for store in db.children],
+            [f'&{store.children[0].typename}::typeinfo,' for store in db.children],
             '}'
         ], '};'
     ]
@@ -548,8 +530,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'constexpr const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            f'ObjectType::{obj.classname}',
-            'fstr_empty' if obj.is_item or obj.is_root else strings[obj.name],
+            f'ObjectType::{"Store" if obj.is_root else obj.classname}',
+            'fstr_empty' if obj.is_item else strings[obj.name],
             'nullptr' if obj.is_root or isinstance(obj, Store) else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             'objinfo' if objinfo else 'nullptr',
             'nullptr' if obj.is_array or isinstance(obj, Store) else '&defaultData',
@@ -694,7 +676,7 @@ def generate_contained_constructors(obj: Object) -> list:
     if not obj.is_item_member:
         headers = [
             '',
-            f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
+            f'{obj.typename_contained}(ConfigDB::Store& store): ' + ', '.join([
                 f'{obj.base_class}Template(store)',
                 *(f'{child.id}(*this, getData().{child.id})' for child in obj.children)
             ]),
@@ -724,17 +706,17 @@ def generate_outer_class(obj: Object) -> list:
         '{',
         'public:',
         [
-            f'{obj.typename}(std::shared_ptr<{obj.store.typename}> store): {obj.typename_contained}(*store), store(store)',
+            f'{obj.typename}(std::shared_ptr<ConfigDB::Store> store): {obj.typename_contained}(*store), store(store)',
             '{',
             '}',
             '',
-            f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
+            f'{obj.typename}(ConfigDB::Database& db): {obj.typename}(db.openStore({obj.store.children[0].typename}::typeinfo))',
             '{',
             '}',
         ],
         '',
         'private:',
-        [f'std::shared_ptr<{obj.store.typename}> store;'],
+        [f'std::shared_ptr<ConfigDB::Store> store;'],
         '};'
     ]
 

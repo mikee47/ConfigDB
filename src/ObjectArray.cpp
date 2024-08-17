@@ -39,7 +39,7 @@ Object ObjectArray::getObject(unsigned index)
 	}
 	auto& itemType = *typeinfo().objinfo[0];
 	auto itemData = (index < array.getCount()) ? array[index] : array.add(itemType);
-	return Object(itemType, *this, itemData);
+	return Object(itemType, this, itemData);
 }
 
 } // namespace ConfigDB

@@ -73,7 +73,7 @@ public:
 	{
 	}
 
-	ArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, parent, id)
+	ArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, &parent, id)
 	{
 	}
 
@@ -110,7 +110,7 @@ public:
 	{
 	}
 
-	StringArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, parent, id)
+	StringArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, &parent, id)
 	{
 	}
 

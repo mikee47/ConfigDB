@@ -70,7 +70,7 @@ void checkPerformance(BasicConfig& db)
 		unsigned store = 0;
 		for(int i = 0; i < rounds; i++) {
 			times.start();
-			auto store = db.getStore(i % db.getTypeinfo().storeCount);
+			auto store = db.getStore(i % db.typeinfo.storeCount);
 			times.update();
 		}
 		Serial << times << endl;

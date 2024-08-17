@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Store.h
+ * ConfigDB/Array.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,31 +17,36 @@
  *
  ****/
 
-#pragma once
+#include "include/ConfigDB/Database.h"
+#include "include/ConfigDB/Json/Store.h"
 
-#include "../Store.h"
-
-namespace ConfigDB::Json
+namespace ConfigDB
 {
-class Store : public ConfigDB::Store
+Store* Database::createStore(const ObjectInfo& typeinfo)
 {
-public:
-	using ConfigDB::Store::Store;
+	return new Json::Store(*this, typeinfo);
+}
 
-	String getFilename() const
-	{
-		String path = getFilePath();
-		path += _F(".json");
-		return path;
+std::shared_ptr<Store> Database::openStore(const ObjectInfo& typeinfo)
+{
+	if(storeType == &typeinfo) {
+		auto inst = storeRef.lock();
+		if(inst) {
+			return inst;
+		}
 	}
 
-	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
+	auto store = createStore(typeinfo);
+	if(!store) {
+		return nullptr;
+	}
 
-	bool load() override;
-	bool save() override;
+	std::shared_ptr<Store> inst(store);
+	storeRef = inst;
+	storeType = &typeinfo;
 
-protected:
-	String getValueJson(const PropertyInfo& info, const void* data) const;
-};
+	inst->load();
+	return inst;
+}
 
-} // namespace ConfigDB::Json
+} // namespace ConfigDB

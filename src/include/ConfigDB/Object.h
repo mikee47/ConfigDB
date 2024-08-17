@@ -25,10 +25,10 @@
 #include <debug_progmem.h>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
+	XX(Store)                                                                                                          \
 	XX(Object)                                                                                                         \
 	XX(Array)                                                                                                          \
-	XX(ObjectArray)                                                                                                    \
-	XX(Store)
+	XX(ObjectArray)
 
 namespace ConfigDB
 {
@@ -96,7 +96,7 @@ public:
 
 	Object(const ObjectInfo& typeinfo, Store& store);
 
-	Object(const ObjectInfo& typeinfo, Object& parent, void* data) : typeinfoPtr(&typeinfo), parent(&parent), data(data)
+	Object(const ObjectInfo& typeinfo, Object* parent, void* data) : typeinfoPtr(&typeinfo), parent(parent), data(data)
 	{
 	}
 
@@ -202,7 +202,7 @@ public:
 	{
 	}
 
-	ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, parent, data)
+	ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, &parent, data)
 	{
 	}
 };
