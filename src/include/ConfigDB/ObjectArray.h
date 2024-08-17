@@ -111,7 +111,7 @@ public:
 private:
 	Item makeItem(void* itemData)
 	{
-		return Item(*this, *static_cast<typename Item::Struct*>(itemData));
+		return Item(*this, *typename Item::Struct::Ptr(itemData));
 	}
 };
 
