@@ -471,16 +471,17 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 
     objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
     if objinfo:
-        lines.header += [
-            'static const ConfigDB::ObjectInfo* objinfo[];'
-        ]
+        objinfo_var = f'{obj.namespace}_{obj.typename}_objinfo'.replace('::', '_')
         lines.source += [
             '',
-            f'const ObjectInfo* {obj.namespace}::{obj.typename_contained}::objinfo[] PROGMEM {{',
-            [f'&{ob.typename_contained}::typeinfo,' for ob in objinfo],
-            '};'
+            'namespace {',
+            f'constexpr const ObjectInfo* {objinfo_var}[] PROGMEM {{',
+            [f'&{ob.namespace}::{ob.typename_contained}::typeinfo,' for ob in objinfo],
+            '};',
+            '}'
         ]
-
+    else:
+        objinfo_var = 'nullptr'
 
     propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     lines.header += [
@@ -494,7 +495,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             f'ObjectType::{"Store" if obj.is_root else obj.classname}',
             'fstr_empty' if obj.is_item else strings[obj.name],
             'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
-            'objinfo' if objinfo else 'nullptr',
+            objinfo_var,
             'nullptr' if obj.is_array else '&defaultData',
             f'sizeof({obj.typename_struct})',
             len(objinfo),
@@ -508,7 +509,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 'nullptr' if prop.default is None or prop.ptype != 'string' else f'&{strings[prop.default]}',
             ], ',') for prop in propinfo),
             '}',
-        ],
+        ] if propinfo else None,
         '};'
     ]
 
@@ -733,7 +734,7 @@ def write_file(content: list[str | list], filename: str):
                     f.write(f'{indent}{item}\n')
                 else:
                     dump_output(item, indent + '    ')
-            else:
+            elif item is not None:
                 f.write('\n')
 
     with open(filename, 'w', encoding='utf-8') as f:
