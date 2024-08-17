@@ -79,7 +79,6 @@ class IntRange:
 @dataclass
 class Property:
     name: str
-    index: int
     fields: dict
 
     @property
@@ -158,10 +157,6 @@ class Object:
     children: list['Object'] = field(default_factory=list)
 
     @property
-    def database(self):
-        return self.parent.database
-
-    @property
     def store(self):
         return self if isinstance(self.parent, Database) else self.parent.store
 
@@ -190,13 +185,6 @@ class Object:
     @property
     def id(self):
         return make_identifier(self.name) if self.name else 'root'
-
-    @property
-    def index(self):
-        try:
-            return self.parent.children.index(self)
-        except ValueError:
-            return 0
 
     @property
     def classname(self):
@@ -266,10 +254,6 @@ class Database(Object):
     @property
     def typename_contained(self):
         return self.typename
-
-    @property
-    def database(self):
-        return self
 
     @property
     def path(self):
@@ -374,7 +358,7 @@ def load_config(filename: str) -> Database:
     def parse(parent: Object, properties: dict):
         for key, value in properties.items():
             # Filter out support property types
-            prop = Property(key, len(parent.properties), value)
+            prop = Property(key, value)
             if not prop.ctype:
                 print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
                 continue
@@ -527,7 +511,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             'nullptr' if obj.is_root else f'&{obj.parent.typename_contained}::typeinfo',
             objinfo_var,
             'nullptr' if obj.is_array else '&defaultData',
-            f'sizeof({obj.typename_struct})',
+            'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)',
             len(objinfo),
             len(propinfo),
         ]),
