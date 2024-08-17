@@ -522,9 +522,9 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'constexpr const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            f'ObjectType::{"Store" if obj.is_root else obj.classname}',
+            'ObjectType::' + ('Store' if obj.is_root else obj.classname),
             'fstr_empty' if obj.is_item else strings[obj.name],
-            'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
+            'nullptr' if obj.is_root else f'&{obj.parent.typename_contained}::typeinfo',
             objinfo_var,
             'nullptr' if obj.is_array else '&defaultData',
             f'sizeof({obj.typename_struct})',
@@ -548,9 +548,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 
 def generate_object_struct(obj: Object) -> CodeLines:
     '''Generate struct definition for this object'''
-
-    if obj.is_array:
-        return CodeLines([], [])
 
     return CodeLines([
         '',
@@ -585,23 +582,23 @@ def generate_property_accessors(obj: Object) -> list:
         '{',
         [f'Struct::Ptr(data)->{prop.id} = ' + ('getStringId(value);' if prop.ptype == 'string' else 'value;')],
         '}'
-        ) for prop in obj.properties),
-    ]
+        ) for prop in obj.properties)]
 
 
 def generate_object(obj: Object) -> CodeLines:
     '''Generate code for Object implementation'''
 
     typeinfo = generate_typeinfo(obj)
+    constructors = generate_contained_constructors(obj)
 
     if isinstance(obj, ObjectArray):
-        item_lines = generate_item_object(obj.items)
+        item_lines = generate_object(obj.items)
         return CodeLines(
             [
                 *item_lines.header,
                 *declare_templated_class(obj, [obj.items.typename]),
                 typeinfo.header,
-                generate_contained_constructors(obj),
+                constructors,
                 '};',
             ],
             item_lines.source + typeinfo.source)
@@ -611,7 +608,7 @@ def generate_object(obj: Object) -> CodeLines:
             [
                 *declare_templated_class(obj, [obj.items.ctype]),
                 typeinfo.header,
-                generate_contained_constructors(obj),
+                constructors,
                 '};',
             ],
             typeinfo.source)
@@ -627,20 +624,17 @@ def generate_object(obj: Object) -> CodeLines:
     for child in obj.children:
         lines.append(generate_object(child))
 
-    struct = generate_object_struct(obj)
+    lines.append(generate_object_struct(obj))
     lines.header += [
-        struct.header,
-        generate_contained_constructors(obj),
+        constructors,
+        *generate_property_accessors(obj)
     ]
-    lines.source += struct.source + typeinfo.source
-
-    lines.header += generate_property_accessors(obj)
+    lines.source += typeinfo.source
 
     # Contained children member variables
     if obj.children:
         lines.header += [
             '',
-            'public:',
             [f'{child.typename_contained} {child.id};' for child in obj.children],
         ]
 
@@ -650,6 +644,18 @@ def generate_object(obj: Object) -> CodeLines:
 
 
 def generate_contained_constructors(obj: Object) -> list:
+    if obj.is_item:
+        return [
+            '',
+            f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, Struct& data):',
+            [', '.join([
+                f'{obj.classname}Template({obj.parent.id}, &data)',
+                *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+            ])],
+            '{',
+            '}',
+        ]
+
     headers = []
     if not obj.is_item_member:
         headers = [
@@ -675,49 +681,6 @@ def generate_contained_constructors(obj: Object) -> list:
         ]
 
     return headers
-
-
-def generate_item_object(obj: Object) -> CodeLines:
-    '''Generate code for Array Item Object implementation'''
-
-    lines = CodeLines(declare_templated_class(obj), [])
-
-    # Append child object definitions
-    for child in obj.children:
-        lines.append(generate_object(child))
-
-    struct = generate_object_struct(obj)
-    typeinfo = generate_typeinfo(obj)
-    lines.header += [[
-        '',
-        *struct.header,
-        *typeinfo.header,
-        '',
-        f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, Struct& data):',
-        [', '.join([
-            f'{obj.classname}Template({obj.parent.id}, &data)',
-            *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
-        ])],
-        '{',
-        '}',
-    ]]
-    lines.source += struct.source + typeinfo.source
-
-    if isinstance(obj, Array):
-        lines.header += generate_array_accessors(obj)
-    else:
-        lines.header += generate_property_accessors(obj)
-
-    # Contained children member variables
-    if obj.children:
-        lines.header += [
-            '',
-            'public:',
-            [f'{child.typename_contained} {child.id};' for child in obj.children],
-            '};'
-        ]
-
-    return lines
 
 
 def write_file(content: list[str | list], filename: str):
