@@ -19,9 +19,14 @@
 
 #include "include/ConfigDB/Database.h"
 #include "include/ConfigDB/Json/Store.h"
+#include <Platform/System.h>
 
 namespace ConfigDB
 {
+const ObjectInfo* Database::storeType;
+std::shared_ptr<Store> Database::storeRef;
+bool Database::callbackQueued;
+
 Store* Database::createStore(const ObjectInfo& typeinfo)
 {
 	return new Json::Store(*this, typeinfo);
@@ -30,15 +35,24 @@ Store* Database::createStore(const ObjectInfo& typeinfo)
 std::shared_ptr<Store> Database::openStore(const ObjectInfo& typeinfo)
 {
 	if(storeType == &typeinfo) {
-		auto inst = storeRef.lock();
-		if(inst) {
-			return inst;
-		}
+		return storeRef;
 	}
+
+	storeRef.reset();
 
 	auto store = createStore(typeinfo);
 	if(!store) {
+		storeType = nullptr;
 		return nullptr;
+	}
+
+	if(!callbackQueued) {
+		System.queueCallback(InterruptCallback([]() {
+			storeRef.reset();
+			storeType = nullptr;
+			callbackQueued = false;
+		}));
+		callbackQueued = true;
 	}
 
 	std::shared_ptr<Store> inst(store);

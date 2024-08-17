@@ -93,10 +93,15 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
+	friend class Store;
+
 	CString path;
 	Format format{};
-	const ObjectInfo* storeType{}; ///< Which store we hold a weak reference to
-	std::weak_ptr<Store> storeRef;
+
+	// Hold store open for a brief period to avoid thrashing
+	static const ObjectInfo* storeType;
+	static std::shared_ptr<Store> storeRef;
+	static bool callbackQueued;
 };
 
 /**
