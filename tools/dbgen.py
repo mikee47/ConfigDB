@@ -492,10 +492,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     '''Generate type information'''
 
     lines = CodeLines([], [])
-    if isinstance(obj, ObjectArray):
-        objinfo = [obj.items]
-    else:
-        objinfo = obj.children
+
+    objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
     if objinfo:
         lines.header += [
             'static const ConfigDB::ObjectInfo* objinfo[];'
@@ -507,11 +505,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             '};'
         ]
 
-    if isinstance(obj, Array):
-        propinfo = [obj.items]
-    else:
-        propinfo = obj.properties
 
+    propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     lines.header += [
         'static const ConfigDB::ObjectInfo typeinfo;'
     ]
@@ -522,19 +517,19 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         *([str(e) + ','] for e in [
             f'ObjectType::{"Store" if obj.is_root else obj.classname}',
             'fstr_empty' if obj.is_item else strings[obj.name],
-            'nullptr' if obj.is_root or isinstance(obj, Store) else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
+            'nullptr' if obj.is_root else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
             'objinfo' if objinfo else 'nullptr',
-            'nullptr' if obj.is_array or isinstance(obj, Store) else '&defaultData',
-            0 if isinstance(obj, Store) else f'sizeof({obj.typename_struct})',
+            'nullptr' if obj.is_array else '&defaultData',
+            f'sizeof({obj.typename_struct})',
             len(objinfo),
             len(propinfo),
         ]),
         [
             '{',
             *(make_static_initializer([
+                f'{prop.property_type}',
                 'fstr_empty' if obj.is_array else strings[prop.name],
                 'nullptr' if prop.default is None or prop.ptype != 'string' else f'&{strings[prop.default]}',
-                f'{prop.property_type}'
             ], ',') for prop in propinfo),
             '}',
         ],
