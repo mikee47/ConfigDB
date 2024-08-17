@@ -28,11 +28,6 @@ class Store : public ConfigDB::Store
 public:
 	using ConfigDB::Store::Store;
 
-	bool commit() override
-	{
-		return save();
-	}
-
 	String getFilename() const
 	{
 		String path = getFilePath();
@@ -42,17 +37,11 @@ public:
 
 	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
 
-protected:
-	/**
-	 * Loading starts with default data loaded from schema, which is then updated during load.
-	 * Failure indicates corrupt JSON file, but any readable data is available.
-	 */
-	bool load();
-	bool save();
+	bool load() override;
+	bool save() override;
 
+protected:
 	String getValueJson(const PropertyInfo& info, const void* data) const;
 };
-
-template <class ClassType> using StoreTemplate = ConfigDB::StoreTemplate<Store, ClassType>;
 
 } // namespace ConfigDB::Json

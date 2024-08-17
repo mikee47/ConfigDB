@@ -59,10 +59,9 @@ String toString(PropertyType type);
  * @brief Property metadata
  */
 struct PropertyInfo {
-	// Don't access these directly!
+	PropertyType type;
 	const FlashString& name;
 	const FlashString* defaultValue; ///< Only required for strings
-	PropertyType type;
 
 	static const PropertyInfo empty;
 

@@ -17,9 +17,7 @@
  *
  ****/
 
-#include "include/ConfigDB/Object.h"
-#include "include/ConfigDB/ObjectArray.h"
-#include "include/ConfigDB/Store.h"
+#include "include/ConfigDB/Database.h"
 
 namespace ConfigDB
 {
@@ -84,8 +82,13 @@ String ObjectInfo::getTypeDesc() const
 	return s;
 }
 
-Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store, store.getObjectDataPtr(typeinfo))
+Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataPtr(typeinfo))
 {
+}
+
+std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo)
+{
+	return db.openStore(typeinfo);
 }
 
 Store& Object::getStore()
@@ -119,12 +122,12 @@ Object Object::getObject(unsigned index)
 
 	auto typ = typeinfo().objinfo[index];
 	auto offset = typ->getOffset();
-	return Object(*typ, *this, static_cast<uint8_t*>(data) + offset);
+	return Object(*typ, this, static_cast<uint8_t*>(data) + offset);
 }
 
 Object Object::findObject(const char* name, size_t length)
 {
-	if(typeinfo().type != ObjectType::Object) {
+	if(typeinfo().type > ObjectType::Object) {
 		return {};
 	}
 	for(unsigned i = 0; i < typeinfo().objectCount; ++i) {
@@ -137,7 +140,7 @@ Object Object::findObject(const char* name, size_t length)
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	if(typeinfo().type != ObjectType::Object) {
+	if(typeinfo().type > ObjectType::Object) {
 		return {};
 	}
 	for(unsigned i = 0; i < typeinfo().propertyCount; ++i) {
@@ -151,7 +154,7 @@ Property Object::findProperty(const char* name, size_t length)
 
 bool Object::commit()
 {
-	return getStore().commit();
+	return getStore().save();
 }
 
 Database& Object::getDatabase()

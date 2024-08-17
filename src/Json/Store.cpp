@@ -52,7 +52,7 @@ public:
 		// 		element.valueLength, element.value);
 
 		if(element.level == 0) {
-			info[0] = Object(*store.typeinfo().objinfo[0], store);
+			info[0] = Object(store.typeinfo(), store);
 			return true;
 		}
 
@@ -101,10 +101,11 @@ private:
 
 bool Store::load()
 {
-	auto root = typeinfo().objinfo[0];
-	rootObjectData.reset(new uint8_t[root->structSize]);
-	data = rootObjectData.get();
-	memcpy_P(data, root->defaultData, root->structSize);
+	auto& root = typeinfo();
+	assert(data && data == rootData.get());
+	memcpy_P(data, root.defaultData, root.structSize);
+	stringPool.clear();
+	arrayPool.clear();
 
 	String filename = getFilename();
 	FileStream stream;
@@ -133,8 +134,7 @@ bool Store::save()
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		auto root = getObject(0);
-		printObjectTo(root, &fstr_empty, 0, buffer);
+		printObjectTo(*this, &fstr_empty, 0, buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {
@@ -156,7 +156,7 @@ size_t Store::printObjectTo(const Object& object, const FlashString* name, unsig
 {
 	size_t n{0};
 
-	bool isObject = (object.typeinfo().type == ObjectType::Object);
+	bool isObject = (object.typeinfo().type <= ObjectType::Object);
 
 	auto pretty = (getDatabase().getFormat() == Format::Pretty);
 	auto newline = [&]() {

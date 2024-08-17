@@ -26,6 +26,7 @@
 namespace ConfigDB
 {
 struct DatabaseInfo {
+	const FlashString& name;
 	uint32_t storeCount;
 	const ObjectInfo* stores[];
 };
@@ -37,7 +38,7 @@ public:
 	 * @brief Database instance
 	 * @param path Path to root directory where all data is stored
 	 */
-	Database(const String& path) : path(path.c_str())
+	Database(const DatabaseInfo& typeinfo, const String& path) : typeinfo(typeinfo), path(path.c_str())
 	{
 	}
 
@@ -72,15 +73,35 @@ public:
 	}
 
 	/**
-	 * @brief Get stores
+	 * @brief Create a store instance
 	 */
-	virtual std::shared_ptr<Store> getStore(unsigned index) = 0;
+	virtual Store* createStore(const ObjectInfo& typeinfo);
 
-	virtual const DatabaseInfo& getTypeinfo() const = 0;
+	/**
+	 * @brief Open a store instance, load it and return a shared pointer
+	 */
+	std::shared_ptr<Store> openStore(const ObjectInfo& typeinfo);
+
+	std::shared_ptr<Store> getStore(unsigned index)
+	{
+		if(index < typeinfo.storeCount) {
+			return openStore(*typeinfo.stores[index]);
+		}
+		return nullptr;
+	}
+
+	const DatabaseInfo& typeinfo;
 
 private:
+	friend class Store;
+
 	CString path;
 	Format format{};
+
+	// Hold store open for a brief period to avoid thrashing
+	static const ObjectInfo* storeType;
+	static std::shared_ptr<Store> storeRef;
+	static bool callbackQueued;
 };
 
 /**
@@ -91,11 +112,6 @@ template <class ClassType> class DatabaseTemplate : public Database
 {
 public:
 	using Database::Database;
-
-	const DatabaseInfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
-	}
 };
 
 } // namespace ConfigDB

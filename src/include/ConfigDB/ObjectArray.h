@@ -42,7 +42,7 @@ public:
 	Object addItem()
 	{
 		auto& itemType = getItemType();
-		return Object(itemType, *this, getArray().add(itemType));
+		return Object(itemType, this, getArray().add(itemType));
 	}
 
 	bool removeItem(unsigned index)
@@ -84,7 +84,7 @@ public:
 	{
 	}
 
-	ObjectArrayTemplate(Object& parent, void* data) : ObjectArray(ClassType::typeinfo, parent, data)
+	ObjectArrayTemplate(Object& parent, void* data) : ObjectArray(ClassType::typeinfo, &parent, data)
 	{
 	}
 
@@ -111,7 +111,7 @@ public:
 private:
 	Item makeItem(void* itemData)
 	{
-		return Item(*this, *static_cast<typename Item::Struct*>(itemData));
+		return Item(*this, *typename Item::Struct::Ptr(itemData));
 	}
 };
 

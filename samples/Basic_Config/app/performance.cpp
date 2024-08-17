@@ -66,11 +66,24 @@ void checkPerformance(BasicConfig& db)
 
 	Serial << _F("Evaluating load times ...") << endl;
 	{
-		Profiling::MicroTimes times(F("Load store"));
+		// Load same cache multiple times
+		Profiling::MicroTimes times(F("Verify load caching"));
 		unsigned store = 0;
 		for(int i = 0; i < rounds; i++) {
 			times.start();
-			auto store = db.getStore(i % db.getTypeinfo().storeCount);
+			auto store = db.getStore(1);
+			times.update();
+		}
+		Serial << times << endl;
+	}
+
+	{
+		// Load different stores in sequence to bypass caching
+		Profiling::MicroTimes times(F("Load all stores"));
+		unsigned store = 0;
+		for(int i = 0; i < rounds; i++) {
+			times.start();
+			auto store = db.getStore(i % db.typeinfo.storeCount);
 			times.update();
 		}
 		Serial << times << endl;

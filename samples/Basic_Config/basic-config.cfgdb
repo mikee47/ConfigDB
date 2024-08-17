@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "store": "json",
+  "store": true,
   "properties": {
     "general": {
       "type": "object",
-      "store": "json",
+      "store": true,
       "properties": {
         "device_name": {
           "type": "string",
@@ -104,7 +104,7 @@
     },
     "color": {
       "type": "object",
-      "store": "json",
+      "store": true,
       "properties": {
         "startup_color": {
           "type": "string",
@@ -280,7 +280,7 @@
     },
     "events": {
       "type": "object",
-      "store": "json",
+      "store": true,
       "properties": {
         "color_interval_ms": {
           "type": "integer",

@@ -27,6 +27,7 @@ bool PoolData::ensureCapacity(size_t required)
 		return true;
 	}
 	size_t increment = std::max(4, capacity / 4);
+	increment = std::max(increment, 8U / itemSize);
 	size_t newCapacity = std::max(required, capacity + increment);
 	auto newBuffer = realloc(buffer, getItemSize(newCapacity));
 	if(!newBuffer) {

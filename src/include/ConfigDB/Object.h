@@ -21,14 +21,15 @@
 
 #include "Property.h"
 #include <Printable.h>
+#include <memory>
 
 #include <debug_progmem.h>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
+	XX(Store)                                                                                                          \
 	XX(Object)                                                                                                         \
 	XX(Array)                                                                                                          \
-	XX(ObjectArray)                                                                                                    \
-	XX(Store)
+	XX(ObjectArray)
 
 namespace ConfigDB
 {
@@ -96,7 +97,7 @@ public:
 
 	Object(const ObjectInfo& typeinfo, Store& store);
 
-	Object(const ObjectInfo& typeinfo, Object& parent, void* data) : typeinfoPtr(&typeinfo), parent(&parent), data(data)
+	Object(const ObjectInfo& typeinfo, Object* parent, void* data) : typeinfoPtr(&typeinfo), parent(parent), data(data)
 	{
 	}
 
@@ -177,6 +178,8 @@ public:
 	}
 
 protected:
+	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo);
+
 	String getString(StringId id) const;
 
 	StringId getStringId(const char* value, size_t valueLength);
@@ -198,13 +201,37 @@ protected:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
+	ObjectTemplate(const ObjectInfo& typeinfo, std::shared_ptr<Store> store) : Object(typeinfo, store)
+	{
+	}
+
 	explicit ObjectTemplate(Store& store) : Object(ClassType::typeinfo, store)
 	{
 	}
 
-	ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, parent, data)
+	ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, &parent, data)
 	{
 	}
+};
+
+/**
+ * @brief Used by code generator
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam StoreType Object type for store root
+ */
+template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
+{
+public:
+	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
+	{
+	}
+
+	OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
+	{
+	}
+
+private:
+	std::shared_ptr<ConfigDB::Store> store;
 };
 
 } // namespace ConfigDB
