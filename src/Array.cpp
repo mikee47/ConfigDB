@@ -22,42 +22,33 @@
 
 namespace ConfigDB
 {
-Array::Array(Store& store, const ObjectInfo& typeinfo) : Object(), id(store.getObjectData<ArrayId>(typeinfo))
+ArrayData& Array::getArray()
 {
-}
-
-unsigned Array::getPropertyCount() const
-{
-	return id ? getStore().arrayPool[id].getCount() : 0;
-}
-
-void* Array::getItemPtr(unsigned index)
-{
-	auto& array = getStore().arrayPool[id];
-	return array[index];
-}
-
-bool Array::setItemPtr(unsigned index, const void* value)
-{
-	auto& array = getStore().arrayPool[id];
-	return array.set(index, value);
-}
-
-bool Array::addItemPtr(const void* value)
-{
-	auto& object = getTypeinfo();
 	auto& store = getStore();
-	if(id == 0) {
-		assert(object.propertyCount == 1);
-		id = store.arrayPool.add(object.propinfo[0]);
+	if(id() == 0) {
+		assert(typeinfo().propertyCount == 1);
+		*static_cast<ArrayId*>(data) = store.arrayPool.add(typeinfo().propinfo[0]);
 	}
-	auto& array = store.arrayPool[id];
-	return array.add(value);
+	return store.arrayPool[id()];
 }
 
-bool Array::removeItem(unsigned index)
+Property Array::getProperty(unsigned index)
 {
-	return getStore().arrayPool[id].remove(index);
+	auto& array = getArray();
+	if(index > array.getCount()) {
+		return {};
+	}
+	// Property info contains exactly one element
+	assert(typeinfo().propertyCount == 1);
+	return {getStore(), typeinfo().propinfo[0], array[index]};
+}
+
+void Array::addNewItem(const char* value, size_t valueLength)
+{
+	assert(typeinfo().propertyCount == 1);
+	auto& array = getArray();
+	auto data = array[array.getCount()];
+	getStore().setValueString(typeinfo().propinfo[0], data, value, valueLength);
 }
 
 } // namespace ConfigDB

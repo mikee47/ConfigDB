@@ -23,16 +23,20 @@ void printItem(Print& output, const String& tag, unsigned indent, const String& 
 
 void printObject(Print& output, const String& tag, unsigned indent, ConfigDB::Object& obj)
 {
-	printItem(output, tag, indent, toString(obj.getTypeinfo().type), obj.getName());
-	for(unsigned i = 0; auto prop = obj.getProperty(i); ++i) {
+	printItem(output, tag, indent, toString(obj.typeinfo().type), obj.getName());
+	auto n = obj.getPropertyCount();
+	for(unsigned i = 0; i < n; ++i) {
+		auto prop = obj.getProperty(i);
 		String value;
-		value += toString(prop.info.type);
+		value += toString(prop.typeinfo().type);
 		value += " = ";
 		value += prop.getJsonValue();
-		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.info.name, value);
+		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.typeinfo().name, value);
 	}
-	for(unsigned j = 0; auto child = obj.getObject(j); ++j) {
-		printObject(output, tag + '.' + j, indent + 1, *child);
+	n = obj.getObjectCount();
+	for(unsigned i = 0; i < n; ++i) {
+		auto child = obj.getObject(i);
+		printObject(output, tag + '.' + i, indent + 1, child);
 	}
 }
 
@@ -47,8 +51,6 @@ void listProperties(ConfigDB::Database& db, Print& output)
 
 	output << _F("Database \"") << db.getName() << '"' << endl;
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
-		String tag(i);
-		printItem(output, tag, 1, F("Store"), store->getName());
-		printObject(output, tag + ".0", 2, *store->getObject());
+		printObject(output, nullptr, 2, *store);
 	}
 }

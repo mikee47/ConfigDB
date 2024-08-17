@@ -21,12 +21,14 @@
 
 #include "Property.h"
 #include <Printable.h>
-#include <memory>
+
+#include <debug_progmem.h>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
 	XX(Object)                                                                                                         \
 	XX(Array)                                                                                                          \
-	XX(ObjectArray)
+	XX(ObjectArray)                                                                                                    \
+	XX(Store)
 
 namespace ConfigDB
 {
@@ -39,6 +41,8 @@ enum class ObjectType : uint32_t {
 #undef XX
 };
 
+String toString(ObjectType type);
+
 /**
  * @brief Identifies array storage within array pool
  * @note alignas(1) required as value contained in packed structures
@@ -46,22 +50,24 @@ enum class ObjectType : uint32_t {
 using ArrayId = uint16_t alignas(1);
 
 struct ObjectInfo {
+	ObjectType type;
 	const FlashString& name;
 	const ObjectInfo* parent;
 	const ObjectInfo* const* objinfo;
 	PGM_VOID_P defaultData;
 	uint32_t structSize;
-	ObjectType type;
 	uint32_t objectCount;
 	uint32_t propertyCount;
 	const PropertyInfo propinfo[];
 
 	static const ObjectInfo empty;
 
+	ObjectInfo(const ObjectInfo&) = delete;
+
 	String getTypeDesc() const;
 
 	/**
-	 * @brief Get offset of this object's data relative to root (not just parent)
+	 * @brief Get offset of this object's data relative to its parent
 	 */
 	size_t getOffset() const;
 
@@ -69,15 +75,6 @@ struct ObjectInfo {
 	 * @brief Get offset of data for a property from the start of *this* object's data
 	 */
 	size_t getPropertyOffset(unsigned index) const;
-
-	/**
-	 * @brief Get the topmost object which has no parent
-	 * Returns either a store root object or a containing ObjectArray.
-	 */
-	const ObjectInfo* getRoot() const
-	{
-		return parent ? parent->getRoot() : this;
-	}
 };
 
 static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
@@ -89,25 +86,26 @@ static_assert(sizeof(ObjectInfo) == 32, "Bad ObjectInfo size");
 class Object
 {
 public:
-	Object() = default;
-
-	explicit Object(Object& parent) : parent(&parent)
+	Object() : typeinfoPtr(&ObjectInfo::empty)
 	{
 	}
 
-	virtual ~Object()
+	explicit Object(const ObjectInfo& typeinfo) : typeinfoPtr(&typeinfo)
 	{
 	}
 
-	String getPropertyValue(const PropertyInfo& prop, const void* data) const;
+	Object(const ObjectInfo& typeinfo, Store& store);
 
-	bool setPropertyValue(const PropertyInfo& prop, void* data, const String& value);
-
-	virtual Store& getStore()
+	Object(const ObjectInfo& typeinfo, Object& parent, void* data) : typeinfoPtr(&typeinfo), parent(&parent), data(data)
 	{
-		assert(parent != nullptr);
-		return parent->getStore();
 	}
+
+	explicit operator bool() const
+	{
+		return typeinfoPtr != &ObjectInfo::empty;
+	}
+
+	Store& getStore();
 
 	const Store& getStore() const
 	{
@@ -125,81 +123,88 @@ public:
 	 * @brief Get number of child objects
 	 * @note ObjectArray overrides this to return number of items in the array
 	 */
-	virtual unsigned getObjectCount() const
-	{
-		return getTypeinfo().objectCount;
-	}
+	unsigned getObjectCount() const;
 
 	/**
 	 * @brief Get child object by index
 	 */
-	virtual std::unique_ptr<Object> getObject(unsigned index) = 0;
+	Object getObject(unsigned index);
+
+	/**
+	 * @brief Find child object by name
+	 */
+	Object findObject(const char* name, size_t length);
 
 	/**
 	 * @brief Get number of properties
 	 * @note Array types override this to return the number of items in the array.
 	 */
-	virtual unsigned getPropertyCount() const
-	{
-		return getTypeinfo().propertyCount;
-	}
+	unsigned getPropertyCount() const;
 
 	/**
 	 * @brief Get properties
 	 * @note Array types override this to return array elements
 	 */
-	virtual Property getProperty(unsigned index);
+	Property getProperty(unsigned index);
+
+	PropertyConst getProperty(unsigned index) const
+	{
+		return const_cast<Object*>(this)->getProperty(index);
+	}
+
+	/**
+	 * @brief Find property by name
+	 */
+	Property findProperty(const char* name, size_t length);
 
 	/**
 	 * @brief Commit changes to the store
 	 */
 	bool commit();
 
-	// Printable [STOREIMPL]
-	// virtual size_t printTo(Print& p) const = 0;
-
-	virtual const ObjectInfo& getTypeinfo() const = 0;
-
-	/**
-	 * @brief Get a pointer to this object's data structure
-	 * @note Implemented by code generator
-	 */
-	virtual void* getData() = 0;
-
 	String getName() const
 	{
-		return getTypeinfo().name;
+		return typeinfo().name;
 	}
 
 	String getPath() const;
 
 	size_t printTo(Print& p) const;
 
-protected:
-	StringId addString(const String& value);
+	const ObjectInfo& typeinfo() const
+	{
+		return *typeinfoPtr;
+	}
 
+protected:
+	String getString(StringId id) const;
+
+	StringId getStringId(const char* value, size_t valueLength);
+
+	StringId getStringId(const String& value)
+	{
+		return getStringId(value.c_str(), value.length());
+	}
+
+	const ObjectInfo* typeinfoPtr;
 	Object* parent{};
+	void* data{};
 };
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @tparam ClassType Concrete type provided by code generator
  */
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate() = default;
-
-	explicit ObjectTemplate(Object& parent) : Object(parent)
+	explicit ObjectTemplate(Store& store) : Object(ClassType::typeinfo, store)
 	{
 	}
 
-	const ObjectInfo& getTypeinfo() const override
+	ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, parent, data)
 	{
-		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 };
 
 } // namespace ConfigDB
-
-String toString(ConfigDB::ObjectType type);

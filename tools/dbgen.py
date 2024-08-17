@@ -179,7 +179,7 @@ class Object:
         obj = self.parent
         ns = []
         while obj:
-            if not isinstance(obj, ObjectArray):
+            if not isinstance(obj, (Store, ObjectArray)):
                 ns.insert(0, obj.typename_contained)
             obj = obj.parent
         return '::'.join(ns)
@@ -205,7 +205,7 @@ class Object:
 
     @property
     def is_root(self):
-        return isinstance(self.parent, Database)
+        return isinstance(self.parent, Store)
 
     @property
     def is_array(self):
@@ -231,6 +231,10 @@ class Array(Object):
     @property
     def is_array(self):
         return True
+
+    @property
+    def base_class(self):
+        return 'StringArray' if self.items.ptype == 'string' else 'Array'
 
     @property
     def typename_struct(self):
@@ -273,8 +277,6 @@ class Store(Object):
 
 @dataclass
 class Database(Object):
-    stores: list[Store] = field(default_factory=list)
-
     @property
     def is_item_member(self):
         return False
@@ -388,9 +390,9 @@ def load_config(filename: str) -> Database:
     if store_ns is None:
         raise RuntimeError('Database requires root "store" value')
     db.store = Store(db, '', store_ns=make_typename(store_ns))
-    db.stores.append(db.store)
-    root = Object(db, '', db.store)
-    db.children.append(root)
+    db.children.append(db.store)
+    root = Object(db.store, '', db.store)
+    db.store.children.append(root)
 
     def parse(obj: Object, properties: dict):
         obj_root = obj
@@ -408,8 +410,8 @@ def load_config(filename: str) -> Database:
                 if obj is not root:
                     raise ValueError(f'{key} cannot have "store", not a root object')
                 store = Store(db, key, store_ns=make_typename(store_ns))
-                db.stores.append(store)
-                obj = db
+                db.children.append(store)
+                obj = store
             else:
                 store = obj.store
             if prop.ptype == 'object':
@@ -442,7 +444,7 @@ def generate_database(db: Database) -> CodeLines:
     lines = CodeLines(
         [
             '#include <ConfigDB/Database.h>',
-            *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.stores}],
+            *[f'#include <ConfigDB/{ns}/Store.h>' for ns in {store.store_ns for store in db.children}],
             '',
             f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
             '{',
@@ -451,37 +453,21 @@ def generate_database(db: Database) -> CodeLines:
         ],
         [])
 
-    for obj in db.children:
-        store = obj.store
+    for store in db.children:
+        typeinfo = generate_typeinfo(store)
         lines.header += [[
-            *declare_templated_class(obj.store),
+            *declare_templated_class(store),
             [
-                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db)',
+                f'{store.typename}(ConfigDB::Database& db): StoreTemplate(db, typeinfo)',
                 '{',
                 '}',
-                '',
-                'std::unique_ptr<ConfigDB::Object> getObject() override;',
-                '',
-                'static const ConfigDB::StoreInfo typeinfo;',
+                *typeinfo.header,
             ],
             '};',
         ]]
-        lines.source += [
-            '',
-            f'const StoreInfo {store.namespace}::{store.typename}::typeinfo PROGMEM',
-            *make_static_initializer([
-                strings[store.name],
-                f'{store.namespace}::{obj.typename}::typeinfo'
-            ], ';'),
-            '',
-            f'std::unique_ptr<Object> {store.namespace}::{store.typename}::getObject()',
-            '{',
-            [f'return std::make_unique<{obj.namespace}::{obj.typename}>(store.lock());'],
-            '}',
-        ]
-
-    for obj in db.children:
-        lines.append(generate_object(obj))
+        lines.source += typeinfo.source
+        for obj in store.children:
+            lines.append(generate_object(obj))
 
     lines.header += [
         [
@@ -500,17 +486,17 @@ def generate_database(db: Database) -> CodeLines:
         '{',
         [
             'switch(index) {',
-            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.stores)],
+            [f'case {i}: return {store.typename}::open(*this);' for i, store in enumerate(db.children)],
             ['default: return nullptr;'],
             '}',
         ],
         '}',
         '',
-        f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
+        f'constexpr const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
         [
-            f'{len(db.stores)},',
+            f'{len(db.children)},',
             '{',
-            [f'&{store.typename}::typeinfo,' for store in db.stores],
+            [f'&{store.typename}::typeinfo,' for store in db.children],
             '}'
         ], '};'
     ]
@@ -526,34 +512,6 @@ def generate_database(db: Database) -> CodeLines:
     ]
 
     return lines
-
-
-def generate_method_get_child_object(obj: Object) -> CodeLines:
-    '''Generate *getChildObject* method'''
-
-    if isinstance(obj, ObjectArray):
-        children = [obj.items]
-    else:
-        children = obj.children
-    return CodeLines(
-        [
-            '',
-            'std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override;',
-        ],
-        [
-            '',
-            f'std::unique_ptr<Object> {obj.namespace}::{obj.typename_contained}::getObject(unsigned index)',
-            '{',
-            [
-                'switch(index) {',
-                [f'case {i}: return std::make_unique<{child.typename_contained}>(*this, data.{child.id});'
-                    for i, child in enumerate(children)],
-                ['default: return nullptr;'],
-                '}',
-            ] if children else ['return nullptr;'],
-            '}'
-        ]
-    )
 
 
 def generate_typeinfo(obj: Object) -> CodeLines:
@@ -590,12 +548,12 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'constexpr const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            'fstr_empty' if obj.is_item or obj.is_root else strings[obj.name],
-            'nullptr' if obj.is_root or obj.is_item_member else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
-            'objinfo' if objinfo else 'nullptr',
-            'nullptr' if obj.is_array else '&defaultData',
-            f'sizeof({obj.typename_struct})',
             f'ObjectType::{obj.classname}',
+            'fstr_empty' if obj.is_item or obj.is_root else strings[obj.name],
+            'nullptr' if obj.is_root or isinstance(obj, Store) else f'&{obj.parent.namespace}::{obj.parent.typename_contained}::typeinfo',
+            'objinfo' if objinfo else 'nullptr',
+            'nullptr' if obj.is_array or isinstance(obj, Store) else '&defaultData',
+            0 if isinstance(obj, Store) else f'sizeof({obj.typename_struct})',
             len(objinfo),
             len(propinfo),
         ]),
@@ -644,47 +602,15 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        [f'return getPropertyValue(typeinfo.propinfo[{prop.index}], &data.{prop.id});']
-        if prop.ptype == 'string' else
-        [f'return data.{prop.id};'],
+        ['return ' + ('getString(' if prop.ptype == 'string' else '(') + f'getData().{prop.id});'],
         '}',
         '',
-        f'bool set{prop.typename}({prop.ctype_constref} value)',
+        f'void set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'return setPropertyValue(typeinfo.propinfo[{prop.index}], &data.{prop.id}, value);']
-        if prop.ptype == 'string' else
-        [
-            f'data.{prop.id} = value;',
-            'return true;'
-        ],
+        [f'getData().{prop.id} = ' + ('getStringId(value);' if prop.ptype == 'string' else 'value;')],
         '}'
         ) for prop in obj.properties),
-        '',
-        [
-            'void* getData() override',
-            '{',
-            ['return &data;'],
-            '}'
-        ]
     ]
-
-
-def generate_array_accessors(arr: Array) -> list:
-    '''Generate typed get/set methods for each property'''
-
-    prop = arr.items
-    return [[
-        '',
-        f'{prop.ctype} getItem(unsigned index) const',
-        '{',
-        [f'return Array::getItem<{prop.ctype}>(index);'],
-        '}',
-        '',
-        f'bool setItem(unsigned index, const {prop.ctype}& value)',
-        '{',
-        ['return Array::setItem(index, value);'],
-        '}'
-    ]]
 
 
 def generate_object(obj: Object) -> CodeLines:
@@ -694,20 +620,29 @@ def generate_object(obj: Object) -> CodeLines:
 
     if isinstance(obj, ObjectArray):
         item_lines = generate_item_object(obj.items)
-        return CodeLines([
-            *item_lines.header,
-            *declare_templated_class(obj, [obj.items.typename]),
-            typeinfo.header,
-            generate_contained_constructors(obj),
-            '};',
-            *generate_outer_class(obj)
-        ],
-        item_lines.source + typeinfo.source)
+        return CodeLines(
+            [
+                *item_lines.header,
+                *declare_templated_class(obj, [obj.items.typename]),
+                typeinfo.header,
+                generate_contained_constructors(obj),
+                '};',
+                *generate_outer_class(obj)
+            ],
+            item_lines.source + typeinfo.source)
 
+    if isinstance(obj, Array):
+        return CodeLines(
+            [
+                *declare_templated_class(obj, [obj.items.ctype]),
+                typeinfo.header,
+                generate_contained_constructors(obj),
+                '};',
+                *generate_outer_class(obj)
+            ],
+            typeinfo.source)
 
-    lines = CodeLines(
-        declare_templated_class(obj),
-        [])
+    lines = CodeLines(declare_templated_class(obj), [])
 
     # Append child object definitions
     for child in obj.children:
@@ -721,18 +656,22 @@ def generate_object(obj: Object) -> CodeLines:
     ]
     lines.source += struct.source + typeinfo.source
 
-    if isinstance(obj, Array):
-        lines.header += generate_array_accessors(obj)
-    else:
-        get_child_object = generate_method_get_child_object(obj)
-        lines.header += [
-            *generate_property_accessors(obj),
-            get_child_object.header,
+    lines.header += [
+        *generate_property_accessors(obj),
+        '',
+        'private:',
+        [
+            'Struct& getData()',
+            '{',
+            ['return *static_cast<Struct*>(Object::data);'],
+            '}',
             '',
-            'private:',
-            ['Struct& data;'],
-        ]
-        lines.source += get_child_object.source
+            'const Struct& getData() const',
+            '{',
+            ['return *static_cast<const Struct*>(Object::data);'],
+            '}',
+        ],
+    ]
 
     # Contained children member variables
     if obj.children:
@@ -753,32 +692,23 @@ def generate_object(obj: Object) -> CodeLines:
 def generate_contained_constructors(obj: Object) -> list:
     headers = []
     if not obj.is_item_member:
-        if obj.is_array:
-            params = '(store, typeinfo)'
-        else:
-            params = '(), data(store.getObjectData<Struct>(typeinfo))'
         headers = [
             '',
             f'{obj.typename_contained}({obj.store.typename}& store): ' + ', '.join([
-                f'{obj.classname}Template{params}',
-                *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+                f'{obj.base_class}Template(store)',
+                *(f'{child.id}(*this, getData().{child.id})' for child in obj.children)
             ]),
             '{',
             '}',
         ]
 
     if not obj.is_root:
-        if obj.is_array:
-            params = '(parent, data)'
-            data_type = 'ConfigDB::ArrayId'
-        else:
-            params = '(parent), data(data)'
-            data_type = 'Struct'
+        data_type = 'ConfigDB::ArrayId' if obj.is_array else 'Struct'
         headers += [
             '',
             f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {data_type}& data): ' + ', '.join([
-                f'{obj.classname}Template{params}',
-                *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+                f'{obj.base_class}Template(parent, &data)',
+                *(f'{child.id}(*this, getData().{child.id})' for child in obj.children)
             ]),
             '{',
             '}',
@@ -800,11 +730,6 @@ def generate_outer_class(obj: Object) -> list:
             '',
             f'{obj.typename}({obj.database.typename}& db): {obj.typename}({obj.store.typename}::open(db))',
             '{',
-            '}',
-            '',
-            'ConfigDB::Store& getStore() override',
-            '{',
-            ['return *store;'],
             '}',
         ],
         '',
@@ -832,9 +757,8 @@ def generate_item_object(obj: Object) -> CodeLines:
         '',
         f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, Struct& data):',
         [', '.join([
-            f'{obj.classname}Template({obj.parent.id})',
-            f'data(data)',
-            *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+            f'{obj.classname}Template({obj.parent.id}, &data)',
+            *(f'{child.id}(*this, getData().{child.id})' for child in obj.children)
         ])],
         '{',
         '}',
@@ -844,17 +768,22 @@ def generate_item_object(obj: Object) -> CodeLines:
     if isinstance(obj, Array):
         lines.header += generate_array_accessors(obj)
     else:
-        get_child_object = generate_method_get_child_object(obj)
-        lines.header += [
-            *generate_property_accessors(obj),
-            get_child_object.header
-        ]
-        lines.source += get_child_object.source
+        lines.header += generate_property_accessors(obj)
 
     lines.header += [
         '',
         'private:',
-        ['Struct& data;'],
+        [
+            'Struct& getData()',
+            '{',
+            ['return *static_cast<Struct*>(Object::data);'],
+            '}',
+            '',
+            'const Struct& getData() const',
+            '{',
+            ['return *static_cast<const Struct*>(Object::data);'],
+            '}',
+        ],
     ]
 
     # Contained children member variables

@@ -24,7 +24,7 @@
 #include "ObjectArray.h"
 #include "Pool.h"
 #include <WString.h>
-#include <debug_progmem.h>
+#include <memory>
 
 namespace ConfigDB
 {
@@ -40,15 +40,10 @@ enum class Format {
 	Pretty,
 };
 
-struct StoreInfo {
-	const FlashString& name;
-	const ObjectInfo& object;
-};
-
 /**
  * @brief Manages access to an object store, typically one file
  */
-class Store : public Printable
+class Store : public Object, public Printable
 {
 public:
 	/**
@@ -56,7 +51,7 @@ public:
 	 * @param db Database to which this store belongs
 	 * @param name Name of store, used as key in JSONPath
 	 */
-	Store(Database& db) : db(db)
+	Store(Database& db, const ObjectInfo& typeinfo) : Object(typeinfo), db(db)
 	{
 	}
 
@@ -64,11 +59,6 @@ public:
 	{
 		String name = getName();
 		return name.length() ? name : F("_root");
-	}
-
-	String getName() const
-	{
-		return getTypeinfo().name;
 	}
 
 	String getFilePath() const;
@@ -80,36 +70,24 @@ public:
 
 	void* getObjectDataPtr(const ObjectInfo& object)
 	{
-		/*
-		 * Verify this object actually belongs to this Store.
-		 * If this check fails then data corruption will result.
-		 * Generated code should ensure this can't happen.
-		 */
-		assert(object.getRoot() == &getTypeinfo().object);
-		return rootObjectData.get() + object.getOffset();
-	}
-
-	template <typename T> T& getObjectData(const ObjectInfo& object)
-	{
-		return *static_cast<T*>(getObjectDataPtr(object));
+		size_t offset{0};
+		for(auto obj = &object; obj; obj = obj->parent) {
+			offset += obj->getOffset();
+		}
+		return rootObjectData.get() + offset;
 	}
 
 	virtual bool commit() = 0;
 
-	virtual std::unique_ptr<Object> getObject() = 0;
-
-	virtual const StoreInfo& getTypeinfo() const = 0;
-
 	/**
 	 * @brief Print object
-	 * @param object Type information
+	 * @param object Object to print
 	 * @param name Name to print with object. If nullptr, omit opening/closing braces.
 	 * @param nesting Nesting level for pretty-printing
 	 * @param p Output stream
 	 * @retval size_t Number of characters written
 	 */
-	virtual size_t printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
-								 Print& p) const = 0;
+	virtual size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const = 0;
 
 	size_t printTo(Print& p, unsigned nesting) const;
 
@@ -119,7 +97,7 @@ public:
 	}
 
 	String getValueString(const PropertyInfo& info, const void* data) const;
-	bool setValueString(const PropertyInfo& prop, void* data, const String& value);
+	void setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
 
 	std::unique_ptr<uint8_t[]> rootObjectData;
 	ArrayPool arrayPool;
@@ -137,9 +115,9 @@ protected:
 };
 
 /**
- * @brief Used by store implemention to create specific template for `Store`
- * @tparam BaseType The store's base `Store` class
- * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @brief Used by code generator for store class
+ * @tparam BaseType The store's base `Store` class (e.g. `Json::Store`)
+ * @tparam ClassType Concrete type being generated
  */
 template <class BaseType, class ClassType> class StoreTemplate : public BaseType
 {
@@ -154,15 +132,10 @@ public:
 		auto inst = store.lock();
 		if(!inst) {
 			inst = std::make_shared<ClassType>(db);
-			inst->load();
 			store = inst;
+			inst->load();
 		}
 		return inst;
-	}
-
-	const StoreInfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
 	}
 
 protected:

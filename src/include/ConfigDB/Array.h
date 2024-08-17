@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Object.h"
+#include "Pool.h"
 
 namespace ConfigDB
 {
@@ -29,96 +30,111 @@ namespace ConfigDB
 class Array : public Object
 {
 public:
-	Array(Store& store, const ObjectInfo& typeinfo);
+	using Object::Object;
 
-	Array(Object& parent, ArrayId& id) : Object(parent), id(id)
+	bool removeItem(unsigned index)
 	{
+		return getArray().remove(index);
 	}
 
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, T>::type getItem(unsigned index) const
+	unsigned getPropertyCount() const
 	{
-		return *static_cast<const T*>(getItemPtr(index));
+		return getArray().getCount();
 	}
 
-	template <typename T> typename std::enable_if<std::is_same<T, String>::value, T>::type getItem(unsigned index) const
+	Property getProperty(unsigned index);
+
+	void addNewItem(const char* value, size_t valueLength);
+
+	ArrayId id() const
 	{
-		return static_cast<const char*>(getItemPtr(index));
+		return *static_cast<ArrayId*>(data);
 	}
 
-	template <typename T>
-	typename std::enable_if<std::is_integral<T>::value, bool>::type setItem(unsigned index, T value)
+protected:
+	ArrayData& getArray();
+
+	const ArrayData& getArray() const
 	{
-		return setItemPtr(index, &value);
+		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
+		return const_cast<Array*>(this)->getArray();
 	}
-
-	bool setItem(unsigned index, const String& value)
-	{
-		auto id = addString(value);
-		return setItemPtr(index, &id);
-	}
-
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, bool>::type addItem(T value)
-	{
-		return addItemPtr(&value);
-	}
-
-	bool addItem(const String& value)
-	{
-		auto id = addString(value);
-		return addItemPtr(&id);
-	}
-
-	bool removeItem(unsigned index);
-
-	std::unique_ptr<Object> getObject(unsigned) override
-	{
-		return nullptr;
-	}
-
-	unsigned getPropertyCount() const override;
-
-	Property getProperty(unsigned index) override
-	{
-		if(index >= getPropertyCount()) {
-			return {};
-		}
-		// Property info contains exactly one element
-		auto& typeinfo = getTypeinfo();
-		assert(typeinfo.propertyCount == 1);
-		return {*this, typeinfo.propinfo[0], getItemPtr(index)};
-	}
-
-	void* getData() override
-	{
-		return &id;
-	}
-
-private:
-	void* getItemPtr(unsigned index);
-
-	const void* getItemPtr(unsigned index) const
-	{
-		return const_cast<Array*>(this)->getItemPtr(index);
-	}
-
-	bool setItemPtr(unsigned index, const void* value);
-	bool addItemPtr(const void* value);
-
-	ArrayId& id;
 };
 
 /**
- * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator (CRTP)
+ * @brief Used by code generator for integral-typed arrays
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam ItemType Type of item
  */
-template <class ClassType> class ArrayTemplate : public Array
+template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
-	using Array::Array;
-
-	const ObjectInfo& getTypeinfo() const override
+	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
 	{
-		return static_cast<const ClassType*>(this)->typeinfo;
+	}
+
+	ArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, parent, id)
+	{
+	}
+
+	ItemType getItem(unsigned index) const
+	{
+		return *static_cast<const ItemType*>(getArray()[index]);
+	}
+
+	void setItem(unsigned index, ItemType value)
+	{
+		getArray().set(index, value);
+	}
+
+	void addItem(ItemType value)
+	{
+		getArray().add(value);
+	}
+
+	void insertItem(unsigned index, ItemType value)
+	{
+		getArray().insert(index, value);
+	}
+};
+
+/**
+ * @brief Used by code generator for String-typed arrays
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam ItemType Type of item, not used (always String)
+ */
+template <class ClassType, typename ItemType> class StringArrayTemplate : public Array
+{
+public:
+	explicit StringArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
+	{
+	}
+
+	StringArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, parent, id)
+	{
+	}
+
+	String getItem(unsigned index) const
+	{
+		return static_cast<const char*>(getArray()[index]);
+	}
+
+	void setItem(unsigned index, const String& value)
+	{
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().set(index, getStringId(value));
+	}
+
+	void addItem(const String& value)
+	{
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().add(getStringId(value));
+	}
+
+	void insertItem(unsigned index, const String& value)
+	{
+		assert(typeinfo().propinfo[0].type == PropertyType::String);
+		getArray().insert(index, getStringId(value));
 	}
 };
 

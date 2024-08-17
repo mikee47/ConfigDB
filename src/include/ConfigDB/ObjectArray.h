@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Object.h"
+#include "Pool.h"
 
 namespace ConfigDB
 {
@@ -29,78 +30,88 @@ namespace ConfigDB
 class ObjectArray : public Object
 {
 public:
-	// ObjectArray() = default;
+	using Object::Object;
 
-	ObjectArray(Store& store, const ObjectInfo& typeinfo);
+	Object getObject(unsigned index);
 
-	ObjectArray(Object& parent, ArrayId& id) : Object(parent), id(id)
+	unsigned getObjectCount() const
 	{
+		return id() ? getArray().getCount() : 0;
 	}
 
-	void* getObjectDataPtr(unsigned index);
-
-	bool removeItem(unsigned index);
-
-	unsigned getObjectCount() const override;
-
-	unsigned getPropertyCount() const override
+	Object addItem()
 	{
-		return 0;
+		auto& itemType = getItemType();
+		return Object(itemType, *this, getArray().add(itemType));
 	}
 
-	Property getProperty(unsigned)
+	bool removeItem(unsigned index)
 	{
-		return {};
+		return id() && getArray().remove(index);
 	}
 
-	void* getData() override
+	ArrayId id() const
 	{
-		return &id;
+		return *static_cast<ArrayId*>(data);
 	}
 
-private:
-	ArrayId& id;
+protected:
+	const ObjectInfo& getItemType() const
+	{
+		return *typeinfo().objinfo[0];
+	}
+
+	ArrayData& getArray();
+
+	const ArrayData& getArray() const
+	{
+		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
+		return const_cast<ObjectArray*>(this)->getArray();
+	}
 };
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator (CRTP)
- * @tparam Item Concrete type for array item provided by code generator
+ * @tparam ClassType Concrete class type
+ * @tparam ItemType Array item class type
  */
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
 	using Item = ItemType;
 
-	using ObjectArray::ObjectArray;
+	explicit ObjectArrayTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
+	{
+	}
+
+	ObjectArrayTemplate(Object& parent, void* data) : ObjectArray(ClassType::typeinfo, parent, data)
+	{
+	}
 
 	Item getItem(unsigned index)
 	{
-		return Item(*this, index);
+		return makeItem(getArray()[index]);
+	}
+
+	Item operator[](unsigned index)
+	{
+		return getItem(index);
 	}
 
 	Item addItem()
 	{
-		return Item(*this, getObjectData(getObjectCount()));
+		return makeItem(getArray().add(Item::typeinfo));
 	}
 
-	std::unique_ptr<ConfigDB::Object> getObject(unsigned index) override
+	Item insertItem(unsigned index)
 	{
-		if(index >= getObjectCount()) {
-			return nullptr;
-		}
-		return std::make_unique<Item>(*this, getObjectData(index));
-	}
-
-	const ObjectInfo& getTypeinfo() const override
-	{
-		return static_cast<const ClassType*>(this)->typeinfo;
+		return makeItem(getArray().insert(index, Item::typeinfo));
 	}
 
 private:
-	typename Item::Struct& getObjectData(unsigned index)
+	Item makeItem(void* itemData)
 	{
-		return *static_cast<typename Item::Struct*>(getObjectDataPtr(index));
+		return Item(*this, *static_cast<typename Item::Struct*>(itemData));
 	}
 };
 

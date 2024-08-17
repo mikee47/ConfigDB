@@ -109,7 +109,7 @@ void printPoolData(const String& name, const ConfigDB::PoolData& data)
 
 void printStringPool(ConfigDB::StringPool& pool, bool detailed)
 {
-	CStringArray csa = pool.getStrings();
+	CStringArray csa(pool.getBuffer(), pool.getCount());
 	auto n = csa.count();
 	printPoolData(F("StringPool"), pool);
 
@@ -158,7 +158,7 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 {
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
 		Serial << F("Store '") << store->getName() << "':" << endl;
-		Serial << F("  Root: ") << store->getTypeinfo().object.structSize << endl;
+		Serial << F("  Root: ") << store->typeinfo().objinfo[0]->structSize << endl;
 		printStringPool(store->stringPool, detailed);
 		printArrayPool(store->arrayPool, detailed);
 

@@ -19,13 +19,17 @@
 
 #include "include/ConfigDB/Property.h"
 #include "include/ConfigDB/Store.h"
-#include <Data/Format/Standard.h>
+#include <Data/Format/Json.h>
 
-String toString(ConfigDB::PropertyType type)
+namespace ConfigDB
+{
+const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
+
+String toString(PropertyType type)
 {
 	switch(type) {
 #define XX(name, ...)                                                                                                  \
-	case ConfigDB::PropertyType::name:                                                                                 \
+	case PropertyType::name:                                                                                           \
 		return F(#name);
 		CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
@@ -33,32 +37,37 @@ String toString(ConfigDB::PropertyType type)
 	return nullptr;
 }
 
-namespace ConfigDB
+String PropertyConst::getValue() const
 {
-const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
-
-String Property::getValue() const
-{
-	if(object && data) {
-		return object->getStore().getValueString(info, data);
-	}
-	return nullptr;
-}
-
-String Property::getJsonValue() const
-{
-	if(!object) {
+	assert(info && store && data);
+	if(!store) {
 		return nullptr;
 	}
+	return store->getValueString(*info, data);
+}
+
+String PropertyConst::getJsonValue() const
+{
 	String value = getValue();
 	if(!value) {
 		return "null";
 	}
-	if(info.type < PropertyType::String) {
+	if(info->type < PropertyType::String) {
 		return value;
 	}
-	::Format::standard.quote(value);
+	::Format::json.escape(value);
+	::Format::json.quote(value);
 	return value;
+}
+
+bool Property::setValueString(const char* value, size_t valueLength)
+{
+	assert(info && store && data);
+	if(!store) {
+		return false;
+	}
+	store->setValueString(*info, data, value, valueLength);
+	return true;
 }
 
 } // namespace ConfigDB

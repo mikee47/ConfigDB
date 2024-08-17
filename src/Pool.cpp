@@ -37,38 +37,41 @@ bool PoolData::ensureCapacity(size_t required)
 	return true;
 }
 
-StringId StringPool::find(const String& value) const
+StringId StringPool::find(const char* value, size_t valueLength) const
 {
-	if(!buffer) {
+	if(!buffer || !value || !valueLength) {
 		return 0;
 	}
-	auto ptr = memmem(buffer, count, value.c_str(), value.length() + 1);
-	if(!ptr) {
-		return 0;
+	for(size_t offset = 0;;) {
+		auto ptr = static_cast<char*>(buffer) + offset;
+		ptr = static_cast<char*>(memmem(ptr, count - offset, value, valueLength));
+		if(!ptr) {
+			return 0;
+		}
+		offset = uintptr_t(ptr) - uintptr_t(buffer) + 1;
+		if(ptr[valueLength + 1] == '\0') {
+			return offset;
+		}
 	}
-	auto offset = uintptr_t(ptr) - uintptr_t(buffer);
-	return 1 + offset;
 }
 
-StringId StringPool::add(const String& value)
+StringId StringPool::add(const char* value, size_t valueLength)
 {
-	auto valueLength = value.length() + 1; // Include NUL
-	if(!ensureCapacity(count + valueLength)) {
+	// Include NUL
+	if(!ensureCapacity(count + valueLength + 1)) {
 		return 0;
 	}
-	memcpy(static_cast<char*>(buffer) + count, value.c_str(), valueLength);
 	auto id = 1 + count;
-	count += valueLength;
+	auto ptr = static_cast<char*>(buffer) + count;
+	memcpy(ptr, value, valueLength);
+	ptr[valueLength] = '\0';
+	count += valueLength + 1;
 	return id;
-}
-
-void* ArrayData::add(const void* data)
-{
-	return ensureCapacity(count + 1) ? setItem(count++, data) : nullptr;
 }
 
 bool ArrayData::remove(unsigned index)
 {
+	assert(index < count);
 	if(index >= count) {
 		return false;
 	}
@@ -77,18 +80,28 @@ bool ArrayData::remove(unsigned index)
 	return true;
 }
 
-void* ArrayData::insert(unsigned index, const void* data)
+void* ArrayData::insertItem(unsigned index, const void* data)
 {
-	if(index > count || !ensureCapacity(count + 1)) {
+	assert(index <= count);
+	if(index > count) {
 		return nullptr;
 	}
-	memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index - 1));
+	if(!ensureCapacity(count + 1)) {
+		return nullptr;
+	}
+	if(index < count) {
+		memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index));
+	}
 	++count;
 	return setItem(index, data);
 }
 
 void* ArrayData::setItem(unsigned index, const void* data)
 {
+	assert(index < count);
+	if(index >= count) {
+		return nullptr;
+	}
 	auto item = getItemPtr(index);
 	if(data) {
 		memcpy_P(item, data, itemSize);

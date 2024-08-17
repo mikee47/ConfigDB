@@ -20,5 +20,3 @@
 #pragma once
 
 #include "ConfigDB/Database.h"
-#include "ConfigDB/Store.h"
-#include "ConfigDB/Object.h"

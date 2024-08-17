@@ -46,119 +46,45 @@ public:
 	{
 	}
 
-	std::pair<const ObjectInfo*, void*> findObject(const Element& element)
-	{
-		auto& parent = info[element.level - 1];
-		if(!parent.object || !parent.object->objectCount) {
-			return {};
-		}
-
-		if(parent.object->type == ObjectType::ObjectArray) {
-			// ObjectArray defines single type
-			return {parent.object->objinfo[0], nullptr};
-		}
-
-		size_t offset{0};
-		for(unsigned i = 0; i < parent.object->objectCount; ++i) {
-			auto obj = parent.object->objinfo[i];
-			if(obj->name.equals(element.key, size_t(element.keyLength))) {
-				return {obj, static_cast<uint8_t*>(parent.data) + offset};
-			}
-			offset += obj->structSize;
-		}
-
-		return {};
-	}
-
-	std::tuple<const PropertyInfo*, void*> findProperty(const Element& element)
-	{
-		auto& parent = info[element.level - 1];
-		auto obj = parent.object;
-		if(!obj || !obj->propertyCount) {
-			return {};
-		}
-		if(obj->type == ObjectType::Array) {
-			auto& data = store.arrayPool[parent.id];
-			return {&obj->propinfo[0], data.add()};
-		}
-		assert(obj->type == ObjectType::Object);
-
-		size_t offset{0};
-		// Skip over child objects
-		for(unsigned i = 0; i < obj->objectCount; ++i) {
-			offset += obj->objinfo[i]->structSize;
-		}
-		// Find property by key
-		for(unsigned i = 0; i < obj->propertyCount; ++i) {
-			auto& prop = obj->propinfo[i];
-			if(prop.name.equals(element.key, size_t(element.keyLength))) {
-				return {&prop, static_cast<uint8_t*>(parent.data) + offset};
-			}
-			offset += prop.getSize();
-		}
-		return {};
-	}
-
-	void handleContainer(const Element& element)
-	{
-		if(element.level == 0) {
-			auto obj = &store.getTypeinfo().object;
-			info[element.level] = {obj, store.rootObjectData.get()};
-			return;
-		}
-
-		auto [obj, data] = findObject(element);
-		if(!obj) {
-			debug_w("[JSON] '%s' not in schema", element.key);
-			return;
-		}
-
-		auto& parent = info[element.level - 1];
-		switch(obj->type) {
-		case ObjectType::Object:
-			if(data) {
-				assert(parent.object->type == ObjectType::Object);
-				info[element.level] = {obj, data};
-			} else {
-				assert(parent.object->type == ObjectType::ObjectArray);
-				auto& pool = store.arrayPool[parent.id];
-				auto items = parent.object->objinfo[0];
-				info[element.level] = {items, pool.add(*items), 0};
-			}
-			break;
-		case ObjectType::Array: {
-			assert(obj->propertyCount == 1);
-			auto id = store.arrayPool.add(obj->propinfo[0]);
-			memcpy(data, &id, sizeof(id));
-			info[element.level] = {obj, nullptr, id};
-			break;
-		}
-		case ObjectType::ObjectArray: {
-			auto id = store.arrayPool.add(*obj->objinfo[0]);
-			memcpy(data, &id, sizeof(id));
-			info[element.level] = {obj, nullptr, id};
-			break;
-		}
-		}
-	}
-
-	void handleProperty(const Element& element)
-	{
-		auto [prop, data] = findProperty(element);
-		if(prop) {
-			store.setValueString(*prop, data, element.as<String>());
-		} else {
-			debug_w("[JSON] '%s' not in schema", element.key);
-		}
-	}
-
 	bool startElement(const Element& element) override
 	{
-		if(element.isContainer()) {
-			handleContainer(element);
-		} else {
-			handleProperty(element);
+		// debug_i("%s %u %s: '%s' = %u / %s", __FUNCTION__, element.level, toString(element.type).c_str(), element.key,
+		// 		element.valueLength, element.value);
+
+		if(element.level == 0) {
+			info[0] = Object(*store.typeinfo().objinfo[0], store);
+			return true;
 		}
+
+		auto& parent = info[element.level - 1];
+		if(!parent) {
+			return true;
+		}
+
+		if(element.isContainer()) {
+			Object obj;
+			if(parent.typeinfo().type == ObjectType::ObjectArray) {
+				obj = static_cast<ObjectArray&>(parent).addItem();
+			} else {
+				obj = parent.findObject(element.key, element.keyLength);
+				if(!obj) {
+					debug_w("[JSON] Object '%s' not in schema", element.key);
+				}
+			}
+			info[element.level] = obj;
+			return true;
+		}
+
+		if(parent.typeinfo().type == ObjectType::Array) {
+			static_cast<Array&>(parent).addNewItem(element.value, element.valueLength);
+			return true;
+		}
+		auto prop = parent.findProperty(element.key, element.keyLength);
+		if(!prop) {
+			debug_w("[JSON] Property '%s' not in schema", element.key);
+			return true;
+		}
+		// prop.setValueString(element.value, element.valueLength);
 		return true;
 	}
 
@@ -170,19 +96,15 @@ public:
 
 private:
 	Store& store;
-	struct Info {
-		const ObjectInfo* object;
-		void* data;
-		ArrayId id;
-	};
-	Info info[JSON::StreamingParser::maxNesting]{};
+	Object info[JSON::StreamingParser::maxNesting]{};
 };
 
 bool Store::load()
 {
-	auto& root = getTypeinfo().object;
-	rootObjectData.reset(new uint8_t[root.structSize]);
-	memcpy_P(rootObjectData.get(), root.defaultData, root.structSize);
+	auto root = typeinfo().objinfo[0];
+	rootObjectData.reset(new uint8_t[root->structSize]);
+	data = rootObjectData.get();
+	memcpy_P(data, root->defaultData, root->structSize);
 
 	String filename = getFilename();
 	FileStream stream;
@@ -194,7 +116,7 @@ bool Store::load()
 	}
 
 	ConfigListener listener(*this);
-	JSON::StaticStreamingParser<128> parser(&listener);
+	JSON::StaticStreamingParser<1024> parser(&listener);
 	auto status = parser.parse(stream);
 
 	if(status == JSON::Status::EndOfDocument) {
@@ -210,9 +132,9 @@ bool Store::save()
 	String filename = getFilename();
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
-		StaticPrintBuffer<256> buffer(stream);
-		auto& root = getTypeinfo().object;
-		printObjectTo(root, &fstr_empty, rootObjectData.get(), 0, buffer);
+		StaticPrintBuffer<512> buffer(stream);
+		auto root = getObject(0);
+		printObjectTo(root, &fstr_empty, 0, buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {
@@ -230,12 +152,11 @@ String Store::getValueJson(const PropertyInfo& info, const void* data) const
 	return s ? (info.type == PropertyType::String) ? quote(s) : s : "null";
 }
 
-size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, const void* data, unsigned nesting,
-							Print& p) const
+size_t Store::printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const
 {
-	size_t n;
+	size_t n{0};
 
-	bool isObject = (object.type == ObjectType::Object);
+	bool isObject = (object.typeinfo().type == ObjectType::Object);
 
 	auto pretty = (getDatabase().getFormat() == Format::Pretty);
 	auto newline = [&]() {
@@ -262,51 +183,37 @@ size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, c
 		--nesting;
 	}
 	unsigned itemCount = 0;
-	if(isObject) {
-		for(unsigned i = 0; i < object.objectCount; ++i) {
-			auto obj = object.objinfo[i];
-			if(itemCount++) {
-				n += p.print(',');
-			}
-			newline();
-			n += printObjectTo(*obj, &obj->name, data, nesting + 1, p);
-			data = static_cast<const uint8_t*>(data) + obj->structSize;
+
+	auto objectCount = object.getObjectCount();
+	for(unsigned i = 0; i < objectCount; ++i) {
+		auto obj = const_cast<Object&>(object).getObject(i);
+		if(itemCount++) {
+			n += p.print(',');
 		}
-		for(unsigned i = 0; i < object.propertyCount; ++i) {
-			auto& prop = object.propinfo[i];
-			if(itemCount++) {
-				n += p.print(',');
-			}
-			newline();
-			if(pretty) {
-				n += p.print(indent);
-				n += p.print("  ");
-			}
-			n += p.print(quote(prop.name));
+		newline();
+		if(pretty && object.typeinfo().type == ObjectType::ObjectArray) {
+			n += p.print(indent);
+			n += p.print("  ");
+		}
+		n += printObjectTo(obj, &obj.typeinfo().name, nesting + 1, p);
+	}
+
+	auto propertyCount = object.getPropertyCount();
+	for(unsigned i = 0; i < propertyCount; ++i) {
+		auto prop = const_cast<Object&>(object).getProperty(i);
+		if(itemCount++) {
+			n += p.print(',');
+		}
+		newline();
+		if(pretty) {
+			n += p.print(indent);
+			n += p.print("  ");
+		}
+		if(prop.typeinfo().name.length()) {
+			n += p.print(quote(prop.typeinfo().name));
 			n += p.print(colon);
-			n += p.print(getValueJson(prop, data));
-			data = static_cast<const uint8_t*>(data) + prop.getSize();
 		}
-	} else {
-		auto id = *static_cast<const ArrayId*>(data);
-		if(id) {
-			auto& array = arrayPool[id];
-			for(unsigned i = 0; i < array.getCount(); ++i) {
-				if(itemCount++) {
-					n += p.print(',');
-				}
-				newline();
-				if(pretty) {
-					n += p.print(indent);
-					n += p.print("  ");
-				}
-				if(object.type == ObjectType::Array) {
-					n += p.print(getValueJson(object.propinfo[0], array[i]));
-				} else {
-					n += printObjectTo(*object.objinfo[0], &fstr_empty, array[i], nesting + 1, p);
-				}
-			}
-		}
+		n += p.print(prop.getJsonValue());
 	}
 
 	if(name) {
@@ -320,4 +227,4 @@ size_t Store::printObjectTo(const ObjectInfo& object, const FlashString* name, c
 	return n;
 }
 
-} // namespace Json
+} // namespace ConfigDB::Json

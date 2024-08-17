@@ -38,7 +38,7 @@
 
 namespace ConfigDB
 {
-class Object;
+class Store;
 
 DEFINE_FSTR_LOCAL(fstr_empty, "")
 
@@ -53,6 +53,8 @@ enum class PropertyType : uint32_t {
 #undef XX
 };
 
+String toString(PropertyType type);
+
 /**
  * @brief Property metadata
  */
@@ -63,6 +65,8 @@ struct PropertyInfo {
 	PropertyType type;
 
 	static const PropertyInfo empty;
+
+	PropertyInfo(const PropertyInfo&) = delete;
 
 	/**
 	 * @brief Get number of bytes required to store this property value within a structure
@@ -97,10 +101,10 @@ union __attribute__((packed)) PropertyData {
 /**
  * @brief Manages a key/value pair stored in an object
  */
-class Property
+class PropertyConst
 {
 public:
-	Property() : info(PropertyInfo::empty)
+	PropertyConst() : info(&PropertyInfo::empty)
 	{
 	}
 
@@ -109,7 +113,7 @@ public:
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	Property(Object& object, const PropertyInfo& info, void* data) : info(info), object(&object), data(data)
+	PropertyConst(Store& store, const PropertyInfo& info, void* data) : info(&info), store(&store), data(data)
 	{
 	}
 
@@ -117,18 +121,28 @@ public:
 
 	explicit operator bool() const
 	{
-		return object != nullptr;
+		return store;
 	}
 
 	String getJsonValue() const;
 
-	const PropertyInfo& info;
+	const PropertyInfo& typeinfo() const
+	{
+		return *info;
+	}
 
-private:
-	Object* object{};
+protected:
+	const PropertyInfo* info;
+	Store* store{};
 	void* data{};
 };
 
-} // namespace ConfigDB
+class Property : public PropertyConst
+{
+public:
+	using PropertyConst::PropertyConst;
 
-String toString(ConfigDB::PropertyType type);
+	bool setValueString(const char* value, size_t valueLength);
+};
+
+} // namespace ConfigDB
