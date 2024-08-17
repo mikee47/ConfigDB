@@ -17,9 +17,7 @@
  *
  ****/
 
-#include "include/ConfigDB/Object.h"
-#include "include/ConfigDB/ObjectArray.h"
-#include "include/ConfigDB/Store.h"
+#include "include/ConfigDB/Database.h"
 
 namespace ConfigDB
 {
@@ -86,6 +84,11 @@ String ObjectInfo::getTypeDesc() const
 
 Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataPtr(typeinfo))
 {
+}
+
+std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo)
+{
+	return db.openStore(typeinfo);
 }
 
 Store& Object::getStore()

@@ -430,7 +430,12 @@ def generate_database(db: Database) -> CodeLines:
                 f'{db.typename}(const String& path): DatabaseTemplate(typeinfo, path)',
                 '{',
                 '}',
-            ],
+                '',
+                '',
+                '/*',
+                ' * Contained classes are reference objects only, and do not contain the actual data.',
+                ' */'
+            ]
         ],
         [
             '',
@@ -447,6 +452,31 @@ def generate_database(db: Database) -> CodeLines:
 
     for store in db.children:
         lines.append(generate_object(store))
+
+    lines.header += [
+        '',
+        '',
+        [
+            '/*',
+            ' * Outer classes contain a shared store pointer plus contained classes to access that data.',
+            ' * Application code instantiate these directly.',
+            ' */'
+        ]
+    ]
+    def generate_outer_class(obj: Object) -> list:
+        return [
+            '',
+            f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
+            '{',
+            'public:',
+            [
+                'using OuterObjectTemplate::OuterObjectTemplate;',
+            ],
+            *[generate_outer_class(child) for child in obj.children if not obj.is_item],
+            '};'
+        ]
+    for store in db.children:
+        lines.header.append(generate_outer_class(store))
 
     lines.header += ['};']
 
@@ -573,7 +603,6 @@ def generate_object(obj: Object) -> CodeLines:
                 typeinfo.header,
                 generate_contained_constructors(obj),
                 '};',
-                *generate_outer_class(obj)
             ],
             item_lines.source + typeinfo.source)
 
@@ -584,7 +613,6 @@ def generate_object(obj: Object) -> CodeLines:
                 typeinfo.header,
                 generate_contained_constructors(obj),
                 '};',
-                *generate_outer_class(obj)
             ],
             typeinfo.source)
 
@@ -616,10 +644,7 @@ def generate_object(obj: Object) -> CodeLines:
             [f'{child.typename_contained} {child.id};' for child in obj.children],
         ]
 
-    lines.header += [
-        '};',
-        *generate_outer_class(obj)
-    ]
+    lines.header += ['};']
 
     return lines
 
@@ -650,28 +675,6 @@ def generate_contained_constructors(obj: Object) -> list:
         ]
 
     return headers
-
-
-def generate_outer_class(obj: Object) -> list:
-    return [] if obj.is_item_member else [
-        '',
-        f'class {obj.typename}: public {obj.typename_contained}',
-        '{',
-        'public:',
-        [
-            f'{obj.typename}(std::shared_ptr<ConfigDB::Store> store): {obj.typename_contained}(*store), store(store)',
-            '{',
-            '}',
-            '',
-            f'{obj.typename}(ConfigDB::Database& db): {obj.typename}(db.openStore({obj.store.typename}::typeinfo))',
-            '{',
-            '}',
-        ],
-        '',
-        'private:',
-        [f'std::shared_ptr<ConfigDB::Store> store;'],
-        '};'
-    ]
 
 
 def generate_item_object(obj: Object) -> CodeLines:
