@@ -84,7 +84,7 @@ public:
 			debug_w("[JSON] Property '%s' not in schema", element.key);
 			return true;
 		}
-		// prop.setValueString(element.value, element.valueLength);
+		prop.setValueString(element.value, element.valueLength);
 		return true;
 	}
 
