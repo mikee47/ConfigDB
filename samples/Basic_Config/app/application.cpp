@@ -109,17 +109,16 @@ void printPoolData(const String& name, const ConfigDB::PoolData& data)
 
 void printStringPool(ConfigDB::StringPool& pool, bool detailed)
 {
-	CStringArray csa(pool.getBuffer(), pool.getCount());
-	auto n = csa.count();
 	printPoolData(F("StringPool"), pool);
 
 	if(!detailed) {
 		return;
 	}
 
-	auto start = csa.c_str();
-	unsigned i{0};
-	for(auto s : csa) {
+	auto start = pool.getBuffer();
+	auto end = start + pool.getCount();
+	unsigned i = 0;
+	for(auto s = start; s < end; ++i, s += strlen(s) + 1) {
 		String tag;
 		tag += "    #";
 		tag.concat(i, DEC, 2, ' ');
@@ -127,7 +126,6 @@ void printStringPool(ConfigDB::StringPool& pool, bool detailed)
 		tag += s - start;
 		tag += ']';
 		Serial << tag.pad(18) << ": \"" << s << '"' << endl;
-		++i;
 	}
 }
 
