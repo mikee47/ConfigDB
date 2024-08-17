@@ -26,6 +26,7 @@
 namespace ConfigDB
 {
 struct DatabaseInfo {
+	const FlashString& name;
 	uint32_t storeCount;
 	const ObjectInfo* stores[];
 };

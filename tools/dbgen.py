@@ -432,24 +432,25 @@ def generate_database(db: Database) -> CodeLines:
                 '}',
             ],
         ],
-        [])
+        [
+            '',
+            f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
+            [
+                f'{strings[db.name]},',
+                f'{len(db.children)},',
+                '{',
+                [f'&{store.typename}::typeinfo,' for store in db.children],
+                '}'
+            ],
+            '};'
+        ])
 
     for store in db.children:
         lines.append(generate_object(store))
 
     lines.header += ['};']
 
-    lines.source += [
-        '',
-        f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
-        [
-            f'{len(db.children)},',
-            '{',
-            [f'&{store.typename}::typeinfo,' for store in db.children],
-            '}'
-        ], '};'
-    ]
-
+    # Insert this at end once string table has been populated
     lines.source[:0] = [
         f'#include "{db.name}.h"',
         '',
