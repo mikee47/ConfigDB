@@ -154,13 +154,16 @@ class Property:
 class Object:
     parent: 'Object'
     name: str
-    store: 'Store' = None
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
 
     @property
     def database(self):
         return self.parent.database
+
+    @property
+    def store(self):
+        return self if isinstance(self.parent, Database) else self.parent.store
 
     @property
     def typename(self):
@@ -179,7 +182,7 @@ class Object:
         obj = self.parent
         ns = []
         while obj:
-            if not isinstance(obj, (Store, ObjectArray)):
+            if not isinstance(obj, ObjectArray):
                 ns.insert(0, obj.typename_contained)
             obj = obj.parent
         return '::'.join(ns)
@@ -205,7 +208,7 @@ class Object:
 
     @property
     def is_root(self):
-        return isinstance(self.parent, Store)
+        return isinstance(self.parent, Database)
 
     @property
     def is_array(self):
@@ -252,27 +255,6 @@ class ObjectArray(Object):
     @property
     def typename_struct(self):
         return 'ConfigDB::ArrayId'
-
-
-@dataclass
-class Store(Object):
-    store_ns: str = None
-
-    @property
-    def typename(self):
-        return f'{super().typename}Store'
-
-    @property
-    def typename_contained(self):
-        return self.typename
-
-    @property
-    def namespace(self):
-        return self.database.typename
-
-    @property
-    def base_class(self):
-        return f'{self.store_ns}::Store'
 
 
 @dataclass
@@ -385,57 +367,51 @@ def load_config(filename: str) -> Database:
     '''Load, validate and parse schema into python objects'''
     config = load_schema(filename)
     dbname = os.path.splitext(os.path.basename(filename))[0]
-    db = Database(None, dbname, properties=config['properties'])
-    store_ns = config.get('store')
-    if store_ns is None:
-        raise RuntimeError('Database requires root "store" value')
-    db.store = Store(db, '', store_ns=make_typename(store_ns))
-    db.children.append(db.store)
-    root = Object(db.store, '', db.store)
-    db.store.children.append(root)
+    database = Database(None, dbname, properties=config['properties'])
+    root = Object(database, '')
+    database.children.append(root)
 
-    def parse(obj: Object, properties: dict):
-        obj_root = obj
+    def parse(parent: Object, properties: dict):
         for key, value in properties.items():
-            obj = obj_root
             # Filter out support property types
-            prop = Property(key, len(obj.properties), value)
+            prop = Property(key, len(parent.properties), value)
             if not prop.ctype:
-                print(f'*** "{obj.path}": {prop.ptype} type not yet implemented.')
+                print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
                 continue
             if prop.ctype != '-': # object or array
-                obj.properties.append(prop)
+                parent.properties.append(prop)
                 continue
-            if store_ns := value.get('store'):
-                if obj is not root:
+
+            # Objects with 'store' annoation are managed by database, otherwise they live in root object
+            if 'store' in value:
+                if parent is not root:
                     raise ValueError(f'{key} cannot have "store", not a root object')
-                store = Store(db, key, store_ns=make_typename(store_ns))
-                db.children.append(store)
-                obj = store
+                obj = database
             else:
-                store = obj.store
+                obj = parent
             if prop.ptype == 'object':
-                child = Object(obj, key, store)
+                child = Object(obj, key)
+                obj.children.append(child)
                 parse(child, value['properties'])
             elif prop.ptype == 'array':
                 items = value['items']
                 if items['type'] == 'object':
-                    arr = ObjectArray(obj, key, store)
-                    arr.items = Object(arr, f'{arr.typename}Item', store)
+                    arr = ObjectArray(obj, key)
+                    obj.children.append(arr)
+                    arr.items = Object(arr, f'{arr.typename}Item')
                     parse(arr.items, items['properties'])
                 else:
-                    arr = Array(obj, key, store)
+                    arr = Array(obj, key)
+                    obj.children.append(arr)
                     parse(arr, {'items': items})
                     assert len(arr.properties) == 1
                     arr.items = arr.properties[0]
                     arr.properties = []
-                child = arr
             else:
                 raise ValueError('Bad type ' + repr(prop))
-            obj.children.append(child)
 
-    parse(root, db.properties)
-    return db
+    parse(root, database.properties)
+    return database
 
 
 def generate_database(db: Database) -> CodeLines:
@@ -459,8 +435,7 @@ def generate_database(db: Database) -> CodeLines:
         [])
 
     for store in db.children:
-        for obj in store.children:
-            lines.append(generate_object(obj))
+        lines.append(generate_object(store))
 
     lines.header += ['};']
 
@@ -470,7 +445,7 @@ def generate_database(db: Database) -> CodeLines:
         [
             f'{len(db.children)},',
             '{',
-            [f'&{store.children[0].typename}::typeinfo,' for store in db.children],
+            [f'&{store.typename}::typeinfo,' for store in db.children],
             '}'
         ], '};'
     ]
@@ -686,7 +661,7 @@ def generate_outer_class(obj: Object) -> list:
             '{',
             '}',
             '',
-            f'{obj.typename}(ConfigDB::Database& db): {obj.typename}(db.openStore({obj.store.children[0].typename}::typeinfo))',
+            f'{obj.typename}(ConfigDB::Database& db): {obj.typename}(db.openStore({obj.store.typename}::typeinfo))',
             '{',
             '}',
         ],
