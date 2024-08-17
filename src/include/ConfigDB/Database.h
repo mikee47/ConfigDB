@@ -20,6 +20,8 @@
 #pragma once
 
 #include "Store.h"
+#include "Reader.h"
+#include "Writer.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
 
@@ -67,11 +69,6 @@ public:
 	}
 
 	/**
-	 * @brief Create a store instance
-	 */
-	virtual Store* createStore(const ObjectInfo& typeinfo);
-
-	/**
 	 * @brief Open a store instance, load it and return a shared pointer
 	 */
 	std::shared_ptr<Store> openStore(const ObjectInfo& typeinfo);
@@ -83,6 +80,11 @@ public:
 		}
 		return nullptr;
 	}
+
+	bool save(Store& store) const;
+
+	virtual Reader& getReader(const Store& store) const;
+	virtual Writer& getWriter(const Store& store) const;
 
 	const DatabaseInfo& typeinfo;
 

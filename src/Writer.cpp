@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Store.h
+ * ConfigDB/Writer.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,31 +17,29 @@
  *
  ****/
 
-#pragma once
+#include "include/ConfigDB/Writer.h"
+#include <Data/Stream/FileStream.h>
 
-#include "../Store.h"
-
-namespace ConfigDB::Json
+namespace ConfigDB
 {
-class Store : public ConfigDB::Store
+bool Writer::loadFromFile(Store& store, const String& filename)
 {
-public:
-	using ConfigDB::Store::Store;
-
-	String getFilename() const
-	{
-		String path = getFilePath();
-		path += _F(".json");
-		return path;
+	FileStream stream;
+	if(!stream.open(filename, File::ReadOnly)) {
+		if(stream.getLastError() == IFS::Error::NotFound) {
+			return true;
+		}
+		debug_w("open('%s') failed", filename.c_str());
+		return false;
 	}
 
-	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
+	return loadFromStream(store, stream);
+}
 
-	bool load() override;
-	bool save() override;
+bool Writer::loadFromFile(Store& store)
+{
+	String filename = store.getFilePath() + getFileExtension();
+	return loadFromFile(store, filename);
+}
 
-protected:
-	String getValueJson(const PropertyInfo& info, const void* data) const;
-};
-
-} // namespace ConfigDB::Json
+} // namespace ConfigDB

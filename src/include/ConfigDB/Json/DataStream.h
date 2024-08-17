@@ -23,7 +23,7 @@
 #include <Data/WebConstants.h>
 #include <Data/Stream/MemoryDataStream.h>
 
-namespace ConfigDB
+namespace ConfigDB::Json
 {
 /**
  * @brief Forward-reading stream for serializing entire database contents
@@ -31,19 +31,12 @@ namespace ConfigDB
 class DataStream : public IDataSourceStream
 {
 public:
-	DataStream(Database& db) : db(db)
+	DataStream(Database& db, Format format) : db(&db), pretty(format == Format::Pretty)
 	{
-		reset();
 	}
 
-	/**
-	 * @brief Reset back to start
-	 * @note Handy if you want to re-use this stream to send it somewhere else
-	 */
-	void reset()
+	DataStream(std::shared_ptr<Store> store, Format format) : store(store), pretty(format == Format::Pretty)
 	{
-		storeIndex = 0;
-		done = false;
 	}
 
 	bool isValid() const override
@@ -62,7 +55,7 @@ public:
 
 	String getName() const override
 	{
-		return db.getName();
+		return db ? db->getName() : nullptr;
 	}
 
 	MimeType getMimeType() const override
@@ -73,10 +66,12 @@ public:
 private:
 	void fillStream();
 
-	Database& db;
+	Database* db{};
+	std::shared_ptr<Store> store;
 	MemoryDataStream stream;
-	uint8_t storeIndex;
-	bool done;
+	uint8_t storeIndex{0};
+	bool pretty;
+	bool done{false};
 };
 
-} // namespace ConfigDB
+} // namespace ConfigDB::Json

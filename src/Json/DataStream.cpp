@@ -18,9 +18,9 @@
  ****/
 
 #include <ConfigDB/Json/DataStream.h>
-#include <ConfigDB/Json/Store.h>
+#include <ConfigDB/Json/Reader.h>
 
-namespace ConfigDB
+namespace ConfigDB::Json
 {
 void DataStream::fillStream()
 {
@@ -28,7 +28,6 @@ void DataStream::fillStream()
 	if(done) {
 		return;
 	}
-	auto pretty = (db.getFormat() == Format::Pretty);
 	auto newline = [&]() {
 		if(pretty) {
 			stream << endl;
@@ -37,14 +36,15 @@ void DataStream::fillStream()
 	if(storeIndex == 0) {
 		stream << '{';
 	}
-	auto store = db.getStore(storeIndex);
+	store.reset();
+	store = db->getStore(storeIndex);
 	if(store) {
 		if(storeIndex > 0) {
 			stream << ',';
 			newline();
 		}
 		auto name = storeIndex ? &store->typeinfo().name : nullptr;
-		store->printObjectTo(*store, name, 1, stream);
+		reader.printObjectTo(*store, name, 1, stream);
 		++storeIndex;
 		return;
 	}
@@ -84,4 +84,4 @@ bool DataStream::seek(int len)
 	return true;
 }
 
-} // namespace ConfigDB
+} // namespace ConfigDB::Json
