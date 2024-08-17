@@ -504,7 +504,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     ]
     lines.source += [
         '',
-        f'constexpr const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
+        f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
             'ObjectType::' + ('Store' if obj.is_root else obj.classname),

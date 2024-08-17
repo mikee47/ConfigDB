@@ -29,8 +29,6 @@
 namespace ConfigDB
 {
 class Database;
-class Object;
-class ObjectInfo;
 
 /**
  * @brief Serialisation format

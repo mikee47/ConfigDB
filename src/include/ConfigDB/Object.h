@@ -48,7 +48,11 @@ String toString(ObjectType type);
  * @brief Identifies array storage within array pool
  * @note alignas(1) required as value contained in packed structures
  */
-using ArrayId = uint16_t alignas(1);
+#ifdef __clang__
+using ArrayId = uint16_t;
+#else
+using ArrayId alignas(1) = uint16_t;
+#endif
 
 struct ObjectInfo {
 	ObjectType type;
@@ -199,7 +203,7 @@ protected:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate(const ObjectInfo& typeinfo, std::shared_ptr<Store> store) : Object(typeinfo, store)
+	ObjectTemplate(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store)
 	{
 	}
 
