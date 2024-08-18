@@ -43,9 +43,8 @@ void DataStream::fillStream()
 			stream << ',';
 			newline();
 		}
-		auto root = store->getObject(0);
 		auto name = storeIndex ? &store->typeinfo().name : nullptr;
-		store->printObjectTo(root, name, 1, stream);
+		store->printObjectTo(*store, name, 1, stream);
 		++storeIndex;
 		return;
 	}
