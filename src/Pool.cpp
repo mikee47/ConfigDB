@@ -21,21 +21,36 @@
 
 namespace ConfigDB
 {
-bool PoolData::ensureCapacity(size_t required)
+void* PoolData::allocate(size_t items)
 {
-	if(required < capacity) {
-		return true;
+	if(items <= space) {
+		auto ptr = getItemPtr(count);
+		count += items;
+		space -= items;
+		return ptr;
 	}
-	size_t increment = std::max(4, capacity / 4);
-	increment = std::max(increment, size_t(8U / itemSize));
-	size_t newCapacity = std::max(required, capacity + increment);
+
+	size_t newCount = count + items;
+	size_t newSpace = std::min(255U, count / 8U);
+	size_t newCapacity = newCount + newSpace;
+
 	auto newBuffer = realloc(buffer, getItemSize(newCapacity));
 	if(!newBuffer) {
-		return false;
+		return nullptr;
 	}
+
 	buffer = newBuffer;
-	capacity = newCapacity;
-	return true;
+	auto ptr = getItemPtr(count);
+	count = newCount;
+	space = newSpace;
+	return ptr;
+}
+
+void PoolData::deallocate(size_t items)
+{
+	assert(items <= count);
+	count -= items;
+	space += items;
 }
 
 StringId StringPool::find(const char* value, size_t valueLength) const
@@ -59,15 +74,13 @@ StringId StringPool::find(const char* value, size_t valueLength) const
 StringId StringPool::add(const char* value, size_t valueLength)
 {
 	// Include NUL
-	if(!ensureCapacity(count + valueLength + 1)) {
+	auto ptr = static_cast<char*>(allocate(valueLength + 1));
+	if(!ptr) {
 		return 0;
 	}
-	auto id = 1 + count;
-	auto ptr = static_cast<char*>(buffer) + count;
 	memcpy(ptr, value, valueLength);
 	ptr[valueLength] = '\0';
-	count += valueLength + 1;
-	return id;
+	return 1 + ptr - static_cast<char*>(buffer);
 }
 
 bool ArrayData::remove(unsigned index)
@@ -77,7 +90,7 @@ bool ArrayData::remove(unsigned index)
 		return false;
 	}
 	memmove(getItemPtr(index), getItemPtr(index + 1), getItemSize(count - index - 1));
-	--count;
+	deallocate(1);
 	return true;
 }
 
@@ -87,13 +100,12 @@ void* ArrayData::insertItem(unsigned index, const void* data)
 	if(index > count) {
 		return nullptr;
 	}
-	if(!ensureCapacity(count + 1)) {
+	if(!allocate(1)) {
 		return nullptr;
 	}
-	if(index < count) {
-		memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index));
+	if(index + 1 < count) {
+		memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index - 1));
 	}
-	++count;
 	return setItem(index, data);
 }
 
@@ -116,6 +128,7 @@ void ArrayPool::clear()
 {
 	auto data = static_cast<ArrayData*>(buffer) + count;
 	while(count--) {
+		++space;
 		--data;
 		data->clear();
 	}
@@ -124,10 +137,10 @@ void ArrayPool::clear()
 
 ArrayId ArrayPool::add(size_t itemSize)
 {
-	if(!ensureCapacity(count + 1)) {
+	auto ptr = allocate(1);
+	if(!ptr) {
 		return 0;
 	}
-	auto ptr = getItemPtr(count++);
 	*static_cast<ArrayData*>(ptr) = ArrayData(itemSize);
 	return count;
 }

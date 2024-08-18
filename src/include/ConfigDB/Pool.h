@@ -29,7 +29,7 @@ namespace ConfigDB
 class PoolData
 {
 public:
-	PoolData(size_t itemSize) : capacity(0), count(0), itemSize(itemSize)
+	PoolData(size_t itemSize) : itemSize(itemSize)
 	{
 		assert(itemSize > 0 && itemSize <= 255);
 	}
@@ -43,7 +43,7 @@ public:
 
 	size_t getCapacity() const
 	{
-		return capacity;
+		return count + space;
 	}
 
 	size_t getItemSize() const
@@ -60,16 +60,17 @@ public:
 	{
 		free(buffer);
 		buffer = nullptr;
-		count = capacity = 0;
+		count = space = 0;
 	}
 
 	size_t usage() const
 	{
-		return capacity * itemSize;
+		return getCapacity() * itemSize;
 	}
 
 protected:
-	bool ensureCapacity(size_t required);
+	void* allocate(size_t items);
+	void deallocate(size_t items);
 
 	void* getItemPtr(unsigned index)
 	{
@@ -82,9 +83,9 @@ protected:
 	}
 
 	void* buffer{};
-	uint32_t capacity : 12;
-	uint32_t count : 12;
-	uint32_t itemSize : 8;
+	uint16_t count{};
+	uint8_t space{};
+	uint8_t itemSize;
 };
 
 /**
