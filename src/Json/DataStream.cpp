@@ -19,12 +19,112 @@
 
 #include <ConfigDB/Json/DataStream.h>
 #include <ConfigDB/Json/Reader.h>
+#include <Data/Format/Json.h>
+
+namespace
+{
+String quote(String s)
+{
+	::Format::json.escape(s);
+	::Format::json.quote(s);
+	return s;
+}
+} // namespace
 
 namespace ConfigDB::Json
 {
-void DataStream::fillStream()
+// Return true if more data to output
+void DataStream::printObject()
 {
-	stream.clear();
+	if(nesting == 0) {
+		state.objects[0] = Object(store->typeinfo(), *store);
+		state.itemCounts[0] = 0;
+		++nesting;
+	}
+	auto& object = state.objects[nesting - 1];
+	auto& itemCount = state.itemCounts[nesting - 1];
+	auto name = &object.typeinfo().name;
+	if(nesting == 1 && storeIndex == 0) {
+		name = nullptr;
+	}
+
+	bool isObject = (object.typeinfo().type <= ObjectType::Object);
+
+	auto newline = [&]() {
+		if(pretty) {
+			stream.println();
+		}
+	};
+
+	String indent;
+	if(pretty) {
+		indent.pad(nesting * 2);
+	}
+	const char* colon = pretty ? ": " : ":";
+
+	if(itemCount == 0 && name) {
+		if(name->length()) {
+			if(pretty) {
+				stream.print(indent);
+			}
+			stream.print(quote(*name));
+			stream.print(colon);
+		}
+		stream.print(isObject ? '{' : '[');
+	}
+
+	auto objectCount = object.getObjectCount();
+	unsigned index = itemCount;
+	if(index < objectCount) {
+		auto obj = const_cast<Object&>(object).getObject(index);
+		if(itemCount++) {
+			stream.print(',');
+		}
+		newline();
+		if(pretty && object.typeinfo().type == ObjectType::ObjectArray) {
+			stream.print(indent);
+			stream.print("  ");
+		}
+		state.objects[nesting] = obj;
+		state.itemCounts[nesting] = 0;
+		++nesting;
+		return;
+	}
+
+	index -= objectCount;
+
+	auto propertyCount = object.getPropertyCount();
+	if(index < propertyCount) {
+		auto prop = const_cast<Object&>(object).getProperty(index);
+		if(itemCount++) {
+			stream.print(',');
+		}
+		newline();
+		if(pretty) {
+			stream.print(indent);
+			stream.print("  ");
+		}
+		if(prop.typeinfo().name.length()) {
+			stream.print(quote(prop.typeinfo().name));
+			stream.print(colon);
+		}
+		stream.print(prop.getJsonValue());
+		return;
+	}
+
+	if(name) {
+		if(pretty && itemCount) {
+			newline();
+			stream.print(indent);
+		}
+		stream.print(isObject ? '}' : ']');
+	}
+
+	--nesting;
+}
+
+void DataStream::fillStream(Print& stream)
+{
 	if(done) {
 		return;
 	}
@@ -33,6 +133,15 @@ void DataStream::fillStream()
 			stream << endl;
 		}
 	};
+
+	if(nesting > 0) {
+		printObject();
+		if(nesting > 0) {
+			return;
+		}
+		++storeIndex;
+	}
+
 	if(storeIndex == 0) {
 		stream << '{';
 	}
@@ -43,9 +152,7 @@ void DataStream::fillStream()
 			stream << ',';
 			newline();
 		}
-		auto name = storeIndex ? &store->typeinfo().name : nullptr;
-		reader.printObjectTo(*store, name, 1, stream);
-		++storeIndex;
+		printObject();
 		return;
 	}
 	newline();
@@ -60,8 +167,8 @@ uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
 		return 0;
 	}
 
-	if(storeIndex == 0) {
-		fillStream();
+	if(stream.available() == 0) {
+		fillStream(stream);
 	}
 
 	return stream.readMemoryBlock(data, bufSize);
@@ -78,7 +185,8 @@ bool DataStream::seek(int len)
 	}
 
 	if(stream.available() == 0) {
-		fillStream();
+		stream.clear();
+		fillStream(stream);
 	}
 
 	return true;

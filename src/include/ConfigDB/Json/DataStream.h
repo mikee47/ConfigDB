@@ -22,6 +22,7 @@
 #include "../Database.h"
 #include <Data/WebConstants.h>
 #include <Data/Stream/MemoryDataStream.h>
+#include <JSON/StreamingParser.h>
 
 namespace ConfigDB::Json
 {
@@ -64,12 +65,18 @@ public:
 	}
 
 private:
-	void fillStream();
+	void printObject();
+	void fillStream(Print& stream);
 
 	Database* db{};
 	std::shared_ptr<Store> store;
 	MemoryDataStream stream;
+	struct {
+		Object objects[JSON::StreamingParser::maxNesting];
+		uint8_t itemCounts[JSON::StreamingParser::maxNesting];
+	} state{};
 	uint8_t storeIndex{0};
+	uint8_t nesting{0};
 	bool pretty;
 	bool done{false};
 };

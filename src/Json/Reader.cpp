@@ -19,7 +19,6 @@
 
 #include <ConfigDB/Json/Reader.h>
 #include <ConfigDB/Json/DataStream.h>
-// #include <ConfigDB/Object.h>
 #include <Data/Format/Json.h>
 
 namespace
