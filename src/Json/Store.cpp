@@ -102,8 +102,7 @@ private:
 bool Store::load()
 {
 	auto& root = typeinfo();
-	assert(data && data == rootData.get());
-	memcpy_P(data, root.defaultData, root.structSize);
+	memcpy_P(rootData.get(), root.defaultData, root.structSize);
 	stringPool.clear();
 	arrayPool.clear();
 

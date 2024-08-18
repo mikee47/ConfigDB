@@ -52,7 +52,6 @@ public:
 	Store(Database& db, const ObjectInfo& typeinfo)
 		: Object(typeinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo.structSize))
 	{
-		Object::data = rootData.get();
 	}
 
 	String getFileName() const
@@ -68,13 +67,18 @@ public:
 		return db;
 	}
 
-	void* getObjectDataPtr(const ObjectInfo& object)
+	uint16_t getObjectDataRef(const ObjectInfo& object)
 	{
 		size_t offset{0};
 		for(auto obj = &object; obj; obj = obj->parent) {
 			offset += obj->getOffset();
 		}
-		return rootData.get() + offset;
+		return offset;
+	}
+
+	uint8_t* getRootData()
+	{
+		return rootData.get();
 	}
 
 	/**

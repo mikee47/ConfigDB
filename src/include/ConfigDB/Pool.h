@@ -74,17 +74,19 @@ protected:
 
 	void* getItemPtr(unsigned index)
 	{
+		assert(index < count);
 		return static_cast<uint8_t*>(buffer) + getItemSize(index);
 	}
 
 	const void* getItemPtr(unsigned index) const
 	{
+		assert(index < count);
 		return static_cast<const uint8_t*>(buffer) + getItemSize(index);
 	}
 
 	void* buffer{};
-	uint16_t count{};
-	uint8_t space{};
+	uint16_t count{0};
+	uint8_t space{0};
 	uint8_t itemSize;
 };
 
@@ -122,9 +124,7 @@ public:
 
 	const char* operator[](StringId ref) const
 	{
-		unsigned offset = ref - 1;
-		assert(offset < count);
-		return static_cast<const char*>(buffer) + offset;
+		return static_cast<const char*>(getItemPtr(ref - 1));
 	}
 
 	const char* getBuffer()
@@ -162,19 +162,6 @@ public:
 		return setItem(index, &value);
 	}
 
-	template <typename T>
-	typename std::enable_if<std::is_integral<T>::value, void*>::type insert(unsigned index, T value)
-	{
-		assert(itemSize == sizeof(T));
-		return insertItem(index, &value);
-	}
-
-	void* insert(unsigned index, const ObjectInfo& object)
-	{
-		assert(itemSize == object.structSize);
-		return insertItem(index, object.defaultData);
-	}
-
 	bool remove(unsigned index);
 
 	void* operator[](unsigned index)
@@ -190,16 +177,13 @@ public:
 
 	const void* operator[](unsigned index) const
 	{
+		assert(index < count);
 		return (index < count) ? getItemPtr(index) : nullptr;
 	}
 
 private:
-	void* addItem(const void* data)
-	{
-		return insertItem(count, data);
-	}
-	void* setItem(unsigned index, const void* data);
-	void* insertItem(unsigned index, const void* data);
+	void* addItem(const void* data);
+	// void* setItem(unsigned index, const void* data);
 };
 
 /**
@@ -231,16 +215,12 @@ public:
 
 	ArrayData& operator[](ArrayId id)
 	{
-		auto index = id - 1;
-		assert(index < count);
-		return *static_cast<ArrayData*>(getItemPtr(index));
+		return *static_cast<ArrayData*>(getItemPtr(id - 1));
 	}
 
 	const ArrayData& operator[](ArrayId id) const
 	{
-		auto index = id - 1;
-		assert(index < count);
-		return *static_cast<const ArrayData*>(getItemPtr(index));
+		return *static_cast<const ArrayData*>(getItemPtr(id - 1));
 	}
 
 	void clear();

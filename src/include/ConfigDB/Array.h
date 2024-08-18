@@ -46,9 +46,19 @@ public:
 
 	void addNewItem(const char* value, size_t valueLength);
 
-	ArrayId id() const
+	ArrayId& getId()
 	{
-		return *static_cast<ArrayId*>(data);
+		return *static_cast<ArrayId*>(getData());
+	}
+
+	ArrayId getId() const
+	{
+		return const_cast<Array*>(this)->getId();
+	}
+
+	void* getItemData(ArrayId ref)
+	{
+		return getArray()[ref];
 	}
 
 protected:
@@ -73,7 +83,7 @@ public:
 	{
 	}
 
-	ArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, &parent, id)
+	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, &parent, dataRef)
 	{
 	}
 
@@ -91,11 +101,6 @@ public:
 	{
 		getArray().add(value);
 	}
-
-	void insertItem(unsigned index, ItemType value)
-	{
-		getArray().insert(index, value);
-	}
 };
 
 /**
@@ -110,7 +115,7 @@ public:
 	{
 	}
 
-	StringArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, &parent, id)
+	StringArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, &parent, dataRef)
 	{
 	}
 
@@ -129,12 +134,6 @@ public:
 	{
 		assert(typeinfo().propinfo[0].type == PropertyType::String);
 		getArray().add(getStringId(value));
-	}
-
-	void insertItem(unsigned index, const String& value)
-	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().insert(index, getStringId(value));
 	}
 };
 

@@ -36,23 +36,36 @@ public:
 
 	unsigned getObjectCount() const
 	{
-		return id() ? getArray().getCount() : 0;
+		return getId() ? getArray().getCount() : 0;
 	}
 
 	Object addItem()
 	{
 		auto& itemType = getItemType();
-		return Object(itemType, this, getArray().add(itemType));
+		auto& array = getArray();
+		auto ref = array.getCount();
+		array.add(itemType);
+		return Object(itemType, this, ref);
 	}
 
 	bool removeItem(unsigned index)
 	{
-		return id() && getArray().remove(index);
+		return getId() && getArray().remove(index);
 	}
 
-	ArrayId id() const
+	ArrayId& getId()
 	{
-		return *static_cast<ArrayId*>(data);
+		return *static_cast<ArrayId*>(getData());
+	}
+
+	ArrayId getId() const
+	{
+		return const_cast<ObjectArray*>(this)->getId();
+	}
+
+	void* getItemData(ArrayId ref)
+	{
+		return getArray()[ref];
 	}
 
 protected:
@@ -84,13 +97,13 @@ public:
 	{
 	}
 
-	ObjectArrayTemplate(Object& parent, void* data) : ObjectArray(ClassType::typeinfo, &parent, data)
+	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, &parent, dataRef)
 	{
 	}
 
 	Item getItem(unsigned index)
 	{
-		return makeItem(getArray()[index]);
+		return Item(*this, index);
 	}
 
 	Item operator[](unsigned index)
@@ -100,18 +113,10 @@ public:
 
 	Item addItem()
 	{
-		return makeItem(getArray().add(Item::typeinfo));
-	}
-
-	Item insertItem(unsigned index)
-	{
-		return makeItem(getArray().insert(index, Item::typeinfo));
-	}
-
-private:
-	Item makeItem(void* itemData)
-	{
-		return Item(*this, *typename Item::Struct::Ptr(itemData));
+		auto& array = getArray();
+		uint16_t ref = array.getCount();
+		array.add(Item::typeinfo);
+		return Item(*this, ref);
 	}
 };
 

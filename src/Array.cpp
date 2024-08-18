@@ -25,11 +25,12 @@ namespace ConfigDB
 ArrayData& Array::getArray()
 {
 	auto& store = getStore();
-	if(id() == 0) {
+	auto& id = getId();
+	if(id == 0) {
 		assert(typeinfo().propertyCount == 1);
-		*static_cast<ArrayId*>(data) = store.arrayPool.add(typeinfo().propinfo[0]);
+		id = store.arrayPool.add(typeinfo().propinfo[0]);
 	}
-	return store.arrayPool[id()];
+	return store.arrayPool[id];
 }
 
 Property Array::getProperty(unsigned index)

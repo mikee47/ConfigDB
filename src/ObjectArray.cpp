@@ -25,10 +25,11 @@ namespace ConfigDB
 ArrayData& ObjectArray::getArray()
 {
 	auto& store = getStore();
-	if(id() == 0) {
-		*static_cast<ArrayId*>(data) = store.arrayPool.add(*typeinfo().objinfo[0]);
+	auto& id = getId();
+	if(id == 0) {
+		id = store.arrayPool.add(*typeinfo().objinfo[0]);
 	}
-	return store.arrayPool[id()];
+	return store.arrayPool[id];
 }
 
 Object ObjectArray::getObject(unsigned index)
@@ -38,8 +39,10 @@ Object ObjectArray::getObject(unsigned index)
 		return {};
 	}
 	auto& itemType = *typeinfo().objinfo[0];
-	auto itemData = (index < array.getCount()) ? array[index] : array.add(itemType);
-	return Object(itemType, this, itemData);
+	if(index == array.getCount()) {
+		array.add(itemType);
+	}
+	return Object(itemType, this, index);
 }
 
 } // namespace ConfigDB

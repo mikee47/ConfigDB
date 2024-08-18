@@ -82,7 +82,7 @@ String ObjectInfo::getTypeDesc() const
 	return s;
 }
 
-Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataPtr(typeinfo))
+Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataRef(typeinfo))
 {
 }
 
@@ -100,6 +100,24 @@ Store& Object::getStore()
 	assert(obj->typeinfo().type == ObjectType::Store);
 	auto store = static_cast<Store*>(obj);
 	return *store;
+}
+
+void* Object::getData()
+{
+	if(!parent) {
+		assert(typeinfo().type == ObjectType::Store);
+		return static_cast<Store*>(this)->getRootData();
+	}
+	switch(parent->typeinfo().type) {
+	case ObjectType::Store:
+	case ObjectType::Object:
+		return static_cast<uint8_t*>(parent->getData()) + dataRef;
+	case ObjectType::Array:
+		return static_cast<Array*>(parent)->getItemData(dataRef);
+	case ObjectType::ObjectArray:
+		return static_cast<ObjectArray*>(parent)->getItemData(dataRef);
+	}
+	assert(false);
 }
 
 unsigned Object::getObjectCount() const
@@ -121,8 +139,7 @@ Object Object::getObject(unsigned index)
 	}
 
 	auto typ = typeinfo().objinfo[index];
-	auto offset = typ->getOffset();
-	return Object(*typ, this, static_cast<uint8_t*>(data) + offset);
+	return Object(*typ, this, typ->getOffset());
 }
 
 Object Object::findObject(const char* name, size_t length)
@@ -206,7 +223,7 @@ Property Object::getProperty(unsigned index)
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
-	auto propData = static_cast<uint8_t*>(data);
+	auto propData = static_cast<uint8_t*>(getData());
 	propData += typeinfo().getPropertyOffset(index);
 	return {getStore(), typeinfo().propinfo[index], propData};
 }
