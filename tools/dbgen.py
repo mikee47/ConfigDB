@@ -536,7 +536,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
 
     return CodeLines([
         '',
-        'struct __attribute((packed)) Struct {',
+        'struct __attribute__((packed)) Struct {',
         [
             'using Ptr = Struct*;',
             '',
