@@ -90,8 +90,7 @@ void Store::setValueString(const PropertyInfo& prop, void* data, const char* val
 		if(prop.defaultValue && *prop.defaultValue == value) {
 			propdata.string = 0;
 		} else {
-			auto ref = stringPool.findOrAdd(value, valueLength);
-			propdata.string = ref;
+			propdata.string = stringPool.findOrAdd(value, valueLength);
 		}
 		break;
 	}
