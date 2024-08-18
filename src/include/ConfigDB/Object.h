@@ -46,13 +46,21 @@ String toString(ObjectType type);
 
 /**
  * @brief Identifies array storage within array pool
- * @note alignas(1) required as value contained in packed structures
+ * @note Can't just use uint16_t as it may be unaligned.
+ * Using `alignas` doesn't help.
  */
-#ifdef __clang__
-using ArrayId = uint16_t;
-#else
-using ArrayId alignas(1) = uint16_t;
-#endif
+struct __attribute__((packed)) ArrayId {
+	uint8_t value_[2];
+
+	constexpr ArrayId(uint16_t value = 0) : value_{uint8_t(value), uint8_t(value >> 8)}
+	{
+	}
+
+	constexpr operator uint16_t() const
+	{
+		return value_[0] | (value_[1] << 8);
+	}
+};
 
 struct ObjectInfo {
 	ObjectType type;
