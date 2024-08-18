@@ -169,6 +169,7 @@ uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
 
 	if(stream.available() == 0) {
 		fillStream(stream);
+		maxUsedBuffer = std::max(maxUsedBuffer, size_t(stream.available()));
 	}
 
 	return stream.readMemoryBlock(data, bufSize);
@@ -187,6 +188,7 @@ bool DataStream::seek(int len)
 	if(stream.available() == 0) {
 		stream.clear();
 		fillStream(stream);
+		maxUsedBuffer = std::max(maxUsedBuffer, size_t(stream.available()));
 	}
 
 	return true;

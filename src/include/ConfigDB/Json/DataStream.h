@@ -41,6 +41,11 @@ public:
 	{
 	}
 
+	~DataStream()
+	{
+		debug_i("DataStream: maxUsedBuffer = %u", maxUsedBuffer);
+	}
+
 	bool isValid() const override
 	{
 		return true;
@@ -76,6 +81,7 @@ private:
 		Object objects[JSON::StreamingParser::maxNesting];
 		uint8_t itemCounts[JSON::StreamingParser::maxNesting];
 	} state{};
+	size_t maxUsedBuffer{};
 	uint8_t storeIndex{0};
 	uint8_t nesting{0};
 	bool pretty;
