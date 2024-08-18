@@ -23,6 +23,7 @@
 #include <Data/WebConstants.h>
 #include <Data/Stream/MemoryDataStream.h>
 #include <JSON/StreamingParser.h>
+#include "Common.h"
 
 namespace ConfigDB::Json
 {

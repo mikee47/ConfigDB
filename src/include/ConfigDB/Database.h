@@ -42,20 +42,6 @@ public:
 	{
 	}
 
-	/**
-	 * @brief Set number of spaces to indent when serialising output
-	 * @param indent 0 produces compact output, > 0 lays content out for easier reading
-	 */
-	void setFormat(Format format)
-	{
-		this->format = format;
-	}
-
-	Format getFormat() const
-	{
-		return format;
-	}
-
 	String getName() const
 	{
 		auto pathstr = path.c_str();
@@ -92,7 +78,6 @@ private:
 	friend class Store;
 
 	CString path;
-	Format format{};
 
 	// Hold store open for a brief period to avoid thrashing
 	static const ObjectInfo* storeType;

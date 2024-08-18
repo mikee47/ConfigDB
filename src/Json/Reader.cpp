@@ -35,8 +35,6 @@ namespace ConfigDB::Json
 {
 Reader reader;
 
-DEFINE_FSTR(fileExtension, ".json")
-
 size_t Reader::printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const
 {
 	size_t n{0};
@@ -114,12 +112,12 @@ size_t Reader::printObjectTo(const Object& object, const FlashString* name, unsi
 
 std::unique_ptr<IDataSourceStream> Reader::createStream(Database& db) const
 {
-	return std::make_unique<DataStream>(db, db.getFormat());
+	return std::make_unique<DataStream>(db, format);
 }
 
 std::unique_ptr<IDataSourceStream> Reader::createStream(std::shared_ptr<Store> store) const
 {
-	return std::make_unique<DataStream>(store, store->getDatabase().getFormat());
+	return std::make_unique<DataStream>(store, format);
 }
 
 } // namespace ConfigDB::Json

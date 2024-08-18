@@ -72,14 +72,6 @@ public:
 	bool saveToFile(const Store& store, const String& filename);
 
 	bool saveToFile(const Store& store);
-
-	void setFormat(Format format)
-	{
-		this->format = format;
-	}
-
-protected:
-	Format format{};
 };
 
 } // namespace ConfigDB

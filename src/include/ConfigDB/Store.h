@@ -31,14 +31,6 @@ namespace ConfigDB
 class Database;
 
 /**
- * @brief Serialisation format
- */
-enum class Format {
-	Compact,
-	Pretty,
-};
-
-/**
  * @brief Manages access to an object store, typically one file
  */
 class Store : public Object

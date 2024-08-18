@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Reader.h
+ * ConfigDB/Json/Common.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -19,38 +19,18 @@
 
 #pragma once
 
-#include "../Reader.h"
-#include "Common.h"
+#include <FlashString/String.hpp>
 
 namespace ConfigDB::Json
 {
-class Reader : public ConfigDB::Reader
-{
-public:
-	using ConfigDB::Reader::Reader;
+DECLARE_FSTR(fileExtension)
 
-	std::unique_ptr<IDataSourceStream> createStream(Database& db) const override;
-	std::unique_ptr<IDataSourceStream> createStream(std::shared_ptr<Store> store) const override;
-	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
-
-	String getFileExtension() const override
-	{
-		return fileExtension;
-	}
-
-	void setFormat(Format format)
-	{
-		this->format = format;
-	}
-
-private:
-	Database* db{};
-	const Object* object;
-	const FlashString* name;
-	unsigned nesting;
-	Format format{};
+/**
+ * @brief Serialisation format
+ */
+enum class Format {
+	Compact,
+	Pretty,
 };
-
-extern Reader reader;
 
 } // namespace ConfigDB::Json

@@ -177,6 +177,8 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 
 } // namespace
 
+#include <ConfigDB/Json/Reader.h>
+
 void init()
 {
 	Serial.begin(COM_SPEED_SERIAL);
@@ -190,7 +192,7 @@ void init()
 
 	createDirectory("test");
 	BasicConfig db("test");
-	// db.setFormat(ConfigDB::Format::Pretty);
+	ConfigDB::Json::reader.setFormat(ConfigDB::Json::Format::Pretty);
 
 	readWriteValues(db);
 
