@@ -19,51 +19,26 @@
 
 #pragma once
 
-#include "Object.h"
-#include "Pool.h"
+#include "ArrayBase.h"
 
 namespace ConfigDB
 {
 /**
  * @brief Base class to provide array of properties
  */
-class Array : public Object
+class Array : public ArrayBase
 {
 public:
-	using Object::Object;
+	using ArrayBase::ArrayBase;
 
 	unsigned getPropertyCount() const
 	{
-		return getId() ? getArray().getCount() : 0;
+		return getItemCount();
 	}
 
-	unsigned getItemCount() const
+	Property getProperty(unsigned index)
 	{
-		return getPropertyCount();
-	}
-
-	Property getProperty(unsigned index);
-
-	void addNewItem(const char* value, size_t valueLength);
-
-	bool removeItem(unsigned index)
-	{
-		return getArray().remove(index);
-	}
-
-	ArrayId& getId()
-	{
-		return *static_cast<ArrayId*>(getData());
-	}
-
-	ArrayId getId() const
-	{
-		return *static_cast<const ArrayId*>(getData());
-	}
-
-	void* getItemData(ArrayId ref)
-	{
-		return getArray()[ref];
+		return {getStore(), getItemType(), getArray()[index]};
 	}
 
 	const PropertyInfo& getItemType() const
@@ -71,10 +46,6 @@ public:
 		assert(typeinfo().propertyCount == 1);
 		return typeinfo().propinfo[0];
 	}
-
-protected:
-	ArrayData& getArray();
-	const ArrayData& getArray() const;
 };
 
 /**
@@ -116,12 +87,12 @@ public:
 
 	void setItem(unsigned index, ItemType value)
 	{
-		*static_cast<ItemType*>(getArray()[index]) = value;
+		*static_cast<ItemType*>(ArrayBase::getItem(index)) = value;
 	}
 
 	void addItem(ItemType value)
 	{
-		getArray().add(value);
+		getArray().add(&value);
 	}
 
 	ItemRef operator[](unsigned index)
@@ -153,12 +124,13 @@ public:
 
 	void setItem(unsigned index, const String& value)
 	{
-		*static_cast<StringId*>(this->getArray()[index]) = this->getStringId(value);
+		*static_cast<StringId*>(ArrayBase::getItem(index)) = this->getStringId(value);
 	}
 
 	void addItem(const String& value)
 	{
-		this->getArray().add(this->getStringId(value));
+		auto stringId = this->getStringId(value);
+		this->getArray().add(&stringId);
 	}
 };
 

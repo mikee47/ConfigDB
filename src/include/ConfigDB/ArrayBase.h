@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Array.cpp
+ * ConfigDB/ArrayBase.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,35 +17,55 @@
  *
  ****/
 
-#include "include/ConfigDB/Array.h"
-#include "include/ConfigDB/Store.h"
+#pragma once
+
+#include "Object.h"
+#include "Pool.h"
 
 namespace ConfigDB
 {
-ArrayData& Array::getArray()
+/**
+ * @brief Base class to provide array of properties
+ */
+class ArrayBase : public Object
 {
-	auto& store = getStore();
-	auto& id = getId();
-	if(id == 0) {
-		assert(typeinfo().propertyCount == 1);
-		id = store.arrayPool.add(getItemType());
+public:
+	using Object::Object;
+
+	unsigned getItemCount() const
+	{
+		return getId() ? getArray().getCount() : 0;
 	}
-	return store.arrayPool[id];
-}
 
-const ArrayData& Array::getArray() const
-{
-	return getStore().arrayPool[getId()];
-}
+	bool removeItem(unsigned index)
+	{
+		return getArray().remove(index);
+	}
 
-Property Array::getProperty(unsigned index)
-{
-	return {getStore(), getItemType(), getArray()[index]};
-}
+	ArrayId& getId()
+	{
+		return *static_cast<ArrayId*>(getData());
+	}
 
-void Array::addNewItem(const char* value, size_t valueLength)
-{
-	getStore().setValueString(getItemType(), getArray().add(), value, valueLength);
-}
+	ArrayId getId() const
+	{
+		return *static_cast<const ArrayId*>(getData());
+	}
+
+	void* getItem(unsigned index)
+	{
+		return getArray()[index];
+	}
+
+	void addItem(const void* value)
+	{
+		getArray().add(value);
+	}
+
+protected:
+	ArrayData& getArray();
+	const ArrayData& getArray() const;
+	uint16_t newItem();
+};
 
 } // namespace ConfigDB

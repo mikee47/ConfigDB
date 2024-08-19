@@ -19,32 +19,26 @@
 
 #pragma once
 
-#include "Object.h"
-#include "Pool.h"
+#include "ArrayBase.h"
 
 namespace ConfigDB
 {
 /**
  * @brief Base class to provide array of objects
  */
-class ObjectArray : public Object
+class ObjectArray : public ArrayBase
 {
 public:
-	using Object::Object;
+	using ArrayBase::ArrayBase;
 
 	Object getObject(unsigned index)
 	{
-		return Object(*typeinfo().objinfo[0], this, index);
+		return Object(getItemType(), this, index);
 	}
 
 	unsigned getObjectCount() const
 	{
-		return getId() ? getArray().getCount() : 0;
-	}
-
-	unsigned getItemCount() const
-	{
-		return getObjectCount();
+		return getItemCount();
 	}
 
 	Object addItem()
@@ -52,38 +46,14 @@ public:
 		auto& itemType = getItemType();
 		auto& array = getArray();
 		auto ref = array.getCount();
-		array.add(itemType);
+		array.add(itemType.defaultData);
 		return Object(itemType, this, ref);
-	}
-
-	bool removeItem(unsigned index)
-	{
-		return getArray().remove(index);
-	}
-
-	ArrayId& getId()
-	{
-		return *static_cast<ArrayId*>(getData());
-	}
-
-	ArrayId getId() const
-	{
-		return *static_cast<const ArrayId*>(getData());
-	}
-
-	void* getItemData(ArrayId ref)
-	{
-		return getArray()[ref];
 	}
 
 	const ObjectInfo& getItemType() const
 	{
 		return *typeinfo().objinfo[0];
 	}
-
-protected:
-	ArrayData& getArray();
-	const ArrayData& getArray() const;
 };
 
 /**
@@ -116,7 +86,7 @@ public:
 	{
 		auto& array = getArray();
 		auto ref = array.getCount();
-		array.add(ItemType::typeinfo);
+		array.add(ItemType::typeinfo.defaultData);
 		return ItemType(*this, ref);
 	}
 };

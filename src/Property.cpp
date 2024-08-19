@@ -66,7 +66,8 @@ bool Property::setValueString(const char* value, size_t valueLength)
 	if(!store) {
 		return false;
 	}
-	store->setValueString(*info, data, value, valueLength);
+	auto propdata = store->parseString(*info, value, valueLength);
+	memcpy(data, &propdata, info->getSize());
 	return true;
 }
 

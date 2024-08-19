@@ -109,16 +109,12 @@ void* Object::getData()
 		return static_cast<Store*>(this)->getRootData();
 	}
 	switch(parent->typeinfo().type) {
-	case ObjectType::Store:
-	case ObjectType::Object:
-		return static_cast<uint8_t*>(parent->getData()) + dataRef;
 	case ObjectType::Array:
-		return static_cast<Array*>(parent)->getItemData(dataRef);
 	case ObjectType::ObjectArray:
-		return static_cast<ObjectArray*>(parent)->getItemData(dataRef);
+		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
+	default:
+		return static_cast<uint8_t*>(parent->getData()) + dataRef;
 	}
-	assert(false);
-	return nullptr;
 }
 
 unsigned Object::getObjectCount() const

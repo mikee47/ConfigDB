@@ -154,27 +154,8 @@ class ArrayData : public PoolData
 public:
 	using PoolData::PoolData;
 
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, void*>::type add(T value)
-	{
-		assert(itemSize == sizeof(T));
-		return addItem(&value);
-	}
-
-	void* add(const ObjectInfo& object)
-	{
-		assert(itemSize == object.structSize);
-		return addItem(object.defaultData);
-	}
-
-	void* add()
-	{
-		return addItem(nullptr);
-	}
-
+	void* add(const void* value = nullptr);
 	bool remove(unsigned index);
-
-private:
-	void* addItem(const void* data);
 };
 
 /**

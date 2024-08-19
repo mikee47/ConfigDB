@@ -94,7 +94,7 @@ bool ArrayData::remove(unsigned index)
 	return false;
 }
 
-void* ArrayData::addItem(const void* data)
+void* ArrayData::add(const void* data)
 {
 	auto item = allocate(1);
 	if(!item) {

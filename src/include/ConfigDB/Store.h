@@ -116,7 +116,7 @@ public:
 	}
 
 	String getValueString(const PropertyInfo& info, const void* data) const;
-	void setValueString(const PropertyInfo& prop, void* data, const char* value, size_t valueLength);
+	PropertyData parseString(const PropertyInfo& prop, const char* value, size_t valueLength);
 
 	ArrayPool arrayPool;
 	StringPool stringPool;
