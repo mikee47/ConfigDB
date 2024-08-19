@@ -121,7 +121,7 @@ public:
 	ArrayPool arrayPool;
 	StringPool stringPool;
 
-protected:
+private:
 	Database& db;
 	std::unique_ptr<uint8_t[]> rootData;
 };

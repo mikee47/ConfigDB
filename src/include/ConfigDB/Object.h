@@ -20,10 +20,7 @@
 #pragma once
 
 #include "Property.h"
-#include <Printable.h>
 #include <memory>
-
-#include <debug_progmem.h>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
 	XX(Store)                                                                                                          \
@@ -43,24 +40,6 @@ enum class ObjectType : uint32_t {
 };
 
 String toString(ObjectType type);
-
-/**
- * @brief Identifies array storage within array pool
- * @note Can't just use uint16_t as it may be unaligned.
- * Using `alignas` doesn't help.
- */
-struct __attribute__((packed)) ArrayId {
-	uint8_t value_[2];
-
-	constexpr ArrayId(uint16_t value = 0) : value_{uint8_t(value), uint8_t(value >> 8)}
-	{
-	}
-
-	constexpr operator uint16_t() const
-	{
-		return value_[0] | (value_[1] << 8);
-	}
-};
 
 struct ObjectInfo {
 	ObjectType type;

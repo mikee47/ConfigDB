@@ -42,16 +42,6 @@ public:
 		return getArray().remove(index);
 	}
 
-	ArrayId& getId()
-	{
-		return *static_cast<ArrayId*>(getData());
-	}
-
-	ArrayId getId() const
-	{
-		return *static_cast<const ArrayId*>(getData());
-	}
-
 	void* getItem(unsigned index)
 	{
 		return getArray()[index];
@@ -63,9 +53,18 @@ public:
 	}
 
 protected:
+	ArrayId& getId()
+	{
+		return *static_cast<ArrayId*>(getData());
+	}
+
+	ArrayId getId() const
+	{
+		return *static_cast<const ArrayId*>(getData());
+	}
+
 	ArrayData& getArray();
 	const ArrayData& getArray() const;
-	uint16_t newItem();
 };
 
 } // namespace ConfigDB

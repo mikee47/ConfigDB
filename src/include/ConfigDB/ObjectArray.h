@@ -85,9 +85,9 @@ public:
 	ItemType addItem()
 	{
 		auto& array = getArray();
-		auto ref = array.getCount();
+		auto index = array.getCount();
 		array.add(ItemType::typeinfo.defaultData);
-		return ItemType(*this, ref);
+		return ItemType(*this, index);
 	}
 
 	ItemType insertItem(unsigned index)
