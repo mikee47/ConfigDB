@@ -19,54 +19,40 @@
 
 #pragma once
 
-#include "Object.h"
-#include "Pool.h"
+#include "ArrayBase.h"
 
 namespace ConfigDB
 {
 /**
  * @brief Base class to provide array of objects
  */
-class ObjectArray : public Object
+class ObjectArray : public ArrayBase
 {
 public:
-	using Object::Object;
+	using ArrayBase::ArrayBase;
 
-	Object getObject(unsigned index);
+	Object getObject(unsigned index)
+	{
+		return Object(getItemType(), this, index);
+	}
 
 	unsigned getObjectCount() const
 	{
-		return id() ? getArray().getCount() : 0;
+		return getItemCount();
 	}
 
 	Object addItem()
 	{
 		auto& itemType = getItemType();
-		return Object(itemType, this, getArray().add(itemType));
+		auto& array = getArray();
+		auto ref = array.getCount();
+		array.add(itemType.defaultData);
+		return Object(itemType, this, ref);
 	}
 
-	bool removeItem(unsigned index)
-	{
-		return id() && getArray().remove(index);
-	}
-
-	ArrayId id() const
-	{
-		return *static_cast<ArrayId*>(data);
-	}
-
-protected:
 	const ObjectInfo& getItemType() const
 	{
 		return *typeinfo().objinfo[0];
-	}
-
-	ArrayData& getArray();
-
-	const ArrayData& getArray() const
-	{
-		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
-		return const_cast<ObjectArray*>(this)->getArray();
 	}
 };
 
@@ -78,40 +64,36 @@ protected:
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
-	using Item = ItemType;
-
 	explicit ObjectArrayTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
 	{
 	}
 
-	ObjectArrayTemplate(Object& parent, void* data) : ObjectArray(ClassType::typeinfo, &parent, data)
+	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, &parent, dataRef)
 	{
 	}
 
-	Item getItem(unsigned index)
+	ItemType operator[](unsigned index)
 	{
-		return makeItem(getArray()[index]);
+		return ItemType(*this, index);
 	}
 
-	Item operator[](unsigned index)
+	const ItemType operator[](unsigned index) const
 	{
-		return getItem(index);
+		return ItemType(*this, index);
 	}
 
-	Item addItem()
+	ItemType addItem()
 	{
-		return makeItem(getArray().add(Item::typeinfo));
+		auto& array = getArray();
+		auto index = array.getCount();
+		array.add(ItemType::typeinfo.defaultData);
+		return ItemType(*this, index);
 	}
 
-	Item insertItem(unsigned index)
+	ItemType insertItem(unsigned index)
 	{
-		return makeItem(getArray().insert(index, Item::typeinfo));
-	}
-
-private:
-	Item makeItem(void* itemData)
-	{
-		return Item(*this, *typename Item::Struct::Ptr(itemData));
+		getArray().insert(index, ItemType::typeinfo.defaultData);
+		return ItemType(*this, index);
 	}
 };
 

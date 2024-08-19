@@ -536,7 +536,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
 
     return CodeLines([
         '',
-        'struct __attribute((packed)) Struct {',
+        'struct __attribute__((packed)) Struct {',
         [
             'using Ptr = Struct*;',
             '',
@@ -560,12 +560,12 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype} get{prop.typename}() const',
         '{',
-        ['return ' + ('getString(' if prop.ptype == 'string' else '(') + f'Struct::Ptr(data)->{prop.id});'],
+        ['return ' + ('getString(' if prop.ptype == 'string' else '(') + f'Struct::Ptr(getData())->{prop.id});'],
         '}',
         '',
         f'void set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'Struct::Ptr(data)->{prop.id} = ' + ('getStringId(value);' if prop.ptype == 'string' else 'value;')],
+        [f'Struct::Ptr(getData())->{prop.id} = ' + ('getStringId(value);' if prop.ptype == 'string' else 'value;')],
         '}'
         ) for prop in obj.properties)]
 
@@ -632,10 +632,10 @@ def generate_contained_constructors(obj: Object) -> list:
     if obj.is_item:
         return [
             '',
-            f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, Struct& data):',
+            f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
             [', '.join([
-                f'{obj.classname}Template({obj.parent.id}, &data)',
-                *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+                f'{obj.classname}Template({obj.parent.id}, dataRef)',
+                *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ])],
             '{',
             '}',
@@ -647,19 +647,18 @@ def generate_contained_constructors(obj: Object) -> list:
             '',
             f'{obj.typename_contained}(ConfigDB::Store& store): ' + ', '.join([
                 f'{obj.base_class}Template(store)',
-                *(f'{child.id}(*this, Struct::Ptr(data)->{child.id})' for child in obj.children)
+                *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',
             '}',
         ]
 
     if not obj.is_root:
-        data_type = 'ConfigDB::ArrayId' if obj.is_array else 'Struct'
         headers += [
             '',
-            f'{obj.typename_contained}({obj.parent.typename_contained}& parent, {data_type}& data): ' + ', '.join([
-                f'{obj.base_class}Template(parent, &data)',
-                *(f'{child.id}(*this, data.{child.id})' for child in obj.children)
+            f'{obj.typename_contained}({obj.parent.typename_contained}& parent, uint16_t dataRef): ' + ', '.join([
+                f'{obj.base_class}Template(parent, dataRef)',
+                *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',
             '}',

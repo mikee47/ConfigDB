@@ -56,6 +56,16 @@ public:
 		return count * itemSize;
 	}
 
+	void* operator[](unsigned index)
+	{
+		return getItemPtr(index);
+	}
+
+	const void* operator[](unsigned index) const
+	{
+		return getItemPtr(index);
+	}
+
 	void clear()
 	{
 		free(buffer);
@@ -74,17 +84,19 @@ protected:
 
 	void* getItemPtr(unsigned index)
 	{
+		assert(index < count);
 		return static_cast<uint8_t*>(buffer) + getItemSize(index);
 	}
 
 	const void* getItemPtr(unsigned index) const
 	{
+		assert(index < count);
 		return static_cast<const uint8_t*>(buffer) + getItemSize(index);
 	}
 
 	void* buffer{};
-	uint16_t count{};
-	uint8_t space{};
+	uint16_t count{0};
+	uint8_t space{0};
 	uint8_t itemSize;
 };
 
@@ -122,9 +134,7 @@ public:
 
 	const char* operator[](StringId ref) const
 	{
-		unsigned offset = ref - 1;
-		assert(offset < count);
-		return static_cast<const char*>(buffer) + offset;
+		return static_cast<const char*>(getItemPtr(ref - 1));
 	}
 
 	const char* getBuffer()
@@ -144,62 +154,32 @@ class ArrayData : public PoolData
 public:
 	using PoolData::PoolData;
 
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, void*>::type add(T value)
-	{
-		assert(itemSize == sizeof(T));
-		return addItem(&value);
-	}
+	void* insert(unsigned index, const void* value = nullptr);
 
-	void* add(const ObjectInfo& object)
+	void* add(const void* value = nullptr)
 	{
-		assert(itemSize == object.structSize);
-		return addItem(object.defaultData);
-	}
-
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, void*>::type set(unsigned index, T value)
-	{
-		assert(itemSize == sizeof(T));
-		return setItem(index, &value);
-	}
-
-	template <typename T>
-	typename std::enable_if<std::is_integral<T>::value, void*>::type insert(unsigned index, T value)
-	{
-		assert(itemSize == sizeof(T));
-		return insertItem(index, &value);
-	}
-
-	void* insert(unsigned index, const ObjectInfo& object)
-	{
-		assert(itemSize == object.structSize);
-		return insertItem(index, object.defaultData);
+		return insert(getCount(), value);
 	}
 
 	bool remove(unsigned index);
+};
 
-	void* operator[](unsigned index)
+/**
+ * @brief Identifies array storage within array pool
+ * @note Can't just use uint16_t as it may be unaligned.
+ * Using `alignas` doesn't help.
+ */
+struct __attribute__((packed)) ArrayId {
+	uint8_t value_[2];
+
+	constexpr ArrayId(uint16_t value = 0) : value_{uint8_t(value), uint8_t(value >> 8)}
 	{
-		if(index == count) {
-			return addItem(nullptr);
-		}
-		if(index < count) {
-			return getItemPtr(index);
-		}
-		return nullptr;
 	}
 
-	const void* operator[](unsigned index) const
+	constexpr operator uint16_t() const
 	{
-		return (index < count) ? getItemPtr(index) : nullptr;
+		return value_[0] | (value_[1] << 8);
 	}
-
-private:
-	void* addItem(const void* data)
-	{
-		return insertItem(count, data);
-	}
-	void* setItem(unsigned index, const void* data);
-	void* insertItem(unsigned index, const void* data);
 };
 
 /**
@@ -231,16 +211,12 @@ public:
 
 	ArrayData& operator[](ArrayId id)
 	{
-		auto index = id - 1;
-		assert(index < count);
-		return *static_cast<ArrayData*>(getItemPtr(index));
+		return *static_cast<ArrayData*>(getItemPtr(id - 1));
 	}
 
 	const ArrayData& operator[](ArrayId id) const
 	{
-		auto index = id - 1;
-		assert(index < count);
-		return *static_cast<const ArrayData*>(getItemPtr(index));
+		return *static_cast<const ArrayData*>(getItemPtr(id - 1));
 	}
 
 	void clear();

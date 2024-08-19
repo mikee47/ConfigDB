@@ -76,7 +76,9 @@ public:
 		}
 
 		if(parent.typeinfo().type == ObjectType::Array) {
-			static_cast<Array&>(parent).addNewItem(element.value, element.valueLength);
+			auto& array = static_cast<Array&>(parent);
+			auto propdata = store.parseString(array.getItemType(), element.value, element.valueLength);
+			array.addItem(&propdata);
 			return true;
 		}
 		auto prop = parent.findProperty(element.key, element.keyLength);
@@ -102,8 +104,7 @@ private:
 bool Store::load()
 {
 	auto& root = typeinfo();
-	assert(data && data == rootData.get());
-	memcpy_P(data, root.defaultData, root.structSize);
+	memcpy_P(getRootData(), root.defaultData, root.structSize);
 	stringPool.clear();
 	arrayPool.clear();
 

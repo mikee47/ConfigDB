@@ -19,45 +19,32 @@
 
 #pragma once
 
-#include "Object.h"
-#include "Pool.h"
+#include "ArrayBase.h"
 
 namespace ConfigDB
 {
 /**
  * @brief Base class to provide array of properties
  */
-class Array : public Object
+class Array : public ArrayBase
 {
 public:
-	using Object::Object;
-
-	bool removeItem(unsigned index)
-	{
-		return getArray().remove(index);
-	}
+	using ArrayBase::ArrayBase;
 
 	unsigned getPropertyCount() const
 	{
-		return getArray().getCount();
+		return getItemCount();
 	}
 
-	Property getProperty(unsigned index);
-
-	void addNewItem(const char* value, size_t valueLength);
-
-	ArrayId id() const
+	Property getProperty(unsigned index)
 	{
-		return *static_cast<ArrayId*>(data);
+		return {getStore(), getItemType(), getArray()[index]};
 	}
 
-protected:
-	ArrayData& getArray();
-
-	const ArrayData& getArray() const
+	const PropertyInfo& getItemType() const
 	{
-		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
-		return const_cast<Array*>(this)->getArray();
+		assert(typeinfo().propertyCount == 1);
+		return typeinfo().propinfo[0];
 	}
 };
 
@@ -69,11 +56,27 @@ protected:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
+	struct ItemRef {
+		Array& array;
+		unsigned index;
+
+		operator ItemType() const
+		{
+			return static_cast<ClassType&>(array).getItem(index);
+		}
+
+		ItemRef& operator=(const String& value)
+		{
+			static_cast<ClassType&>(array).setItem(index, value);
+			return *this;
+		}
+	};
+
 	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
 	{
 	}
 
-	ArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, &parent, id)
+	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, &parent, dataRef)
 	{
 	}
 
@@ -84,17 +87,27 @@ public:
 
 	void setItem(unsigned index, ItemType value)
 	{
-		getArray().set(index, value);
+		*static_cast<ItemType*>(ArrayBase::getItem(index)) = value;
 	}
 
 	void addItem(ItemType value)
 	{
-		getArray().add(value);
+		getArray().add(&value);
 	}
 
 	void insertItem(unsigned index, ItemType value)
 	{
-		getArray().insert(index, value);
+		getArray().insert(index, &value);
+	}
+
+	ItemRef operator[](unsigned index)
+	{
+		return {*this, index};
+	}
+
+	const ItemType operator[](unsigned index) const
+	{
+		return this->getItem(index);
 	}
 };
 
@@ -103,38 +116,32 @@ public:
  * @tparam ClassType Concrete type provided by code generator
  * @tparam ItemType Type of item, not used (always String)
  */
-template <class ClassType, typename ItemType> class StringArrayTemplate : public Array
+template <class ClassType, typename ItemType> class StringArrayTemplate : public ArrayTemplate<ClassType, ItemType>
 {
 public:
-	explicit StringArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
-	{
-	}
-
-	StringArrayTemplate(Object& parent, ArrayId* id) : Array(ClassType::typeinfo, &parent, id)
-	{
-	}
+	using ArrayTemplate<ClassType, ItemType>::ArrayTemplate;
 
 	String getItem(unsigned index) const
 	{
-		return static_cast<const char*>(getArray()[index]);
+		auto id = *static_cast<const StringId*>(this->getArray()[index]);
+		return this->getString(id);
 	}
 
 	void setItem(unsigned index, const String& value)
 	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().set(index, getStringId(value));
+		*static_cast<StringId*>(ArrayBase::getItem(index)) = this->getStringId(value);
 	}
 
 	void addItem(const String& value)
 	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().add(getStringId(value));
+		auto stringId = this->getStringId(value);
+		this->getArray().add(&stringId);
 	}
 
 	void insertItem(unsigned index, const String& value)
 	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().insert(index, getStringId(value));
+		auto stringId = this->getStringId(value);
+		this->getArray().insert(index, &stringId);
 	}
 };
 

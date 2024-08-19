@@ -24,15 +24,14 @@ namespace ConfigDB
 void* PoolData::allocate(size_t items)
 {
 	if(items <= space) {
-		auto ptr = getItemPtr(count);
 		count += items;
 		space -= items;
+		auto ptr = getItemPtr(count - items);
 		return ptr;
 	}
 
-	size_t newCount = count + items;
 	size_t newSpace = std::min(255U, count / 8U);
-	size_t newCapacity = newCount + newSpace;
+	size_t newCapacity = count + items + newSpace;
 
 	auto newBuffer = realloc(buffer, getItemSize(newCapacity));
 	if(!newBuffer) {
@@ -40,9 +39,9 @@ void* PoolData::allocate(size_t items)
 	}
 
 	buffer = newBuffer;
-	auto ptr = getItemPtr(count);
-	count = newCount;
+	count += items;
 	space = newSpace;
+	auto ptr = getItemPtr(count - items);
 	return ptr;
 }
 
@@ -89,12 +88,14 @@ bool ArrayData::remove(unsigned index)
 	if(index >= count) {
 		return false;
 	}
-	memmove(getItemPtr(index), getItemPtr(index + 1), getItemSize(count - index - 1));
+	if(index + 1 < count) {
+		memmove(getItemPtr(index), getItemPtr(index + 1), getItemSize(count - index - 1));
+	}
 	deallocate(1);
 	return true;
 }
 
-void* ArrayData::insertItem(unsigned index, const void* data)
+void* ArrayData::insert(unsigned index, const void* data)
 {
 	assert(index <= count);
 	if(index > count) {
@@ -103,19 +104,10 @@ void* ArrayData::insertItem(unsigned index, const void* data)
 	if(!allocate(1)) {
 		return nullptr;
 	}
-	if(index + 1 < count) {
-		memmove(getItemPtr(index + 1), getItemPtr(index), getItemSize(count - index - 1));
-	}
-	return setItem(index, data);
-}
-
-void* ArrayData::setItem(unsigned index, const void* data)
-{
-	assert(index < count);
-	if(index >= count) {
-		return nullptr;
-	}
 	auto item = getItemPtr(index);
+	if(index + 1 < count) {
+		memmove(getItemPtr(index + 1), item, getItemSize(count - index - 1));
+	}
 	if(data) {
 		memcpy_P(item, data, itemSize);
 	} else {

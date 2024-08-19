@@ -20,10 +20,7 @@
 #pragma once
 
 #include "Property.h"
-#include <Printable.h>
 #include <memory>
-
-#include <debug_progmem.h>
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
 	XX(Store)                                                                                                          \
@@ -43,16 +40,6 @@ enum class ObjectType : uint32_t {
 };
 
 String toString(ObjectType type);
-
-/**
- * @brief Identifies array storage within array pool
- * @note alignas(1) required as value contained in packed structures
- */
-#ifdef __clang__
-using ArrayId = uint16_t;
-#else
-using ArrayId alignas(1) = uint16_t;
-#endif
 
 struct ObjectInfo {
 	ObjectType type;
@@ -99,7 +86,8 @@ public:
 
 	Object(const ObjectInfo& typeinfo, Store& store);
 
-	Object(const ObjectInfo& typeinfo, Object* parent, void* data) : typeinfoPtr(&typeinfo), parent(parent), data(data)
+	Object(const ObjectInfo& typeinfo, Object* parent, uint16_t dataRef)
+		: typeinfoPtr(&typeinfo), parent(parent), dataRef(dataRef)
 	{
 	}
 
@@ -165,10 +153,7 @@ public:
 	 */
 	bool commit();
 
-	String getName() const
-	{
-		return typeinfo().name;
-	}
+	String getName() const;
 
 	String getPath() const;
 
@@ -177,6 +162,13 @@ public:
 	const ObjectInfo& typeinfo() const
 	{
 		return *typeinfoPtr;
+	}
+
+	void* getData();
+
+	const void* getData() const
+	{
+		return const_cast<Object*>(this)->getData();
 	}
 
 protected:
@@ -193,7 +185,7 @@ protected:
 
 	const ObjectInfo* typeinfoPtr;
 	Object* parent{};
-	void* data{};
+	uint16_t dataRef{}; //< Relative to parent
 };
 
 /**
@@ -211,7 +203,7 @@ public:
 	{
 	}
 
-	ObjectTemplate(Object& parent, void* data) : Object(ClassType::typeinfo, &parent, data)
+	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, &parent, dataRef)
 	{
 	}
 };

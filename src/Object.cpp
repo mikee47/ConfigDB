@@ -77,12 +77,12 @@ String ObjectInfo::getTypeDesc() const
 		s += toString(propinfo[0].type);
 		s += ']';
 	} else if(type == ObjectType::ObjectArray) {
-		s += "[]";
+		s += "[Object]";
 	}
 	return s;
 }
 
-Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataPtr(typeinfo))
+Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataRef(typeinfo))
 {
 }
 
@@ -100,6 +100,21 @@ Store& Object::getStore()
 	assert(obj->typeinfo().type == ObjectType::Store);
 	auto store = static_cast<Store*>(obj);
 	return *store;
+}
+
+void* Object::getData()
+{
+	if(!parent) {
+		assert(typeinfo().type == ObjectType::Store);
+		return static_cast<Store*>(this)->getRootData();
+	}
+	switch(parent->typeinfo().type) {
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
+	default:
+		return static_cast<uint8_t*>(parent->getData()) + dataRef;
+	}
 }
 
 unsigned Object::getObjectCount() const
@@ -121,8 +136,7 @@ Object Object::getObject(unsigned index)
 	}
 
 	auto typ = typeinfo().objinfo[index];
-	auto offset = typ->getOffset();
-	return Object(*typ, this, static_cast<uint8_t*>(data) + offset);
+	return Object(*typ, this, typ->getOffset());
 }
 
 Object Object::findObject(const char* name, size_t length)
@@ -162,20 +176,29 @@ Database& Object::getDatabase()
 	return getStore().getDatabase();
 }
 
+String Object::getName() const
+{
+	if(parent && (parent->typeinfo().type == ObjectType::Array || parent->typeinfo().type == ObjectType::ObjectArray)) {
+		String path;
+		path += '[';
+		path += dataRef; // TODO: When items are deleted index will change, so use parent->getItemIndex(*this);
+		path += ']';
+		return path;
+	}
+	return typeinfo().name;
+}
+
 String Object::getPath() const
 {
-	String relpath;
-	for(auto typ = typeinfoPtr; typ->parent; typ = typ->parent) {
-		if(relpath) {
-			relpath += '.';
-		}
-		relpath += typ->name;
+	String path;
+	if(parent) {
+		path = parent->getPath();
 	}
-	String path = getStore().getName();
-	if(relpath) {
+	String name = getName();
+	if(path && name[0] != '[') {
 		path += '.';
-		path += relpath;
 	}
+	path += name;
 	return path;
 }
 
@@ -206,7 +229,7 @@ Property Object::getProperty(unsigned index)
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
-	auto propData = static_cast<uint8_t*>(data);
+	auto propData = static_cast<uint8_t*>(getData());
 	propData += typeinfo().getPropertyOffset(index);
 	return {getStore(), typeinfo().propinfo[index], propData};
 }

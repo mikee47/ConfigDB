@@ -1,5 +1,5 @@
 /**
- * ConfigDB/ObjectArray.cpp
+ * ConfigDB/ArrayBase.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,29 +17,28 @@
  *
  ****/
 
-#include "include/ConfigDB/ObjectArray.h"
+#include "include/ConfigDB/ArrayBase.h"
 #include "include/ConfigDB/Store.h"
 
 namespace ConfigDB
 {
-ArrayData& ObjectArray::getArray()
+ArrayData& ArrayBase::getArray()
 {
 	auto& store = getStore();
-	if(id() == 0) {
-		*static_cast<ArrayId*>(data) = store.arrayPool.add(*typeinfo().objinfo[0]);
+	auto& id = getId();
+	if(id == 0) {
+		if(typeinfo().type == ObjectType::ObjectArray) {
+			id = store.arrayPool.add(*typeinfo().objinfo[0]);
+		} else {
+			id = store.arrayPool.add(typeinfo().propinfo[0]);
+		}
 	}
-	return store.arrayPool[id()];
+	return store.arrayPool[id];
 }
 
-Object ObjectArray::getObject(unsigned index)
+const ArrayData& ArrayBase::getArray() const
 {
-	auto& array = getArray();
-	if(index > array.getCount()) {
-		return {};
-	}
-	auto& itemType = *typeinfo().objinfo[0];
-	auto itemData = (index < array.getCount()) ? array[index] : array.add(itemType);
-	return Object(itemType, this, itemData);
+	return getStore().arrayPool[getId()];
 }
 
 } // namespace ConfigDB
