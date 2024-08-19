@@ -101,7 +101,7 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 }
 
 /*
- * Test output from DataStream
+ * Test output from ReadStream
  */
 [[maybe_unused]] void stream(BasicConfig& db)
 {

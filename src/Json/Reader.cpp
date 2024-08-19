@@ -18,7 +18,7 @@
  ****/
 
 #include <ConfigDB/Json/Reader.h>
-#include <ConfigDB/Json/DataStream.h>
+#include <ConfigDB/Json/ReadStream.h>
 #include <ConfigDB/Json/Printer.h>
 
 namespace ConfigDB::Json
@@ -37,12 +37,12 @@ size_t Reader::printObjectTo(const Object& object, const FlashString* name, unsi
 
 std::unique_ptr<IDataSourceStream> Reader::createStream(Database& db) const
 {
-	return std::make_unique<DataStream>(db, format);
+	return std::make_unique<ReadStream>(db, format);
 }
 
 std::unique_ptr<IDataSourceStream> Reader::createStream(std::shared_ptr<Store> store) const
 {
-	return std::make_unique<DataStream>(store, format);
+	return std::make_unique<ReadStream>(store, format);
 }
 
 } // namespace ConfigDB::Json

@@ -1,5 +1,5 @@
 /**
- * ConfigDB/DataStream.h
+ * ConfigDB/ReadStream.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -29,14 +29,14 @@ namespace ConfigDB::Json
 /**
  * @brief Forward-reading stream for serializing entire database contents
  */
-class DataStream : public IDataSourceStream
+class ReadStream : public IDataSourceStream
 {
 public:
-	DataStream(Database& db, Format format) : db(&db), format(format)
+	ReadStream(Database& db, Format format) : db(&db), format(format)
 	{
 	}
 
-	DataStream(std::shared_ptr<Store> store, Format format) : store(store), format(format)
+	ReadStream(std::shared_ptr<Store> store, Format format) : store(store), format(format)
 	{
 	}
 

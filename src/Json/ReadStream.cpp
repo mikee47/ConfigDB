@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/DataStream.cpp
+ * ConfigDB/Json/ReadStream.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,11 +17,11 @@
  *
  ****/
 
-#include <ConfigDB/Json/DataStream.h>
+#include <ConfigDB/Json/ReadStream.h>
 
 namespace ConfigDB::Json
 {
-void DataStream::fillStream()
+void ReadStream::fillStream()
 {
 	if(done) {
 		return;
@@ -64,7 +64,7 @@ void DataStream::fillStream()
 	done = true;
 }
 
-uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
+uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
 {
 	if(bufSize <= 0) {
 		return 0;
@@ -77,7 +77,7 @@ uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
 	return stream.readMemoryBlock(data, bufSize);
 }
 
-bool DataStream::seek(int len)
+bool ReadStream::seek(int len)
 {
 	if(len <= 0) {
 		return false;
