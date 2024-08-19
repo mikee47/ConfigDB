@@ -95,6 +95,11 @@ public:
 		getArray().add(&value);
 	}
 
+	void insertItem(unsigned index, ItemType value)
+	{
+		getArray().insert(index, &value);
+	}
+
 	ItemRef operator[](unsigned index)
 	{
 		return {*this, index};
@@ -131,6 +136,12 @@ public:
 	{
 		auto stringId = this->getStringId(value);
 		this->getArray().add(&stringId);
+	}
+
+	void insertItem(unsigned index, const String& value)
+	{
+		auto stringId = this->getStringId(value);
+		this->getArray().insert(index, &stringId);
 	}
 };
 

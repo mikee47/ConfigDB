@@ -88,17 +88,25 @@ bool ArrayData::remove(unsigned index)
 	if(index >= count) {
 		return false;
 	}
-	// TODO: How to mark item as deleted?
-	// memmove(getItemPtr(index), getItemPtr(index + 1), getItemSize(count - index - 1));
-	// deallocate(1);
-	return false;
+	if(index + 1 < count) {
+		memmove(getItemPtr(index), getItemPtr(index + 1), getItemSize(count - index - 1));
+	}
+	deallocate(1);
+	return true;
 }
 
-void* ArrayData::add(const void* data)
+void* ArrayData::insert(unsigned index, const void* data)
 {
-	auto item = allocate(1);
-	if(!item) {
+	assert(index <= count);
+	if(index > count) {
 		return nullptr;
+	}
+	if(!allocate(1)) {
+		return nullptr;
+	}
+	auto item = getItemPtr(index);
+	if(index + 1 < count) {
+		memmove(getItemPtr(index + 1), item, getItemSize(count - index - 1));
 	}
 	if(data) {
 		memcpy_P(item, data, itemSize);

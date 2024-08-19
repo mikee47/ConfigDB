@@ -84,6 +84,10 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 		Serial << "new note = " <<  item.notes[0] << endl;
 		assert(String(item.notes[0]) == F("Overwriting nice pin"));
 
+		item.notes.insertItem(0, F("Inserted at #0"));
+		item.notes.insertItem(2, F("Inserted at #2"));
+
+
 		item.commit();
 		Serial << channels.getPath() << " = " << item << endl;
 	}
@@ -91,6 +95,7 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 	{
 		BasicConfig::General::SupportedColorModels models(db);
 		models.addItem(F("New Model #") + os_random());
+		models.insertItem(0, F("Inserted at #0"));
 		models.commit();
 		Serial << models.getPath() << " = " << models << endl;
 	}

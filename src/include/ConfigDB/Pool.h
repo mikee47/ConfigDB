@@ -154,7 +154,13 @@ class ArrayData : public PoolData
 public:
 	using PoolData::PoolData;
 
-	void* add(const void* value = nullptr);
+	void* insert(unsigned index, const void* value = nullptr);
+
+	void* add(const void* value = nullptr)
+	{
+		return insert(getCount(), value);
+	}
+
 	bool remove(unsigned index);
 };
 

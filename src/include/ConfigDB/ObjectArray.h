@@ -89,6 +89,12 @@ public:
 		array.add(ItemType::typeinfo.defaultData);
 		return ItemType(*this, ref);
 	}
+
+	ItemType insertItem(unsigned index)
+	{
+		getArray().insert(index, ItemType::typeinfo.defaultData);
+		return ItemType(*this, index);
+	}
 };
 
 } // namespace ConfigDB
