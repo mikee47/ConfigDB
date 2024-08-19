@@ -18,133 +18,30 @@
  ****/
 
 #include <ConfigDB/Json/DataStream.h>
-#include <ConfigDB/Json/Reader.h>
-#include <Data/Format/Json.h>
-
-namespace
-{
-String quote(String s)
-{
-	::Format::json.escape(s);
-	::Format::json.quote(s);
-	return s;
-}
-} // namespace
 
 namespace ConfigDB::Json
 {
-// Return true if more data to output
-void DataStream::printObject(Print& p)
-{
-	assert(nesting < JSON::StreamingParser::maxNesting);
-	auto& object = objects[nesting];
-	auto name = &object.typeinfo().name;
-
-	// When streaming entire database, don't print name or braces for root object
-	if(nesting == 0 && db && storeIndex == 0) {
-		name = nullptr;
-	}
-
-	bool isObject = (object.typeinfo().type <= ObjectType::Object);
-
-	auto newline = [&]() {
-		if(pretty) {
-			p.println();
-		}
-	};
-
-	String indent;
-	if(pretty) {
-		indent.pad((nesting + (storeIndex > 0)) * 2);
-	}
-	const char* colon = pretty ? ": " : ":";
-
-	unsigned index = object.streamPos;
-
-	// If required, print object name and opening brace
-	if(index == 0 && name) {
-		if(name->length()) {
-			if(pretty) {
-				p.print(indent);
-			}
-			p.print(quote(*name));
-			p.print(colon);
-		}
-		p.print(isObject ? '{' : '[');
-	}
-
-	// Print child object
-	auto objectCount = object.getObjectCount();
-	if(index < objectCount) {
-		auto obj = const_cast<Object&>(object).getObject(index);
-		if(object.streamPos++) {
-			p.print(',');
-		}
-		newline();
-		if(pretty && object.typeinfo().type == ObjectType::ObjectArray) {
-			p.print(indent);
-			p.print("  ");
-		}
-		++nesting;
-		objects[nesting] = obj;
-		return;
-	}
-
-	index -= objectCount;
-
-	// Print property
-	if(index < object.getPropertyCount()) {
-		auto prop = const_cast<Object&>(object).getProperty(index);
-		if(object.streamPos++) {
-			p.print(',');
-		}
-		newline();
-		if(pretty) {
-			p.print(indent);
-			p.print("  ");
-		}
-		if(prop.typeinfo().name.length()) {
-			p.print(quote(prop.typeinfo().name));
-			p.print(colon);
-		}
-		p.print(prop.getJsonValue());
-		return;
-	}
-
-	// If required, print closing brace
-	if(name) {
-		if(pretty && object.streamPos) {
-			newline();
-			p.print(indent);
-		}
-		p.print(isObject ? '}' : ']');
-	}
-
-	--nesting;
-}
-
-void DataStream::fillStream(Print& p)
+void DataStream::fillStream()
 {
 	if(done) {
 		return;
 	}
-	auto newline = [&]() {
-		if(pretty) {
-			p.println();
-		}
-	};
 
-	if(!store) {
-		if(storeIndex == 0) {
-			stream << '{';
+	if(db) {
+		if(!store) {
+			if(storeIndex == 0) {
+				stream << '{';
+			}
+			store = db->getStore(storeIndex);
+			auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
+			printer = Printer(stream, *store, format, style);
 		}
-		store = db->getStore(storeIndex);
-		objects[0] = Object(store->typeinfo(), *store);
-		nesting = 0;
+	} else if(!printer) {
+		printer = Printer(stream, *store, format, Printer::RootStyle::normal);
 	}
 
-	printObject(p);
-	if(nesting != 255) {
+	printer();
+	if(!printer.isDone()) {
 		return;
 	}
 	store.reset();
@@ -156,14 +53,14 @@ void DataStream::fillStream(Print& p)
 
 	++storeIndex;
 	if(storeIndex < db->typeinfo.storeCount) {
-		p.print(',');
-		newline();
+		stream.print(',');
+		printer.newline();
 		return;
 	}
 
-	newline();
-	p.print('}');
-	newline();
+	printer.newline();
+	stream.print('}');
+	printer.newline();
 	done = true;
 }
 
@@ -174,8 +71,7 @@ uint16_t DataStream::readMemoryBlock(char* data, int bufSize)
 	}
 
 	if(stream.available() == 0) {
-		fillStream(stream);
-		maxUsedBuffer = std::max(maxUsedBuffer, size_t(stream.available()));
+		fillStream();
 	}
 
 	return stream.readMemoryBlock(data, bufSize);
@@ -193,8 +89,7 @@ bool DataStream::seek(int len)
 
 	if(stream.available() == 0) {
 		stream.clear();
-		fillStream(stream);
-		maxUsedBuffer = std::max(maxUsedBuffer, size_t(stream.available()));
+		fillStream();
 	}
 
 	return true;

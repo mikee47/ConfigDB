@@ -22,8 +22,7 @@
 #include "../Database.h"
 #include <Data/WebConstants.h>
 #include <Data/Stream/MemoryDataStream.h>
-#include <JSON/StreamingParser.h>
-#include "Common.h"
+#include "Printer.h"
 
 namespace ConfigDB::Json
 {
@@ -33,17 +32,12 @@ namespace ConfigDB::Json
 class DataStream : public IDataSourceStream
 {
 public:
-	DataStream(Database& db, Format format) : db(&db), pretty(format == Format::Pretty)
+	DataStream(Database& db, Format format) : db(&db), format(format)
 	{
 	}
 
-	DataStream(std::shared_ptr<Store> store, Format format) : store(store), pretty(format == Format::Pretty)
+	DataStream(std::shared_ptr<Store> store, Format format) : store(store), format(format)
 	{
-	}
-
-	~DataStream()
-	{
-		debug_i("DataStream: maxUsedBuffer = %u", maxUsedBuffer);
 	}
 
 	bool isValid() const override
@@ -71,17 +65,14 @@ public:
 	}
 
 private:
-	void printObject(Print& p);
-	void fillStream(Print& p);
+	void fillStream();
 
 	Database* db{};
 	std::shared_ptr<Store> store;
+	Printer printer;
 	MemoryDataStream stream;
-	Object objects[JSON::StreamingParser::maxNesting];
-	size_t maxUsedBuffer{};
+	Format format;
 	uint8_t storeIndex{0};
-	uint8_t nesting{0};
-	bool pretty;
 	bool done{false};
 };
 
