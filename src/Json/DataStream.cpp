@@ -34,17 +34,14 @@ String quote(String s)
 namespace ConfigDB::Json
 {
 // Return true if more data to output
-void DataStream::printObject()
+void DataStream::printObject(Print& p)
 {
-	if(nesting == 0) {
-		state.objects[0] = Object(store->typeinfo(), *store);
-		state.itemCounts[0] = 0;
-		++nesting;
-	}
-	auto& object = state.objects[nesting - 1];
-	auto& itemCount = state.itemCounts[nesting - 1];
+	assert(nesting < JSON::StreamingParser::maxNesting);
+	auto& object = objects[nesting];
 	auto name = &object.typeinfo().name;
-	if(nesting == 1 && storeIndex == 0) {
+
+	// When streaming entire database, don't print name or braces for root object
+	if(nesting == 0 && db && storeIndex == 0) {
 		name = nullptr;
 	}
 
@@ -52,111 +49,120 @@ void DataStream::printObject()
 
 	auto newline = [&]() {
 		if(pretty) {
-			stream.println();
+			p.println();
 		}
 	};
 
 	String indent;
 	if(pretty) {
-		indent.pad(nesting * 2);
+		indent.pad((nesting + (storeIndex > 0)) * 2);
 	}
 	const char* colon = pretty ? ": " : ":";
 
-	if(itemCount == 0 && name) {
+	unsigned index = object.streamPos;
+
+	// If required, print object name and opening brace
+	if(index == 0 && name) {
 		if(name->length()) {
 			if(pretty) {
-				stream.print(indent);
+				p.print(indent);
 			}
-			stream.print(quote(*name));
-			stream.print(colon);
+			p.print(quote(*name));
+			p.print(colon);
 		}
-		stream.print(isObject ? '{' : '[');
+		p.print(isObject ? '{' : '[');
 	}
 
+	// Print child object
 	auto objectCount = object.getObjectCount();
-	unsigned index = itemCount;
 	if(index < objectCount) {
 		auto obj = const_cast<Object&>(object).getObject(index);
-		if(itemCount++) {
-			stream.print(',');
+		if(object.streamPos++) {
+			p.print(',');
 		}
 		newline();
 		if(pretty && object.typeinfo().type == ObjectType::ObjectArray) {
-			stream.print(indent);
-			stream.print("  ");
+			p.print(indent);
+			p.print("  ");
 		}
-		state.objects[nesting] = obj;
-		state.itemCounts[nesting] = 0;
 		++nesting;
+		objects[nesting] = obj;
 		return;
 	}
 
 	index -= objectCount;
 
-	auto propertyCount = object.getPropertyCount();
-	if(index < propertyCount) {
+	// Print property
+	if(index < object.getPropertyCount()) {
 		auto prop = const_cast<Object&>(object).getProperty(index);
-		if(itemCount++) {
-			stream.print(',');
+		if(object.streamPos++) {
+			p.print(',');
 		}
 		newline();
 		if(pretty) {
-			stream.print(indent);
-			stream.print("  ");
+			p.print(indent);
+			p.print("  ");
 		}
 		if(prop.typeinfo().name.length()) {
-			stream.print(quote(prop.typeinfo().name));
-			stream.print(colon);
+			p.print(quote(prop.typeinfo().name));
+			p.print(colon);
 		}
-		stream.print(prop.getJsonValue());
+		p.print(prop.getJsonValue());
 		return;
 	}
 
+	// If required, print closing brace
 	if(name) {
-		if(pretty && itemCount) {
+		if(pretty && object.streamPos) {
 			newline();
-			stream.print(indent);
+			p.print(indent);
 		}
-		stream.print(isObject ? '}' : ']');
+		p.print(isObject ? '}' : ']');
 	}
 
 	--nesting;
 }
 
-void DataStream::fillStream(Print& stream)
+void DataStream::fillStream(Print& p)
 {
 	if(done) {
 		return;
 	}
 	auto newline = [&]() {
 		if(pretty) {
-			stream << endl;
+			p.println();
 		}
 	};
 
-	if(nesting > 0) {
-		printObject();
-		if(nesting > 0) {
-			return;
+	if(!store) {
+		if(storeIndex == 0) {
+			stream << '{';
 		}
-		++storeIndex;
+		store = db->getStore(storeIndex);
+		objects[0] = Object(store->typeinfo(), *store);
+		nesting = 0;
 	}
 
-	if(storeIndex == 0) {
-		stream << '{';
-	}
-	store.reset();
-	store = db->getStore(storeIndex);
-	if(store) {
-		if(storeIndex > 0) {
-			stream << ',';
-			newline();
-		}
-		printObject();
+	printObject(p);
+	if(nesting != 255) {
 		return;
 	}
+	store.reset();
+
+	if(!db) {
+		done = true;
+		return;
+	}
+
+	++storeIndex;
+	if(storeIndex < db->typeinfo.storeCount) {
+		p.print(',');
+		newline();
+		return;
+	}
+
 	newline();
-	stream << '}';
+	p.print('}');
 	newline();
 	done = true;
 }

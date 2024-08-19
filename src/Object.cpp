@@ -31,6 +31,7 @@ Object& Object::operator=(const Object& other)
 	typeinfoPtr = other.typeinfoPtr;
 	parent = other.isStore() ? const_cast<Object*>(&other) : other.parent;
 	dataRef = other.dataRef;
+	streamPos = 0;
 	return *this;
 }
 

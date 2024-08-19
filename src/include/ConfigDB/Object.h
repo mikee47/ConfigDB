@@ -162,6 +162,9 @@ protected:
 	const ObjectInfo* typeinfoPtr;
 	Object* parent{};
 	uint16_t dataRef{}; //< Relative to parent
+
+public:
+	uint16_t streamPos{}; //< Used during streaming
 };
 
 /**
