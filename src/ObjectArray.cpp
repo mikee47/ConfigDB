@@ -32,17 +32,4 @@ ArrayData& ObjectArray::getArray()
 	return store.arrayPool[id];
 }
 
-Object ObjectArray::getObject(unsigned index)
-{
-	auto& array = getArray();
-	if(index > array.getCount()) {
-		return {};
-	}
-	auto& itemType = *typeinfo().objinfo[0];
-	if(index == array.getCount()) {
-		array.add(itemType);
-	}
-	return Object(itemType, this, index);
-}
-
 } // namespace ConfigDB

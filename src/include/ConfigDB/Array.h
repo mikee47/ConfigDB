@@ -42,6 +42,11 @@ public:
 		return getArray().getCount();
 	}
 
+	unsigned getItemCount() const
+	{
+		return getPropertyCount();
+	}
+
 	Property getProperty(unsigned index);
 
 	void addNewItem(const char* value, size_t valueLength);
@@ -53,7 +58,7 @@ public:
 
 	ArrayId getId() const
 	{
-		return const_cast<Array*>(this)->getId();
+		return *static_cast<const ArrayId*>(getData());
 	}
 
 	void* getItemData(ArrayId ref)
@@ -94,7 +99,7 @@ public:
 
 	void setItem(unsigned index, ItemType value)
 	{
-		getArray().set(index, value);
+		*static_cast<ItemType*>(getArray()[index]) = value;
 	}
 
 	void addItem(ItemType value)
@@ -121,19 +126,45 @@ public:
 
 	String getItem(unsigned index) const
 	{
-		return static_cast<const char*>(getArray()[index]);
+		auto id = *static_cast<const StringId*>(getArray()[index]);
+		return getString(id);
 	}
 
 	void setItem(unsigned index, const String& value)
 	{
 		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		getArray().set(index, getStringId(value));
+		*static_cast<StringId*>(getArray()[index]) = getStringId(value);
 	}
 
 	void addItem(const String& value)
 	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
 		getArray().add(getStringId(value));
+	}
+
+	struct StringRef {
+		StringArrayTemplate& array;
+		unsigned index;
+
+		operator String() const
+		{
+			return array.getItem(index);
+		}
+
+		StringRef& operator=(const String& value)
+		{
+			array.setItem(index, value);
+			return *this;
+		}
+	};
+
+	StringRef operator[](unsigned index)
+	{
+		return StringRef{*this, index};
+	}
+
+	const String operator[](unsigned index) const
+	{
+		return getItem(index);
 	}
 };
 

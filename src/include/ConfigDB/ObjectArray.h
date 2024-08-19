@@ -32,11 +32,19 @@ class ObjectArray : public Object
 public:
 	using Object::Object;
 
-	Object getObject(unsigned index);
+	Object getObject(unsigned index)
+	{
+		return Object(*typeinfo().objinfo[0], this, index);
+	}
 
 	unsigned getObjectCount() const
 	{
 		return getId() ? getArray().getCount() : 0;
+	}
+
+	unsigned getItemCount() const
+	{
+		return getObjectCount();
 	}
 
 	Object addItem()

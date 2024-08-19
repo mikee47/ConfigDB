@@ -78,6 +78,12 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 		for(unsigned i = 0; i < 16; ++i) {
 			item.values.addItem(os_random());
 		}
+
+		Serial << "old note = " <<  item.notes[0] << endl;
+		item.notes[0] = F("Overwriting nice pin");
+		Serial << "new note = " <<  item.notes[0] << endl;
+		assert(String(item.notes[0]) == F("Overwriting nice pin"));
+
 		item.commit();
 		Serial << channels.getPath() << " = " << item << endl;
 	}

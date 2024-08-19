@@ -174,10 +174,7 @@ public:
 	 */
 	bool commit();
 
-	String getName() const
-	{
-		return typeinfo().name;
-	}
+	String getName() const;
 
 	String getPath() const;
 

@@ -56,6 +56,16 @@ public:
 		return count * itemSize;
 	}
 
+	void* operator[](unsigned index)
+	{
+		return getItemPtr(index);
+	}
+
+	const void* operator[](unsigned index) const
+	{
+		return getItemPtr(index);
+	}
+
 	void clear()
 	{
 		free(buffer);
@@ -156,34 +166,15 @@ public:
 		return addItem(object.defaultData);
 	}
 
-	template <typename T> typename std::enable_if<std::is_integral<T>::value, void*>::type set(unsigned index, T value)
+	void* add()
 	{
-		assert(itemSize == sizeof(T));
-		return setItem(index, &value);
+		return addItem(nullptr);
 	}
 
 	bool remove(unsigned index);
 
-	void* operator[](unsigned index)
-	{
-		if(index == count) {
-			return addItem(nullptr);
-		}
-		if(index < count) {
-			return getItemPtr(index);
-		}
-		return nullptr;
-	}
-
-	const void* operator[](unsigned index) const
-	{
-		assert(index < count);
-		return (index < count) ? getItemPtr(index) : nullptr;
-	}
-
 private:
 	void* addItem(const void* data);
-	// void* setItem(unsigned index, const void* data);
 };
 
 /**

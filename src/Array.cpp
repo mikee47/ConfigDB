@@ -35,21 +35,14 @@ ArrayData& Array::getArray()
 
 Property Array::getProperty(unsigned index)
 {
-	auto& array = getArray();
-	if(index > array.getCount()) {
-		return {};
-	}
-	// Property info contains exactly one element
 	assert(typeinfo().propertyCount == 1);
-	return {getStore(), typeinfo().propinfo[0], array[index]};
+	return {getStore(), typeinfo().propinfo[0], getArray()[index]};
 }
 
 void Array::addNewItem(const char* value, size_t valueLength)
 {
 	assert(typeinfo().propertyCount == 1);
-	auto& array = getArray();
-	auto data = array[array.getCount()];
-	getStore().setValueString(typeinfo().propinfo[0], data, value, valueLength);
+	getStore().setValueString(typeinfo().propinfo[0], getArray().add(), value, valueLength);
 }
 
 } // namespace ConfigDB

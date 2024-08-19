@@ -179,20 +179,29 @@ Database& Object::getDatabase()
 	return getStore().getDatabase();
 }
 
+String Object::getName() const
+{
+	if(parent && (parent->typeinfo().type == ObjectType::Array || parent->typeinfo().type == ObjectType::ObjectArray)) {
+		String path;
+		path += '[';
+		path += dataRef; // TODO: When items are deleted index will change, so use parent->getItemIndex(*this);
+		path += ']';
+		return path;
+	}
+	return typeinfo().name;
+}
+
 String Object::getPath() const
 {
-	String relpath;
-	for(auto typ = typeinfoPtr; typ->parent; typ = typ->parent) {
-		if(relpath) {
-			relpath += '.';
-		}
-		relpath += typ->name;
+	String path;
+	if(parent) {
+		path = parent->getPath();
 	}
-	String path = getStore().getName();
-	if(relpath) {
+	String name = getName();
+	if(path && name[0] != '[') {
 		path += '.';
-		path += relpath;
 	}
+	path += name;
 	return path;
 }
 
