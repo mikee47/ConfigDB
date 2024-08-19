@@ -83,12 +83,7 @@ public:
 
 protected:
 	ArrayData& getArray();
-
-	const ArrayData& getArray() const
-	{
-		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
-		return const_cast<ObjectArray*>(this)->getArray();
-	}
+	const ArrayData& getArray() const;
 };
 
 /**

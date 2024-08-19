@@ -33,15 +33,18 @@ ArrayData& Array::getArray()
 	return store.arrayPool[id];
 }
 
+const ArrayData& Array::getArray() const
+{
+	return getStore().arrayPool[getId()];
+}
+
 Property Array::getProperty(unsigned index)
 {
-	assert(typeinfo().propertyCount == 1);
 	return {getStore(), getItemType(), getArray()[index]};
 }
 
 void Array::addNewItem(const char* value, size_t valueLength)
 {
-	assert(typeinfo().propertyCount == 1);
 	getStore().setValueString(getItemType(), getArray().add(), value, valueLength);
 }
 

@@ -118,6 +118,7 @@ void* Object::getData()
 		return static_cast<ObjectArray*>(parent)->getItemData(dataRef);
 	}
 	assert(false);
+	return nullptr;
 }
 
 unsigned Object::getObjectCount() const

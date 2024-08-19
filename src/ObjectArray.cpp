@@ -32,4 +32,9 @@ ArrayData& ObjectArray::getArray()
 	return store.arrayPool[id];
 }
 
+const ArrayData& ObjectArray::getArray() const
+{
+	return getStore().arrayPool[getId()];
+}
+
 } // namespace ConfigDB

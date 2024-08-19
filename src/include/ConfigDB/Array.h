@@ -34,7 +34,7 @@ public:
 
 	unsigned getPropertyCount() const
 	{
-		return getArray().getCount();
+		return getId() ? getArray().getCount() : 0;
 	}
 
 	unsigned getItemCount() const
@@ -68,17 +68,13 @@ public:
 
 	const PropertyInfo& getItemType() const
 	{
+		assert(typeinfo().propertyCount == 1);
 		return typeinfo().propinfo[0];
 	}
 
 protected:
 	ArrayData& getArray();
-
-	const ArrayData& getArray() const
-	{
-		// ArrayData will be created if it doesn't exist, but will be returned const to prevent updates
-		return const_cast<Array*>(this)->getArray();
-	}
+	const ArrayData& getArray() const;
 };
 
 /**
