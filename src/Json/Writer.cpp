@@ -18,83 +18,17 @@
  ****/
 
 #include <ConfigDB/Json/Writer.h>
-#include <JSON/StreamingParser.h>
+#include <ConfigDB/Json/WriteStream.h>
 #include <debug_progmem.h>
 
 namespace ConfigDB::Json
 {
 Writer writer;
 
-class ConfigListener : public JSON::Listener
-{
-public:
-	using Element = JSON::Element;
-
-	ConfigListener(Store& store) : store(store)
-	{
-	}
-
-	bool startElement(const Element& element) override
-	{
-		// debug_i("%s %u %s: '%s' = %u / %s", __FUNCTION__, element.level, toString(element.type).c_str(), element.key,
-		// 		element.valueLength, element.value);
-
-		if(element.level == 0) {
-			info[0] = Object(store.typeinfo(), store);
-			return true;
-		}
-
-		auto& parent = info[element.level - 1];
-		if(!parent) {
-			return true;
-		}
-
-		if(element.isContainer()) {
-			Object obj;
-			if(parent.typeinfo().type == ObjectType::ObjectArray) {
-				obj = static_cast<ObjectArray&>(parent).addItem();
-			} else {
-				obj = parent.findObject(element.key, element.keyLength);
-				if(!obj) {
-					debug_w("[JSON] Object '%s' not in schema", element.key);
-				}
-			}
-			info[element.level] = obj;
-			return true;
-		}
-
-		if(parent.typeinfo().type == ObjectType::Array) {
-			auto& array = static_cast<Array&>(parent);
-			auto propdata = store.parseString(array.getItemType(), element.value, element.valueLength);
-			array.addItem(&propdata);
-			return true;
-		}
-		auto prop = parent.findProperty(element.key, element.keyLength);
-		if(!prop) {
-			debug_w("[JSON] Property '%s' not in schema", element.key);
-			return true;
-		}
-		prop.setJsonValue(element.value, element.valueLength);
-		return true;
-	}
-
-	bool endElement(const Element&) override
-	{
-		// Continue parsing
-		return true;
-	}
-
-private:
-	Store& store;
-	Object info[JSON::StreamingParser::maxNesting]{};
-};
-
 bool Writer::loadFromStream(Store& store, Stream& source)
 {
 	store.clear();
-	ConfigListener listener(store);
-	JSON::StaticStreamingParser<1024> parser(&listener);
-	auto status = parser.parse(source);
+	auto status = WriteStream::parse(store, source);
 
 	if(status == JSON::Status::EndOfDocument) {
 		return true;
@@ -106,12 +40,12 @@ bool Writer::loadFromStream(Store& store, Stream& source)
 
 std::unique_ptr<ReadWriteStream> Writer::createStream(Database& db) const
 {
-	return nullptr;
+	return std::make_unique<WriteStream>(db);
 }
 
 std::unique_ptr<ReadWriteStream> Writer::createStream(std::shared_ptr<Store> store) const
 {
-	return nullptr;
+	return std::make_unique<WriteStream>(store);
 }
 
 } // namespace ConfigDB::Json

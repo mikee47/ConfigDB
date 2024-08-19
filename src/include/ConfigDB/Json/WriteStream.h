@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/ReadStream.h
+ * ConfigDB/Json/WriteStream.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -21,37 +21,56 @@
 
 #include "../Database.h"
 #include <Data/WebConstants.h>
-#include <Data/Stream/MemoryDataStream.h>
-#include "Printer.h"
+#include <Data/Stream/ReadWriteStream.h>
+#include <JSON/StreamingParser.h>
 
 namespace ConfigDB::Json
 {
 /**
- * @brief Forward-reading stream for serializing entire database contents
+ * @brief Stream for deserialising JSON into database
  */
-class ReadStream : public IDataSourceStream
+class WriteStream : public ReadWriteStream, private JSON::Listener
 {
 public:
-	ReadStream(Database& db, Format format) : db(&db), format(format)
+	WriteStream() : parser(this)
 	{
 	}
 
-	ReadStream(std::shared_ptr<Store> store, Format format) : store(store), format(format)
+	WriteStream(Database& db) : db(&db), parser(this)
 	{
 	}
+
+	WriteStream(std::shared_ptr<Store> store) : storeRef(store), store(store.get()), parser(this)
+	{
+	}
+
+	static JSON::Status parse(Store& store, Stream& source);
 
 	bool isValid() const override
 	{
 		return true;
 	}
 
-	uint16_t readMemoryBlock(char* data, int bufSize) override;
+	size_t write(const uint8_t* data, size_t size) override;
 
-	bool seek(int len) override;
+	uint16_t readMemoryBlock(char* data, int bufSize) override
+	{
+		return 0;
+	}
+
+	int available() override
+	{
+		return 0;
+	}
+
+	bool seek(int len) override
+	{
+		return false;
+	}
 
 	bool isFinished() override
 	{
-		return done && stream.isFinished();
+		return true;
 	}
 
 	String getName() const override
@@ -65,15 +84,20 @@ public:
 	}
 
 private:
-	void fillStream();
+	bool startElement(const JSON::Element& element) override;
 
+	bool endElement(const JSON::Element&) override
+	{
+		return true;
+	}
+
+private:
 	Database* db{};
-	std::shared_ptr<Store> store;
-	Printer printer;
-	MemoryDataStream stream;
-	Format format;
-	uint8_t storeIndex{0};
-	bool done{false};
+	std::shared_ptr<Store> storeRef;
+	Store* store{};
+	JSON::StaticStreamingParser<1024> parser;
+	Object info[JSON::StreamingParser::maxNesting]{};
+	JSON::Status status{};
 };
 
 } // namespace ConfigDB::Json
