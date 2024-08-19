@@ -58,7 +58,7 @@ public:
 
 	bool removeItem(unsigned index)
 	{
-		return getId() && getArray().remove(index);
+		return getArray().remove(index);
 	}
 
 	ArrayId& getId()
@@ -68,7 +68,7 @@ public:
 
 	ArrayId getId() const
 	{
-		return const_cast<ObjectArray*>(this)->getId();
+		return *static_cast<const ArrayId*>(getData());
 	}
 
 	void* getItemData(ArrayId ref)
@@ -76,12 +76,12 @@ public:
 		return getArray()[ref];
 	}
 
-protected:
 	const ObjectInfo& getItemType() const
 	{
 		return *typeinfo().objinfo[0];
 	}
 
+protected:
 	ArrayData& getArray();
 
 	const ArrayData& getArray() const
@@ -99,8 +99,6 @@ protected:
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
-	using Item = ItemType;
-
 	explicit ObjectArrayTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
 	{
 	}
@@ -109,22 +107,22 @@ public:
 	{
 	}
 
-	Item getItem(unsigned index)
+	ItemType operator[](unsigned index)
 	{
-		return Item(*this, index);
+		return ItemType(*this, index);
 	}
 
-	Item operator[](unsigned index)
+	const ItemType operator[](unsigned index) const
 	{
-		return getItem(index);
+		return ItemType(*this, index);
 	}
 
-	Item addItem()
+	ItemType addItem()
 	{
 		auto& array = getArray();
-		uint16_t ref = array.getCount();
-		array.add(Item::typeinfo);
-		return Item(*this, ref);
+		auto ref = array.getCount();
+		array.add(ItemType::typeinfo);
+		return ItemType(*this, ref);
 	}
 };
 

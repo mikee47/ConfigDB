@@ -28,7 +28,7 @@ ArrayData& Array::getArray()
 	auto& id = getId();
 	if(id == 0) {
 		assert(typeinfo().propertyCount == 1);
-		id = store.arrayPool.add(typeinfo().propinfo[0]);
+		id = store.arrayPool.add(getItemType());
 	}
 	return store.arrayPool[id];
 }
@@ -36,13 +36,13 @@ ArrayData& Array::getArray()
 Property Array::getProperty(unsigned index)
 {
 	assert(typeinfo().propertyCount == 1);
-	return {getStore(), typeinfo().propinfo[0], getArray()[index]};
+	return {getStore(), getItemType(), getArray()[index]};
 }
 
 void Array::addNewItem(const char* value, size_t valueLength)
 {
 	assert(typeinfo().propertyCount == 1);
-	getStore().setValueString(typeinfo().propinfo[0], getArray().add(), value, valueLength);
+	getStore().setValueString(getItemType(), getArray().add(), value, valueLength);
 }
 
 } // namespace ConfigDB

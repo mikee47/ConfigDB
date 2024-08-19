@@ -32,11 +32,6 @@ class Array : public Object
 public:
 	using Object::Object;
 
-	bool removeItem(unsigned index)
-	{
-		return getArray().remove(index);
-	}
-
 	unsigned getPropertyCount() const
 	{
 		return getArray().getCount();
@@ -51,6 +46,11 @@ public:
 
 	void addNewItem(const char* value, size_t valueLength);
 
+	bool removeItem(unsigned index)
+	{
+		return getArray().remove(index);
+	}
+
 	ArrayId& getId()
 	{
 		return *static_cast<ArrayId*>(getData());
@@ -64,6 +64,11 @@ public:
 	void* getItemData(ArrayId ref)
 	{
 		return getArray()[ref];
+	}
+
+	const PropertyInfo& getItemType() const
+	{
+		return typeinfo().propinfo[0];
 	}
 
 protected:
@@ -84,6 +89,22 @@ protected:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
+	struct ItemRef {
+		Array& array;
+		unsigned index;
+
+		operator ItemType() const
+		{
+			return static_cast<ClassType&>(array).getItem(index);
+		}
+
+		ItemRef& operator=(const String& value)
+		{
+			static_cast<ClassType&>(array).setItem(index, value);
+			return *this;
+		}
+	};
+
 	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
 	{
 	}
@@ -106,6 +127,16 @@ public:
 	{
 		getArray().add(value);
 	}
+
+	ItemRef operator[](unsigned index)
+	{
+		return {*this, index};
+	}
+
+	const ItemType operator[](unsigned index) const
+	{
+		return this->getItem(index);
+	}
 };
 
 /**
@@ -113,58 +144,25 @@ public:
  * @tparam ClassType Concrete type provided by code generator
  * @tparam ItemType Type of item, not used (always String)
  */
-template <class ClassType, typename ItemType> class StringArrayTemplate : public Array
+template <class ClassType, typename ItemType> class StringArrayTemplate : public ArrayTemplate<ClassType, ItemType>
 {
 public:
-	explicit StringArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
-	{
-	}
-
-	StringArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, &parent, dataRef)
-	{
-	}
+	using ArrayTemplate<ClassType, ItemType>::ArrayTemplate;
 
 	String getItem(unsigned index) const
 	{
-		auto id = *static_cast<const StringId*>(getArray()[index]);
-		return getString(id);
+		auto id = *static_cast<const StringId*>(this->getArray()[index]);
+		return this->getString(id);
 	}
 
 	void setItem(unsigned index, const String& value)
 	{
-		assert(typeinfo().propinfo[0].type == PropertyType::String);
-		*static_cast<StringId*>(getArray()[index]) = getStringId(value);
+		*static_cast<StringId*>(this->getArray()[index]) = this->getStringId(value);
 	}
 
 	void addItem(const String& value)
 	{
-		getArray().add(getStringId(value));
-	}
-
-	struct StringRef {
-		StringArrayTemplate& array;
-		unsigned index;
-
-		operator String() const
-		{
-			return array.getItem(index);
-		}
-
-		StringRef& operator=(const String& value)
-		{
-			array.setItem(index, value);
-			return *this;
-		}
-	};
-
-	StringRef operator[](unsigned index)
-	{
-		return StringRef{*this, index};
-	}
-
-	const String operator[](unsigned index) const
-	{
-		return getItem(index);
+		this->getArray().add(this->getStringId(value));
 	}
 };
 

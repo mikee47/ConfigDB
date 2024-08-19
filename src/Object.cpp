@@ -77,7 +77,7 @@ String ObjectInfo::getTypeDesc() const
 		s += toString(propinfo[0].type);
 		s += ']';
 	} else if(type == ObjectType::ObjectArray) {
-		s += "[]";
+		s += "[Object]";
 	}
 	return s;
 }
