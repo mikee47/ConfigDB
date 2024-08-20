@@ -177,8 +177,8 @@ Property Object::getProperty(unsigned index)
 
 size_t Object::printTo(Print& p) const
 {
-	auto& store = getStore();
-	auto& reader = store.getDatabase().getReader(store);
+	Json::Reader reader;
+	reader.setFormat(Json::Format::Pretty);
 	return reader.saveToStream(*this, p);
 }
 
