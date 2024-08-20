@@ -19,69 +19,11 @@
 
 #pragma once
 
-#include <WString.h>
-
-/**
- * @brief Property types with storage size
- */
-#define CONFIGDB_PROPERTY_TYPE_MAP(XX)                                                                                 \
-	XX(Boolean, 1)                                                                                                     \
-	XX(Int8, 1)                                                                                                        \
-	XX(Int16, 2)                                                                                                       \
-	XX(Int32, 4)                                                                                                       \
-	XX(Int64, 8)                                                                                                       \
-	XX(UInt8, 1)                                                                                                       \
-	XX(UInt16, 2)                                                                                                      \
-	XX(UInt32, 4)                                                                                                      \
-	XX(UInt64, 8)                                                                                                      \
-	XX(String, sizeof(StringId))
+#include "PropertyInfo.h"
 
 namespace ConfigDB
 {
 class Store;
-
-DEFINE_FSTR_LOCAL(fstr_empty, "")
-
-/**
- * @brief Defines contained string data using index into string pool
- */
-using StringId = uint16_t;
-
-enum class PropertyType : uint32_t {
-#define XX(name, ...) name,
-	CONFIGDB_PROPERTY_TYPE_MAP(XX)
-#undef XX
-};
-
-String toString(PropertyType type);
-
-/**
- * @brief Property metadata
- */
-struct PropertyInfo {
-	PropertyType type;
-	const FlashString& name;
-	const FlashString* defaultValue; ///< Only required for strings
-
-	static const PropertyInfo empty;
-
-	PropertyInfo(const PropertyInfo&) = delete;
-
-	/**
-	 * @brief Get number of bytes required to store this property value within a structure
-	 */
-	uint8_t getSize() const
-	{
-		switch(type) {
-#define XX(tag, size)                                                                                                  \
-	case PropertyType::tag:                                                                                            \
-		return size;
-			CONFIGDB_PROPERTY_TYPE_MAP(XX)
-#undef XX
-		}
-		return 0;
-	}
-};
 
 union __attribute__((packed)) PropertyData {
 	uint8_t uint8;

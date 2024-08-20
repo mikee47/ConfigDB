@@ -20,58 +20,13 @@
 #pragma once
 
 #include "Property.h"
+#include "ObjectInfo.h"
 #include <memory>
-
-#define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
-	XX(Store)                                                                                                          \
-	XX(Object)                                                                                                         \
-	XX(Array)                                                                                                          \
-	XX(ObjectArray)
 
 namespace ConfigDB
 {
 class Database;
 class Store;
-
-enum class ObjectType : uint32_t {
-#define XX(name) name,
-	CONFIGDB_OBJECT_TYPE_MAP(XX)
-#undef XX
-};
-
-String toString(ObjectType type);
-
-struct ObjectInfo {
-	ObjectType type;
-	const FlashString& name;
-	const ObjectInfo* parent;
-	const ObjectInfo* const* objinfo;
-	PGM_VOID_P defaultData;
-	uint32_t structSize;
-	uint32_t objectCount;
-	uint32_t propertyCount;
-	const PropertyInfo propinfo[];
-
-	static const ObjectInfo empty;
-
-	ObjectInfo(const ObjectInfo&) = delete;
-
-	String getTypeDesc() const;
-
-	/**
-	 * @brief Get offset of this object's data relative to its parent
-	 */
-	size_t getOffset() const;
-
-	/**
-	 * @brief Get offset of data for a property from the start of *this* object's data
-	 */
-	size_t getPropertyOffset(unsigned index) const;
-
-	int findObject(const char* name, size_t length) const;
-
-	int findProperty(const char* name, size_t length) const;
-};
 
 /**
  * @brief An object can contain other objects, properties and arrays

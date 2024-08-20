@@ -23,20 +23,6 @@
 
 namespace ConfigDB
 {
-const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
-
-String toString(PropertyType type)
-{
-	switch(type) {
-#define XX(name, ...)                                                                                                  \
-	case PropertyType::name:                                                                                           \
-		return F(#name);
-		CONFIGDB_PROPERTY_TYPE_MAP(XX)
-#undef XX
-	}
-	return nullptr;
-}
-
 String PropertyConst::getValue() const
 {
 	assert(info && store && data);

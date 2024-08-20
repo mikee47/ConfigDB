@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Array.cpp
+ * ConfigDB/Database.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -26,17 +26,6 @@ namespace ConfigDB
 const ObjectInfo* Database::storeType;
 std::shared_ptr<Store> Database::storeRef;
 bool Database::callbackQueued;
-
-int DatabaseInfo::findStore(const char* name, size_t nameLength) const
-{
-	for(unsigned i = 0; i < storeCount; ++i) {
-		auto store = stores[i];
-		if(store->name.equals(name, nameLength)) {
-			return i;
-		}
-	}
-	return -1;
-}
 
 Store* Database::createStore(const ObjectInfo& typeinfo)
 {

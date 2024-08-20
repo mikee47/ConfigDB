@@ -20,19 +20,11 @@
 #pragma once
 
 #include "Store.h"
-#include <WString.h>
+#include "DatabaseInfo.h"
 #include <Data/CString.h>
 
 namespace ConfigDB
 {
-struct DatabaseInfo {
-	const FlashString& name;
-	uint32_t storeCount;
-	const ObjectInfo* stores[];
-
-	int findStore(const char* name, size_t nameLength) const;
-};
-
 class Database
 {
 public:
