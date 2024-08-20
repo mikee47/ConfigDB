@@ -68,6 +68,26 @@ size_t ObjectInfo::getPropertyOffset(unsigned index) const
 	return 0;
 }
 
+int ObjectInfo::findObject(const char* name, size_t length) const
+{
+	for(unsigned i = 0; i < objectCount; ++i) {
+		if(objinfo[i]->name.equals(name, length)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+int ObjectInfo::findProperty(const char* name, size_t length) const
+{
+	for(unsigned i = 0; i < propertyCount; ++i) {
+		if(propinfo[i].name.equals(name, length)) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 String ObjectInfo::getTypeDesc() const
 {
 	String s;
@@ -144,12 +164,8 @@ Object Object::findObject(const char* name, size_t length)
 	if(typeinfo().type > ObjectType::Object) {
 		return {};
 	}
-	for(unsigned i = 0; i < typeinfo().objectCount; ++i) {
-		if(typeinfo().objinfo[i]->name.equals(name, length)) {
-			return getObject(i);
-		}
-	}
-	return {};
+	int i = typeinfo().findObject(name, length);
+	return i >= 0 ? getObject(i) : Object();
 }
 
 Property Object::findProperty(const char* name, size_t length)
@@ -157,13 +173,8 @@ Property Object::findProperty(const char* name, size_t length)
 	if(typeinfo().type > ObjectType::Object) {
 		return {};
 	}
-	for(unsigned i = 0; i < typeinfo().propertyCount; ++i) {
-		if(typeinfo().propinfo[i].name.equals(name, length)) {
-			return getProperty(i);
-		}
-	}
-
-	return {};
+	int i = typeinfo().findProperty(name, length);
+	return i >= 0 ? getProperty(i) : Property();
 }
 
 bool Object::commit()

@@ -67,6 +67,10 @@ struct ObjectInfo {
 	 * @brief Get offset of data for a property from the start of *this* object's data
 	 */
 	size_t getPropertyOffset(unsigned index) const;
+
+	int findObject(const char* name, size_t length) const;
+
+	int findProperty(const char* name, size_t length) const;
 };
 
 /**

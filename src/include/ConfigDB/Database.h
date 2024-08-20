@@ -29,6 +29,8 @@ struct DatabaseInfo {
 	const FlashString& name;
 	uint32_t storeCount;
 	const ObjectInfo* stores[];
+
+	int findStore(const char* name, size_t nameLength) const;
 };
 
 class Database
