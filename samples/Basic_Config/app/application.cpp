@@ -9,12 +9,22 @@
 #include <malloc_count.h>
 #endif
 
+// If you want, you can define WiFi settings globally in Eclipse Environment Variables
+#ifndef WIFI_SSID
+#define WIFI_SSID "PleaseEnterSSID" // Put your SSID and password here
+#define WIFI_PWD "PleaseEnterPass"
+#endif
+
 extern void listProperties(ConfigDB::Database& db, Print& output);
 extern void checkPerformance(BasicConfig& db);
 
 namespace
 {
 IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
+
+BasicConfig database("test");
+HttpServer server;
+SimpleTimer statTimer;
 
 [[maybe_unused]] void printHeap()
 {
@@ -31,29 +41,29 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 /*
  * Read and write some values
  */
-[[maybe_unused]] void readWriteValues(BasicConfig& db)
+[[maybe_unused]] void readWriteValues()
 {
 	Serial << endl << _F("** Read/Write Values **") << endl;
 
 	{
-		BasicConfig::Root::Security sec(db);
+		BasicConfig::Root::Security sec(database);
 		sec.setApiSecured(true);
 		sec.commit();
 	}
 
 	{
-		BasicConfig::General general(db);
+		BasicConfig::General general(database);
 		general.setDeviceName(F("Test Device #") + os_random());
 		Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
 		general.commit();
 	}
 
 	{
-		BasicConfig::Color color(db);
+		BasicConfig::Color color(database);
 		color.colortemp.setWw(12);
 		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
-		BasicConfig::Color::Brightness bri(db);
+		BasicConfig::Color::Brightness bri(database);
 		bri.setBlue(12);
 		Serial << bri.getPath() << ".Blue = " << bri.getBlue() << endl;
 
@@ -61,13 +71,13 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 	}
 
 	{
-		BasicConfig::Events events(db);
+		BasicConfig::Events events(database);
 		events.setColorMinintervalMs(1200);
 		events.commit();
 	}
 
 	{
-		BasicConfig::General::Channels channels(db);
+		BasicConfig::General::Channels channels(database);
 		auto item = channels.addItem();
 		item.setName(F("Channel #") + os_random());
 		item.setPin(12);
@@ -92,7 +102,7 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 	}
 
 	{
-		BasicConfig::General::SupportedColorModels models(db);
+		BasicConfig::General::SupportedColorModels models(database);
 		models.addItem(F("New Model #") + os_random());
 		models.insertItem(0, F("Inserted at #0"));
 		models.commit();
@@ -107,7 +117,7 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 {
 	Serial << endl << _F("** Stream **") << endl;
 
-	auto stream = ConfigDB::Json::reader.createStream(db);
+	auto stream = ConfigDB::Json::reader.createStream(database);
 	Serial.copyFrom(stream.get());
 }
 
@@ -175,6 +185,28 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 	}
 }
 
+void onFile(HttpRequest& request, HttpResponse& response)
+{
+	auto stream = ConfigDB::Json::reader.createStream(database);
+	auto mimeType = stream->getMimeType();
+	response.sendDataStream(stream.release(), mimeType);
+}
+
+void startWebServer()
+{
+	server.listen(80);
+	server.paths.setDefault(onFile);
+
+	Serial.println("\r\n=== WEB SERVER STARTED ===");
+	Serial.println(WifiStation.getIP());
+	Serial.println("==============================\r\n");
+}
+
+void gotIP(IpAddress ip, IpAddress netmask, IpAddress gateway)
+{
+	startWebServer();
+}
+
 } // namespace
 
 #include <ConfigDB/Json/Reader.h>
@@ -190,25 +222,32 @@ void init()
 	lfs_mount();
 #endif
 
+	WifiStation.enable(true);
+	WifiStation.config(WIFI_SSID, WIFI_PWD);
+	WifiAccessPoint.enable(false);
+
+	WifiEvents.onStationGotIP(gotIP);
+
 	createDirectory("test");
-	BasicConfig db("test");
-	ConfigDB::Json::reader.setFormat(ConfigDB::Json::Format::Pretty);
+	// ConfigDB::Json::reader.setFormat(ConfigDB::Json::Format::Pretty);
 
-	readWriteValues(db);
+	readWriteValues();
 
-	stream(db);
+	// ConfigDB::Json::reader.saveToFile(db, F("test/database.json"));
+	// ConfigDB::Json::writer.loadFromFile(db, F("test/database.json"));
 
-	listProperties(db, Serial);
-	// checkPerformance(db);
+	// stream(database);
+
+	// listProperties(database, Serial);
+	// checkPerformance(database);
 
 	Serial << endl << endl;
 
-	printStoreStats(db, false);
-	printHeap();
+	printStoreStats(database, false);
 
-	IFS::Debug::listDirectory(Serial, *IFS::getDefaultFileSystem(), db.getPath());
-
-#ifdef ARCH_HOST
-	System.restart();
-#endif
+	statTimer.initializeMs<5000>([]() {
+		printHeap();
+		IFS::Debug::listDirectory(Serial, *IFS::getDefaultFileSystem(), database.getPath());
+	});
+	statTimer.start();
 }
