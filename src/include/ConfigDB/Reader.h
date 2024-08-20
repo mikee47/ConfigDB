@@ -46,8 +46,16 @@ class Reader
 public:
 	Reader() = default;
 
+	/**
+	 * @brief Create a stream to serialise the entire database
+	 * This is used for streaming asychronously to a web client, for example in an HttpResponse.
+	 */
 	virtual std::unique_ptr<IDataSourceStream> createStream(Database& db) const = 0;
 
+	/**
+	 * @brief Create a stream to serialised a store
+	 * This is used for streaming asychronously to a web client, for example in an HttpResponse.
+	 */
 	virtual std::unique_ptr<IDataSourceStream> createStream(std::shared_ptr<Store> store) const = 0;
 
 	/**
@@ -60,24 +68,47 @@ public:
 	 */
 	virtual size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const = 0;
 
+	/**
+	 * @brief Get the standard file extension for the reader implementation
+	 */
 	virtual String getFileExtension() const = 0;
 
+	/**
+	 * @brief Serialise entire database directly to an output stream
+	 * @retval size_t Number of bytes written to the stream
+	 */
+	virtual size_t saveToStream(Database& database, Print& stream) = 0;
+
+	/**
+	 * @brief Serialise an object
+	 */
 	size_t printObjectTo(const Object& object, Print& p, unsigned nesting = 0) const
 	{
 		return printObjectTo(object, &object.typeinfo().name, nesting, p);
 	}
 
-	virtual size_t saveToStream(Database& database, Print& stream) = 0;
-
+	/**
+	 * @brief Serialise a store directly to an output stream
+	 * @retval size_t Number of bytes written to the stream
+	 */
 	size_t saveToStream(const Store& store, Print& stream)
 	{
 		return printObjectTo(store, &fstr_empty, 0, stream);
 	}
 
+	/**
+	 * @brief Serialise a store directly to a local file
+	 */
 	bool saveToFile(const Store& store, const String& filename);
 
+	/**
+	 * @brief Serialise a store directly to the default file as determined by the database path
+	 */
 	bool saveToFile(const Store& store);
 
+	/**
+	 * @brief Serialise entire database to a file
+	 */
 	bool saveToFile(const Database& database, const String& filename);
 };
 

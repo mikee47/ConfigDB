@@ -35,12 +35,21 @@ class Writer
 public:
 	Writer() = default;
 
+	/**
+	 * @brief Create a stream for de-serialising (writing) into the database
+	 * Used when updating a database from a remote web client, for example via HttpRequest.
+	 */
 	virtual std::unique_ptr<ReadWriteStream> createStream(Database& db) const = 0;
 
+	/**
+	 * @brief Create a stream for de-serialising (writing) into a store
+	 * Used when updating a store from a remote web client, for example via HttpRequest
+	 */
 	virtual std::unique_ptr<ReadWriteStream> createStream(std::shared_ptr<Store> store) const = 0;
 
 	/**
-	 * @brief Load store into RAM
+	 * @brief De-serialise content from stream into store (RAM)
+	 * The store is not saved by this operation.
 	 *
 	 * Not normally called directly by applications.
 	 *
@@ -51,14 +60,33 @@ public:
 	 */
 	virtual bool loadFromStream(Store& store, Stream& source) = 0;
 
+	/**
+	 * @brief De-serialise content from stream into database
+	 * Each store is overwritten as it is loadded.
+	 * If a store entry is not represented in the data then it is left untouched.
+	 */
 	virtual bool loadFromStream(Database& database, Stream& source) = 0;
 
+	/**
+	 * @brief Get the standard file extension for the writer implementation
+	 */
 	virtual String getFileExtension() const = 0;
 
+	/**
+	 * @brief De-serialise content from file into store
+	 * The store is not saved by this operation.
+	 */
 	bool loadFromFile(Store& store, const String& filename);
 
+	/**
+	 * @brief De-serialise content from default location into store
+	 * The store is not saved by this operation.
+	 */
 	bool loadFromFile(Store& store);
 
+	/**
+	 * @brief De-serialise content from file into database
+	 */
 	bool loadFromFile(Database& database, const String& filename);
 };
 

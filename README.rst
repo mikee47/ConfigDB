@@ -27,7 +27,7 @@ Usage:
 
 - Database is described in a JSON schema.
 - A python script (tools/dbgen.py) parses the schema and generates class structure for application use.
-- Content of database can be streamed to web clients
+- Content of database can be streamed to/from web clients
 
 
 JsonSchema
@@ -55,21 +55,25 @@ Schema rules
 
 - Root object is always a :cpp:class:`ConfigDB::Database`
 - A database is always rooted in a directory
-- Root object must have a **store** value (not property) indicating by namespace which backend to use.
-  Currently only **json** is implemented - see :cpp:class:`ConfigDB::Json::Store`.
-  All non-object configuration values live in this root store, called **_root.json**.
-- Child objects may also have a **store** value attached to place them into a new store.
-  These can be placed at any level in the hierarchy.
-  A Json store creates a separate filename using JSONPath format and does not use subdirectories.
-  The name of the store forms the JSONPath prefix for any contained objects and values.
+- Contains one or more stores. The root (un-named) object is the primary store, with the filename **_root.json**.
+- Immediate children of the root may have a **store** value attached to place them into a new store.
+  This can have any value, typically **true**.
 
 
-Notes
------
+Store loading / saving
+----------------------
 
-Implementations must provide both a :cpp:class:`ConfigDB::Store` and :cpp:class:`Object`.
-These are placed in a common namespace; the standard implementation is :cpp:namespace:`ConfigDB::Json`.
-This is identified in schema with the value **"store": "json"** on the corresponding object: See Schema Rules below.
+By default, stores are saved as JSON files to the local filesystem.
 
-These are virtual classes to support streaming, but the application interface uses templating to wrap ArduinoJson code.
-This keeps the overhead low and should allow the compiler to optimise well.
+The code generator creates a default :cpp:class:`ConfigDB::Database` class.
+This can be overridden to customise loading/saving behaviour.
+
+The :cpp:method:`ConfigDB::Database::getReader` method is called to get a reader instance when saving a store.
+A :cpp:class:`ConfigDB::Reader` instance has various methods for serialising database content.
+
+Similarly, :cpp:method:`ConfigDB::Database::getWriter` returns the writer instance for loading data into a store.
+A :cpp:class:`ConfigDB::Writer` instance has various methods for de-serialising database content.
+
+Currently only **json** is implemented - see :cpp:namespace:`ConfigDB::Json`.
+Each store is contained in a separate file.
+The name of the store forms the JSONPath prefix for any contained objects and values.
