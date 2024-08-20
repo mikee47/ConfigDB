@@ -137,7 +137,7 @@ public:
 		return static_cast<const char*>(getItemPtr(ref - 1));
 	}
 
-	const char* getBuffer()
+	const char* getBuffer() const
 	{
 		return static_cast<const char*>(buffer);
 	}

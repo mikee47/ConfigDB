@@ -60,7 +60,7 @@ String PropertyConst::getJsonValue() const
 	return value;
 }
 
-bool Property::setValueString(const char* value, size_t valueLength)
+bool Property::setJsonValue(const char* value, size_t valueLength)
 {
 	assert(info && store && data);
 	if(!store) {

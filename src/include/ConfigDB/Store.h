@@ -118,6 +118,20 @@ public:
 	String getValueString(const PropertyInfo& info, const void* data) const;
 	PropertyData parseString(const PropertyInfo& prop, const char* value, size_t valueLength);
 
+	const StringPool& getStringPool() const
+	{
+		return stringPool;
+	}
+
+	const ArrayPool& getArrayPool() const
+	{
+		return arrayPool;
+	}
+
+protected:
+	friend class Object;
+	friend class ArrayBase;
+
 	ArrayPool arrayPool;
 	StringPool stringPool;
 

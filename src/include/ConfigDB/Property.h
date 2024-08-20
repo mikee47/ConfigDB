@@ -141,7 +141,7 @@ class Property : public PropertyConst
 public:
 	using PropertyConst::PropertyConst;
 
-	bool setValueString(const char* value, size_t valueLength);
+	bool setJsonValue(const char* value, size_t valueLength);
 };
 
 } // namespace ConfigDB

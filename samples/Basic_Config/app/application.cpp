@@ -79,14 +79,13 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 			item.values.addItem(os_random());
 		}
 
-		Serial << "old note = " <<  item.notes[0] << endl;
+		Serial << "old note = " << item.notes[0] << endl;
 		item.notes[0] = F("Overwriting nice pin");
-		Serial << "new note = " <<  item.notes[0] << endl;
+		Serial << "new note = " << item.notes[0] << endl;
 		assert(String(item.notes[0]) == F("Overwriting nice pin"));
 
-		item.notes.insertItem(0, F("Inserted at #0"));
+		item.notes.insertItem(0, F("Inserted at #0 on ") + SystemClock.getSystemTimeString());
 		item.notes.insertItem(2, F("Inserted at #2"));
-
 
 		item.commit();
 		Serial << channels.getPath() << " = " << item << endl;
@@ -118,7 +117,7 @@ void printPoolData(const String& name, const ConfigDB::PoolData& data)
 		   << data.getCount() << " / " << data.getCapacity() << ')' << endl;
 }
 
-void printStringPool(ConfigDB::StringPool& pool, bool detailed)
+void printStringPool(const ConfigDB::StringPool& pool, bool detailed)
 {
 	printPoolData(F("StringPool"), pool);
 
@@ -168,10 +167,10 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
 		Serial << F("Store '") << store->getName() << "':" << endl;
 		Serial << F("  Root: ") << store->typeinfo().structSize << endl;
-		printStringPool(store->stringPool, detailed);
-		printArrayPool(store->arrayPool, detailed);
+		printStringPool(store->getStringPool(), detailed);
+		printArrayPool(store->getArrayPool(), detailed);
 
-		size_t usage = store->stringPool.usage() + store->arrayPool.usage();
+		size_t usage = store->getStringPool().usage() + store->getArrayPool().usage();
 		Serial << "  Total usage = " << usage << endl;
 	}
 }
