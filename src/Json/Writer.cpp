@@ -38,6 +38,18 @@ bool Writer::loadFromStream(Store& store, Stream& source)
 	return false;
 }
 
+bool Writer::loadFromStream(Database& database, Stream& source)
+{
+	auto status = WriteStream::parse(database, source);
+
+	if(status == JSON::Status::EndOfDocument) {
+		return true;
+	}
+
+	debug_w("JSON load '%s': %s", database.getName().c_str(), toString(status).c_str());
+	return false;
+}
+
 std::unique_ptr<ReadWriteStream> Writer::createStream(Database& db) const
 {
 	return std::make_unique<WriteStream>(db);

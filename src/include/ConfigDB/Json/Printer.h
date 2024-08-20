@@ -42,25 +42,7 @@ public:
 
 	Printer() = default;
 
-	Printer(Print& p, const Object& object, Format format, RootStyle style) : p(&p), pretty(format == Format::Pretty)
-	{
-		if(object.typeinfo().type == ObjectType::Store) {
-			objects[0] = Object(object.typeinfo(), const_cast<Object*>(&object), 0);
-		} else {
-			objects[0] = object;
-		}
-		switch(style) {
-		case RootStyle::hidden:
-			rootName = nullptr;
-			break;
-		case RootStyle::braces:
-			rootName = &fstr_empty;
-			break;
-		case RootStyle::normal:
-			rootName = &object.typeinfo().name;
-			break;
-		}
-	}
+	Printer(Print& p, const Object& object, Format format, RootStyle style);
 
 	explicit operator bool() const
 	{

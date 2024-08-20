@@ -21,6 +21,7 @@
 
 #include "Store.h"
 #include <Data/Stream/ReadWriteStream.h>
+#include <Delegate.h>
 
 namespace ConfigDB
 {
@@ -50,11 +51,15 @@ public:
 	 */
 	virtual bool loadFromStream(Store& store, Stream& source) = 0;
 
+	virtual bool loadFromStream(Database& database, Stream& source) = 0;
+
 	virtual String getFileExtension() const = 0;
 
 	bool loadFromFile(Store& store, const String& filename);
 
 	bool loadFromFile(Store& store);
+
+	bool loadFromFile(Database& database, const String& filename);
 };
 
 } // namespace ConfigDB

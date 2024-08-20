@@ -44,6 +44,10 @@ public:
 	{
 	}
 
+	~WriteStream();
+
+	static JSON::Status parse(Database& db, Stream& source);
+
 	static JSON::Status parse(Store& store, Stream& source);
 
 	bool isValid() const override
@@ -98,6 +102,7 @@ private:
 	JSON::StaticStreamingParser<1024> parser;
 	Object info[JSON::StreamingParser::maxNesting]{};
 	JSON::Status status{};
+	bool rootSeen{}; ///< Set first time root store is seen (and cleared)
 };
 
 } // namespace ConfigDB::Json

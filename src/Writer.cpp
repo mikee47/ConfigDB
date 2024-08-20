@@ -42,4 +42,15 @@ bool Writer::loadFromFile(Store& store)
 	return loadFromFile(store, filename);
 }
 
+bool Writer::loadFromFile(Database& database, const String& filename)
+{
+	FileStream stream;
+	if(!stream.open(filename, File::ReadOnly)) {
+		debug_w("open('%s') failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+		return false;
+	}
+
+	return loadFromStream(database, stream);
+}
+
 } // namespace ConfigDB

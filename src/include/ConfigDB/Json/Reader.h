@@ -32,6 +32,7 @@ public:
 	std::unique_ptr<IDataSourceStream> createStream(Database& db) const override;
 	std::unique_ptr<IDataSourceStream> createStream(std::shared_ptr<Store> store) const override;
 	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
+	size_t saveToStream(Database& database, Print& stream) override;
 
 	String getFileExtension() const override
 	{

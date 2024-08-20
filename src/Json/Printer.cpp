@@ -22,7 +22,23 @@
 
 namespace ConfigDB::Json
 {
-// Return true if more data to output
+Printer::Printer(Print& p, const Object& object, Format format, RootStyle style)
+	: p(&p), pretty(format == Format::Pretty)
+{
+	objects[0] = object;
+	switch(style) {
+	case RootStyle::hidden:
+		rootName = nullptr;
+		break;
+	case RootStyle::braces:
+		rootName = &fstr_empty;
+		break;
+	case RootStyle::normal:
+		rootName = &object.typeinfo().name;
+		break;
+	}
+}
+
 size_t Printer::operator()()
 {
 	if(!p || isDone()) {

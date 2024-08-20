@@ -40,6 +40,8 @@ public:
 	{
 	}
 
+	static size_t print(Database& db, Print& p, Format format);
+
 	bool isValid() const override
 	{
 		return true;
@@ -65,7 +67,7 @@ public:
 	}
 
 private:
-	void fillStream();
+	size_t fillStream(Print& p);
 
 	Database* db{};
 	std::shared_ptr<Store> store;

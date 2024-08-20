@@ -71,6 +71,12 @@ std::shared_ptr<Store> Database::openStore(const ObjectInfo& typeinfo)
 	return inst;
 }
 
+std::shared_ptr<Store> Database::findStore(const char* name, size_t nameLength)
+{
+	int i = typeinfo.findStore(name, nameLength);
+	return i >= 0 ? openStore(*typeinfo.stores[i]) : nullptr;
+}
+
 bool Database::save(Store& store) const
 {
 	auto& reader = getReader(store);

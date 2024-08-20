@@ -21,47 +21,60 @@
 
 namespace ConfigDB::Json
 {
-void ReadStream::fillStream()
+size_t ReadStream::print(Database& db, Print& p, Format format)
+{
+	ReadStream rs(db, format);
+	size_t n{0};
+	while(!rs.done) {
+		n += rs.fillStream(p);
+	}
+	return n;
+}
+
+size_t ReadStream::fillStream(Print& p)
 {
 	if(done) {
-		return;
+		return 0;
 	}
+
+	size_t n{0};
 
 	if(db) {
 		if(!store) {
 			if(storeIndex == 0) {
-				stream << '{';
+				n += p.print('{');
 			}
 			store = db->getStore(storeIndex);
 			auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
-			printer = Printer(stream, *store, format, style);
+			printer = Printer(p, *store, format, style);
 		}
 	} else if(!printer) {
-		printer = Printer(stream, *store, format, Printer::RootStyle::normal);
+		printer = Printer(p, *store, format, Printer::RootStyle::normal);
 	}
 
-	printer();
+	n += printer();
 	if(!printer.isDone()) {
-		return;
+		return n;
 	}
 	store.reset();
 
 	if(!db) {
 		done = true;
-		return;
+		return n;
 	}
 
 	++storeIndex;
 	if(storeIndex < db->typeinfo.storeCount) {
-		stream.print(',');
-		printer.newline();
-		return;
+		n += p.print(',');
+		n += printer.newline();
+		return n;
 	}
 
-	printer.newline();
-	stream.print('}');
-	printer.newline();
+	n += printer.newline();
+	n += p.print('}');
+	n += printer.newline();
 	done = true;
+	return n;
 }
 
 uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
@@ -71,7 +84,7 @@ uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
 	}
 
 	if(stream.available() == 0) {
-		fillStream();
+		fillStream(stream);
 	}
 
 	return stream.readMemoryBlock(data, bufSize);
@@ -89,7 +102,7 @@ bool ReadStream::seek(int len)
 
 	if(stream.available() == 0) {
 		stream.clear();
-		fillStream();
+		fillStream(stream);
 	}
 
 	return true;

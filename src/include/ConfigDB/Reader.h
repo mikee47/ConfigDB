@@ -67,11 +67,18 @@ public:
 		return printObjectTo(object, &object.typeinfo().name, nesting, p);
 	}
 
-	bool saveToStream(const Store& store, Print& stream);
+	virtual size_t saveToStream(Database& database, Print& stream) = 0;
+
+	size_t saveToStream(const Store& store, Print& stream)
+	{
+		return printObjectTo(store, &fstr_empty, 0, stream);
+	}
 
 	bool saveToFile(const Store& store, const String& filename);
 
 	bool saveToFile(const Store& store);
+
+	bool saveToFile(const Database& database, const String& filename);
 };
 
 } // namespace ConfigDB

@@ -67,6 +67,8 @@ public:
 		return nullptr;
 	}
 
+	std::shared_ptr<Store> findStore(const char* name, size_t nameLength);
+
 	bool save(Store& store) const;
 
 	virtual Reader& getReader(const Store& store) const;

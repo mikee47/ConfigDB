@@ -23,6 +23,24 @@
 
 namespace ConfigDB::Json
 {
+WriteStream::~WriteStream()
+{
+	if(db && store) {
+		db->save(*store);
+	}
+}
+
+JSON::Status WriteStream::parse(Database& database, Stream& source)
+{
+	JSON::Status status;
+	{
+		WriteStream stream;
+		stream.db = &database;
+		status = stream.parser.parse(source);
+	}
+	return status;
+}
+
 JSON::Status WriteStream::parse(Store& store, Stream& source)
 {
 	WriteStream stream;
@@ -32,11 +50,43 @@ JSON::Status WriteStream::parse(Store& store, Stream& source)
 
 bool WriteStream::startElement(const JSON::Element& element)
 {
-	// debug_i("%s %u %s: '%s' = %u / %s", __FUNCTION__, element.level, toString(element.type).c_str(), element.key,
-	// 		element.valueLength, element.value);
-
 	if(element.level == 0) {
-		info[0] = Object(store->typeinfo(), *store);
+		info[0] = db ? Object() : *store;
+		return true;
+	}
+
+	if(db && element.level == 1) {
+		// Look in root store for a matching object
+		auto& root = *db->typeinfo.stores[0];
+		int i = root.findObject(element.key, element.keyLength);
+		if(i >= 0) {
+			storeRef.reset();
+			storeRef = db->openStore(root);
+			store = storeRef.get();
+			// Clear the root store first time it's loaded
+			if(!rootSeen) {
+				store->clear();
+				rootSeen = true;
+			}
+			info[0] = *store;
+			info[1] = store->getObject(i);
+			return true;
+		}
+
+		// Now check for a matching store
+		if(store) {
+			db->save(*store);
+		}
+		storeRef.reset();
+		storeRef = db->findStore(element.key, element.keyLength);
+		store = storeRef.get();
+		if(store) {
+			store->clear();
+			info[1] = Object(*store);
+			return true;
+		}
+
+		debug_w("[JSON] Object '%s' not in schema", element.key);
 		return true;
 	}
 

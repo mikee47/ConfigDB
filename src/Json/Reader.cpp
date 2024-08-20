@@ -45,4 +45,9 @@ std::unique_ptr<IDataSourceStream> Reader::createStream(std::shared_ptr<Store> s
 	return std::make_unique<ReadStream>(store, format);
 }
 
+size_t Reader::saveToStream(Database& database, Print& stream)
+{
+	return ReadStream::print(database, stream, format);
+}
+
 } // namespace ConfigDB::Json

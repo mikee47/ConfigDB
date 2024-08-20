@@ -33,7 +33,9 @@ public:
 
 	std::unique_ptr<ReadWriteStream> createStream(Database& db) const override;
 	std::unique_ptr<ReadWriteStream> createStream(std::shared_ptr<Store> store) const override;
+
 	bool loadFromStream(Store& store, Stream& source) override;
+	bool loadFromStream(Database& database, Stream& source) override;
 
 	String getFileExtension() const override
 	{

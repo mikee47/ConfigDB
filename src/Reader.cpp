@@ -28,7 +28,7 @@ bool Reader::saveToFile(const Store& store, const String& filename)
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		printObjectTo(store, &fstr_empty, 0, buffer);
+		saveToStream(store, buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {
