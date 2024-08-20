@@ -106,6 +106,14 @@ Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &sto
 {
 }
 
+Object& Object::operator=(const Object& other)
+{
+	typeinfoPtr = other.typeinfoPtr;
+	parent = other.isStore() ? const_cast<Object*>(&other) : other.parent;
+	dataRef = other.dataRef;
+	return *this;
+}
+
 std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo)
 {
 	return db.openStore(typeinfo);

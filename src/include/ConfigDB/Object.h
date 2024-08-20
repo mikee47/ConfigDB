@@ -84,6 +84,15 @@ public:
 	{
 	}
 
+	Object(const Object& other)
+	{
+		*this = other;
+	}
+
+	Object(Object&&) = delete;
+
+	Object& operator=(const Object& other);
+
 	explicit Object(const ObjectInfo& typeinfo) : typeinfoPtr(&typeinfo)
 	{
 	}
@@ -98,6 +107,14 @@ public:
 	explicit operator bool() const
 	{
 		return typeinfoPtr != &ObjectInfo::empty;
+	}
+
+	/**
+	 * @brief Determine if this object *is* a store (not just a reference to it)
+	 */
+	bool isStore() const
+	{
+		return typeinfoPtr->type == ObjectType::Store && !parent && typeinfoPtr != &ObjectInfo::empty;
 	}
 
 	Store& getStore();

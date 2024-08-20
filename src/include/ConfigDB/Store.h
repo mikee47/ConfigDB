@@ -54,6 +54,8 @@ public:
 	{
 	}
 
+	Store(const Store&) = delete;
+
 	String getFileName() const
 	{
 		String name = getName();
