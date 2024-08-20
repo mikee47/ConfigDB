@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Store.h
+ * ConfigDB/Json/Reader.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -19,29 +19,38 @@
 
 #pragma once
 
-#include "../Store.h"
+#include "../Reader.h"
+#include "Printer.h"
 
 namespace ConfigDB::Json
 {
-class Store : public ConfigDB::Store
+DECLARE_FSTR(fileExtension)
+
+class Reader : public ConfigDB::Reader
 {
 public:
-	using ConfigDB::Store::Store;
+	using ConfigDB::Reader::Reader;
 
-	String getFilename() const
+	std::unique_ptr<IDataSourceStream> createStream(Database& db) const override;
+	std::unique_ptr<IDataSourceStream> createStream(std::shared_ptr<Store> store) const override;
+
+	size_t saveToStream(const Object& object, Print& stream) const override;
+	size_t saveToStream(Database& database, Print& stream) override;
+
+	String getFileExtension() const override
 	{
-		String path = getFilePath();
-		path += _F(".json");
-		return path;
+		return fileExtension;
 	}
 
-	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
+	void setFormat(Format format)
+	{
+		this->format = format;
+	}
 
-	bool load() override;
-	bool save() override;
-
-protected:
-	String getValueJson(const PropertyInfo& info, const void* data) const;
+private:
+	Format format{};
 };
+
+extern Reader reader;
 
 } // namespace ConfigDB::Json

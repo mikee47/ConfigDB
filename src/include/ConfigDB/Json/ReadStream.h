@@ -1,5 +1,5 @@
 /**
- * ConfigDB/DataStream.h
+ * ConfigDB/Json/ReadStream.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -22,29 +22,25 @@
 #include "../Database.h"
 #include <Data/WebConstants.h>
 #include <Data/Stream/MemoryDataStream.h>
+#include "Printer.h"
 
-namespace ConfigDB
+namespace ConfigDB::Json
 {
 /**
  * @brief Forward-reading stream for serializing entire database contents
  */
-class DataStream : public IDataSourceStream
+class ReadStream : public IDataSourceStream
 {
 public:
-	DataStream(Database& db) : db(db)
+	ReadStream(Database& db, Format format) : db(&db), format(format)
 	{
-		reset();
 	}
 
-	/**
-	 * @brief Reset back to start
-	 * @note Handy if you want to re-use this stream to send it somewhere else
-	 */
-	void reset()
+	ReadStream(std::shared_ptr<Store> store, Format format) : store(store), format(format)
 	{
-		storeIndex = 0;
-		done = false;
 	}
+
+	static size_t print(Database& db, Print& p, Format format);
 
 	bool isValid() const override
 	{
@@ -62,7 +58,7 @@ public:
 
 	String getName() const override
 	{
-		return db.getName();
+		return db ? db->getName() : store ? store->getName() : nullptr;
 	}
 
 	MimeType getMimeType() const override
@@ -71,12 +67,15 @@ public:
 	}
 
 private:
-	void fillStream();
+	size_t fillStream(Print& p);
 
-	Database& db;
+	Database* db{};
+	std::shared_ptr<Store> store;
+	Printer printer;
 	MemoryDataStream stream;
-	uint8_t storeIndex;
-	bool done;
+	Format format;
+	uint8_t storeIndex{0};
+	bool done{false};
 };
 
-} // namespace ConfigDB
+} // namespace ConfigDB::Json

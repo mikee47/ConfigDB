@@ -18,7 +18,8 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
-#include "include/ConfigDB/Json/Store.h"
+#include "include/ConfigDB/Json/Reader.h"
+#include "include/ConfigDB/Json/Writer.h"
 #include <Platform/System.h>
 
 namespace ConfigDB
@@ -27,9 +28,14 @@ const ObjectInfo* Database::storeType;
 std::shared_ptr<Store> Database::storeRef;
 bool Database::callbackQueued;
 
-Store* Database::createStore(const ObjectInfo& typeinfo)
+Reader& Database::getReader(const Store&) const
 {
-	return new Json::Store(*this, typeinfo);
+	return Json::reader;
+}
+
+Writer& Database::getWriter(const Store&) const
+{
+	return Json::writer;
 }
 
 std::shared_ptr<Store> Database::openStore(const ObjectInfo& typeinfo)
@@ -40,7 +46,7 @@ std::shared_ptr<Store> Database::openStore(const ObjectInfo& typeinfo)
 
 	storeRef.reset();
 
-	auto store = createStore(typeinfo);
+	auto store = new Store(*this, typeinfo);
 	if(!store) {
 		storeType = nullptr;
 		return nullptr;
@@ -59,8 +65,22 @@ std::shared_ptr<Store> Database::openStore(const ObjectInfo& typeinfo)
 	storeRef = inst;
 	storeType = &typeinfo;
 
-	inst->load();
+	auto& writer = getWriter(*inst);
+	writer.loadFromFile(*inst);
+
 	return inst;
+}
+
+std::shared_ptr<Store> Database::findStore(const char* name, size_t nameLength)
+{
+	int i = typeinfo.findStore(name, nameLength);
+	return i >= 0 ? openStore(*typeinfo.stores[i]) : nullptr;
+}
+
+bool Database::save(Store& store) const
+{
+	auto& reader = getReader(store);
+	return reader.saveToFile(store);
 }
 
 } // namespace ConfigDB

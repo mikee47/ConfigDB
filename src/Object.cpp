@@ -18,6 +18,7 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
+#include "include/ConfigDB/Json/Reader.h"
 
 namespace ConfigDB
 {
@@ -30,6 +31,7 @@ Object& Object::operator=(const Object& other)
 	typeinfoPtr = other.typeinfoPtr;
 	parent = other.isStore() ? const_cast<Object*>(&other) : other.parent;
 	dataRef = other.dataRef;
+	streamPos = 0;
 	return *this;
 }
 
@@ -106,7 +108,8 @@ Property Object::findProperty(const char* name, size_t length)
 
 bool Object::commit()
 {
-	return getStore().save();
+	auto& store = getStore();
+	return store.getDatabase().save(store);
 }
 
 Database& Object::getDatabase()
@@ -174,7 +177,9 @@ Property Object::getProperty(unsigned index)
 
 size_t Object::printTo(Print& p) const
 {
-	return getStore().printObjectTo(*this, &typeinfo().name, 0, p);
+	Json::Reader reader;
+	reader.setFormat(Json::Format::Pretty);
+	return reader.saveToStream(*this, p);
 }
 
 } // namespace ConfigDB

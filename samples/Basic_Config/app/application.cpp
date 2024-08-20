@@ -2,7 +2,7 @@
 #include <LittleFS.h>
 #include <IFS/Debug.h>
 #include <basic-config.h>
-#include <ConfigDB/Json/DataStream.h>
+#include <ConfigDB/Json/Reader.h>
 #include <Data/CStringArray.h>
 
 #ifdef ENABLE_MALLOC_COUNT
@@ -101,14 +101,14 @@ IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
 }
 
 /*
- * Test output from DataStream
+ * Test output from ReadStream
  */
 [[maybe_unused]] void stream(BasicConfig& db)
 {
 	Serial << endl << _F("** Stream **") << endl;
 
-	ConfigDB::DataStream stream(db);
-	Serial.copyFrom(&stream);
+	auto stream = ConfigDB::Json::reader.createStream(db);
+	Serial.copyFrom(stream.get());
 }
 
 void printPoolData(const String& name, const ConfigDB::PoolData& data)
@@ -177,6 +177,8 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 
 } // namespace
 
+#include <ConfigDB/Json/Reader.h>
+
 void init()
 {
 	Serial.begin(COM_SPEED_SERIAL);
@@ -190,7 +192,7 @@ void init()
 
 	createDirectory("test");
 	BasicConfig db("test");
-	// db.setFormat(ConfigDB::Format::Pretty);
+	ConfigDB::Json::reader.setFormat(ConfigDB::Json::Format::Pretty);
 
 	readWriteValues(db);
 

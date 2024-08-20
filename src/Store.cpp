@@ -21,6 +21,14 @@
 
 namespace ConfigDB
 {
+void Store::clear()
+{
+	auto& root = typeinfo();
+	memcpy_P(rootData.get(), root.defaultData, root.structSize);
+	stringPool.clear();
+	arrayPool.clear();
+}
+
 String Store::getFilePath() const
 {
 	String path = db.getPath();
@@ -88,12 +96,6 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, siz
 	}
 
 	return {};
-}
-
-size_t Store::printTo(Print& p, unsigned nesting) const
-{
-	auto root = const_cast<Store*>(this)->getObject(0);
-	return printObjectTo(root, &root.typeinfo().name, nesting, p);
 }
 
 } // namespace ConfigDB

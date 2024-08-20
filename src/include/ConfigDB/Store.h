@@ -31,17 +31,9 @@ namespace ConfigDB
 class Database;
 
 /**
- * @brief Serialisation format
- */
-enum class Format {
-	Compact,
-	Pretty,
-};
-
-/**
  * @brief Manages access to an object store, typically one file
  */
-class Store : public Object, public Printable
+class Store : public Object
 {
 public:
 	/**
@@ -84,38 +76,10 @@ public:
 	}
 
 	/**
-	 * @brief Load store into RAM
-	 *
-	 * Not normally called directly by applications.
-	 *
-	 * Loading starts with default data loaded from schema, which is then updated during load.
-	 * Failure indicates corrupt JSON file, but any readable data is available.
-	 *
-	 * @note All existing objects are invalidated
+	 * @brief Reset store contents to defaults
+	 * @note Use caution! All reference objects will be invalidated by this call
 	 */
-	virtual bool load() = 0;
-
-	/**
-	 * @brief Save store contents
-	 */
-	virtual bool save() = 0;
-
-	/**
-	 * @brief Print object
-	 * @param object Object to print
-	 * @param name Name to print with object. If nullptr, omit opening/closing braces.
-	 * @param nesting Nesting level for pretty-printing
-	 * @param p Output stream
-	 * @retval size_t Number of characters written
-	 */
-	virtual size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const = 0;
-
-	size_t printTo(Print& p, unsigned nesting) const;
-
-	size_t printTo(Print& p) const override
-	{
-		return printTo(p, 0);
-	}
+	void clear();
 
 	String getValueString(const PropertyInfo& info, const void* data) const;
 	PropertyData parseString(const PropertyInfo& prop, const char* value, size_t valueLength);
