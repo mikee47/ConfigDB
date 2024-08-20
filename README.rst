@@ -37,7 +37,7 @@ The database structure is defined using a standard `JSON schema <https://json-sc
 
 An initial schema can be created from an existing sample JSON configuration file using a generation tool such as https://github.com/saasquatch/json-schema-inferrer. Go to the online demo and paste in your JSON configuration. The resulting schema can then be edited and further customised.
 
-The schema can then be used to provide auto-generated Standardised web editors can also be generated using tools such as https://github.com/json-editor/json-editor. Go to the online demo and scroll down to **Schema** where you can paste in
+The schema can then be used to provide auto-generated Standardised web editors can also be generated using tools such as https://github.com/json-editor/json-editor. Go to the online demo and scroll down to **Schema**.
 
 .. note::
 
@@ -49,15 +49,24 @@ The schema can then be used to provide auto-generated Standardised web editors c
 
     It's probably fair to consider it a standard part of the framework so this should be documented somewhere centrally and referred to.
 
+Configuration JSON can be validated against the **.cfgdb** schema files using **check-jsonschema**::
+
+  pip install check-jsonschema
+  check-jsonschema --schemafile basic-config.cfgdb sample-config.json
+
 
 Schema rules
 ------------
 
+See the **Basic_Config** sample schema.
+
 - Root object is always a :cpp:class:`ConfigDB::Database`
 - A database is always rooted in a directory
+- An optional **include** array annotation can be added to specify additional header files required for custom types used in the schema.
 - Contains one or more stores. The root (un-named) object is the primary store, with the filename **_root.json**.
 - Immediate children of the root may have a **store** value attached to place them into a new store.
   This can have any value, typically **true**.
+- A custom type can be defined for Property accessors using the **ctype** annotation
 
 
 Store loading / saving

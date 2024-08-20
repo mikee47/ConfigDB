@@ -105,7 +105,16 @@ class Property:
         return f'int{r.bits}_t' if r.is_signed else f'uint{r.bits}_t'
 
     @property
+    def ctype_ret(self):
+        '''Type to use for accessor return value'''
+        return self.fields.get('ctype', self.ctype)
+
+    @property
     def ctype_constref(self):
+        '''Type to use for accessor parameter type'''
+        ctype = self.fields.get('ctype')
+        if ctype:
+            return f'const {ctype}&'
         return 'const String&' if self.ptype == 'string' else self.ctype
 
     @property
@@ -147,7 +156,9 @@ class Property:
     @property
     def default_structval(self):
         '''Value suitable for static initialisation {x}'''
-        return make_comment(self.default) if self.ptype == 'string' else self.default_str
+        if self.ptype == 'string':
+            return make_comment(self.default) if self.default else ''
+        return self.default_str
 
 
 @dataclass
@@ -318,18 +329,6 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
     return [ '{', [str(e) + ',' for e in entries], '}' + term_str]
 
 
-def declare_templated_class(obj: Object, tparams: list = None) -> list[str]:
-    params = [f'{obj.typename_contained}']
-    if tparams:
-        params += tparams
-    return [
-        '',
-        f'class {obj.typename_contained}: public ConfigDB::{obj.base_class}Template<{", ".join(params)}>',
-        '{',
-        'public:',
-    ]
-
-
 def load_schema(filename: str) -> dict:
     '''Load JSON configuration schema and validate
     '''
@@ -353,6 +352,7 @@ def load_config(filename: str) -> Database:
     config = load_schema(filename)
     dbname = os.path.splitext(os.path.basename(filename))[0]
     database = Database(None, dbname, properties=config['properties'])
+    database.include = config.get('include', [])
     root = Object(database, '')
     database.children.append(root)
 
@@ -405,6 +405,7 @@ def generate_database(db: Database) -> CodeLines:
     lines = CodeLines(
         [
             '#include <ConfigDB/Database.h>',
+            *(f'#include <{file}>' for file in db.include),
             '',
             f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
             '{',
@@ -454,9 +455,7 @@ def generate_database(db: Database) -> CodeLines:
             f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
             '{',
             'public:',
-            [
-                'using OuterObjectTemplate::OuterObjectTemplate;',
-            ],
+            ['using OuterObjectTemplate::OuterObjectTemplate;'],
             *[generate_outer_class(child) for child in obj.children if not obj.is_item],
             '};'
         ]
@@ -477,6 +476,18 @@ def generate_database(db: Database) -> CodeLines:
     ]
 
     return lines
+
+
+def declare_templated_class(obj: Object, tparams: list = None) -> list[str]:
+    params = [f'{obj.typename_contained}']
+    if tparams:
+        params += tparams
+    return [
+        '',
+        f'class {obj.typename_contained}: public ConfigDB::{obj.base_class}Template<{", ".join(params)}>',
+        '{',
+        'public:',
+    ]
 
 
 def generate_typeinfo(obj: Object) -> CodeLines:
@@ -558,14 +569,14 @@ def generate_property_accessors(obj: Object) -> list:
 
     return [*((
         '',
-        f'{prop.ctype} get{prop.typename}() const',
+        f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        ['return ' + ('getString(' if prop.ptype == 'string' else '(') + f'Struct::Ptr(getData())->{prop.id});'],
+        ['return ' + ('getString(' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'Struct::Ptr(getData())->{prop.id});'],
         '}',
         '',
         f'void set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'Struct::Ptr(getData())->{prop.id} = ' + ('getStringId(value);' if prop.ptype == 'string' else 'value;')],
+        [f'Struct::Ptr(getData())->{prop.id} = ' + ('getStringId' if prop.ptype == 'string' else prop.ctype_struct) + '(value);'],
         '}'
         ) for prop in obj.properties)]
 

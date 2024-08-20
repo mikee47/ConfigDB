@@ -2,18 +2,29 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "store": true,
+  "include": [
+    "Network/Url.h",
+    "IpAddress.h",
+    "IFS/FileSystem.h"
+  ],
   "properties": {
     "general": {
       "type": "object",
       "store": true,
       "properties": {
+        "filesystem": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "ctype": "IFS::FileSystem::Type"
+        },
         "device_name": {
           "type": "string",
           "default": ""
         },
         "pin_config_url": {
           "type": "string",
-          "format": "uri",
+          "ctype": "Url",
           "default": "https://raw.githubusercontent.com/pljakobs/esp_rgb_webapp2/devel/public/config/pinconfig.json"
         },
         "channels": {
@@ -220,7 +231,7 @@
       "properties": {
         "url": {
           "type": "string",
-          "format": "uri",
+          "ctype": "Url",
           "default": "https://lightinator.de/version.json"
         }
       }
@@ -314,6 +325,7 @@
           "properties": {
             "server": {
               "type": "string",
+              "ctype": "Url",
               "default": "mqtt.local"
             },
             "password": {
@@ -345,12 +357,12 @@
           "properties": {
             "netmask": {
               "type": "string",
-              "format": "ipv4",
+              "ctype": "IpAddress",
               "default": "0.0.0.0"
             },
             "ip": {
               "type": "string",
-              "format": "ipv4",
+              "ctype": "IpAddress",
               "default": "0.0.0.0"
             },
             "dhcp": {
@@ -359,7 +371,7 @@
             },
             "gateway": {
               "type": "string",
-              "format": "ipv4",
+              "ctype": "IpAddress",
               "default": "0.0.0.0"
             }
           }

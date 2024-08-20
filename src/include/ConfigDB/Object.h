@@ -159,6 +159,11 @@ protected:
 		return getStringId(value.c_str(), value.length());
 	}
 
+	template <typename T> StringId getStringId(const T& value)
+	{
+		return getStringId(toString(value));
+	}
+
 	const ObjectInfo* typeinfoPtr;
 	Object* parent{};
 	uint16_t dataRef{}; //< Relative to parent
