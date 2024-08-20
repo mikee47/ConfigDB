@@ -60,41 +60,20 @@ public:
 
 	/**
 	 * @brief Print object
-	 * @param object Object to print
-	 * @param name Name to print with object. If nullptr, omit opening/closing braces.
-	 * @param nesting Nesting level for pretty-printing
-	 * @param p Output stream
 	 * @retval size_t Number of characters written
 	 */
-	virtual size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const = 0;
-
-	/**
-	 * @brief Get the standard file extension for the reader implementation
-	 */
-	virtual String getFileExtension() const = 0;
+	virtual size_t saveToStream(const Object& object, Print& output) const = 0;
 
 	/**
 	 * @brief Serialise entire database directly to an output stream
 	 * @retval size_t Number of bytes written to the stream
 	 */
-	virtual size_t saveToStream(Database& database, Print& stream) = 0;
+	virtual size_t saveToStream(Database& database, Print& output) = 0;
 
 	/**
-	 * @brief Serialise an object
+	 * @brief Get the standard file extension for the reader implementation
 	 */
-	size_t printObjectTo(const Object& object, Print& p, unsigned nesting = 0) const
-	{
-		return printObjectTo(object, &object.typeinfo().name, nesting, p);
-	}
-
-	/**
-	 * @brief Serialise a store directly to an output stream
-	 * @retval size_t Number of bytes written to the stream
-	 */
-	size_t saveToStream(const Store& store, Print& stream)
-	{
-		return printObjectTo(store, &fstr_empty, 0, stream);
-	}
+	virtual String getFileExtension() const = 0;
 
 	/**
 	 * @brief Serialise a store directly to a local file
@@ -109,7 +88,7 @@ public:
 	/**
 	 * @brief Serialise entire database to a file
 	 */
-	bool saveToFile(const Database& database, const String& filename);
+	bool saveToFile(Database& database, const String& filename);
 };
 
 } // namespace ConfigDB

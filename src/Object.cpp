@@ -179,7 +179,7 @@ size_t Object::printTo(Print& p) const
 {
 	auto& store = getStore();
 	auto& reader = store.getDatabase().getReader(store);
-	return reader.printObjectTo(*this, p);
+	return reader.saveToStream(*this, p);
 }
 
 } // namespace ConfigDB

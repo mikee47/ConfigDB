@@ -20,7 +20,6 @@
 #pragma once
 
 #include "../Writer.h"
-#include "Common.h"
 
 namespace ConfigDB::Json
 {
@@ -41,14 +40,6 @@ public:
 	{
 		return fileExtension;
 	}
-
-	void setFormat(Format format)
-	{
-		this->format = format;
-	}
-
-private:
-	Format format{};
 };
 
 extern Writer writer;

@@ -19,13 +19,13 @@
 
 #include <ConfigDB/Json/Reader.h>
 #include <ConfigDB/Json/ReadStream.h>
-#include <ConfigDB/Json/Printer.h>
 
 namespace ConfigDB::Json
 {
+DEFINE_FSTR(fileExtension, ".json")
 Reader reader;
 
-size_t Reader::printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const
+size_t Reader::saveToStream(const Object& object, Print& p) const
 {
 	Printer printer(p, object, format, Printer::RootStyle::braces);
 	size_t n{0};

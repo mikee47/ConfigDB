@@ -20,10 +20,12 @@
 #pragma once
 
 #include "../Reader.h"
-#include "Common.h"
+#include "Printer.h"
 
 namespace ConfigDB::Json
 {
+DECLARE_FSTR(fileExtension)
+
 class Reader : public ConfigDB::Reader
 {
 public:
@@ -31,7 +33,8 @@ public:
 
 	std::unique_ptr<IDataSourceStream> createStream(Database& db) const override;
 	std::unique_ptr<IDataSourceStream> createStream(std::shared_ptr<Store> store) const override;
-	size_t printObjectTo(const Object& object, const FlashString* name, unsigned nesting, Print& p) const override;
+
+	size_t saveToStream(const Object& object, Print& stream) const override;
 	size_t saveToStream(Database& database, Print& stream) override;
 
 	String getFileExtension() const override
@@ -45,10 +48,6 @@ public:
 	}
 
 private:
-	Database* db{};
-	const Object* object;
-	const FlashString* name;
-	unsigned nesting;
 	Format format{};
 };
 

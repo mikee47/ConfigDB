@@ -20,11 +20,18 @@
 #pragma once
 
 #include "../Object.h"
-#include "Common.h"
 #include <JSON/StreamingParser.h>
 
 namespace ConfigDB::Json
 {
+/**
+ * @brief Serialisation format
+ */
+enum class Format {
+	Compact,
+	Pretty,
+};
+
 /**
  * @brief Class to serialise objects in stages to minimise RAM usage
  */

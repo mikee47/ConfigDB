@@ -46,4 +46,21 @@ bool Reader::saveToFile(const Store& store)
 	return saveToFile(store, filename);
 }
 
+bool Reader::saveToFile(Database& database, const String& filename)
+{
+	FileStream stream;
+	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
+		StaticPrintBuffer<512> buffer(stream);
+		saveToStream(database, buffer);
+	}
+
+	if(stream.getLastError() == FS_OK) {
+		debug_d("[JSON] Store saved '%s' OK", filename.c_str());
+		return true;
+	}
+
+	debug_e("[JSON] Store save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+	return false;
+}
+
 } // namespace ConfigDB

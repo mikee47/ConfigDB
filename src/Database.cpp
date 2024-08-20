@@ -28,12 +28,12 @@ const ObjectInfo* Database::storeType;
 std::shared_ptr<Store> Database::storeRef;
 bool Database::callbackQueued;
 
-Reader& Database::getReader(const Store& store) const
+Reader& Database::getReader(const Store&) const
 {
 	return Json::reader;
 }
 
-Writer& Database::getWriter(const Store& store) const
+Writer& Database::getWriter(const Store&) const
 {
 	return Json::writer;
 }
