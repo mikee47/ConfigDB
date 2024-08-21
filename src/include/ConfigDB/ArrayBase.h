@@ -47,6 +47,11 @@ public:
 		return getArray()[index];
 	}
 
+	const void* getItem(unsigned index) const
+	{
+		return getArray()[index];
+	}
+
 	void addItem(const void* value)
 	{
 		getArray().add(value);

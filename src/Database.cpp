@@ -82,6 +82,8 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool forWrite)
 	auto& writer = getWriter(*readStoreRef);
 	writer.loadFromFile(*readStoreRef);
 
+	readStoreRef->setReadOnly();
+
 	return readStoreRef;
 }
 

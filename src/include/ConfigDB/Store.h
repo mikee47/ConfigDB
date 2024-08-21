@@ -76,6 +76,15 @@ public:
 
 	uint8_t* getRootData()
 	{
+		// Check store mode permits writing
+		if(readOnly) {
+			abort();
+		}
+		return rootData.get();
+	}
+
+	const uint8_t* getRootData() const
+	{
 		return rootData.get();
 	}
 
@@ -98,6 +107,19 @@ public:
 		return arrayPool;
 	}
 
+	/**
+	 * @brief When opened for read-only the database calls this to guard against writes
+	 */
+	void setReadOnly()
+	{
+		readOnly = true;
+	}
+
+	bool isReadOnly() const
+	{
+		return readOnly;
+	}
+
 protected:
 	friend class Object;
 	friend class ArrayBase;
@@ -108,6 +130,7 @@ protected:
 private:
 	Database& db;
 	std::unique_ptr<uint8_t[]> rootData;
+	bool readOnly{};
 };
 
 } // namespace ConfigDB

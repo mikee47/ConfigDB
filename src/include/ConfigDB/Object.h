@@ -142,10 +142,7 @@ public:
 
 	void* getData();
 
-	const void* getData() const
-	{
-		return const_cast<Object*>(this)->getData();
-	}
+	const void* getData() const;
 
 protected:
 	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool forWrite);
@@ -204,7 +201,8 @@ public:
 	{
 	}
 
-	OuterObjectTemplate(Database& db, bool forWrite = false) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo, forWrite))
+	OuterObjectTemplate(Database& db, bool forWrite = false)
+		: OuterObjectTemplate(this->openStore(db, StoreType::typeinfo, forWrite))
 	{
 	}
 

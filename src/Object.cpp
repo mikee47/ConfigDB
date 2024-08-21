@@ -66,6 +66,22 @@ void* Object::getData()
 	}
 }
 
+const void* Object::getData() const
+{
+	if(!parent) {
+		assert(typeinfo().type == ObjectType::Store);
+		return static_cast<const Store*>(this)->getRootData();
+	}
+	switch(parent->typeinfo().type) {
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+		return static_cast<const ArrayBase*>(parent)->getItem(dataRef);
+	default:
+		auto data = static_cast<const Object*>(parent)->getData();
+		return static_cast<const uint8_t*>(data) + dataRef;
+	}
+}
+
 unsigned Object::getObjectCount() const
 {
 	if(typeinfo().type == ObjectType::ObjectArray) {
