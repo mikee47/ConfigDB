@@ -50,7 +50,7 @@ void listProperties(ConfigDB::Database& db, Print& output)
 	output << endl << _F("** Inspect Properties **") << endl;
 
 	output << _F("Database \"") << db.getName() << '"' << endl;
-	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
+	for(unsigned i = 0; auto store = db.openStore(i); ++i) {
 		printObject(output, nullptr, 2, *store);
 	}
 }

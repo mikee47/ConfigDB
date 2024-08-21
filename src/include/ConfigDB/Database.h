@@ -59,7 +59,7 @@ public:
 	 */
 	std::shared_ptr<Store> openStore(const ObjectInfo& typeinfo);
 
-	std::shared_ptr<Store> getStore(unsigned index)
+	std::shared_ptr<Store> openStore(unsigned index)
 	{
 		if(index < typeinfo.storeCount) {
 			return openStore(*typeinfo.stores[index]);

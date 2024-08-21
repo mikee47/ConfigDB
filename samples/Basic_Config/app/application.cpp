@@ -177,7 +177,7 @@ void printArrayPool(const ConfigDB::ArrayPool& pool, bool detailed)
 
 void printStoreStats(ConfigDB::Database& db, bool detailed)
 {
-	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
+	for(unsigned i = 0; auto store = db.openStore(i); ++i) {
 		Serial << F("Store '") << store->getName() << "':" << endl;
 		Serial << F("  Root: ") << store->typeinfo().structSize << endl;
 		printStringPool(store->getStringPool(), detailed);

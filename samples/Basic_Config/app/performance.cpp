@@ -70,7 +70,7 @@ void checkPerformance(BasicConfig& db)
 		Profiling::MicroTimes times(F("Verify load caching"));
 		for(int i = 0; i < rounds; i++) {
 			times.start();
-			db.getStore(1);
+			db.openStore(1);
 			times.update();
 		}
 		Serial << times << endl;
@@ -81,7 +81,7 @@ void checkPerformance(BasicConfig& db)
 		Profiling::MicroTimes times(F("Load all stores"));
 		for(int i = 0; i < rounds; i++) {
 			times.start();
-			auto store = db.getStore(i % db.typeinfo.storeCount);
+			auto store = db.openStore(i % db.typeinfo.storeCount);
 			times.update();
 		}
 		Serial << times << endl;

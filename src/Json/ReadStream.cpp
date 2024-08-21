@@ -44,7 +44,7 @@ size_t ReadStream::fillStream(Print& p)
 			if(storeIndex == 0) {
 				n += p.print('{');
 			}
-			store = db->getStore(storeIndex);
+			store = db->openStore(storeIndex);
 			auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
 			printer = Printer(p, *store, format, style);
 		}
