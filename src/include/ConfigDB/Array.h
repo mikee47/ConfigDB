@@ -41,6 +41,11 @@ public:
 		return {getStore(), getItemType(), getArray()[index]};
 	}
 
+	PropertyConst getProperty(unsigned index) const
+	{
+		return {getStore(), getItemType(), getArray()[index]};
+	}
+
 	const PropertyInfo& getItemType() const
 	{
 		assert(typeinfo().propertyCount == 1);

@@ -51,8 +51,16 @@ Store& Object::getStore()
 	return *store;
 }
 
-void* Object::getData()
+bool Object::writeCheck() const
 {
+	return getStore().writeCheck();
+}
+
+void* Object::getDataPtr()
+{
+	if(!getStore().writeCheck()) {
+		return nullptr;
+	}
 	if(!parent) {
 		assert(typeinfo().type == ObjectType::Store);
 		return static_cast<Store*>(this)->getRootData();
@@ -62,11 +70,11 @@ void* Object::getData()
 	case ObjectType::ObjectArray:
 		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
 	default:
-		return static_cast<uint8_t*>(parent->getData()) + dataRef;
+		return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef;
 	}
 }
 
-const void* Object::getData() const
+const void* Object::getDataPtr() const
 {
 	if(!parent) {
 		assert(typeinfo().type == ObjectType::Store);
@@ -77,7 +85,7 @@ const void* Object::getData() const
 	case ObjectType::ObjectArray:
 		return static_cast<const ArrayBase*>(parent)->getItem(dataRef);
 	default:
-		auto data = static_cast<const Object*>(parent)->getData();
+		auto data = static_cast<const Object*>(parent)->getDataPtr();
 		return static_cast<const uint8_t*>(data) + dataRef;
 	}
 }
@@ -186,7 +194,21 @@ Property Object::getProperty(unsigned index)
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
-	auto propData = static_cast<uint8_t*>(getData());
+	auto propData = getData<uint8_t>();
+	propData += typeinfo().getPropertyOffset(index);
+	return {getStore(), typeinfo().propinfo[index], propData};
+}
+
+PropertyConst Object::getProperty(unsigned index) const
+{
+	if(typeinfo().type == ObjectType::Array) {
+		return static_cast<const Array*>(this)->getProperty(index);
+	}
+
+	if(index >= typeinfo().propertyCount) {
+		return {};
+	}
+	auto propData = getData<const uint8_t>();
 	propData += typeinfo().getPropertyOffset(index);
 	return {getStore(), typeinfo().propinfo[index], propData};
 }

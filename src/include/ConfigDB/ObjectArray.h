@@ -84,6 +84,9 @@ public:
 
 	ItemType addItem()
 	{
+		if(!writeCheck()) {
+			return ItemType(*this, 0);
+		}
 		auto& array = getArray();
 		auto index = array.getCount();
 		array.add(ItemType::typeinfo.defaultData);
@@ -92,6 +95,9 @@ public:
 
 	ItemType insertItem(unsigned index)
 	{
+		if(!writeCheck()) {
+			return ItemType(*this, 0);
+		}
 		getArray().insert(index, ItemType::typeinfo.defaultData);
 		return ItemType(*this, index);
 	}

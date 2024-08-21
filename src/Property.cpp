@@ -52,8 +52,8 @@ bool Property::setJsonValue(const char* value, size_t valueLength)
 	if(!store) {
 		return false;
 	}
-	auto propdata = store->parseString(*info, value, valueLength);
-	memcpy(data, &propdata, info->getSize());
+	auto propdata = const_cast<Store*>(store)->parseString(*info, value, valueLength);
+	memcpy(const_cast<void*>(data), &propdata, info->getSize());
 	return true;
 }
 

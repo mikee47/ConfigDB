@@ -549,9 +549,6 @@ def generate_object_struct(obj: Object) -> CodeLines:
         '',
         'struct __attribute__((packed)) Struct {',
         [
-            'using Ptr = Struct*;',
-            'using ConstPtr = const Struct*;',
-            '',
             *(f'{child.typename_struct} {child.id}{{}};' for child in obj.children),
             *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
         ],
@@ -572,12 +569,16 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        ['return ' + ('getString(' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'Struct::ConstPtr(getData())->{prop.id});'],
+        ['return ' + ('getString(' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'getData<const Struct>()->{prop.id});'],
         '}',
         '',
         f'void set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'Struct::Ptr(getData())->{prop.id} = ' + ('getStringId' if prop.ptype == 'string' else prop.ctype_struct) + '(value);'],
+        [
+            'if(auto data = getData<Struct>()) {',
+            [f'data->{prop.id} = ' + ('getStringId' if prop.ptype == 'string' else prop.ctype_struct) + '(value);'],
+            '}'
+        ],
         '}'
         ) for prop in obj.properties)]
 

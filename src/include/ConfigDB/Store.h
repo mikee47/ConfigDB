@@ -76,11 +76,7 @@ public:
 
 	uint8_t* getRootData()
 	{
-		// Check store mode permits writing
-		if(readOnly) {
-			abort();
-		}
-		return rootData.get();
+		return writeCheck() ? rootData.get() : nullptr;
 	}
 
 	const uint8_t* getRootData() const
@@ -119,6 +115,8 @@ public:
 	{
 		return readOnly;
 	}
+
+	bool writeCheck() const;
 
 protected:
 	friend class Object;

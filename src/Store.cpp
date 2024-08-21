@@ -18,6 +18,7 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
+#include <debug_progmem.h>
 
 namespace ConfigDB
 {
@@ -96,6 +97,15 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 	}
 
 	return {};
+}
+
+bool Store::writeCheck() const
+{
+	if(readOnly) {
+		debug_e("[CFGDB] Store is Read-only");
+		return false;
+	}
+	return true;
 }
 
 } // namespace ConfigDB

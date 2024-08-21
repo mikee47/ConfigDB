@@ -61,7 +61,7 @@ public:
 
 	explicit operator bool() const
 	{
-		return typeinfoPtr != &ObjectInfo::empty && getData();
+		return typeinfoPtr != &ObjectInfo::empty;
 	}
 
 	/**
@@ -114,10 +114,7 @@ public:
 	 */
 	Property getProperty(unsigned index);
 
-	PropertyConst getProperty(unsigned index) const
-	{
-		return const_cast<Object*>(this)->getProperty(index);
-	}
+	PropertyConst getProperty(unsigned index) const;
 
 	/**
 	 * @brief Find property by name
@@ -140,12 +137,24 @@ public:
 		return *typeinfoPtr;
 	}
 
-	void* getData();
+	template <typename T> T* getData()
+	{
+		return static_cast<T*>(getDataPtr());
+	}
 
-	const void* getData() const;
+	template <typename T> const T* getData() const
+	{
+		return static_cast<const T*>(getDataPtr());
+	}
 
 protected:
 	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool forWrite);
+
+	bool writeCheck() const;
+
+	void* getDataPtr();
+
+	const void* getDataPtr() const;
 
 	String getString(StringId id) const;
 
@@ -176,6 +185,10 @@ public:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
+	ObjectTemplate() : Object(ClassType::typeinfo)
+	{
+	}
+
 	ObjectTemplate(Store& store, unsigned index, bool forWrite = false) : Object(store, index, forWrite)
 	{
 	}

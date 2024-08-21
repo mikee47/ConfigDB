@@ -60,12 +60,12 @@ public:
 protected:
 	ArrayId& getId()
 	{
-		return *static_cast<ArrayId*>(getData());
+		return *getData<ArrayId>();
 	}
 
 	ArrayId getId() const
 	{
-		return *static_cast<const ArrayId*>(getData());
+		return *getData<const ArrayId>();
 	}
 
 	ArrayData& getArray();
