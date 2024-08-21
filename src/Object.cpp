@@ -145,12 +145,12 @@ String Object::getPath() const
 
 String Object::getString(StringId id) const
 {
-	return getStore().stringPool[id];
+	return String(getStore().stringPool[id]);
 }
 
-StringId Object::getStringId(const char* value, size_t valueLength)
+StringId Object::getStringId(const char* value, uint16_t valueLength)
 {
-	return getStore().stringPool.findOrAdd(value, valueLength);
+	return getStore().stringPool.findOrAdd({value, valueLength});
 }
 
 unsigned Object::getPropertyCount() const

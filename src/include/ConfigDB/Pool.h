@@ -101,11 +101,67 @@ protected:
 };
 
 /**
+ * @brief Used by StringPool
+ */
+struct CountedString {
+public:
+	const char* value{};
+	uint16_t length{};
+
+	CountedString() = default;
+
+	CountedString(const char* value, uint16_t length) : value(value), length(length)
+	{
+	}
+
+	explicit CountedString(const String& s) : value(s.c_str()), length(s.length())
+	{
+	}
+
+	bool operator==(const CountedString& other) const
+	{
+		return length == other.length && memcmp(value, other.value, length) == 0;
+	}
+
+	explicit operator bool() const
+	{
+		return value && length;
+	}
+
+	explicit operator String() const
+	{
+		return String(value, length);
+	}
+
+	/**
+	 * @brief Get buffer size required to store this string
+	 */
+	uint16_t getStorageSize() const
+	{
+		return 1 + (length > 0x80) + length;
+	}
+};
+
+/**
  * @brief Pool for string data
  *
- * We store all string data in a single String object, NUL-separated.
- * A StringId is the offset from the start of that object.
+ * We store all string data in a single buffer.
+ * A StringId references a string item by position, and is always > 0.
  * Strings are appended but never removed.
+ *
+ * To support binary data we use counted strings.
+ * Strings of 128 (0x80) or fewer characters use a single byte prefix containing the length.
+ * Longer strings require a second byte which is combined with the first. For example:
+ *
+ * 0x82 0x00 0x0200
+ * 0x80 	 0x0080
+ * 0x81 0x00 0x0100
+ *
+ * Storing large amounts of binary data is not advisable.
+ * Instead, configuration should store a filename or reference to some external storage.
+ *
+ * Note: We might consider implementing some kind of 'load on demand' feature in ConfigDB so that
+ * externally stored data can be transparently fetched.
  */
 class StringPool : public PoolData
 {
@@ -123,24 +179,28 @@ public:
 	 * @brief Search for a string
 	 * @retval StringId 0 if string is not found
 	 */
-	StringId find(const char* value, size_t valueLength) const;
+	StringId find(const CountedString& string) const;
 
-	StringId add(const char* value, size_t valueLength);
+	StringId add(const CountedString& string);
 
-	StringId findOrAdd(const char* value, size_t valueLength)
+	StringId findOrAdd(const CountedString& string)
 	{
-		return find(value, valueLength) ?: add(value, valueLength);
+		return find(string) ?: add(string);
 	}
 
-	const char* operator[](StringId ref) const
+	CountedString operator[](StringId ref) const
 	{
-		return static_cast<const char*>(getItemPtr(ref - 1));
+		unsigned offset = ref - 1;
+		return offset < count ? getString(offset) : CountedString{};
 	}
 
 	const char* getBuffer() const
 	{
 		return static_cast<const char*>(buffer);
 	}
+
+private:
+	CountedString getString(unsigned offset) const;
 };
 
 /**

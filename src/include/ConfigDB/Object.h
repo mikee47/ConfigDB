@@ -152,7 +152,7 @@ protected:
 
 	String getString(StringId id) const;
 
-	StringId getStringId(const char* value, size_t valueLength);
+	StringId getStringId(const char* value, uint16_t valueLength);
 
 	StringId getStringId(const String& value)
 	{
