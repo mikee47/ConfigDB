@@ -3,8 +3,6 @@ HWCONFIG := test
 COMPONENT_INCDIRS := include
 COMPONENT_SRCDIRS := app modules
 
-COMPONENT_SEARCH_DIRS ?= ../..
-
 # Don't need network
 HOST_NETWORK_OPTIONS := --nonet
 DISABLE_NETWORK := 1
