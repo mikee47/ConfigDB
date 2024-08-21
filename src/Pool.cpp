@@ -52,35 +52,44 @@ void PoolData::deallocate(size_t items)
 	space += items;
 }
 
-StringId StringPool::find(const char* value, size_t valueLength) const
+CountedString StringPool::getString(unsigned offset) const
 {
-	if(!buffer || !value || !valueLength) {
+	auto ptr = static_cast<const char*>(buffer) + offset;
+	uint16_t len = uint8_t(*ptr++);
+	if(len > 0x80) {
+		len = ((len & 0x7f) << 8) | uint8_t(*ptr++);
+	}
+	return {ptr, len};
+}
+
+StringId StringPool::find(const CountedString& string) const
+{
+	if(!buffer || !string) {
 		return 0;
 	}
 	for(size_t offset = 0; offset < count;) {
-		auto ptr = static_cast<char*>(buffer) + offset;
-		ptr = static_cast<char*>(memmem(ptr, count - offset, value, valueLength));
-		if(!ptr) {
-			return 0;
+		auto cs = getString(offset);
+		if(string == cs) {
+			return 1 + offset;
 		}
-		offset = uintptr_t(ptr) - uintptr_t(buffer) + 1;
-		if(ptr[valueLength] == '\0') {
-			return offset;
-		}
+		offset += cs.length;
 	}
 	return 0;
 }
 
-StringId StringPool::add(const char* value, size_t valueLength)
+StringId StringPool::add(const CountedString& string)
 {
-	// Include NUL
-	auto ptr = static_cast<char*>(allocate(valueLength + 1));
+	auto ptr = static_cast<uint8_t*>(allocate(string.getStorageSize()));
 	if(!ptr) {
 		return 0;
 	}
-	memcpy(ptr, value, valueLength);
-	ptr[valueLength] = '\0';
-	return 1 + ptr - static_cast<char*>(buffer);
+	auto id = 1 + ptr - static_cast<const uint8_t*>(buffer);
+	if(string.length > 0x80) {
+		*ptr++ = 0x80 | (string.length >> 8);
+	}
+	*ptr++ = string.length & 0xff;
+	memcpy(ptr, string.value, string.length);
+	return id;
 }
 
 bool ArrayData::remove(unsigned index)

@@ -135,17 +135,19 @@ void printStringPool(const ConfigDB::StringPool& pool, bool detailed)
 		return;
 	}
 
-	auto start = pool.getBuffer();
-	auto end = start + pool.getCount();
 	unsigned i = 0;
-	for(auto s = start; s < end; ++i, s += strlen(s) + 1) {
+	for(unsigned id = 1; auto string = pool[id];) {
 		String tag;
 		tag += "    #";
 		tag.concat(i, DEC, 2, ' ');
 		tag += " [";
-		tag += s - start;
+		tag += id;
 		tag += ']';
-		Serial << tag.pad(18) << ": \"" << s << '"' << endl;
+		String s(string);
+		Format::json.escape(s);
+		Format::json.quote(s);
+		Serial << tag.pad(18) << ": " << s << endl;
+		id += string.getStorageSize();
 	}
 }
 
