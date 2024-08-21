@@ -33,7 +33,7 @@ public:
 
 	Object getObject(unsigned index)
 	{
-		return Object(getItemType(), this, index);
+		return Object(getItemType(), *this, index);
 	}
 
 	unsigned getObjectCount() const
@@ -47,7 +47,7 @@ public:
 		auto& array = getArray();
 		auto ref = array.getCount();
 		array.add(itemType.defaultData);
-		return Object(itemType, this, ref);
+		return Object(itemType, *this, ref);
 	}
 
 	const ObjectInfo& getItemType() const
@@ -68,7 +68,7 @@ public:
 	{
 	}
 
-	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, &parent, dataRef)
+	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, parent, dataRef)
 	{
 	}
 

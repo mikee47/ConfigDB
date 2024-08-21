@@ -22,7 +22,7 @@
 
 namespace ConfigDB
 {
-Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataRef(typeinfo))
+Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store, store.getObjectDataRef(typeinfo))
 {
 }
 
@@ -85,7 +85,7 @@ Object Object::getObject(unsigned index)
 	}
 
 	auto typ = typeinfo().objinfo[index];
-	return Object(*typ, this, typ->getOffset());
+	return Object(*typ, *this, typ->getOffset());
 }
 
 Object Object::findObject(const char* name, size_t length)

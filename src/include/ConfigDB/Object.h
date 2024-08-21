@@ -54,8 +54,8 @@ public:
 
 	Object(const ObjectInfo& typeinfo, Store& store);
 
-	Object(const ObjectInfo& typeinfo, Object* parent, uint16_t dataRef)
-		: typeinfoPtr(&typeinfo), parent(parent), dataRef(dataRef)
+	Object(const ObjectInfo& typeinfo, Object& parent, uint16_t dataRef)
+		: typeinfoPtr(&typeinfo), parent(&parent), dataRef(dataRef)
 	{
 	}
 
@@ -187,7 +187,7 @@ public:
 	{
 	}
 
-	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, &parent, dataRef)
+	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
 	{
 	}
 };

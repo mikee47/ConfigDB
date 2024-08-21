@@ -76,7 +76,7 @@ public:
 	{
 	}
 
-	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, &parent, dataRef)
+	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
 	{
 	}
 
