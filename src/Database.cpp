@@ -55,7 +55,7 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool forWrite)
 		auto& lock = locks[index];
 		if(lock.weakref.use_count() > 1) {
 			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
-			return nullptr;
+			return std::make_shared<Store>(*this);
 		}
 
 		lock.weakref = lock.ref = std::make_shared<Store>(*this, storeInfo);

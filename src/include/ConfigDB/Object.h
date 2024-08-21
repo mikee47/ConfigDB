@@ -61,7 +61,7 @@ public:
 
 	explicit operator bool() const
 	{
-		return typeinfoPtr != &ObjectInfo::empty;
+		return typeinfoPtr != &ObjectInfo::empty && getData();
 	}
 
 	/**

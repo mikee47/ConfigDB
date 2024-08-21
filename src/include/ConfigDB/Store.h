@@ -36,6 +36,10 @@ class Database;
 class Store : public Object
 {
 public:
+	Store(Database& db) : Object(), db(db)
+	{
+	}
+
 	/**
 	 * @brief Storage instance
 	 * @param db Database which manages this store
