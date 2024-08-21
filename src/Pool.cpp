@@ -72,7 +72,7 @@ StringId StringPool::find(const CountedString& string) const
 		if(string == cs) {
 			return 1 + offset;
 		}
-		offset += cs.length;
+		offset += cs.getStorageSize();
 	}
 	return 0;
 }
