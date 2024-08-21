@@ -4,6 +4,7 @@
 #include <basic-config.h>
 #include <ConfigDB/Json/Reader.h>
 #include <Data/CStringArray.h>
+#include <Data/Format/Json.h>
 
 #ifdef ENABLE_MALLOC_COUNT
 #include <malloc_count.h>
