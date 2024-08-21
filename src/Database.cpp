@@ -24,8 +24,8 @@
 
 namespace ConfigDB
 {
-const ObjectInfo* Database::storeType;
-std::shared_ptr<Store> Database::storeRef;
+std::shared_ptr<Store> Database::readStoreRef;
+int8_t Database::readStoreIndex{-1};
 bool Database::callbackQueued;
 
 Reader& Database::getReader(const Store&) const
@@ -38,49 +38,66 @@ Writer& Database::getWriter(const Store&) const
 	return Json::writer;
 }
 
-std::shared_ptr<Store> Database::openStore(const ObjectInfo& typeinfo)
+std::shared_ptr<Store> Database::openStore(unsigned index, bool forWrite)
 {
-	if(storeType == &typeinfo) {
-		return storeRef;
-	}
-
-	storeRef.reset();
-
-	auto store = new Store(*this, typeinfo);
-	if(!store) {
-		storeType = nullptr;
+	if(index >= typeinfo.storeCount) {
+		assert(false);
 		return nullptr;
 	}
 
+	if(!forWrite && index == unsigned(readStoreIndex)) {
+		return readStoreRef;
+	}
+
+	auto& storeInfo = *typeinfo.stores[index];
+
+	if(forWrite) {
+		auto& lock = locks[index];
+		if(lock.weakref.use_count() > 1) {
+			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
+			return nullptr;
+		}
+
+		lock.weakref = lock.ref = std::make_shared<Store>(*this, storeInfo);
+		return lock.ref;
+	}
+
+	readStoreRef.reset();
+	readStoreRef = std::make_shared<Store>(*this, storeInfo);
+	if(!readStoreRef) {
+		readStoreIndex = -1;
+		return nullptr;
+	}
+	readStoreIndex = index;
+
 	if(!callbackQueued) {
 		System.queueCallback(InterruptCallback([]() {
-			storeRef.reset();
-			storeType = nullptr;
+			readStoreRef.reset();
+			readStoreIndex = -1;
 			callbackQueued = false;
 		}));
 		callbackQueued = true;
 	}
 
-	std::shared_ptr<Store> inst(store);
-	storeRef = inst;
-	storeType = &typeinfo;
+	auto& writer = getWriter(*readStoreRef);
+	writer.loadFromFile(*readStoreRef);
 
-	auto& writer = getWriter(*inst);
-	writer.loadFromFile(*inst);
-
-	return inst;
-}
-
-std::shared_ptr<Store> Database::findStore(const char* name, size_t nameLength)
-{
-	int i = typeinfo.findStore(name, nameLength);
-	return i >= 0 ? openStore(*typeinfo.stores[i]) : nullptr;
+	return readStoreRef;
 }
 
 bool Database::save(Store& store) const
 {
 	auto& reader = getReader(store);
-	return reader.saveToFile(store);
+	bool result = reader.saveToFile(store);
+
+	// Invalidate cached stores: Some data may have changed even on failure
+	int storeIndex = typeinfo.indexOf(store.typeinfo());
+	if(storeIndex == readStoreIndex) {
+		readStoreIndex = -1;
+		readStoreRef = nullptr;
+	}
+
+	return result;
 }
 
 } // namespace ConfigDB

@@ -78,15 +78,21 @@ bool WriteStream::startElement(const JSON::Element& element)
 			db->save(*store);
 		}
 		storeRef.reset();
-		storeRef = db->findStore(element.key, element.keyLength);
-		store = storeRef.get();
-		if(store) {
-			store->clear();
-			info[1] = Object(*store);
+		i = db->typeinfo.findStore(element.key, element.keyLength);
+		if(i < 0) {
+			debug_w("[JSON] Object '%s' not in schema", element.key);
 			return true;
 		}
-
-		debug_w("[JSON] Object '%s' not in schema", element.key);
+		auto& type = *db->typeinfo.stores[i];
+		storeRef = db->openStore(type, true);
+		store = storeRef.get();
+		if(!store) {
+			// Fatal: store is locked
+			status = JSON::Status::Cancelled;
+			return false;
+		}
+		store->clear();
+		info[1] = Object(*store);
 		return true;
 	}
 

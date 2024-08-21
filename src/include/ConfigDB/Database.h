@@ -34,7 +34,8 @@ public:
 	 * @brief Database instance
 	 * @param path Path to root directory where all data is stored
 	 */
-	Database(const DatabaseInfo& typeinfo, const String& path) : typeinfo(typeinfo), path(path.c_str())
+	Database(const DatabaseInfo& typeinfo, const String& path)
+		: typeinfo(typeinfo), path(path.c_str()), locks(new WriterLock[typeinfo.storeCount])
 	{
 	}
 
@@ -57,17 +58,12 @@ public:
 	/**
 	 * @brief Open a store instance, load it and return a shared pointer
 	 */
-	std::shared_ptr<Store> openStore(const ObjectInfo& typeinfo);
+	std::shared_ptr<Store> openStore(unsigned index, bool forWrite = false);
 
-	std::shared_ptr<Store> openStore(unsigned index)
+	std::shared_ptr<Store> openStore(const ObjectInfo& objinfo, bool forWrite = false)
 	{
-		if(index < typeinfo.storeCount) {
-			return openStore(*typeinfo.stores[index]);
-		}
-		return nullptr;
+		return openStore(typeinfo.indexOf(objinfo), forWrite);
 	}
-
-	std::shared_ptr<Store> findStore(const char* name, size_t nameLength);
 
 	bool save(Store& store) const;
 
@@ -77,13 +73,17 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
-	friend class Store;
+	struct WriterLock {
+		std::shared_ptr<Store> ref;
+		std::weak_ptr<Store> weakref;
+	};
 
 	CString path;
 
 	// Hold store open for a brief period to avoid thrashing
-	static const ObjectInfo* storeType;
-	static std::shared_ptr<Store> storeRef;
+	static std::shared_ptr<Store> readStoreRef;
+	std::unique_ptr<WriterLock[]> locks;
+	static int8_t readStoreIndex;
 	static bool callbackQueued;
 };
 
