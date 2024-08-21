@@ -148,7 +148,7 @@ public:
 	}
 
 protected:
-	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo);
+	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool forWrite);
 
 	String getString(StringId id) const;
 
@@ -179,7 +179,7 @@ public:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store)
+	ObjectTemplate(Store& store, unsigned index, bool forWrite = false) : Object(store, index, forWrite)
 	{
 	}
 
@@ -204,7 +204,7 @@ public:
 	{
 	}
 
-	OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
+	OuterObjectTemplate(Database& db, bool forWrite = false) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo, forWrite))
 	{
 	}
 

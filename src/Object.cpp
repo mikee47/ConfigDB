@@ -35,9 +35,9 @@ Object& Object::operator=(const Object& other)
 	return *this;
 }
 
-std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo)
+std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo, bool forWrite)
 {
-	return db.openStore(typeinfo);
+	return db.openStore(typeinfo, forWrite);
 }
 
 Store& Object::getStore()
