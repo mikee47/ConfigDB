@@ -137,7 +137,7 @@ void printStringPool(const ConfigDB::StringPool& pool, bool detailed)
 	}
 
 	unsigned i = 0;
-	for(unsigned id = 1; auto string = pool[id];) {
+	for(unsigned id = 1; auto string = pool[id]; ++i) {
 		String tag;
 		tag += "    #";
 		tag.concat(i, DEC, 2, ' ');
@@ -246,7 +246,7 @@ void init()
 
 	Serial << endl << endl;
 
-	printStoreStats(database, false);
+	printStoreStats(database, true);
 
 	statTimer.initializeMs<5000>([]() {
 		printHeap();
