@@ -157,7 +157,7 @@ protected:
 		return !isReadOnly() && getDataPtr();
 	}
 
-	std::shared_ptr<Store> lockStore(std::shared_ptr<Store> store);
+	bool lockStore(std::shared_ptr<Store>& store);
 
 	bool writeCheck() const;
 
@@ -227,7 +227,8 @@ public:
 
 	Updater beginUpdate()
 	{
-		return Updater(this->lockStore(store));
+		this->lockStore(store);
+		return Updater(store);
 	}
 
 private:

@@ -23,14 +23,16 @@ public:
 		TestConfig::Root root(database);
 		REQUIRE_EQ(root.getSimpleBool(), false);
 
+		auto root2 = root;
+
 		// Change value
 		if(auto updater = root.beginUpdate()) {
 			updater.setSimpleBool(true);
-			// REQUIRE_EQ(root.getSimpleBool(), true);
+			REQUIRE_EQ(root.getSimpleBool(), true);
 			REQUIRE(updater.commit());
 
-			// Nested updates prohibited
-			REQUIRE(!root.beginUpdate());
+			// Nested updates OK
+			REQUIRE(root.beginUpdate());
 
 			// A new reader must contain the updated data
 			TestConfig::Root root2(database);
@@ -42,11 +44,19 @@ public:
 			TEST_ASSERT(false);
 		}
 
+		// Updater is out of scope but we converted the store of root so that is still writeable
+		// We need to lock it again
+		// So we need a lock count reference for it.
+
+
 		// Verify store has been unlocked
 		REQUIRE(root.beginUpdate());
 
-		// Verify value hasn't changed (stale)
-		REQUIRE_EQ(root.getSimpleBool(), false);
+		// Verify value has changed
+		REQUIRE_EQ(root.getSimpleBool(), true);
+
+		// Verify copy we made is stale
+		REQUIRE_EQ(root2.getSimpleBool(), false);
 
 		// Get fresh copy which should have changed
 		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), true);

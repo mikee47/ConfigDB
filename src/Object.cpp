@@ -40,10 +40,22 @@ std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinf
 	return db.openStore(typeinfo, lockForWrite);
 }
 
-std::shared_ptr<Store> Object::lockStore(std::shared_ptr<Store> store)
+bool Object::lockStore(std::shared_ptr<Store>& store)
 {
-	store->getDatabase().lockStore(store);
-	return store;
+	if(!store->isReadOnly()) {
+		return true;
+	}
+	if(!store->getDatabase().lockStore(store)) {
+		return false;
+	}
+	// Need to find the root Store and change its reference
+	auto obj = this;
+	while(obj->parent->typeinfo().type != ObjectType::Store) {
+		obj = obj->parent;
+	}
+	assert(obj->parent);
+	obj->parent = store.get();
+	return true;
 }
 
 Store& Object::getStore()
