@@ -150,6 +150,10 @@ public:
 protected:
 	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool forWrite);
 
+	bool isReadOnly() const;
+
+	bool unlockStore(std::shared_ptr<Store>& store);
+
 	bool writeCheck() const;
 
 	void* getDataPtr();
@@ -210,6 +214,8 @@ public:
 template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
 {
 public:
+	using Updater = typename ContainedClassType::Updater;
+
 	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
 	{
 	}
@@ -219,8 +225,31 @@ public:
 	{
 	}
 
+	Updater beginUpdate()
+	{
+		this->unlockStore(store);
+		return Updater(*this);
+	}
+
 private:
 	std::shared_ptr<ConfigDB::Store> store;
+};
+
+/**
+ * @brief Used by code generator
+ * @tparam ClassType Outer class type provided by code generator
+ */
+template <class ClassType> class ObjectUpdaterTemplate : public Object
+{
+public:
+	ObjectUpdaterTemplate(Object& outer) : Object(outer)
+	{
+	}
+
+	explicit operator bool() const
+	{
+		return Object::operator bool() && !isReadOnly();
+	}
 };
 
 } // namespace ConfigDB

@@ -67,6 +67,12 @@ public:
 
 	bool save(Store& store) const;
 
+	/**
+	 * @brief Unlock a store for writing
+	 * @retval bool Fails if called more than once
+	 */
+	bool unlock(std::shared_ptr<Store>& store);
+
 	virtual Reader& getReader(const Store& store) const;
 	virtual Writer& getWriter(const Store& store) const;
 
@@ -76,6 +82,18 @@ private:
 	struct WriterLock {
 		std::shared_ptr<Store> ref;
 		std::weak_ptr<Store> weakref;
+
+		explicit operator bool() const
+		{
+			return weakref.use_count() > 1;
+		}
+
+		WriterLock& operator=(std::shared_ptr<Store> ref)
+		{
+			this->ref = ref;
+			this->weakref = ref;
+			return *this;
+		}
 	};
 
 	CString path;

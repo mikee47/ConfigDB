@@ -103,14 +103,6 @@ public:
 		return arrayPool;
 	}
 
-	/**
-	 * @brief When opened for read-only the database calls this to guard against writes
-	 */
-	void setReadOnly()
-	{
-		readOnly = true;
-	}
-
 	bool isReadOnly() const
 	{
 		return readOnly;
@@ -121,6 +113,7 @@ public:
 protected:
 	friend class Object;
 	friend class ArrayBase;
+	friend class Database;
 
 	ArrayPool arrayPool;
 	StringPool stringPool;

@@ -571,6 +571,13 @@ def generate_property_accessors(obj: Object) -> list:
         '{',
         ['return ' + ('getString(' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'getData<const Struct>()->{prop.id});'],
         '}',
+        ) for prop in obj.properties)]
+
+
+def generate_property_write_accessors(obj: Object) -> list:
+    '''Generate typed get/set methods for each property'''
+
+    return [*((
         '',
         f'void set{prop.typename}({prop.ctype_constref} value)',
         '{',
@@ -588,6 +595,7 @@ def generate_object(obj: Object) -> CodeLines:
 
     typeinfo = generate_typeinfo(obj)
     constructors = generate_contained_constructors(obj)
+    writer = generate_writer(obj),
 
     if isinstance(obj, ObjectArray):
         item_lines = generate_object(obj.items)
@@ -624,6 +632,7 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.append(generate_object_struct(obj))
     lines.header += [
+        *writer,
         constructors,
         *generate_property_accessors(obj)
     ]
@@ -639,6 +648,62 @@ def generate_object(obj: Object) -> CodeLines:
     lines.header += ['};']
 
     return lines
+
+
+def generate_writer(obj: Object) -> list:
+    '''Generate code for Object Updater implementation'''
+
+    # constructors = generate_contained_constructors(obj)
+
+    # if isinstance(obj, ObjectArray):
+    #     item_lines = generate_object(obj.items)
+    #     return CodeLines(
+    #         [
+    #             *item_lines.header,
+    #             *declare_templated_class(obj, [obj.items.typename]),
+    #             typeinfo.header,
+    #             writer,
+    #             constructors,
+    #             '};',
+    #         ],
+    #         item_lines.source + typeinfo.source)
+
+    # if isinstance(obj, Array):
+    #     return CodeLines(
+    #         [
+    #             *declare_templated_class(obj, [obj.items.ctype]),
+    #             typeinfo.header,
+    #             constructors,
+    #             '};',
+    #         ],
+    #         typeinfo.source)
+
+    # header = declare_templated_class(obj)
+    header = [
+        '',
+        f'class Updater: public ConfigDB::{obj.base_class}UpdaterTemplate<{obj.typename_contained}>',
+        '{',
+        'public:',
+        [f'using ObjectUpdaterTemplate::ObjectUpdaterTemplate;']
+    ]
+
+    # Append child object definitions
+    for child in obj.children:
+        header += generate_writer(child)
+
+    # header += [constructors]
+    header += generate_property_write_accessors(obj)
+
+    # Contained children member variables
+    if obj.children:
+        header += [
+            '',
+            [f'{child.typename_contained} {child.id};' for child in obj.children],
+        ]
+
+    header += ['};']
+
+    return header
 
 
 def generate_contained_constructors(obj: Object) -> list:

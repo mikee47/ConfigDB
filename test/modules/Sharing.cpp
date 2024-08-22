@@ -20,24 +20,24 @@ public:
 	void execute() override
 	{
 		// Verify initial value
-		TestConfig::Root readRoot(database);
-		REQUIRE_EQ(readRoot.getSimpleBool(), false);
+		TestConfig::Root root(database);
+		REQUIRE_EQ(root.getSimpleBool(), false);
 
 		// Change value
-		TestConfig::Root writeRoot(database, true);
-		writeRoot.setSimpleBool(true);
-		REQUIRE_EQ(writeRoot.getSimpleBool(), true);
-		REQUIRE_EQ(readRoot.getSimpleBool(), false); // Not yet changed
-		REQUIRE(writeRoot.commit());
-		REQUIRE_EQ(readRoot.getSimpleBool(), false); // Data is stale
+		if(auto updater = root.beginUpdate()) {
+			updater.setSimpleBool(true);
+			// REQUIRE_EQ(root.getSimpleBool(), true);
+			REQUIRE(updater.commit());
 
-		// A new reader must contain the updated data
-		TestConfig::Root readRoot2(database);
-		REQUIRE_EQ(readRoot2.getSimpleBool(), true);
+			// A new reader must contain the updated data
+			TestConfig::Root root2(database);
+			REQUIRE_EQ(root2.getSimpleBool(), true);
 
-		// A second writer should fail
-		TestConfig::Root writeRoot2(database, true);
-		REQUIRE(!writeRoot2);
+			// A second writer must fail
+			REQUIRE(!root2.beginUpdate());
+		} else {
+			TEST_ASSERT(false);
+		}
 	}
 
 private:

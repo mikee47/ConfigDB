@@ -53,12 +53,12 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool forWrite)
 
 	if(forWrite) {
 		auto& lock = locks[index];
-		if(lock.weakref.use_count() > 1) {
+		if(lock) {
 			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
 			return std::make_shared<Store>(*this);
 		}
 
-		lock.weakref = lock.ref = std::make_shared<Store>(*this, storeInfo);
+		lock = std::make_shared<Store>(*this, storeInfo);
 		return lock.ref;
 	}
 
@@ -82,9 +82,33 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool forWrite)
 	auto& writer = getWriter(*readStoreRef);
 	writer.loadFromFile(*readStoreRef);
 
-	readStoreRef->setReadOnly();
+	readStoreRef->readOnly = true;
 
 	return readStoreRef;
+}
+
+bool Database::unlock(std::shared_ptr<Store>& store)
+{
+	if(!store->isReadOnly()) {
+		return true;
+	}
+
+	auto storeIndex = typeinfo.indexOf(store->typeinfo());
+	assert(storeIndex >= 0);
+	auto& lock = locks[storeIndex];
+	if(lock) {
+		debug_e("[CFGDB] Store locked for writing");
+		return false;
+	}
+
+	if(storeIndex == readStoreIndex) {
+		readStoreRef.reset();
+		readStoreIndex = -1;
+	}
+
+	lock = store;
+	store->readOnly = false;
+	return true;
 }
 
 bool Database::save(Store& store) const

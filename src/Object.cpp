@@ -40,6 +40,11 @@ std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinf
 	return db.openStore(typeinfo, forWrite);
 }
 
+bool Object::unlockStore(std::shared_ptr<Store>& store)
+{
+	return store->getDatabase().unlock(store);
+}
+
 Store& Object::getStore()
 {
 	auto obj = this;
@@ -51,6 +56,11 @@ Store& Object::getStore()
 	return *store;
 }
 
+bool Object::isReadOnly() const
+{
+	return getStore().isReadOnly();
+}
+
 bool Object::writeCheck() const
 {
 	return getStore().writeCheck();
@@ -58,7 +68,7 @@ bool Object::writeCheck() const
 
 void* Object::getDataPtr()
 {
-	if(!getStore().writeCheck()) {
+	if(!writeCheck()) {
 		return nullptr;
 	}
 	if(!parent) {
@@ -133,6 +143,9 @@ Property Object::findProperty(const char* name, size_t length)
 bool Object::commit()
 {
 	auto& store = getStore();
+	if(store.isReadOnly()) {
+		return false;
+	}
 	return store.getDatabase().save(store);
 }
 
