@@ -109,7 +109,7 @@ public:
 
 	bool isReadOnly() const
 	{
-		return readOnly;
+		return updaterCount == 0;
 	}
 
 	bool writeCheck() const;
@@ -125,7 +125,7 @@ protected:
 private:
 	Database& db;
 	std::unique_ptr<uint8_t[]> rootData;
-	bool readOnly{};
+	uint8_t updaterCount{};
 	bool dirty{};
 };
 

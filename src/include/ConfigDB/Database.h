@@ -80,7 +80,7 @@ public:
 
 private:
 	struct WriterLock {
-		std::shared_ptr<Store> ref;
+		// std::shared_ptr<Store> ref;
 		std::weak_ptr<Store> weakref;
 
 		explicit operator bool() const
@@ -90,7 +90,7 @@ private:
 
 		WriterLock& operator=(std::shared_ptr<Store> ref)
 		{
-			this->ref = ref;
+			// this->ref = ref;
 			this->weakref = ref;
 			return *this;
 		}

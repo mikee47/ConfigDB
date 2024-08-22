@@ -51,6 +51,8 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 
 	auto& storeInfo = *typeinfo.stores[index];
 
+	std::shared_ptr<Store> store;
+
 	if(lockForWrite) {
 		auto& lock = locks[index];
 		if(lock) {
@@ -58,8 +60,9 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 			return std::make_shared<Store>(*this);
 		}
 
-		lock = std::make_shared<Store>(*this, storeInfo);
-		return lock.ref;
+		store = std::make_shared<Store>(*this, storeInfo);
+		lockStore(store);
+		return store;
 	}
 
 	readStoreRef.reset();
@@ -79,10 +82,12 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 		callbackQueued = true;
 	}
 
+	++readStoreRef->updaterCount;
+
 	auto& writer = getWriter(*readStoreRef);
 	writer.loadFromFile(*readStoreRef);
 
-	readStoreRef->readOnly = true;
+	--readStoreRef->updaterCount;
 	readStoreRef->dirty = false;
 
 	return readStoreRef;
@@ -90,7 +95,7 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 
 bool Database::lockStore(std::shared_ptr<Store>& store)
 {
-	if(!store->readOnly) {
+	if(!store->isReadOnly()) {
 		return true;
 	}
 
@@ -104,6 +109,7 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 
 	store = std::make_shared<Store>(*this, store->typeinfo());
 	auto& writer = getWriter(*store);
+	++store->updaterCount;
 	writer.loadFromFile(*store);
 	store->dirty = false;
 
@@ -129,7 +135,7 @@ bool Database::save(Store& store) const
 		readStoreRef.reset();
 	}
 
-	// store.dirty = !result;
+	store.dirty = !result;
 
 	return result;
 }

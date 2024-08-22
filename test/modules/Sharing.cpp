@@ -44,11 +44,6 @@ public:
 			TEST_ASSERT(false);
 		}
 
-		// Updater is out of scope but we converted the store of root so that is still writeable
-		// We need to lock it again
-		// So we need a lock count reference for it.
-
-
 		// Verify store has been unlocked
 		REQUIRE(root.beginUpdate());
 

@@ -102,7 +102,7 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 
 bool Store::writeCheck() const
 {
-	if(readOnly) {
+	if(isReadOnly()) {
 		debug_e("[CFGDB] Store is Read-only");
 		return false;
 	}

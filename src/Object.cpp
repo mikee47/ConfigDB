@@ -58,6 +58,11 @@ bool Object::lockStore(std::shared_ptr<Store>& store)
 	return true;
 }
 
+void Object::unlockStore(Store& store)
+{
+	--store.updaterCount;
+}
+
 Store& Object::getStore()
 {
 	auto obj = this;

@@ -159,6 +159,8 @@ protected:
 
 	bool lockStore(std::shared_ptr<Store>& store);
 
+	void unlockStore(Store& store);
+
 	bool writeCheck() const;
 
 	void* getDataPtr();
@@ -253,6 +255,7 @@ public:
 	~ObjectUpdaterTemplate()
 	{
 		commit();
+		this->unlockStore(*store);
 	}
 
 	explicit operator bool() const
