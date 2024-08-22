@@ -28,6 +28,7 @@ void Store::clear()
 	memcpy_P(rootData.get(), root.defaultData, root.structSize);
 	stringPool.clear();
 	arrayPool.clear();
+	dirty = true;
 }
 
 String Store::getFilePath() const

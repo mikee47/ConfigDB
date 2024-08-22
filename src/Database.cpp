@@ -83,6 +83,7 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 	writer.loadFromFile(*readStoreRef);
 
 	readStoreRef->readOnly = true;
+	readStoreRef->dirty = false;
 
 	return readStoreRef;
 }
@@ -104,6 +105,7 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 	store = std::make_shared<Store>(*this, store->typeinfo());
 	auto& writer = getWriter(*store);
 	writer.loadFromFile(*store);
+	store->dirty = false;
 
 	lock = store;
 	return true;
@@ -111,6 +113,12 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 
 bool Database::save(Store& store) const
 {
+	if(!store.dirty) {
+		return true;
+	}
+
+	debug_i("[CFGDB] Save '%s'", store.getName().c_str());
+
 	auto& reader = getReader(store);
 	bool result = reader.saveToFile(store);
 
@@ -120,6 +128,8 @@ bool Database::save(Store& store) const
 		readStoreIndex = -1;
 		readStoreRef.reset();
 	}
+
+	// store.dirty = !result;
 
 	return result;
 }

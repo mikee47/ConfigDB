@@ -76,7 +76,11 @@ public:
 
 	uint8_t* getRootData()
 	{
-		return writeCheck() ? rootData.get() : nullptr;
+		if(!writeCheck()) {
+			return nullptr;
+		}
+		dirty = true;
+		return rootData.get();
 	}
 
 	const uint8_t* getRootData() const
@@ -122,6 +126,7 @@ private:
 	Database& db;
 	std::unique_ptr<uint8_t[]> rootData;
 	bool readOnly{};
+	bool dirty{};
 };
 
 } // namespace ConfigDB

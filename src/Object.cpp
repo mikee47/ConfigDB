@@ -144,9 +144,6 @@ Property Object::findProperty(const char* name, size_t length)
 bool Object::commit()
 {
 	auto& store = getStore();
-	if(store.isReadOnly()) {
-		return false;
-	}
 	return store.getDatabase().save(store);
 }
 

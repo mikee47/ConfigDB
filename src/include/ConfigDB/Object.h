@@ -249,6 +249,11 @@ public:
 	{
 	}
 
+	~ObjectUpdaterTemplate()
+	{
+		commit();
+	}
+
 	explicit operator bool() const
 	{
 		return Object::operator bool() && isWriteable();

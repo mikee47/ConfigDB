@@ -54,7 +54,6 @@ public:
 		// Now try direct
 		if(auto updater = TestConfig::Root::Updater(database)) {
 			updater.setSimpleBool(false);
-			updater.commit();
 		} else {
 			TEST_ASSERT(false);
 		}
