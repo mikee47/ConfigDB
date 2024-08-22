@@ -681,7 +681,7 @@ def generate_writer(obj: Object) -> list:
     # header = declare_templated_class(obj)
     header = [
         '',
-        f'class Updater: public ConfigDB::{obj.base_class}UpdaterTemplate<{obj.typename_contained}>',
+        f'class Updater: public ConfigDB::{obj.base_class}UpdaterTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
         '{',
         'public:',
         [f'using ObjectUpdaterTemplate::ObjectUpdaterTemplate;']

@@ -58,20 +58,20 @@ public:
 	/**
 	 * @brief Open a store instance, load it and return a shared pointer
 	 */
-	std::shared_ptr<Store> openStore(unsigned index, bool forWrite = false);
+	std::shared_ptr<Store> openStore(unsigned index, bool lockForWrite = false);
 
-	std::shared_ptr<Store> openStore(const ObjectInfo& objinfo, bool forWrite = false)
+	std::shared_ptr<Store> openStore(const ObjectInfo& objinfo, bool lockForWrite = false)
 	{
-		return openStore(typeinfo.indexOf(objinfo), forWrite);
+		return openStore(typeinfo.indexOf(objinfo), lockForWrite);
 	}
 
 	bool save(Store& store) const;
 
 	/**
-	 * @brief Unlock a store for writing
+	 * @brief Lock a store for writing
 	 * @retval bool Fails if called more than once
 	 */
-	bool unlock(std::shared_ptr<Store>& store);
+	bool lockStore(std::shared_ptr<Store>& store);
 
 	virtual Reader& getReader(const Store& store) const;
 	virtual Writer& getWriter(const Store& store) const;

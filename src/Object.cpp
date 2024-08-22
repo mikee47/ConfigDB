@@ -35,14 +35,15 @@ Object& Object::operator=(const Object& other)
 	return *this;
 }
 
-std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo, bool forWrite)
+std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite)
 {
-	return db.openStore(typeinfo, forWrite);
+	return db.openStore(typeinfo, lockForWrite);
 }
 
-bool Object::unlockStore(std::shared_ptr<Store>& store)
+std::shared_ptr<Store> Object::lockStore(std::shared_ptr<Store> store)
 {
-	return store->getDatabase().unlock(store);
+	store->getDatabase().lockStore(store);
+	return store;
 }
 
 Store& Object::getStore()

@@ -148,11 +148,16 @@ public:
 	}
 
 protected:
-	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool forWrite);
+	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite = false);
 
 	bool isReadOnly() const;
 
-	bool unlockStore(std::shared_ptr<Store>& store);
+	bool isWriteable() const
+	{
+		return !isReadOnly() && getDataPtr();
+	}
+
+	std::shared_ptr<Store> lockStore(std::shared_ptr<Store> store);
 
 	bool writeCheck() const;
 
@@ -193,10 +198,6 @@ public:
 	{
 	}
 
-	ObjectTemplate(Store& store, unsigned index, bool forWrite = false) : Object(store, index, forWrite)
-	{
-	}
-
 	explicit ObjectTemplate(Store& store) : Object(ClassType::typeinfo, store)
 	{
 	}
@@ -220,15 +221,13 @@ public:
 	{
 	}
 
-	OuterObjectTemplate(Database& db, bool forWrite = false)
-		: OuterObjectTemplate(this->openStore(db, StoreType::typeinfo, forWrite))
+	explicit OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
 	{
 	}
 
 	Updater beginUpdate()
 	{
-		this->unlockStore(store);
-		return Updater(*this);
+		return Updater(this->lockStore(store));
 	}
 
 private:
@@ -239,17 +238,24 @@ private:
  * @brief Used by code generator
  * @tparam ClassType Outer class type provided by code generator
  */
-template <class ClassType> class ObjectUpdaterTemplate : public Object
+template <class ClassType, class StoreType> class ObjectUpdaterTemplate : public Object
 {
 public:
-	ObjectUpdaterTemplate(Object& outer) : Object(outer)
+	ObjectUpdaterTemplate(std::shared_ptr<Store> store) : Object(ClassType::typeinfo, *store), store(store)
+	{
+	}
+
+	explicit ObjectUpdaterTemplate(Database& db) : ObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo, true))
 	{
 	}
 
 	explicit operator bool() const
 	{
-		return Object::operator bool() && !isReadOnly();
+		return Object::operator bool() && isWriteable();
 	}
+
+private:
+	std::shared_ptr<ConfigDB::Store> store;
 };
 
 } // namespace ConfigDB

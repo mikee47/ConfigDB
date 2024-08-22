@@ -29,6 +29,9 @@ public:
 			// REQUIRE_EQ(root.getSimpleBool(), true);
 			REQUIRE(updater.commit());
 
+			// Nested updates prohibited
+			REQUIRE(!root.beginUpdate());
+
 			// A new reader must contain the updated data
 			TestConfig::Root root2(database);
 			REQUIRE_EQ(root2.getSimpleBool(), true);
@@ -38,6 +41,26 @@ public:
 		} else {
 			TEST_ASSERT(false);
 		}
+
+		// Verify store has been unlocked
+		REQUIRE(root.beginUpdate());
+
+		// Verify value hasn't changed (stale)
+		REQUIRE_EQ(root.getSimpleBool(), false);
+
+		// Get fresh copy which should have changed
+		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), true);
+
+		// Now try direct
+		if(auto updater = TestConfig::Root::Updater(database)) {
+			updater.setSimpleBool(false);
+			updater.commit();
+		} else {
+			TEST_ASSERT(false);
+		}
+
+		// Verify value has changed
+		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), false);
 	}
 
 private:

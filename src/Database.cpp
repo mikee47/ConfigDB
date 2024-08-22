@@ -38,20 +38,20 @@ Writer& Database::getWriter(const Store&) const
 	return Json::writer;
 }
 
-std::shared_ptr<Store> Database::openStore(unsigned index, bool forWrite)
+std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 {
 	if(index >= typeinfo.storeCount) {
 		assert(false);
 		return nullptr;
 	}
 
-	if(!forWrite && index == unsigned(readStoreIndex)) {
+	if(!lockForWrite && index == unsigned(readStoreIndex)) {
 		return readStoreRef;
 	}
 
 	auto& storeInfo = *typeinfo.stores[index];
 
-	if(forWrite) {
+	if(lockForWrite) {
 		auto& lock = locks[index];
 		if(lock) {
 			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
@@ -87,9 +87,9 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool forWrite)
 	return readStoreRef;
 }
 
-bool Database::unlock(std::shared_ptr<Store>& store)
+bool Database::lockStore(std::shared_ptr<Store>& store)
 {
-	if(!store->isReadOnly()) {
+	if(!store->readOnly) {
 		return true;
 	}
 
@@ -97,17 +97,15 @@ bool Database::unlock(std::shared_ptr<Store>& store)
 	assert(storeIndex >= 0);
 	auto& lock = locks[storeIndex];
 	if(lock) {
-		debug_e("[CFGDB] Store locked for writing");
+		debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
 		return false;
 	}
 
-	if(storeIndex == readStoreIndex) {
-		readStoreRef.reset();
-		readStoreIndex = -1;
-	}
+	store = std::make_shared<Store>(*this, store->typeinfo());
+	auto& writer = getWriter(*store);
+	writer.loadFromFile(*store);
 
 	lock = store;
-	store->readOnly = false;
 	return true;
 }
 
@@ -120,7 +118,7 @@ bool Database::save(Store& store) const
 	int storeIndex = typeinfo.indexOf(store.typeinfo());
 	if(storeIndex == readStoreIndex) {
 		readStoreIndex = -1;
-		readStoreRef = nullptr;
+		readStoreRef.reset();
 	}
 
 	return result;
