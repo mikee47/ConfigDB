@@ -150,11 +150,14 @@ public:
 protected:
 	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite = false);
 
-	bool isReadOnly() const;
+	bool isLocked() const;
 
 	bool isWriteable() const
 	{
-		return !isReadOnly() && getDataPtr();
+		if(isLocked()) {
+			assert(getDataPtr());
+		}
+		return isLocked() && getDataPtr();
 	}
 
 	bool lockStore(std::shared_ptr<Store>& store);

@@ -42,7 +42,8 @@ std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinf
 
 bool Object::lockStore(std::shared_ptr<Store>& store)
 {
-	if(!store->isReadOnly()) {
+	if(store->isLocked()) {
+		store->incUpdate();
 		return true;
 	}
 	if(!store->getDatabase().lockStore(store)) {
@@ -60,7 +61,7 @@ bool Object::lockStore(std::shared_ptr<Store>& store)
 
 void Object::unlockStore(Store& store)
 {
-	--store.updaterCount;
+	store.decUpdate();
 }
 
 Store& Object::getStore()
@@ -74,9 +75,9 @@ Store& Object::getStore()
 	return *store;
 }
 
-bool Object::isReadOnly() const
+bool Object::isLocked() const
 {
-	return getStore().isReadOnly();
+	return getStore().isLocked();
 }
 
 bool Object::writeCheck() const

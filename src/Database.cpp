@@ -51,22 +51,21 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 
 	auto& storeInfo = *typeinfo.stores[index];
 
-	std::shared_ptr<Store> store;
-
 	if(lockForWrite) {
-		auto& lock = locks[index];
-		if(lock) {
+		auto& updateRef = updateRefs[index];
+		if(updateRef.isLocked()) {
 			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
 			return std::make_shared<Store>(*this);
 		}
 
-		store = std::make_shared<Store>(*this, storeInfo);
-		lockStore(store);
+		auto store = loadStore(storeInfo);
+		store->incUpdate();
+		updateRef = store;
 		return store;
 	}
 
 	readStoreRef.reset();
-	readStoreRef = std::make_shared<Store>(*this, storeInfo);
+	readStoreRef = loadStore(storeInfo);
 	if(!readStoreRef) {
 		readStoreIndex = -1;
 		return nullptr;
@@ -82,39 +81,43 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 		callbackQueued = true;
 	}
 
-	++readStoreRef->updaterCount;
-
-	auto& writer = getWriter(*readStoreRef);
-	writer.loadFromFile(*readStoreRef);
-
-	--readStoreRef->updaterCount;
-	readStoreRef->dirty = false;
-
 	return readStoreRef;
 }
 
 bool Database::lockStore(std::shared_ptr<Store>& store)
 {
-	if(!store->isReadOnly()) {
+	if(store->isLocked()) {
 		return true;
 	}
 
 	auto storeIndex = typeinfo.indexOf(store->typeinfo());
 	assert(storeIndex >= 0);
-	auto& lock = locks[storeIndex];
-	if(lock) {
+	auto& updateRef = updateRefs[storeIndex];
+	if(updateRef.isLocked()) {
 		debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
 		return false;
 	}
 
-	store = std::make_shared<Store>(*this, store->typeinfo());
-	auto& writer = getWriter(*store);
-	++store->updaterCount;
-	writer.loadFromFile(*store);
-	store->dirty = false;
-
-	lock = store;
+	store = loadStore(store->typeinfo());
+	store->incUpdate();
+	updateRef = store;
 	return true;
+}
+
+std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
+{
+	debug_i("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
+
+	auto store = std::make_shared<Store>(*this, storeInfo);
+	if(!store) {
+		return nullptr;
+	}
+	auto& writer = getWriter(*store);
+	store->incUpdate();
+	writer.loadFromFile(*store);
+	store->decUpdate();
+	store->dirty = false;
+	return store;
 }
 
 bool Database::save(Store& store) const

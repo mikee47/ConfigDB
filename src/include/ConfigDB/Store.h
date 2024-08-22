@@ -26,6 +26,8 @@
 #include <WString.h>
 #include <memory>
 
+#include <debug_progmem.h>
+
 namespace ConfigDB
 {
 class Database;
@@ -107,9 +109,9 @@ public:
 		return arrayPool;
 	}
 
-	bool isReadOnly() const
+	bool isLocked() const
 	{
-		return updaterCount == 0;
+		return updaterCount != 0;
 	}
 
 	bool writeCheck() const;
@@ -118,6 +120,18 @@ protected:
 	friend class Object;
 	friend class ArrayBase;
 	friend class Database;
+
+	void incUpdate()
+	{
+		++updaterCount;
+		debug_i("[CFGDB] LockStore '%s' %u", getName().c_str(), updaterCount);
+	}
+
+	void decUpdate()
+	{
+		--updaterCount;
+		debug_i("[CFGDB] UnlockStore '%s' %u", getName().c_str(), updaterCount);
+	}
 
 	ArrayPool arrayPool;
 	StringPool stringPool;

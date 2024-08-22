@@ -33,6 +33,8 @@ public:
 
 			// Nested updates OK
 			REQUIRE(root.beginUpdate());
+			REQUIRE(root.beginUpdate());
+			REQUIRE(root.beginUpdate());
 
 			// A new reader must contain the updated data
 			TestConfig::Root root2(database);

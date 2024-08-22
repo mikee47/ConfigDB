@@ -35,7 +35,7 @@ public:
 	 * @param path Path to root directory where all data is stored
 	 */
 	Database(const DatabaseInfo& typeinfo, const String& path)
-		: typeinfo(typeinfo), path(path.c_str()), locks(new WriterLock[typeinfo.storeCount])
+		: typeinfo(typeinfo), path(path.c_str()), updateRefs(new UpdateRef[typeinfo.storeCount])
 	{
 	}
 
@@ -79,28 +79,29 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
-	struct WriterLock {
-		// std::shared_ptr<Store> ref;
+	struct UpdateRef {
 		std::weak_ptr<Store> weakref;
 
-		explicit operator bool() const
+		bool isLocked()
 		{
-			return weakref.use_count() > 1;
+			auto store = weakref.lock();
+			return store && store->isLocked();
 		}
 
-		WriterLock& operator=(std::shared_ptr<Store> ref)
+		UpdateRef& operator=(std::shared_ptr<Store> ref)
 		{
-			// this->ref = ref;
 			this->weakref = ref;
 			return *this;
 		}
 	};
 
+	std::shared_ptr<Store> loadStore(const ObjectInfo& storeInfo);
+
 	CString path;
 
 	// Hold store open for a brief period to avoid thrashing
 	static std::shared_ptr<Store> readStoreRef;
-	std::unique_ptr<WriterLock[]> locks;
+	std::unique_ptr<UpdateRef[]> updateRefs;
 	static int8_t readStoreIndex;
 	static bool callbackQueued;
 };
