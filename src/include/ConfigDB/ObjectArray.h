@@ -72,12 +72,29 @@ public:
 	{
 	}
 
-	ItemType operator[](unsigned index)
+	const ItemType operator[](unsigned index) const
 	{
 		return ItemType(*this, index);
 	}
+};
 
-	const ItemType operator[](unsigned index) const
+/**
+ * @brief Used by code generator
+ * @tparam ClassType Concrete class type
+ * @tparam ItemType Array item class type
+ */
+template <class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ObjectArray
+{
+public:
+	explicit ObjectArrayUpdaterTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
+	{
+	}
+
+	ObjectArrayUpdaterTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, parent, dataRef)
+	{
+	}
+
+	ItemType operator[](unsigned index)
 	{
 		return ItemType(*this, index);
 	}

@@ -61,6 +61,33 @@ public:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
+	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
+	{
+	}
+
+	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
+	{
+	}
+
+	ItemType getItem(unsigned index) const
+	{
+		return *static_cast<const ItemType*>(getArray()[index]);
+	}
+
+	const ItemType operator[](unsigned index) const
+	{
+		return this->getItem(index);
+	}
+};
+
+/**
+ * @brief Used by code generator for integral-typed arrays
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam ItemType Type of item
+ */
+template <class ClassType, typename ItemType> class ArrayUpdaterTemplate : public Array
+{
+public:
 	struct ItemRef {
 		Array& array;
 		unsigned index;
@@ -77,17 +104,12 @@ public:
 		}
 	};
 
-	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
+	explicit ArrayUpdaterTemplate(Store& store) : Array(ClassType::typeinfo, store)
 	{
 	}
 
-	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
+	ArrayUpdaterTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
 	{
-	}
-
-	ItemType getItem(unsigned index) const
-	{
-		return *static_cast<const ItemType*>(getArray()[index]);
 	}
 
 	void setItem(unsigned index, ItemType value)
@@ -109,11 +131,6 @@ public:
 	{
 		return {*this, index};
 	}
-
-	const ItemType operator[](unsigned index) const
-	{
-		return this->getItem(index);
-	}
 };
 
 /**
@@ -131,6 +148,17 @@ public:
 		auto id = *static_cast<const StringId*>(this->getArray()[index]);
 		return this->getString(id);
 	}
+};
+
+/**
+ * @brief Used by code generator for String-typed arrays
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam ItemType Type of item, not used (always String)
+ */
+template <class ClassType, typename ItemType> class StringArrayUpdaterTemplate : public ArrayTemplate<ClassType, ItemType>
+{
+public:
+	using ArrayTemplate<ClassType, ItemType>::ArrayTemplate;
 
 	void setItem(unsigned index, const String& value)
 	{
