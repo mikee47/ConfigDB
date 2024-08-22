@@ -48,67 +48,67 @@ SimpleTimer statTimer;
 
 	{
 		BasicConfig::Root::Security sec(database);
-		sec.setApiSecured(true);
-		sec.commit();
+		if(auto update = sec.beginUpdate()) {
+			update.setApiSecured(true);
+		}
 	}
 
-	{
-		BasicConfig::General general(database);
-		general.setDeviceName(F("Test Device #") + os_random());
-		Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
-		general.commit();
-	}
+	// {
+	// 	BasicConfig::General general(database);
+	// 	general.setDeviceName(F("Test Device #") + os_random());
+	// 	Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
+	// 	general.commit();
+	// }
 
 	{
 		BasicConfig::Color color(database);
-		color.colortemp.setWw(12);
+		auto update = color.beginUpdate();
+		update.colortemp.setWw(12);
 		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
 		BasicConfig::Color::Brightness bri(database);
-		bri.setBlue(12);
+		update.brightness.setBlue(12);
 		Serial << bri.getPath() << ".Blue = " << bri.getBlue() << endl;
-
-		color.commit();
 	}
 
-	{
-		BasicConfig::Events events(database);
-		events.setColorMinintervalMs(1200);
-		events.commit();
-	}
+	// {
+	// 	BasicConfig::Events events(database);
+	// 	events.setColorMinintervalMs(1200);
+	// 	events.commit();
+	// }
 
-	{
-		BasicConfig::General::Channels channels(database);
-		auto item = channels.addItem();
-		item.setName(F("Channel #") + os_random());
-		item.setPin(12);
-		item.details.setCurrentLimit(400);
-		item.notes.addItem(_F("This is a nice pin"));
-		item.notes.addItem(_F("It is useful"));
-		item.notes.addItem(SystemClock.getSystemTimeString());
-		for(unsigned i = 0; i < 16; ++i) {
-			item.values.addItem(os_random());
-		}
+	// {
+	// 	BasicConfig::General::Channels channels(database);
+	// 	auto item = channels.addItem();
+	// 	item.setName(F("Channel #") + os_random());
+	// 	item.setPin(12);
+	// 	item.details.setCurrentLimit(400);
+	// 	item.notes.addItem(_F("This is a nice pin"));
+	// 	item.notes.addItem(_F("It is useful"));
+	// 	item.notes.addItem(SystemClock.getSystemTimeString());
+	// 	for(unsigned i = 0; i < 16; ++i) {
+	// 		item.values.addItem(os_random());
+	// 	}
 
-		Serial << "old note = " << item.notes[0] << endl;
-		item.notes[0] = F("Overwriting nice pin");
-		Serial << "new note = " << item.notes[0] << endl;
-		assert(String(item.notes[0]) == F("Overwriting nice pin"));
+	// 	Serial << "old note = " << item.notes[0] << endl;
+	// 	item.notes[0] = F("Overwriting nice pin");
+	// 	Serial << "new note = " << item.notes[0] << endl;
+	// 	assert(String(item.notes[0]) == F("Overwriting nice pin"));
 
-		item.notes.insertItem(0, F("Inserted at #0 on ") + SystemClock.getSystemTimeString());
-		item.notes.insertItem(2, F("Inserted at #2"));
+	// 	item.notes.insertItem(0, F("Inserted at #0 on ") + SystemClock.getSystemTimeString());
+	// 	item.notes.insertItem(2, F("Inserted at #2"));
 
-		item.commit();
-		Serial << channels.getPath() << " = " << item << endl;
-	}
+	// 	item.commit();
+	// 	Serial << channels.getPath() << " = " << item << endl;
+	// }
 
-	{
-		BasicConfig::General::SupportedColorModels models(database);
-		models.addItem(F("New Model #") + os_random());
-		models.insertItem(0, F("Inserted at #0"));
-		models.commit();
-		Serial << models.getPath() << " = " << models << endl;
-	}
+	// {
+	// 	BasicConfig::General::SupportedColorModels models(database);
+	// 	models.addItem(F("New Model #") + os_random());
+	// 	models.insertItem(0, F("Inserted at #0"));
+	// 	models.commit();
+	// 	Serial << models.getPath() << " = " << models << endl;
+	// }
 }
 
 /*
