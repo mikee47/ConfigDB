@@ -463,7 +463,7 @@ def generate_database(db: Database) -> CodeLines:
                 ['using OuterObjectUpdaterTemplate::OuterObjectUpdaterTemplate;'],
                 '};',
                 '',
-                'Updater beginUpdate()',
+                'Updater update()',
                 '{',
                 [
                     'this->lockStore(store);',

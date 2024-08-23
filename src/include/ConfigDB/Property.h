@@ -54,7 +54,8 @@ public:
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	PropertyConst(const Store& store, const PropertyInfo& info, const void* data) : info(&info), store(&store), data(data)
+	PropertyConst(const Store& store, const PropertyInfo& info, const void* data)
+		: info(&info), store(&store), data(data)
 	{
 	}
 

@@ -30,16 +30,16 @@ public:
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1); // root, root2 share the same store
 
 		// Change value
-		if(auto updater = root.beginUpdate()) {
+		if(auto updater = root.update()) {
 			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root store is now writeable copy, root2 store unchanged
 			updater.setSimpleBool(true);
 			REQUIRE_EQ(root.getSimpleBool(), true);
 			REQUIRE(updater.commit());
 
 			// Nested updates OK
-			REQUIRE(root.beginUpdate());
-			REQUIRE(root.beginUpdate());
-			REQUIRE(root.beginUpdate());
+			REQUIRE(root.update());
+			REQUIRE(root.update());
+			REQUIRE(root.update());
 
 			REQUIRE_EQ(root2.getSimpleBool(), false); // original value
 
@@ -49,8 +49,8 @@ public:
 			REQUIRE_EQ(root3.getSimpleBool(), true);		  // updated value
 
 			// A second writer must fail
-			REQUIRE(!root2.beginUpdate());
-			REQUIRE(!root3.beginUpdate());
+			REQUIRE(!root2.update());
+			REQUIRE(!root3.update());
 			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 3); // No change
 		} else {
 			TEST_ASSERT(false);
@@ -75,7 +75,7 @@ public:
 			The database doesn't keep track of the referring objects so cannot update them.
 			Here, we're explicitly passing `root2` so that's fine, it's what we've asked for.
 		*/
-		REQUIRE(root2.beginUpdate());
+		REQUIRE(root2.update());
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2 (updated), read cached
 		REQUIRE_EQ(root2.getSimpleBool(), true);		  // root2 now up to date
 
@@ -99,7 +99,7 @@ public:
 
 		/* Array */
 
-		if(auto update = root.beginUpdate()) {
+		if(auto update = root.update()) {
 			update.intArray.addItem(12);
 			REQUIRE_EQ(root.intArray[0], 12);
 			update.intArray[0] = 123;
@@ -111,7 +111,7 @@ public:
 
 		DEFINE_FSTR_LOCAL(myString, "My String");
 
-		if(auto update = root.beginUpdate()) {
+		if(auto update = root.update()) {
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
 			update.stringArray[0] = nullptr;
@@ -122,7 +122,7 @@ public:
 
 		/* Object Array */
 
-		if(auto update = root.beginUpdate()) {
+		if(auto update = root.update()) {
 			auto item = update.objectArray.addItem();
 			item.setIntval1(12);
 			REQUIRE_EQ(root.objectArray[0].getIntval1(), 12);
@@ -132,9 +132,9 @@ public:
 		}
 
 		auto root3 = root;
-		auto root4 = root.beginUpdate();
+		auto root4 = root.update();
 		REQUIRE(root4);
-		auto root5 = root.beginUpdate();
+		auto root5 = root.update();
 		REQUIRE(root5);
 
 		auto update = TestConfig::Root::Updater(database);

@@ -48,7 +48,7 @@ SimpleTimer statTimer;
 
 	{
 		BasicConfig::Root::Security sec(database);
-		if(auto update = sec.beginUpdate()) {
+		if(auto update = sec.update()) {
 			update.setApiSecured(true);
 		}
 	}
@@ -62,7 +62,7 @@ SimpleTimer statTimer;
 
 	{
 		BasicConfig::Color color(database);
-		auto update = color.beginUpdate();
+		auto update = color.update();
 		update.colortemp.setWw(12);
 		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
