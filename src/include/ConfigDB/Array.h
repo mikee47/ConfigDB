@@ -76,7 +76,7 @@ public:
 
 	const ItemType operator[](unsigned index) const
 	{
-		return this->getItem(index);
+		return static_cast<const ClassType*>(this)->getItem(index);
 	}
 };
 

@@ -4,6 +4,18 @@
   "properties": {
     "simple-bool": {
       "type": "boolean"
+    },
+    "int array": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "string array": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   }
 }

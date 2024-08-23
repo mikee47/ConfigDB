@@ -217,11 +217,10 @@ public:
  * @tparam ClassType Concrete type provided by code generator
  * @tparam StoreType Object type for store root
  */
-template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
+template <class ContainedClassType, class StoreType>
+class OuterObjectTemplate : public ContainedClassType
 {
 public:
-	using Updater = typename ContainedClassType::Updater;
-
 	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
 	{
 	}
@@ -230,44 +229,57 @@ public:
 	{
 	}
 
-	Updater beginUpdate()
-	{
-		this->lockStore(store);
-		return Updater(store);
-	}
-
-private:
-	std::shared_ptr<ConfigDB::Store> store;
+protected:
+	std::shared_ptr<Store> store;
 };
 
 /**
  * @brief Used by code generator
  * @tparam ClassType Outer class type provided by code generator
  */
-template <class ClassType, class StoreType> class ObjectUpdaterTemplate : public Object
+template <class ClassType> class ObjectUpdaterTemplate : public Object
 {
 public:
-	ObjectUpdaterTemplate(std::shared_ptr<Store> store) : Object(ClassType::typeinfo, *store), store(store)
+	ObjectUpdaterTemplate(Store& store) : Object(ClassType::typeinfo, store)
 	{
 	}
 
-	explicit ObjectUpdaterTemplate(Database& db) : ObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo, true))
+	ObjectUpdaterTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
 	{
-	}
-
-	~ObjectUpdaterTemplate()
-	{
-		commit();
-		this->unlockStore(*store);
 	}
 
 	explicit operator bool() const
 	{
 		return Object::operator bool() && isWriteable();
 	}
+};
+
+/**
+ * @brief Used by code generator
+ * @tparam ClassType Outer class type provided by code generator
+ */
+template <class ContainedClassType, class StoreType> class OuterObjectUpdaterTemplate : public ContainedClassType
+{
+public:
+	using Updater = typename ContainedClassType::Updater;
+
+	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
+	{
+	}
+
+	explicit OuterObjectUpdaterTemplate(Database& db)
+		: OuterObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo))
+	{
+	}
+
+	~OuterObjectUpdaterTemplate()
+	{
+		this->commit();
+		this->unlockStore(*store);
+	}
 
 private:
-	std::shared_ptr<ConfigDB::Store> store;
+	std::shared_ptr<Store> store;
 };
 
 } // namespace ConfigDB

@@ -67,6 +67,27 @@ public:
 
 		// Verify value has changed
 		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), false);
+
+		/* Array */
+
+		if(auto update = root.beginUpdate()) {
+			update.intArray.addItem(12);
+			REQUIRE_EQ(root.intArray[0], 12);
+			update.intArray.removeItem(0);
+			REQUIRE_EQ(root.intArray.getItemCount(), 0);
+			Serial << root.intArray << endl;
+		}
+
+		/* String Array */
+
+		if(auto update = root.beginUpdate()) {
+			DEFINE_FSTR_LOCAL(myString, "My String");
+			update.stringArray.addItem(myString);
+			REQUIRE_EQ(root.stringArray[0], myString);
+			update.stringArray.removeItem(0);
+			REQUIRE_EQ(root.stringArray.getItemCount(), 0);
+			Serial << root.stringArray << endl;
+		}
 	}
 
 private:

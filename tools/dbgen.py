@@ -455,7 +455,22 @@ def generate_database(db: Database) -> CodeLines:
             f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
             '{',
             'public:',
-            ['using OuterObjectTemplate::OuterObjectTemplate;'],
+            [
+                'using OuterObjectTemplate::OuterObjectTemplate;',
+                '',
+                f'class Updater: public ConfigDB::OuterObjectUpdaterTemplate<{obj.typename_contained}::Updater, {obj.store.typename_contained}>',
+                '{',
+                ['using OuterObjectUpdaterTemplate::OuterObjectUpdaterTemplate;'],
+                '};',
+                '',
+                'Updater beginUpdate()',
+                '{',
+                [
+                    'this->lockStore(store);',
+                    'return Updater(store);',
+                ],
+                '}',
+            ],
             *[generate_outer_class(child) for child in obj.children if not obj.is_item],
             '};'
         ]
@@ -478,13 +493,16 @@ def generate_database(db: Database) -> CodeLines:
     return lines
 
 
-def declare_templated_class(obj: Object, tparams: list = None) -> list[str]:
+def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool = False) -> list[str]:
+    typename = 'Updater' if is_updater else obj.typename_contained
+    template = 'Updater' if is_updater else ''
+    update_type = '::Updater' if is_updater else ''
     params = [f'{obj.typename_contained}']
     if tparams:
         params += tparams
     return [
         '',
-        f'class {obj.typename_contained}: public ConfigDB::{obj.base_class}Template<{", ".join(params)}>',
+        f'class {typename}: public ConfigDB::{obj.base_class}{template}Template<{", ".join(params)}>',
         '{',
         'public:',
     ]
@@ -604,7 +622,7 @@ def generate_object(obj: Object) -> CodeLines:
                 *item_lines.header,
                 *declare_templated_class(obj, [obj.items.typename]),
                 typeinfo.header,
-                updater,
+                *updater,
                 constructors,
                 '};',
             ],
@@ -615,7 +633,7 @@ def generate_object(obj: Object) -> CodeLines:
             [
                 *declare_templated_class(obj, [obj.items.ctype]),
                 typeinfo.header,
-                updater,
+                *updater,
                 constructors,
                 '};',
             ],
@@ -625,6 +643,8 @@ def generate_object(obj: Object) -> CodeLines:
         [
             *declare_templated_class(obj),
             typeinfo.header,
+            '',
+            ['class Updater;'],
         ],
         [])
 
@@ -644,7 +664,7 @@ def generate_object(obj: Object) -> CodeLines:
     if obj.children:
         lines.header += [
             '',
-            [f'{child.typename_contained} {child.id};' for child in obj.children],
+            [f'const {child.typename_contained} {child.id};' for child in obj.children],
         ]
 
     lines.header += ['};']
@@ -655,12 +675,25 @@ def generate_object(obj: Object) -> CodeLines:
 def generate_updater(obj: Object) -> list:
     '''Generate code for Object Updater implementation'''
 
+    constructors = generate_contained_constructors(obj, 'Updater')
+
+    if isinstance(obj, ObjectArray):
+        return [
+            *declare_templated_class(obj, [obj.items.typename], True),
+            constructors,
+            '};',
+        ]
+
+    if isinstance(obj, Array):
+        return [
+            *declare_templated_class(obj, [obj.items.ctype], True),
+            constructors,
+            '};',
+        ]
+
     return [
-        '',
-        f'class Updater: public ConfigDB::{obj.base_class}UpdaterTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
-        '{',
-        'public:',
-        [f'using {obj.base_class}UpdaterTemplate::{obj.base_class}UpdaterTemplate;'],
+        *declare_templated_class(obj, [], True),
+        constructors,
         *generate_property_write_accessors(obj),
         '',
         [f'{child.typename_contained}::Updater {child.id};' for child in obj.children],
@@ -668,13 +701,16 @@ def generate_updater(obj: Object) -> list:
     ]
 
 
-def generate_contained_constructors(obj: Object) -> list:
+def generate_contained_constructors(obj: Object, is_updater = False) -> list:
+    typename = 'Updater' if is_updater else obj.typename_contained
+    template = 'Updater' if is_updater else ''
+    update_type = '::Updater' if is_updater else ''
     if obj.is_item:
         return [
             '',
             f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
             [', '.join([
-                f'{obj.classname}Template({obj.parent.id}, dataRef)',
+                f'{obj.classname}{template}Template({obj.parent.id}, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ])],
             '{',
@@ -685,8 +721,8 @@ def generate_contained_constructors(obj: Object) -> list:
     if not obj.is_item_member:
         headers = [
             '',
-            f'{obj.typename_contained}(ConfigDB::Store& store): ' + ', '.join([
-                f'{obj.base_class}Template(store)',
+            f'{typename}(ConfigDB::Store& store): ' + ', '.join([
+                f'{obj.base_class}{template}Template(store)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',
@@ -696,8 +732,8 @@ def generate_contained_constructors(obj: Object) -> list:
     if not obj.is_root:
         headers += [
             '',
-            f'{obj.typename_contained}({obj.parent.typename_contained}& parent, uint16_t dataRef): ' + ', '.join([
-                f'{obj.base_class}Template(parent, dataRef)',
+            f'{typename}({obj.parent.typename_contained}{update_type}& parent, uint16_t dataRef): ' + ', '.join([
+                f'{obj.base_class}{template}Template(parent, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',
