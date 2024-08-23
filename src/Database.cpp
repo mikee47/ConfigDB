@@ -110,10 +110,8 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 		return true;
 	}
 
-	// Store is in use, so load a fresh copy
-	// TODO: Instead of re-loading the store, take a copy
-	store.reset();
-	store = loadStore(storeInfo);
+	// Store is in use elsewhere, so take a copy for updating
+	store = std::make_unique<Store>(*store);
 	store->incUpdate();
 	updateRef = store;
 	return true;

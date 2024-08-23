@@ -34,7 +34,28 @@ public:
 		assert(itemSize > 0 && itemSize <= 255);
 	}
 
-	PoolData(const PoolData&) = delete;
+	PoolData(const PoolData& other)
+	{
+		*this = other;
+	}
+
+	PoolData(PoolData&& other)
+	{
+		std::swap(buffer, other.buffer);
+		std::swap(count, other.count);
+		std::swap(space, other.space);
+		itemSize = other.itemSize;
+	}
+
+	PoolData& operator=(const PoolData& other)
+	{
+		buffer = malloc(other.usage());
+		count = other.count;
+		space = other.space;
+		itemSize = other.itemSize;
+		memcpy(buffer, other.buffer, count * itemSize);
+		return *this;
+	}
 
 	size_t getCount() const
 	{
@@ -253,6 +274,8 @@ public:
 	ArrayPool() : PoolData(sizeof(ArrayData))
 	{
 	}
+
+	ArrayPool(const ArrayPool& other);
 
 	~ArrayPool()
 	{

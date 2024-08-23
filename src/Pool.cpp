@@ -126,6 +126,15 @@ void* ArrayData::insert(unsigned index, const void* data)
 	return item;
 }
 
+ArrayPool::ArrayPool(const ArrayPool& other) : PoolData(other)
+{
+	auto src = static_cast<const ArrayData*>(other.buffer);
+	auto dst = static_cast<ArrayData*>(buffer);
+	for(unsigned i = 0; i < count; ++i) {
+		dst[i] = src[i];
+	}
+}
+
 void ArrayPool::clear()
 {
 	auto data = static_cast<ArrayData*>(buffer) + count;
