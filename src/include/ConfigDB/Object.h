@@ -224,26 +224,6 @@ public:
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator
- * @tparam StoreType Object type for store root
- */
-template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
-{
-public:
-	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
-	{
-	}
-
-	explicit OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
-	{
-	}
-
-protected:
-	std::shared_ptr<Store> store;
-};
-
-/**
- * @brief Used by code generator
  * @tparam UpdaterType
  * @tparam ClassType Contained class with type information
  */
@@ -284,6 +264,37 @@ public:
 	~OuterObjectUpdaterTemplate()
 	{
 		this->unlockStore(*store);
+	}
+
+private:
+	std::shared_ptr<Store> store;
+};
+
+/**
+ * @brief Used by code generator
+ * @tparam ClassType Concrete type provided by code generator
+ * @tparam StoreType Object type for store root
+ */
+template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
+{
+public:
+	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
+	{
+	}
+
+	explicit OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
+	{
+	}
+
+	class Updater : public ConfigDB::OuterObjectUpdaterTemplate<ContainedClassType, StoreType>
+	{
+		using OuterObjectUpdaterTemplate<ContainedClassType, StoreType>::OuterObjectUpdaterTemplate;
+	};
+
+	Updater update()
+	{
+		this->lockStore(store);
+		return Updater(store);
 	}
 
 private:

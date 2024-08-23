@@ -457,19 +457,6 @@ def generate_database(db: Database) -> CodeLines:
             'public:',
             [
                 'using OuterObjectTemplate::OuterObjectTemplate;',
-                '',
-                f'class Updater: public ConfigDB::OuterObjectUpdaterTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
-                '{',
-                ['using OuterObjectUpdaterTemplate::OuterObjectUpdaterTemplate;'],
-                '};',
-                '',
-                'Updater update()',
-                '{',
-                [
-                    'this->lockStore(store);',
-                    'return Updater(store);',
-                ],
-                '}',
             ],
             *[generate_outer_class(child) for child in obj.children if not obj.is_item],
             '};'
