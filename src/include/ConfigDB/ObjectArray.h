@@ -80,10 +80,11 @@ public:
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete class type
- * @tparam ItemType Array item class type
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
+ * @tparam ItemType
  */
-template <class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ObjectArray
+template <class UpdaterType, class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ObjectArray
 {
 public:
 	using Item = typename ItemType::Updater;

@@ -82,10 +82,11 @@ public:
 
 /**
  * @brief Used by code generator for integral-typed arrays
- * @tparam ClassType Concrete type provided by code generator
- * @tparam ItemType Type of item
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
+ * @tparam ItemType
  */
-template <class ClassType, typename ItemType> class ArrayUpdaterTemplate : public Array
+template <class UpdaterType, class ClassType, typename ItemType> class ArrayUpdaterTemplate : public Array
 {
 public:
 	struct ItemRef {
@@ -94,12 +95,12 @@ public:
 
 		operator ItemType() const
 		{
-			return static_cast<ClassType&>(array).getItem(index);
+			return static_cast<UpdaterType&>(array).getItem(index);
 		}
 
-		ItemRef& operator=(const String& value)
+		ItemRef& operator=(const ItemType& value)
 		{
-			static_cast<ClassType&>(array).setItem(index, value);
+			static_cast<UpdaterType&>(array).setItem(index, value);
 			return *this;
 		}
 	};
@@ -152,26 +153,28 @@ public:
 
 /**
  * @brief Used by code generator for String-typed arrays
- * @tparam ClassType Concrete type provided by code generator
- * @tparam ItemType Type of item, not used (always String)
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
+ * @tparam ItemType always String, but could support string-like objects if we want
  */
-template <class ClassType, typename ItemType> class StringArrayUpdaterTemplate : public ArrayTemplate<ClassType, ItemType>
+template <class UpdaterType, class ClassType, typename ItemType>
+class StringArrayUpdaterTemplate : public ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType>
 {
 public:
-	using ArrayTemplate<ClassType, ItemType>::ArrayTemplate;
+	using ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType>::ArrayUpdaterTemplate;
 
-	void setItem(unsigned index, const String& value)
+	void setItem(unsigned index, const ItemType& value)
 	{
 		*static_cast<StringId*>(ArrayBase::getItem(index)) = this->getStringId(value);
 	}
 
-	void addItem(const String& value)
+	void addItem(const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
 		this->getArray().add(&stringId);
 	}
 
-	void insertItem(unsigned index, const String& value)
+	void insertItem(unsigned index, const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
 		this->getArray().insert(index, &stringId);

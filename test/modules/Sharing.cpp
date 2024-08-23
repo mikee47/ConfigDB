@@ -102,6 +102,8 @@ public:
 		if(auto update = root.beginUpdate()) {
 			update.intArray.addItem(12);
 			REQUIRE_EQ(root.intArray[0], 12);
+			update.intArray[0] = 123;
+			REQUIRE_EQ(root.intArray[0], 123);
 			Serial << root.intArray << endl;
 		}
 
@@ -112,6 +114,9 @@ public:
 		if(auto update = root.beginUpdate()) {
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
+			update.stringArray[0] = nullptr;
+			REQUIRE_EQ(root.stringArray[0], nullptr);
+			update.stringArray[0] = myString;
 			Serial << root.stringArray << endl;
 		}
 

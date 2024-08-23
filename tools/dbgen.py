@@ -458,7 +458,7 @@ def generate_database(db: Database) -> CodeLines:
             [
                 'using OuterObjectTemplate::OuterObjectTemplate;',
                 '',
-                f'class Updater: public ConfigDB::OuterObjectUpdaterTemplate<{obj.typename_contained}::Updater, {obj.store.typename_contained}>',
+                f'class Updater: public ConfigDB::OuterObjectUpdaterTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
                 '{',
                 ['using OuterObjectUpdaterTemplate::OuterObjectUpdaterTemplate;'],
                 '};',
@@ -498,6 +498,8 @@ def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool 
     template = 'Updater' if is_updater else ''
     update_type = '::Updater' if is_updater else ''
     params = [f'{obj.typename_contained}']
+    if is_updater:
+        params.insert(0, 'Updater')
     if tparams:
         params += tparams
     return [

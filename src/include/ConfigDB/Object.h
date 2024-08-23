@@ -69,7 +69,7 @@ public:
 	 */
 	bool isStore() const
 	{
-		return typeinfoPtr->type == ObjectType::Store && !parent && typeinfoPtr != &ObjectInfo::empty;
+		return typeinfoPtr->type == ObjectType::Store && !parent;
 	}
 
 	Store& getStore();
@@ -244,9 +244,10 @@ protected:
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Outer class type provided by code generator
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
  */
-template <class ClassType> class ObjectUpdaterTemplate : public Object
+template <class UpdaterType, class ClassType> class ObjectUpdaterTemplate : public Object
 {
 public:
 	ObjectUpdaterTemplate(Store& store) : Object(ClassType::typeinfo, store)
@@ -265,14 +266,13 @@ public:
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Outer class type provided by code generator
+ * @tparam ContainedClassType
  */
-template <class ContainedClassType, class StoreType> class OuterObjectUpdaterTemplate : public ContainedClassType
+template <class ContainedClassType, class StoreType>
+class OuterObjectUpdaterTemplate : public ContainedClassType::Updater
 {
 public:
-	using Updater = typename ContainedClassType::Updater;
-
-	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
+	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : ContainedClassType::Updater(*store), store(store)
 	{
 	}
 
