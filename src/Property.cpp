@@ -25,8 +25,8 @@ namespace ConfigDB
 {
 String PropertyConst::getValue() const
 {
-	assert(info && store && data);
-	if(!store) {
+	assert(info && store);
+	if(!store || !data) {
 		return nullptr;
 	}
 	return store->getValueString(*info, data);

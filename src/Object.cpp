@@ -223,7 +223,9 @@ Property Object::getProperty(unsigned index)
 		return {};
 	}
 	auto propData = getData<uint8_t>();
-	propData += typeinfo().getPropertyOffset(index);
+	if(propData) {
+		propData += typeinfo().getPropertyOffset(index);
+	}
 	return {getStore(), typeinfo().propinfo[index], propData};
 }
 
@@ -237,7 +239,9 @@ PropertyConst Object::getProperty(unsigned index) const
 		return {};
 	}
 	auto propData = getData<const uint8_t>();
-	propData += typeinfo().getPropertyOffset(index);
+	if(propData) {
+		propData += typeinfo().getPropertyOffset(index);
+	}
 	return {getStore(), typeinfo().propinfo[index], propData};
 }
 
