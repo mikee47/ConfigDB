@@ -97,6 +97,11 @@ public:
 	 */
 	Object getObject(unsigned index);
 
+	const Object getObject(unsigned index) const
+	{
+		return const_cast<Object*>(this)->getObject(index);
+	}
+
 	/**
 	 * @brief Find child object by name
 	 */
