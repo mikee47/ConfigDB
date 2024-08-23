@@ -79,21 +79,7 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
-	struct UpdateRef {
-		std::weak_ptr<Store> weakref;
-
-		bool isLocked()
-		{
-			auto store = weakref.lock();
-			return store && store->isLocked();
-		}
-
-		UpdateRef& operator=(std::shared_ptr<Store> ref)
-		{
-			this->weakref = ref;
-			return *this;
-		}
-	};
+	using UpdateRef = std::weak_ptr<Store>;
 
 	std::shared_ptr<Store> loadStore(const ObjectInfo& storeInfo);
 

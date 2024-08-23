@@ -50,26 +50,37 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 	}
 
 	auto& storeInfo = *typeinfo.stores[index];
+	auto& updateRef = updateRefs[index];
+	auto store = updateRef.lock();
 
 	if(lockForWrite) {
-		auto& updateRef = updateRefs[index];
-		if(updateRef.isLocked()) {
+		if(!store) {
+			store = loadStore(storeInfo);
+		} else if(store->isLocked()) {
 			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
 			return std::make_shared<Store>(*this);
 		}
-
-		auto store = loadStore(storeInfo);
 		store->incUpdate();
 		updateRef = store;
 		return store;
 	}
 
+	if(store && !store->isLocked()) {
+		// Not locked, we can use it
+		readStoreRef = store;
+		readStoreIndex = index;
+		return store;
+	}
+
 	readStoreRef.reset();
-	readStoreRef = loadStore(storeInfo);
-	if(!readStoreRef) {
-		readStoreIndex = -1;
+	readStoreIndex = -1;
+
+	store = loadStore(storeInfo);
+	if(!store) {
 		return nullptr;
 	}
+
+	readStoreRef = store;
 	readStoreIndex = index;
 
 	if(!callbackQueued) {
@@ -81,7 +92,7 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 		callbackQueued = true;
 	}
 
-	return readStoreRef;
+	return store;
 }
 
 bool Database::lockStore(std::shared_ptr<Store>& store)
@@ -94,18 +105,21 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 	auto storeIndex = typeinfo.indexOf(storeInfo);
 	assert(storeIndex >= 0);
 	auto& updateRef = updateRefs[storeIndex];
-	if(updateRef.isLocked()) {
-		debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
-		return false;
+	auto storeRef = updateRef.lock();
+	if(storeRef) {
+		if(storeRef->isLocked()) {
+			debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
+			return false;
+		}
+
+		// Already have most recent data so update that
+		store = storeRef;
+		store->incUpdate();
+		return true;
 	}
 
-	if(storeIndex == readStoreIndex) {
-		readStoreRef.reset();
-		readStoreIndex = -1;
-	}
-
-	if(store.use_count() == 1) {
-		// No-one else is using this, just convert it to writeable
+	// If no-one else is using this store instance we can safely update it
+	if(store.use_count() == 1 + (storeIndex == readStoreIndex)) {
 		store->incUpdate();
 		return true;
 	}

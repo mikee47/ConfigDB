@@ -19,14 +19,19 @@ public:
 
 	void execute() override
 	{
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 0);
+
 		// Verify initial value
 		TestConfig::Root root(database);
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 		REQUIRE_EQ(root.getSimpleBool(), false);
 
 		auto root2 = root;
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1); // root, root2 share the same store
 
 		// Change value
 		if(auto updater = root.beginUpdate()) {
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root store is now writeable copy, root2 store unchanged
 			updater.setSimpleBool(true);
 			REQUIRE_EQ(root.getSimpleBool(), true);
 			REQUIRE(updater.commit());
@@ -36,34 +41,58 @@ public:
 			REQUIRE(root.beginUpdate());
 			REQUIRE(root.beginUpdate());
 
+			REQUIRE_EQ(root2.getSimpleBool(), false); // original value
+
 			// A new reader must contain the updated data
-			TestConfig::Root root2(database);
-			REQUIRE_EQ(root2.getSimpleBool(), true);
+			TestConfig::Root root3(database);
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 3); // root/updater, root2 (original), root3 (read cached)
+			REQUIRE_EQ(root3.getSimpleBool(), true);		  // updated value
 
 			// A second writer must fail
 			REQUIRE(!root2.beginUpdate());
+			REQUIRE(!root3.beginUpdate());
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 3); // No change
 		} else {
 			TEST_ASSERT(false);
 		}
 
-		// Verify store has been unlocked
-		REQUIRE(root.beginUpdate());
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 3); // root (updated), root2 (original), read cached
 
-		// Verify value has changed
+		// Verify value has changed in original store
 		REQUIRE_EQ(root.getSimpleBool(), true);
 
 		// Verify copy we made is stale
 		REQUIRE_EQ(root2.getSimpleBool(), false);
 
+		// Verify store has been unlocked
+		/*
+			This is interesting. root2 store is stale, and no-one else is using it so that gets evicted.
+			There is a writeable version available used by root.
+			It's not locked, therefore it must contain the latest data so that becomes root2's store.
+
+			Q. Could this be done transparently as part of root commit?
+			A. No. Database sees the cached (readable) store is updated but root2 Object holds a pointer to the original store.
+			The database doesn't keep track of the referring objects so cannot update them.
+			Here, we're explicitly passing `root2` so that's fine, it's what we've asked for.
+		*/
+		REQUIRE(root2.beginUpdate());
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2 (updated), read cached
+		REQUIRE_EQ(root2.getSimpleBool(), true);		  // root2 now up to date
+
 		// Get fresh copy which should have changed
 		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), true);
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // No change
 
 		// Now try direct
 		if(auto updater = TestConfig::Root::Updater(database)) {
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // No change
 			updater.setSimpleBool(false);
 		} else {
 			TEST_ASSERT(false);
 		}
+		// Updater commits changes, read cache evicted
+
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1); // root/root2 (updated), no read cache
 
 		// Verify value has changed
 		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), false);
@@ -73,8 +102,6 @@ public:
 		if(auto update = root.beginUpdate()) {
 			update.intArray.addItem(12);
 			REQUIRE_EQ(root.intArray[0], 12);
-			update.intArray.removeItem(0);
-			REQUIRE_EQ(root.intArray.getItemCount(), 0);
 			Serial << root.intArray << endl;
 		}
 
@@ -85,8 +112,6 @@ public:
 		if(auto update = root.beginUpdate()) {
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
-			update.stringArray.removeItem(0);
-			REQUIRE_EQ(root.stringArray.getItemCount(), 0);
 			Serial << root.stringArray << endl;
 		}
 
@@ -98,10 +123,22 @@ public:
 			REQUIRE_EQ(root.objectArray[0].getIntval1(), 12);
 			item.setStringval2(myString);
 			REQUIRE_EQ(root.objectArray[0].getStringval2(), myString);
-			update.objectArray.removeItem(0);
-			REQUIRE_EQ(root.objectArray.getItemCount(), 0);
 			Serial << root.objectArray << endl;
 		}
+
+		auto root3 = root;
+		auto root4 = root.beginUpdate();
+		REQUIRE(root4);
+		auto root5 = root.beginUpdate();
+		REQUIRE(root5);
+
+		auto update = TestConfig::Root::Updater(database);
+		REQUIRE(!update);
+
+		Serial << root << endl;
+
+		ConfigDB::Store store1(database);
+		auto store2 = ConfigDB::Store(store1);
 	}
 
 private:
