@@ -6,6 +6,7 @@
  */
 
 #include <SmingTest.h>
+#include <LittleFS.h>
 #include <modules.h>
 
 #define XX(t) extern void REGISTER_TEST(t);

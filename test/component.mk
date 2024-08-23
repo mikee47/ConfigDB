@@ -9,7 +9,8 @@ DISABLE_NETWORK := 1
 
 COMPONENT_DEPENDS := \
 	SmingTest \
-	ConfigDB
+	ConfigDB \
+	LittleFS
 
 # Time in milliseconds to pause after a test group has completed
 CONFIG_VARS += TEST_GROUP_INTERVAL
