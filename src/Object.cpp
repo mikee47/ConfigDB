@@ -161,8 +161,7 @@ Property Object::findProperty(const char* name, size_t length)
 
 bool Object::commit()
 {
-	auto& store = getStore();
-	return store.getDatabase().save(store);
+	return getStore().commit();
 }
 
 Database& Object::getDatabase()

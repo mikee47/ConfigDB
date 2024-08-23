@@ -278,7 +278,6 @@ public:
 
 	~OuterObjectUpdaterTemplate()
 	{
-		this->commit();
 		this->unlockStore(*store);
 	}
 

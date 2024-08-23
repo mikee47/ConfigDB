@@ -132,6 +132,8 @@ protected:
 	friend class ArrayBase;
 	friend class Database;
 
+	bool commit();
+
 	void incUpdate()
 	{
 		++updaterCount;
@@ -145,6 +147,9 @@ protected:
 			return;
 		}
 		--updaterCount;
+		if(updaterCount == 0) {
+			commit();
+		}
 		CFGDB_DEBUG(" %u", updaterCount)
 	}
 

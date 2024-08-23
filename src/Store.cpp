@@ -109,4 +109,18 @@ bool Store::writeCheck() const
 	return false;
 }
 
+bool Store::commit()
+{
+	if(!dirty) {
+		return true;
+	}
+
+	if(!db.save(*this)) {
+		return false;
+	}
+
+	dirty = false;
+	return true;
+}
+
 } // namespace ConfigDB

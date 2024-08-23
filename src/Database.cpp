@@ -135,10 +135,6 @@ std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
 
 bool Database::save(Store& store) const
 {
-	if(!store.dirty) {
-		return true;
-	}
-
 	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
 
 	auto& reader = getReader(store);
@@ -150,8 +146,6 @@ bool Database::save(Store& store) const
 		readStoreIndex = -1;
 		readStoreRef.reset();
 	}
-
-	store.dirty = !result;
 
 	return result;
 }
