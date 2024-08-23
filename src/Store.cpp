@@ -22,6 +22,8 @@
 
 namespace ConfigDB
 {
+uint8_t Store::instanceCount;
+
 void Store::clear()
 {
 	auto& root = typeinfo();

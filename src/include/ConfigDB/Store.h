@@ -43,6 +43,11 @@ class Database;
 class Store : public Object
 {
 public:
+	/**
+	 * @brief This is an empty Store instance
+	 * Object chain is built via references so need a valid Store instance which can be identifyed as empty.
+	 * We don't update the instance count here since it will never contain anything
+	 */
 	Store(Database& db) : Object(), db(db)
 	{
 	}
@@ -55,15 +60,31 @@ public:
 	Store(Database& db, const ObjectInfo& typeinfo)
 		: Object(typeinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo.structSize))
 	{
-		CFGDB_DEBUG("")
+		++instanceCount;
+		CFGDB_DEBUG(" %u", instanceCount)
 	}
+
+	/**
+	 * @brief Copy constructor
+	 */
+	explicit Store(const Store& store)
+		: Object(store.typeinfo()), arrayPool(store.arrayPool), stringPool(store.stringPool), db(store.db),
+		  rootData(std::make_unique<uint8_t[]>(store.typeinfo().structSize))
+	{
+		++instanceCount;
+		CFGDB_DEBUG(" COPY %u", instanceCount)
+		memcpy(rootData.get(), store.rootData.get(), typeinfo().structSize);
+	}
+
+	Store(Store&&) = delete;
 
 	~Store()
 	{
-		CFGDB_DEBUG("")
+		if(*this) {
+			--instanceCount;
+			CFGDB_DEBUG(" %u", instanceCount);
+		}
 	}
-
-	Store(const Store&) = delete;
 
 	String getFileName() const
 	{
@@ -125,6 +146,14 @@ public:
 		return updaterCount != 0;
 	}
 
+	/**
+	 * @brief Get number of valid (non-empty) Store instances in existence
+	 */
+	static uint8_t getInstanceCount()
+	{
+		return instanceCount;
+	}
+
 	bool writeCheck() const;
 
 protected:
@@ -161,6 +190,7 @@ private:
 	std::unique_ptr<uint8_t[]> rootData;
 	uint8_t updaterCount{};
 	bool dirty{};
+	static uint8_t instanceCount;
 };
 
 } // namespace ConfigDB
