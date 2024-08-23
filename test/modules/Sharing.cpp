@@ -80,13 +80,27 @@ public:
 
 		/* String Array */
 
+		DEFINE_FSTR_LOCAL(myString, "My String");
+
 		if(auto update = root.beginUpdate()) {
-			DEFINE_FSTR_LOCAL(myString, "My String");
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
 			update.stringArray.removeItem(0);
 			REQUIRE_EQ(root.stringArray.getItemCount(), 0);
 			Serial << root.stringArray << endl;
+		}
+
+		/* Object Array */
+
+		if(auto update = root.beginUpdate()) {
+			auto item = update.objectArray.addItem();
+			item.setIntval1(12);
+			REQUIRE_EQ(root.objectArray[0].getIntval1(), 12);
+			item.setStringval2(myString);
+			REQUIRE_EQ(root.objectArray[0].getStringval2(), myString);
+			update.objectArray.removeItem(0);
+			REQUIRE_EQ(root.objectArray.getItemCount(), 0);
+			Serial << root.objectArray << endl;
 		}
 	}
 

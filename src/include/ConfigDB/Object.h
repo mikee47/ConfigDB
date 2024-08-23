@@ -210,6 +210,11 @@ public:
 	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
 	{
 	}
+
+	ObjectTemplate(const Object& parent, uint16_t dataRef)
+		: Object(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
+	{
+	}
 };
 
 /**
@@ -217,8 +222,7 @@ public:
  * @tparam ClassType Concrete type provided by code generator
  * @tparam StoreType Object type for store root
  */
-template <class ContainedClassType, class StoreType>
-class OuterObjectTemplate : public ContainedClassType
+template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
 {
 public:
 	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)

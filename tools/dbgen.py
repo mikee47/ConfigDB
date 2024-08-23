@@ -702,13 +702,15 @@ def generate_updater(obj: Object) -> list:
 
 
 def generate_contained_constructors(obj: Object, is_updater = False) -> list:
-    typename = 'Updater' if is_updater else obj.typename_contained
+    typename = 'Updater' if is_updater else obj.typename
+    typename_contained = 'Updater' if is_updater else obj.typename_contained
     template = 'Updater' if is_updater else ''
     update_type = '::Updater' if is_updater else ''
+    const = '' if is_updater else 'const '
     if obj.is_item:
         return [
             '',
-            f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
+            f'{typename}({const}ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
             [', '.join([
                 f'{obj.classname}{template}Template({obj.parent.id}, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
@@ -721,7 +723,7 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
     if not obj.is_item_member:
         headers = [
             '',
-            f'{typename}(ConfigDB::Store& store): ' + ', '.join([
+            f'{typename_contained}(ConfigDB::Store& store): ' + ', '.join([
                 f'{obj.base_class}{template}Template(store)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
@@ -732,7 +734,7 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
     if not obj.is_root:
         headers += [
             '',
-            f'{typename}({obj.parent.typename_contained}{update_type}& parent, uint16_t dataRef): ' + ', '.join([
+            f'{typename_contained}({obj.parent.typename_contained}{update_type}& parent, uint16_t dataRef): ' + ', '.join([
                 f'{obj.base_class}{template}Template(parent, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),

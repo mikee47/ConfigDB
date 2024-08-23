@@ -86,6 +86,8 @@ public:
 template <class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ObjectArray
 {
 public:
+	using Item = typename ItemType::Updater;
+
 	explicit ObjectArrayUpdaterTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
 	{
 	}
@@ -94,29 +96,29 @@ public:
 	{
 	}
 
-	ItemType operator[](unsigned index)
+	Item operator[](unsigned index)
 	{
-		return ItemType(*this, index);
+		return Item(*this, index);
 	}
 
-	ItemType addItem()
+	Item addItem()
 	{
 		if(!writeCheck()) {
-			return ItemType(*this, 0);
+			return Item(*this, 0);
 		}
 		auto& array = getArray();
 		auto index = array.getCount();
 		array.add(ItemType::typeinfo.defaultData);
-		return ItemType(*this, index);
+		return Item(*this, index);
 	}
 
-	ItemType insertItem(unsigned index)
+	Item insertItem(unsigned index)
 	{
 		if(!writeCheck()) {
-			return ItemType(*this, 0);
+			return Item(*this, 0);
 		}
-		getArray().insert(index, ItemType::typeinfo.defaultData);
-		return ItemType(*this, index);
+		getArray().insert(index, Item::typeinfo.defaultData);
+		return Item(*this, index);
 	}
 };
 

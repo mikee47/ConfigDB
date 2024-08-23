@@ -16,6 +16,21 @@
       "items": {
         "type": "string"
       }
+    },
+    "object array": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "intval1": {
+            "type": "integer"
+          },
+          "stringval2": {
+            "type": "string"
+          }
+        }
+      }
     }
+
   }
 }
