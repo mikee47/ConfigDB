@@ -5,17 +5,14 @@
 
 namespace
 {
-void __noinline testSetValue(BasicConfig& db, int value, bool commit)
+void __noinline testSetValue(BasicConfig& db, int value)
 {
-	BasicConfig::Color::Brightness bri(db);
+	BasicConfig::Color::Brightness::Updater bri(db);
 	bri.setRed(value);
 	bri.setGreen(value);
 	bri.setBlue(value);
 	bri.setWw(value);
 	bri.setCw(value);
-	if(commit) {
-		bri.commit();
-	}
 }
 
 void __noinline testGetValueSimple(BasicConfig& db)
@@ -98,20 +95,10 @@ void checkPerformance(BasicConfig& db)
 
 	Serial << _F("Evaluating setValue / commit ...") << endl;
 	{
-		Profiling::MicroTimes times(F("Set Value only"));
-		for(int i = 0; i < rounds; i++) {
-			times.start();
-			testSetValue(db, i, false);
-			times.update();
-		}
-		Serial << times << endl;
-	}
-
-	{
 		Profiling::MicroTimes times(F("Set Value + commit"));
 		for(int i = 0; i < rounds; i++) {
 			times.start();
-			testSetValue(db, i, true);
+			testSetValue(db, i);
 			times.update();
 		}
 		Serial << times << endl;
