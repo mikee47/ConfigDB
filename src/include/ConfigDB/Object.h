@@ -21,6 +21,7 @@
 
 #include "Property.h"
 #include "ObjectInfo.h"
+#include <Platform/System.h>
 #include <memory>
 
 namespace ConfigDB
@@ -151,6 +152,10 @@ public:
 	{
 		return static_cast<const T*>(getDataPtr());
 	}
+
+	using UpdateCallback = Delegate<void(Store& store)>;
+
+	void queueUpdate(UpdateCallback callback);
 
 protected:
 	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite = false);
@@ -295,6 +300,22 @@ public:
 	{
 		this->lockStore(store);
 		return Updater(store);
+	}
+
+	using ContainedUpdater = typename ContainedClassType::Updater;
+	using UpdateCallback = Delegate<void(ContainedUpdater)>;
+
+	bool update(UpdateCallback callback)
+	{
+		if(auto upd = update()) {
+			callback(upd);
+			return true;
+		}
+		Object::queueUpdate([this, callback](Store& store) {
+			// ... nope. object's gone, so need to reconstruct it.
+			callback(ContainedUpdater(store));
+		});
+		return false;
 	}
 
 private:

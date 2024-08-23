@@ -69,6 +69,21 @@ SimpleTimer statTimer;
 		BasicConfig::Color::Brightness bri(database);
 		update.brightness.setBlue(12);
 		Serial << bri.getPath() << ".Blue = " << bri.getBlue() << endl;
+
+		// OK, since we have an update in progress let's try another one asynchronously
+		BasicConfig::Color::Brightness::Struct values{
+			.red = 12,
+			.green = 44,
+			.blue = 8,
+		};
+		auto async = BasicConfig::Color::Brightness(database).update(
+			[values](BasicConfig::Color::ContainedBrightness::Updater upd) {
+				Serial << "ASYNC UPDATE" << endl;
+				upd.setRed(values.red);
+				upd.setGreen(values.green);
+				upd.setBlue(values.blue);
+			});
+		Serial << F("Async update ") << (async ? "completed" : "pending") << endl;
 	}
 
 	// {

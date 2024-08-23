@@ -159,6 +159,11 @@ Property Object::findProperty(const char* name, size_t length)
 	return i >= 0 ? getProperty(i) : Property();
 }
 
+void Object::queueUpdate(UpdateCallback callback)
+{
+	return getStore().queueUpdate(callback);
+}
+
 bool Object::commit()
 {
 	return getStore().commit();

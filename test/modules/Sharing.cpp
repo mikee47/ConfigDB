@@ -96,22 +96,26 @@ public:
 
 		// Verify value has changed
 		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), false);
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2 (updated), new read cache
 
 		/* Array */
 
 		if(auto update = root.update()) {
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 			update.intArray.addItem(12);
 			REQUIRE_EQ(root.intArray[0], 12);
 			update.intArray[0] = 123;
 			REQUIRE_EQ(root.intArray[0], 123);
 			Serial << root.intArray << endl;
 		}
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 
 		/* String Array */
 
 		DEFINE_FSTR_LOCAL(myString, "My String");
 
 		if(auto update = root.update()) {
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
 			update.stringArray[0] = nullptr;
@@ -119,10 +123,12 @@ public:
 			update.stringArray[0] = myString;
 			Serial << root.stringArray << endl;
 		}
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 
 		/* Object Array */
 
 		if(auto update = root.update()) {
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 			auto item = update.objectArray.addItem();
 			item.setIntval1(12);
 			REQUIRE_EQ(root.objectArray[0].getIntval1(), 12);
@@ -130,20 +136,31 @@ public:
 			REQUIRE_EQ(root.objectArray[0].getStringval2(), myString);
 			Serial << root.objectArray << endl;
 		}
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 
 		auto root3 = root;
 		auto root4 = root.update();
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 		REQUIRE(root4);
 		auto root5 = root.update();
 		REQUIRE(root5);
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 
 		auto update = TestConfig::Root::Updater(database);
 		REQUIRE(!update);
 
+		// Async update. Can use `auto upd` but no code completion (at least in vscode)
+		auto asyncUpdated = TestConfig::Root(database).update([this](TestConfig::ContainedRoot::Updater upd) {
+			Serial << "ASYNC UPDATE" << endl;
+			upd.setSimpleBool(true);
+			// Must queue this as `complete()` destroys this class immediately
+			System.queueCallback([this]() { complete(); });
+		});
+		REQUIRE(!asyncUpdated);
+
 		Serial << root << endl;
 
-		ConfigDB::Store store1(database);
-		auto store2 = ConfigDB::Store(store1);
+		pending();
 	}
 
 private:

@@ -24,6 +24,7 @@
 #include "Writer.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
+#include <WVector.h>
 
 namespace ConfigDB
 {
@@ -65,6 +66,9 @@ public:
 		return openStore(typeinfo.indexOf(objinfo), lockForWrite);
 	}
 
+	void queueUpdate(Store& store, Object::UpdateCallback callback);
+	void checkUpdateQueue(Store& store);
+
 	bool save(Store& store) const;
 
 	/**
@@ -81,6 +85,16 @@ public:
 private:
 	using UpdateRef = std::weak_ptr<Store>;
 
+	struct UpdateQueueItem {
+		uint8_t storeIndex;
+		Object::UpdateCallback callback;
+
+		bool operator==(int index) const
+		{
+			return int(storeIndex) == index;
+		}
+	};
+
 	std::shared_ptr<Store> loadStore(const ObjectInfo& storeInfo);
 
 	CString path;
@@ -88,6 +102,7 @@ private:
 	// Hold store open for a brief period to avoid thrashing
 	static std::shared_ptr<Store> readStoreRef;
 	std::unique_ptr<UpdateRef[]> updateRefs;
+	Vector<UpdateQueueItem> updateQueue;
 	static int8_t readStoreIndex;
 	static bool callbackQueued;
 };

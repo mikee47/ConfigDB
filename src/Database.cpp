@@ -54,12 +54,11 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 	auto store = updateRef.lock();
 
 	if(lockForWrite) {
-		if(!store) {
-			store = loadStore(storeInfo);
-		} else if(store->isLocked()) {
+		if(store && store->isLocked()) {
 			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
 			return std::make_shared<Store>(*this);
 		}
+		store = loadStore(storeInfo);
 		store->incUpdate();
 		updateRef = store;
 		return store;
@@ -120,6 +119,11 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 
 	// If no-one else is using this store instance we can safely update it
 	if(store.use_count() == 1 + (storeIndex == readStoreIndex)) {
+		if(storeIndex == readStoreIndex) {
+			readStoreIndex = -1;
+			readStoreRef.reset();
+		}
+		updateRef = store;
 		store->incUpdate();
 		return true;
 	}
@@ -145,6 +149,30 @@ std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
 	store->decUpdate();
 	store->dirty = false;
 	return store;
+}
+
+void Database::queueUpdate(Store& store, Object::UpdateCallback callback)
+{
+	int storeIndex = typeinfo.indexOf(store.typeinfo());
+	assert(storeIndex >= 0);
+	updateQueue.add({uint8_t(storeIndex), callback});
+}
+
+void Database::checkUpdateQueue(Store& store)
+{
+	int storeIndex = typeinfo.indexOf(store.typeinfo());
+	int i = updateQueue.indexOf(storeIndex);
+	if(i < 0) {
+		return;
+	}
+	auto callback = std::move(updateQueue[i].callback);
+	updateQueue.remove(i);
+	auto storeRef = updateRefs[storeIndex].lock();
+	System.queueCallback([storeRef, callback]() {
+		storeRef->incUpdate();
+		callback(*storeRef);
+		storeRef->decUpdate();
+	});
 }
 
 bool Database::save(Store& store) const

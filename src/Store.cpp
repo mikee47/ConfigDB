@@ -111,6 +111,25 @@ bool Store::writeCheck() const
 	return false;
 }
 
+void Store::queueUpdate(Object::UpdateCallback callback)
+{
+	return db.queueUpdate(*this, callback);
+}
+
+void Store::decUpdate()
+{
+	if(updaterCount == 0) {
+		// No updaters: this happens where earlier call to `Database::lockStore()` failed
+		return;
+	}
+	--updaterCount;
+	CFGDB_DEBUG(" %u", updaterCount)
+	if(updaterCount == 0) {
+		commit();
+		db.checkUpdateQueue(*this);
+	}
+}
+
 bool Store::commit()
 {
 	if(!dirty) {

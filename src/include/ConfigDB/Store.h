@@ -161,6 +161,8 @@ protected:
 	friend class ArrayBase;
 	friend class Database;
 
+	void queueUpdate(Object::UpdateCallback callback);
+
 	bool commit();
 
 	void incUpdate()
@@ -169,18 +171,7 @@ protected:
 		CFGDB_DEBUG(" %u", updaterCount)
 	}
 
-	void decUpdate()
-	{
-		if(updaterCount == 0) {
-			// No updaters: this happens where earlier call to `Database::lockStore()` failed
-			return;
-		}
-		--updaterCount;
-		if(updaterCount == 0) {
-			commit();
-		}
-		CFGDB_DEBUG(" %u", updaterCount)
-	}
+	void decUpdate();
 
 	ArrayPool arrayPool;
 	StringPool stringPool;
