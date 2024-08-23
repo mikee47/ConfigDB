@@ -26,7 +26,12 @@
 #include <WString.h>
 #include <memory>
 
+#if DEBUG_VERBOSE_LEVEL == DBG
 #include <debug_progmem.h>
+#define CFGDB_DEBUG(fmt, ...) debug_e("[CFGDB] %s() %s %p" fmt, __FUNCTION__, getName().c_str(), this, ##__VA_ARGS__);
+#else
+#define CFGDB_DEBUG(...)
+#endif
 
 namespace ConfigDB
 {
@@ -50,6 +55,12 @@ public:
 	Store(Database& db, const ObjectInfo& typeinfo)
 		: Object(typeinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo.structSize))
 	{
+		CFGDB_DEBUG("")
+	}
+
+	~Store()
+	{
+		CFGDB_DEBUG("")
 	}
 
 	Store(const Store&) = delete;
@@ -124,13 +135,17 @@ protected:
 	void incUpdate()
 	{
 		++updaterCount;
-		debug_i("[CFGDB] LockStore '%s' %u", getName().c_str(), updaterCount);
+		CFGDB_DEBUG(" %u", updaterCount)
 	}
 
 	void decUpdate()
 	{
+		if(updaterCount == 0) {
+			// No updaters: this happens where earlier call to `Database::lockStore()` failed
+			return;
+		}
 		--updaterCount;
-		debug_i("[CFGDB] UnlockStore '%s' %u", getName().c_str(), updaterCount);
+		CFGDB_DEBUG(" %u", updaterCount)
 	}
 
 	ArrayPool arrayPool;

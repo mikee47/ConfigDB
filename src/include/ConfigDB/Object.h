@@ -272,7 +272,7 @@ public:
 	}
 
 	explicit OuterObjectUpdaterTemplate(Database& db)
-		: OuterObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo))
+		: OuterObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo, true))
 	{
 	}
 

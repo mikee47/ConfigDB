@@ -90,7 +90,8 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 		return true;
 	}
 
-	auto storeIndex = typeinfo.indexOf(store->typeinfo());
+	auto& storeInfo = store->typeinfo();
+	auto storeIndex = typeinfo.indexOf(storeInfo);
 	assert(storeIndex >= 0);
 	auto& updateRef = updateRefs[storeIndex];
 	if(updateRef.isLocked()) {
@@ -98,7 +99,21 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 		return false;
 	}
 
-	store = loadStore(store->typeinfo());
+	if(storeIndex == readStoreIndex) {
+		readStoreRef.reset();
+		readStoreIndex = -1;
+	}
+
+	if(store.use_count() == 1) {
+		// No-one else is using this, just convert it to writeable
+		store->incUpdate();
+		return true;
+	}
+
+	// Store is in use, so load a fresh copy
+	// TODO: Instead of re-loading the store, take a copy
+	store.reset();
+	store = loadStore(storeInfo);
 	store->incUpdate();
 	updateRef = store;
 	return true;
@@ -106,7 +121,7 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 
 std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
 {
-	debug_i("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
+	debug_d("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
 
 	auto store = std::make_shared<Store>(*this, storeInfo);
 	if(!store) {
@@ -126,7 +141,7 @@ bool Database::save(Store& store) const
 		return true;
 	}
 
-	debug_i("[CFGDB] Save '%s'", store.getName().c_str());
+	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
 
 	auto& reader = getReader(store);
 	bool result = reader.saveToFile(store);
