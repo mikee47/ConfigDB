@@ -245,7 +245,8 @@ public:
 
 /**
  * @brief Used by code generator
- * @tparam ContainedClassType
+ * @tparam UpdaterType
+ * @tparam StoreType
  */
 template <class UpdaterType, class StoreType> class OuterObjectUpdaterTemplate : public UpdaterType
 {
@@ -270,8 +271,9 @@ private:
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator
- * @tparam StoreType Object type for store root
+ * @tparam ContainedClassType
+ * @tparam UpdaterType
+ * @tparam StoreType
  */
 template <class ContainedClassType, class UpdaterType, class StoreType>
 class OuterObjectTemplate : public ContainedClassType

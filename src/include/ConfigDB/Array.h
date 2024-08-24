@@ -84,7 +84,7 @@ public:
  * @brief Used by code generator for integral-typed arrays
  * @tparam UpdaterType
  * @tparam ClassType Contained class with type information
- * @tparam ItemType
+ * @tparam ItemType Updater item type
  */
 template <class UpdaterType, class ClassType, typename ItemType> class ArrayUpdaterTemplate : public ClassType
 {

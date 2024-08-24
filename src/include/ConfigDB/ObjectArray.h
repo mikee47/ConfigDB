@@ -82,7 +82,7 @@ public:
  * @brief Used by code generator
  * @tparam UpdaterType
  * @tparam ClassType Contained class with type information
- * @tparam ItemType
+ * @tparam ItemType Updater item type
  */
 template <class UpdaterType, class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ClassType
 {
