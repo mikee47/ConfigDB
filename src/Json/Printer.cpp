@@ -58,7 +58,7 @@ size_t Printer::operator()()
 		++indentLength;
 	}
 
-	bool isObject = (object.typeinfo().type <= ObjectType::Object);
+	bool isArray = object.typeinfo().isArray();
 
 	auto quote = [](String s) {
 		::Format::json.escape(s);
@@ -83,7 +83,7 @@ size_t Printer::operator()()
 			n += p->print(quote(*name));
 			n += p->print(colon);
 		}
-		n += p->print(isObject ? '{' : '[');
+		n += p->print(isArray ? '[' : '{');
 	}
 
 	// Print child object
@@ -130,7 +130,7 @@ size_t Printer::operator()()
 			n += newline();
 			n += p->print(indent);
 		}
-		n += p->print(isObject ? '}' : ']');
+		n += p->print(isArray ? ']' : '}');
 	}
 
 	--nesting;

@@ -94,13 +94,10 @@ void* Object::getDataPtr()
 		assert(typeinfo().type == ObjectType::Store);
 		return static_cast<Store*>(this)->getRootData();
 	}
-	switch(parent->typeinfo().type) {
-	case ObjectType::Array:
-	case ObjectType::ObjectArray:
+	if(parent->typeinfo().isArray()) {
 		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
-	default:
-		return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef;
 	}
+	return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef;
 }
 
 const void* Object::getDataPtr() const
@@ -143,7 +140,7 @@ Object Object::getObject(unsigned index)
 
 Object Object::findObject(const char* name, size_t length)
 {
-	if(typeinfo().type > ObjectType::Object) {
+	if(typeinfo().isArray()) {
 		return {};
 	}
 	int i = typeinfo().findObject(name, length);
@@ -152,7 +149,7 @@ Object Object::findObject(const char* name, size_t length)
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	if(typeinfo().type > ObjectType::Object) {
+	if(typeinfo().isArray()) {
 		return {};
 	}
 	int i = typeinfo().findProperty(name, length);

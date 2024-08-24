@@ -52,6 +52,11 @@ struct ObjectInfo {
 
 	ObjectInfo(const ObjectInfo&) = delete;
 
+	bool isArray() const
+	{
+		return type == ObjectType::Array || type == ObjectType::ObjectArray;
+	}
+
 	String getTypeDesc() const;
 
 	/**
