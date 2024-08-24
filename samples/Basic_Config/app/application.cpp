@@ -4,6 +4,7 @@
 #include <basic-config.h>
 #include <ConfigDB/Json/Reader.h>
 #include <ConfigDB/Json/Writer.h>
+#include <ConfigDB/Json/WriteStream.h>
 #include <Data/CStringArray.h>
 #include <Data/Format/Json.h>
 
@@ -209,6 +210,31 @@ void onFile(HttpRequest& request, HttpResponse& response)
 {
 	Serial << toString(request.method) << " REQ" << endl;
 
+	if(request.method == HTTP_POST) {
+		if(!request.args) {
+			// Empty body?
+			debug_e("Where is my stream?");
+			return;
+		}
+		auto stream = static_cast<ConfigDB::Json::WriteStream*>(request.args);
+		auto status = stream->getStatus();
+		response.sendString(F("Result: ") + toString(stream->getStatus()));
+		delete stream;
+		switch(status) {
+		case JSON::Status::EndOfDocument:
+			break;
+		case JSON::Status::Cancelled:
+			response.code = HTTP_STATUS_CONFLICT;
+			break;
+		default:
+			response.code = HTTP_STATUS_BAD_REQUEST;
+		}
+		request.args = nullptr;
+		return;
+	}
+
+	assert(!request.args);
+
 	if(request.method != HTTP_GET) {
 		return;
 	}
@@ -223,6 +249,10 @@ void onFile(HttpRequest& request, HttpResponse& response)
  */
 size_t bodyToConfigParser(HttpRequest& request, const char* at, int length)
 {
+	if(request.method != HTTP_POST) {
+		return 0;
+	}
+
 	if(length == PARSE_DATASTART) {
 		assert(request.args == nullptr);
 		auto stream = ConfigDB::Json::writer.createStream(database);
@@ -237,8 +267,6 @@ size_t bodyToConfigParser(HttpRequest& request, const char* at, int length)
 	}
 
 	if(length == PARSE_DATAEND || length < 0) {
-		delete stream;
-		request.args = nullptr;
 		return 0;
 	}
 
@@ -298,6 +326,9 @@ void init()
 	Serial << endl << endl;
 
 	printStoreStats(database, true);
+
+	// Un-comment this line to test web client locking conflict behaviour
+	// auto dirtyLock = new BasicConfig::Root::OuterUpdater(database);
 
 	statTimer.initializeMs<5000>([]() {
 		printHeap();

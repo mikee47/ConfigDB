@@ -87,6 +87,11 @@ public:
 		return MimeType::JSON;
 	}
 
+	JSON::Status getStatus() const
+	{
+		return status;
+	}
+
 private:
 	bool startElement(const JSON::Element& element) override;
 
