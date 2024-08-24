@@ -91,6 +91,7 @@ public:
 			TEST_ASSERT(false);
 		}
 		// Updater commits changes, read cache evicted
+		REQUIRE_EQ(root.getSimpleBool(), true); // Stale
 
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1); // root/root2 (updated), no read cache
 
@@ -153,6 +154,7 @@ public:
 		auto asyncUpdated = TestConfig::Root(database).update([this](TestConfig::RootUpdater upd) {
 			Serial << "ASYNC UPDATE" << endl;
 			upd.setSimpleBool(true);
+			Serial << upd << endl;
 			// Must queue this as `complete()` destroys this class immediately
 			System.queueCallback([this]() { complete(); });
 		});
