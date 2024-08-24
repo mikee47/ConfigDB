@@ -61,7 +61,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		int i = root.findObject(element.key, element.keyLength);
 		if(i >= 0) {
 			storeRef.reset();
-			storeRef = db->openStore(root);
+			storeRef = db->openStore(root, true);
 			store = storeRef.get();
 			// Clear the root store first time it's loaded
 			if(!rootSeen) {
