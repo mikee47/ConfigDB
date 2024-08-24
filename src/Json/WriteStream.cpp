@@ -67,11 +67,6 @@ bool WriteStream::startElement(const JSON::Element& element)
 				// Fatal: store is locked
 				return false;
 			}
-			// Clear the root store first time it's loaded
-			if(!rootSeen) {
-				store->clear();
-				rootSeen = true;
-			}
 			info[0] = *store;
 			info[1] = store->getObject(i);
 			return true;
@@ -94,7 +89,6 @@ bool WriteStream::startElement(const JSON::Element& element)
 			// Fatal: store is locked
 			return false;
 		}
-		store->clear();
 		info[1] = Object(*store);
 		return true;
 	}
@@ -112,6 +106,8 @@ bool WriteStream::startElement(const JSON::Element& element)
 			obj = parent.findObject(element.key, element.keyLength);
 			if(!obj) {
 				debug_w("[JSON] Object '%s' not in schema", element.key);
+			} else if(obj.typeinfo().isArray()) {
+				static_cast<ArrayBase&>(obj).clear();
 			}
 		}
 		info[element.level] = obj;

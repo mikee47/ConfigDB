@@ -20,3 +20,13 @@ Then do some editing:
 
 - Open the .cfgdb file in vscode and associate with JSON format (hit *F1* then *change language mode*)
 - Add ``"store": "json"`` values to the root, *general*, *color* and *events* objects.
+
+
+Web client
+----------
+
+The sample starts a basic HTTP server which can be visited to view the database content in JSON format.
+
+An HTTP POST request can also be used to update the database contents.
+This must have `Content-Type: application/json` encoding.
+For example, send `{"security":{"api_secured":"false"}}` to update a single value.

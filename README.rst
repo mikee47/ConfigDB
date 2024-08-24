@@ -86,3 +86,46 @@ A :cpp:class:`ConfigDB::Writer` instance has various methods for de-serialising 
 Currently only **json** is implemented - see :cpp:namespace:`ConfigDB::Json`.
 Each store is contained in a separate file.
 The name of the store forms the JSONPath prefix for any contained objects and values.
+
+The :sample:`BasicConfig` sample demonstrates using the stream classes to read and write data from a web client.
+
+.. highlight: JSON
+
+.. note::
+
+    Current streaming update (writing) behaviour is to overwrite only those values received.
+    This allows selective updating of properties. For example::
+
+        {
+          "security": {
+            "api_secured": "false"
+          }
+        }
+
+    This updates one value in the database, leaving everything else unchanged.
+
+    Arrays are overwritten entirely::
+
+        {
+          "general": {
+            "supported_color_models": [
+              "RGB",
+              "RAW"
+            ]
+          }
+        }
+
+    replaces everything in *general.supported_color_models*, and this::
+
+        {
+          "general": {
+            "channels": [
+              {
+                "pin": 1,
+                "name": "dummy"
+              }
+            ]
+          }
+        }
+
+    Deletes all existing entries in *general.channels* and replaces it with the one object provided.
