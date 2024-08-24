@@ -63,6 +63,11 @@ bool WriteStream::startElement(const JSON::Element& element)
 			storeRef.reset();
 			storeRef = db->openStore(root, true);
 			store = storeRef.get();
+			if(!store) {
+				// Fatal: store is locked
+				status = JSON::Status::Cancelled;
+				return false;
+			}
 			// Clear the root store first time it's loaded
 			if(!rootSeen) {
 				store->clear();
@@ -126,7 +131,10 @@ bool WriteStream::startElement(const JSON::Element& element)
 		debug_w("[JSON] Property '%s' not in schema", element.key);
 		return true;
 	}
-	prop.setJsonValue(element.value, element.valueLength);
+	if(!prop.setJsonValue(element.value, element.valueLength)) {
+		status = JSON::Status::Cancelled;
+		return false;
+	}
 	return true;
 }
 

@@ -48,8 +48,8 @@ String PropertyConst::getJsonValue() const
 
 bool Property::setJsonValue(const char* value, size_t valueLength)
 {
-	assert(info && store && data);
-	if(!store) {
+	assert(info && store);
+	if(!store || !data) {
 		return false;
 	}
 	auto propdata = const_cast<Store*>(store)->parseString(*info, value, valueLength);
