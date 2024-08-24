@@ -296,25 +296,37 @@ public:
 		using OuterObjectUpdaterTemplate<ContainedClassType, StoreType>::OuterObjectUpdaterTemplate;
 	};
 
+	/**
+	 * @brief Create an update object
+	 * @retval Updater Instance to allow setting values
+	 * Caller **must** check validity of returned updater as update may already be in progress.
+	 *
+	 * 		if (auto upd = myobject.update()) {
+	 * 			// OK, proceed with update
+	 * 			upd.setValue(...);
+	 *		} else {
+	 *			// Cannot update at the moment
+	 *		}
+	 */
 	Updater update()
 	{
 		this->lockStore(store);
 		return Updater(store);
 	}
 
-	using ContainedUpdater = typename ContainedClassType::Updater;
-	using UpdateCallback = Delegate<void(ContainedUpdater)>;
 
-	bool update(UpdateCallback callback)
+	/**
+	 * @brief Run an update asynchronously
+	 * @param callback User callback which will receive an updater instance
+	 * @retval bool true if update was performed immediately, false if it's been queued
+	 */
+	bool update(Delegate<void(UpdaterType)> callback)
 	{
 		if(auto upd = update()) {
 			callback(upd);
 			return true;
 		}
-		Object::queueUpdate([this, callback](Store& store) {
-			// ... nope. object's gone, so need to reconstruct it.
-			callback(ContainedUpdater(store));
-		});
+		Object::queueUpdate([this, callback](Store& store) { callback(UpdaterType(store)); });
 		return false;
 	}
 
