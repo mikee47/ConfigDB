@@ -77,7 +77,7 @@ SimpleTimer statTimer;
 			.blue = 8,
 		};
 		auto async = BasicConfig::Color::Brightness(database).update(
-			[values](BasicConfig::Color::ContainedBrightness::Updater upd) {
+			[values](BasicConfig::Color::Brightness::Updater upd) {
 				Serial << "ASYNC UPDATE" << endl;
 				upd.setRed(values.red);
 				upd.setGreen(values.green);

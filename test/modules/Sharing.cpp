@@ -84,7 +84,7 @@ public:
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // No change
 
 		// Now try direct
-		if(auto updater = TestConfig::Root::Updater(database)) {
+		if(auto updater = TestConfig::Root::OuterUpdater(database)) {
 			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // No change
 			updater.setSimpleBool(false);
 		} else {
@@ -146,11 +146,11 @@ public:
 		REQUIRE(root5);
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 
-		auto update = TestConfig::Root::Updater(database);
+		auto update = TestConfig::Root::OuterUpdater(database);
 		REQUIRE(!update);
 
 		// Async update. Can use `auto upd` but no code completion (at least in vscode)
-		auto asyncUpdated = TestConfig::Root(database).update([this](TestConfig::ContainedRoot::Updater upd) {
+		auto asyncUpdated = TestConfig::Root(database).update([this](TestConfig::RootUpdater upd) {
 			Serial << "ASYNC UPDATE" << endl;
 			upd.setSimpleBool(true);
 			// Must queue this as `complete()` destroys this class immediately

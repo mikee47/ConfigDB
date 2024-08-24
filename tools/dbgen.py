@@ -181,6 +181,10 @@ class Object:
         return self.typename if self.is_item else 'Contained' + self.typename
 
     @property
+    def typename_updater(self):
+        return f'{self.typename}Updater'
+
+    @property
     def typename_struct(self):
         return self.typename_contained + '::Struct'
 
@@ -452,7 +456,7 @@ def generate_database(db: Database) -> CodeLines:
     def generate_outer_class(obj: Object) -> list:
         return [
             '',
-            f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
+            f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>',
             '{',
             'public:',
             [
@@ -460,6 +464,8 @@ def generate_database(db: Database) -> CodeLines:
             ],
             *[generate_outer_class(child) for child in obj.children if not obj.is_item],
             '};'
+        ] if obj.children else [
+            f'using {obj.typename} = ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>;'
         ]
     for store in db.children:
         lines.header.append(generate_outer_class(store))
@@ -481,17 +487,16 @@ def generate_database(db: Database) -> CodeLines:
 
 
 def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool = False) -> list[str]:
-    typename = 'Updater' if is_updater else obj.typename_contained
-    template = 'Updater' if is_updater else ''
-    update_type = '::Updater' if is_updater else ''
+    typename = obj.typename_updater if is_updater else obj.typename_contained
+    template = 'UpdaterTemplate' if is_updater else 'Template'
     params = [f'{obj.typename_contained}']
     if is_updater:
-        params.insert(0, 'Updater')
+        params.insert(0, typename)
     if tparams:
         params += tparams
     return [
         '',
-        f'class {typename}: public ConfigDB::{obj.base_class}{template}Template<{", ".join(params)}>',
+        f'class {typename}: public ConfigDB::{obj.base_class}{template}<{", ".join(params)}>',
         '{',
         'public:',
     ]
@@ -602,38 +607,44 @@ def generate_object(obj: Object) -> CodeLines:
 
     typeinfo = generate_typeinfo(obj)
     constructors = generate_contained_constructors(obj)
-    updater = generate_updater(obj),
+    updater = generate_updater(obj)
+    updater_fwd = [
+        '',
+        f'class {obj.typename_updater};'
+    ]
 
     if isinstance(obj, ObjectArray):
         item_lines = generate_object(obj.items)
         return CodeLines(
             [
+                *updater_fwd,
                 *item_lines.header,
                 *declare_templated_class(obj, [obj.items.typename]),
                 typeinfo.header,
-                *updater,
                 constructors,
                 '};',
+                *updater,
             ],
             item_lines.source + typeinfo.source)
 
     if isinstance(obj, Array):
         return CodeLines(
             [
+                *updater_fwd,
                 *declare_templated_class(obj, [obj.items.ctype]),
                 typeinfo.header,
-                *updater,
                 constructors,
                 '};',
+                *updater,
             ],
             typeinfo.source)
 
     lines = CodeLines(
         [
+            *updater_fwd,
             *declare_templated_class(obj),
+            [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
-            '',
-            ['class Updater;'],
         ],
         [])
 
@@ -643,7 +654,6 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines.append(generate_object_struct(obj))
     lines.header += [
-        *updater,
         constructors,
         *generate_property_accessors(obj)
     ]
@@ -657,6 +667,7 @@ def generate_object(obj: Object) -> CodeLines:
         ]
 
     lines.header += ['};']
+    lines.header += updater
 
     return lines
 
@@ -664,11 +675,11 @@ def generate_object(obj: Object) -> CodeLines:
 def generate_updater(obj: Object) -> list:
     '''Generate code for Object Updater implementation'''
 
-    constructors = generate_contained_constructors(obj, 'Updater')
+    constructors = generate_contained_constructors(obj, True)
 
     if isinstance(obj, ObjectArray):
         return [
-            *declare_templated_class(obj, [obj.items.typename], True),
+            *declare_templated_class(obj, [obj.items.typename_updater], True),
             constructors,
             '};',
         ]
@@ -685,35 +696,41 @@ def generate_updater(obj: Object) -> list:
         constructors,
         *generate_property_write_accessors(obj),
         '',
-        [f'{child.typename_contained}::Updater {child.id};' for child in obj.children],
+        [f'{child.typename_updater} {child.id};' for child in obj.children],
         '};'
     ]
 
 
 def generate_contained_constructors(obj: Object, is_updater = False) -> list:
-    typename = 'Updater' if is_updater else obj.typename
-    typename_contained = 'Updater' if is_updater else obj.typename_contained
-    template = 'Updater' if is_updater else ''
-    update_type = '::Updater' if is_updater else ''
-    const = '' if is_updater else 'const '
+    template = 'UpdaterTemplate' if is_updater else 'Template'
+
+    if not obj.children:
+        return [
+            f'using {obj.base_class}{template}::{obj.base_class}{template};'
+        ]
+
     if obj.is_item:
+        typename = obj.typename_updater if is_updater else obj.typename
+        const = '' if is_updater else 'const '
         return [
             '',
             f'{typename}({const}ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
             [', '.join([
-                f'{obj.classname}{template}Template({obj.parent.id}, dataRef)',
+                f'{obj.classname}{template}({obj.parent.id}, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ])],
             '{',
             '}',
         ]
 
+    typename = obj.typename_updater if is_updater else obj.typename_contained
+    parent_typename = obj.parent.typename_updater if is_updater else obj.parent.typename_contained
     headers = []
     if not obj.is_item_member:
         headers = [
             '',
-            f'{typename_contained}(ConfigDB::Store& store): ' + ', '.join([
-                f'{obj.base_class}{template}Template(store)',
+            f'{typename}(ConfigDB::Store& store): ' + ', '.join([
+                f'{obj.base_class}{template}(store)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',
@@ -723,8 +740,8 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
     if not obj.is_root:
         headers += [
             '',
-            f'{typename_contained}({obj.parent.typename_contained}{update_type}& parent, uint16_t dataRef): ' + ', '.join([
-                f'{obj.base_class}{template}Template(parent, dataRef)',
+            f'{typename}({parent_typename}& parent, uint16_t dataRef): ' + ', '.join([
+                f'{obj.base_class}{template}(parent, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',

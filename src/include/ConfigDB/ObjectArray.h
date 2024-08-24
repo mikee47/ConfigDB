@@ -84,42 +84,34 @@ public:
  * @tparam ClassType Contained class with type information
  * @tparam ItemType
  */
-template <class UpdaterType, class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ObjectArray
+template <class UpdaterType, class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ClassType
 {
 public:
-	using Item = typename ItemType::Updater;
+	using ClassType::ClassType;
 
-	explicit ObjectArrayUpdaterTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
+	ItemType operator[](unsigned index)
 	{
+		return ItemType(*this, index);
 	}
 
-	ObjectArrayUpdaterTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, parent, dataRef)
+	ItemType addItem()
 	{
-	}
-
-	Item operator[](unsigned index)
-	{
-		return Item(*this, index);
-	}
-
-	Item addItem()
-	{
-		if(!writeCheck()) {
-			return Item(*this, 0);
+		if(!this->writeCheck()) {
+			return ItemType(*this, 0);
 		}
-		auto& array = getArray();
+		auto& array = this->getArray();
 		auto index = array.getCount();
 		array.add(ItemType::typeinfo.defaultData);
-		return Item(*this, index);
+		return ItemType(*this, index);
 	}
 
-	Item insertItem(unsigned index)
+	ItemType insertItem(unsigned index)
 	{
-		if(!writeCheck()) {
+		if(!this->writeCheck()) {
 			return Item(*this, 0);
 		}
-		getArray().insert(index, Item::typeinfo.defaultData);
-		return Item(*this, index);
+		this->getArray().insert(index, ItemType::typeinfo.defaultData);
+		return ItemType(*this, index);
 	}
 };
 

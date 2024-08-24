@@ -232,20 +232,14 @@ public:
  * @tparam UpdaterType
  * @tparam ClassType Contained class with type information
  */
-template <class UpdaterType, class ClassType> class ObjectUpdaterTemplate : public Object
+template <class UpdaterType, class ClassType> class ObjectUpdaterTemplate : public ClassType
 {
 public:
-	ObjectUpdaterTemplate(Store& store) : Object(ClassType::typeinfo, store)
-	{
-	}
-
-	ObjectUpdaterTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
-	{
-	}
+	using ClassType::ClassType;
 
 	explicit operator bool() const
 	{
-		return Object::operator bool() && isWriteable();
+		return Object::operator bool() && this->isWriteable();
 	}
 };
 
@@ -253,11 +247,10 @@ public:
  * @brief Used by code generator
  * @tparam ContainedClassType
  */
-template <class ContainedClassType, class StoreType>
-class OuterObjectUpdaterTemplate : public ContainedClassType::Updater
+template <class UpdaterType, class StoreType> class OuterObjectUpdaterTemplate : public UpdaterType
 {
 public:
-	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : ContainedClassType::Updater(*store), store(store)
+	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : UpdaterType(*store), store(store)
 	{
 	}
 
@@ -280,7 +273,8 @@ private:
  * @tparam ClassType Concrete type provided by code generator
  * @tparam StoreType Object type for store root
  */
-template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
+template <class ContainedClassType, class UpdaterType, class StoreType>
+class OuterObjectTemplate : public ContainedClassType
 {
 public:
 	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
@@ -291,10 +285,7 @@ public:
 	{
 	}
 
-	class Updater : public ConfigDB::OuterObjectUpdaterTemplate<ContainedClassType, StoreType>
-	{
-		using OuterObjectUpdaterTemplate<ContainedClassType, StoreType>::OuterObjectUpdaterTemplate;
-	};
+	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, StoreType>;
 
 	/**
 	 * @brief Create an update object
@@ -308,12 +299,11 @@ public:
 	 *			// Cannot update at the moment
 	 *		}
 	 */
-	Updater update()
+	OuterUpdater update()
 	{
 		this->lockStore(store);
-		return Updater(store);
+		return OuterUpdater(store);
 	}
-
 
 	/**
 	 * @brief Run an update asynchronously

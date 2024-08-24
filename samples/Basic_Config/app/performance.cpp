@@ -7,7 +7,7 @@ namespace
 {
 void __noinline testSetValue(BasicConfig& db, int value)
 {
-	BasicConfig::Color::Brightness::Updater bri(db);
+	BasicConfig::Color::Brightness::OuterUpdater bri(db);
 	bri.setRed(value);
 	bri.setGreen(value);
 	bri.setBlue(value);

@@ -86,7 +86,7 @@ public:
  * @tparam ClassType Contained class with type information
  * @tparam ItemType
  */
-template <class UpdaterType, class ClassType, typename ItemType> class ArrayUpdaterTemplate : public Array
+template <class UpdaterType, class ClassType, typename ItemType> class ArrayUpdaterTemplate : public ClassType
 {
 public:
 	struct ItemRef {
@@ -105,13 +105,7 @@ public:
 		}
 	};
 
-	explicit ArrayUpdaterTemplate(Store& store) : Array(ClassType::typeinfo, store)
-	{
-	}
-
-	ArrayUpdaterTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
-	{
-	}
+	using ClassType::ClassType;
 
 	void setItem(unsigned index, ItemType value)
 	{
@@ -120,12 +114,12 @@ public:
 
 	void addItem(ItemType value)
 	{
-		getArray().add(&value);
+		this->getArray().add(&value);
 	}
 
 	void insertItem(unsigned index, ItemType value)
 	{
-		getArray().insert(index, &value);
+		this->getArray().insert(index, &value);
 	}
 
 	ItemRef operator[](unsigned index)
