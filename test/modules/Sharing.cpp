@@ -1,20 +1,15 @@
 /*
- * Standard.cpp
+ * Sharing.cpp
  */
 
-#include <SmingTest.h>
-#include <test-config.h>
-#include <Services/Profiling/MinMaxTimes.h>
+#include <ConfigDBTest.h>
 
 class SharingTest : public TestGroup
 {
 public:
-	SharingTest() : TestGroup(_F("Standard")), database("test-config")
+	SharingTest() : TestGroup(_F("Sharing"))
 	{
-		createDirectory(database.getPath());
-		auto store = database.openStore(0, true);
-		store->clear();
-		database.save(*store);
+		resetDatabase();
 	}
 
 	void execute() override
@@ -155,8 +150,7 @@ public:
 			Serial << "ASYNC UPDATE" << endl;
 			upd.setSimpleBool(true);
 			Serial << upd << endl;
-			// Must queue this as `complete()` destroys this class immediately
-			System.queueCallback([this]() { complete(); });
+			complete();
 		});
 		REQUIRE(!asyncUpdated);
 
@@ -164,9 +158,6 @@ public:
 
 		pending();
 	}
-
-private:
-	TestConfig database;
 };
 
 void REGISTER_TEST(Sharing)

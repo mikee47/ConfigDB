@@ -5,9 +5,19 @@
  *
  */
 
-#include <SmingTest.h>
+#include <ConfigDBTest.h>
 #include <LittleFS.h>
 #include <modules.h>
+
+TestConfig database("test-config");
+
+void resetDatabase()
+{
+	createDirectory(database.getPath());
+	auto store = database.openStore(0, true);
+	store->clear();
+	database.save(*store);
+}
 
 #define XX(t) extern void REGISTER_TEST(t);
 TEST_MAP(XX)
