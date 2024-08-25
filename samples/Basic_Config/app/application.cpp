@@ -300,7 +300,7 @@ void init()
 	WifiEvents.onStationGotIP(gotIP);
 
 	createDirectory("test");
-	// ConfigDB::Json::reader.setFormat(ConfigDB::Json::Format::Pretty);
+	// ConfigDB::Json::format.setPretty(true);
 
 	readWriteValues();
 

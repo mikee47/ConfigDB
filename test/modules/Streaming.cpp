@@ -52,6 +52,32 @@ public:
 		database.exportToStream(ConfigDB::Json::format, mem);
 		mem.moveString(content);
 		REQUIRE_EQ(content, rootContent);
+
+		/* Streaming objects */
+		resetDatabase();
+
+		TEST_CASE("Streaming object import")
+		{
+			if(auto updater = root.update()) {
+				mem.clear();
+				mem << jsonText;
+				auto stream = updater.createImportStream(ConfigDB::Json::format);
+				REQUIRE_EQ(stream->copyFrom(&mem), jsonText.length());
+				REQUIRE_EQ(root.getSimpleBool(), true);
+			} else {
+				TEST_ASSERT(false);
+			}
+		}
+
+		TEST_CASE("Streaming object export")
+		{
+			mem.clear();
+			auto stream = root.createExportStream(ConfigDB::Json::format);
+			mem.copyFrom(stream.get());
+			String content;
+			mem.moveString(content);
+			REQUIRE_EQ(content, rootContent);
+		}
 	}
 };
 

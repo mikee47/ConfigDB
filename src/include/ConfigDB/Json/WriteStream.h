@@ -38,7 +38,7 @@ public:
 	{
 	}
 
-	WriteStream(std::shared_ptr<Store> store) : store(store), info{*store}, parser(this)
+	WriteStream(std::shared_ptr<Store> store, Object& object) : store(store), info{object}, parser(this)
 	{
 	}
 

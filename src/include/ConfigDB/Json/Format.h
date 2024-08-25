@@ -36,9 +36,10 @@ public:
 		return std::make_unique<ReadStream>(db, pretty);
 	}
 
-	std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store) const override
+	std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store,
+														  const Object& object) const override
 	{
-		return std::make_unique<ReadStream>(store, pretty);
+		return std::make_unique<ReadStream>(store, object, pretty);
 	}
 
 	size_t exportToStream(const Object& object, Print& output) const override
@@ -61,9 +62,9 @@ public:
 		return std::make_unique<WriteStream>(db);
 	}
 
-	std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store) const override
+	std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store, Object& object) const override
 	{
-		return std::make_unique<WriteStream>(store);
+		return std::make_unique<WriteStream>(store, object);
 	}
 
 	bool importFromStream(Object& object, Stream& source) const override

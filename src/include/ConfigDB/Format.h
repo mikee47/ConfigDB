@@ -41,10 +41,14 @@ public:
 	virtual std::unique_ptr<IDataSourceStream> createExportStream(Database& db) const = 0;
 
 	/**
-	 * @brief Create a stream to serialize a store
-	 * This is used for streaming asychronously to a web client, for example in an HttpResponse.
+	 * @brief Create a stream to serialize an Object
+	 * @param store Shared pointer to store
+	 * @param object Object to start streaming from
+	 *
+	 * Used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store) const = 0;
+	virtual std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store,
+																  const Object& object) const = 0;
 
 	/**
 	 * @brief Print object
@@ -66,9 +70,12 @@ public:
 
 	/**
 	 * @brief Create a stream for de-serialising (writing) into a store
+	 * @param store Shared pointer to store with write access
+	 * @param object Object to start streaming to
+	 *
 	 * Used when updating a store from a remote web client, for example via HttpRequest
 	 */
-	virtual std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store) const = 0;
+	virtual std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store, Object& object) const = 0;
 
 	/**
 	 * @brief De-serialise content from stream into object (RAM)

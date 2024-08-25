@@ -35,7 +35,8 @@ public:
 	{
 	}
 
-	ReadStream(std::shared_ptr<Store> store, bool pretty) : store(store), pretty(pretty)
+	ReadStream(std::shared_ptr<Store> store, const Object& object, bool pretty)
+		: store(store), printer(stream, object, pretty, Printer::RootStyle::braces), pretty(pretty)
 	{
 	}
 
