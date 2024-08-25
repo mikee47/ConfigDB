@@ -35,8 +35,6 @@ enum class ObjectType : uint32_t {
 #undef XX
 };
 
-String toString(ObjectType type);
-
 struct ObjectInfo {
 	ObjectType type;
 	const FlashString& name;
@@ -75,3 +73,5 @@ struct ObjectInfo {
 };
 
 } // namespace ConfigDB
+
+String toString(ConfigDB::ObjectType type);

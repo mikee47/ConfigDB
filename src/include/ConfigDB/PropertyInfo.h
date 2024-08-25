@@ -46,8 +46,6 @@ enum class PropertyType : uint32_t {
 #undef XX
 };
 
-String toString(PropertyType type);
-
 /**
  * @brief Defines contained string data using index into string pool
  */
@@ -82,3 +80,5 @@ struct PropertyInfo {
 };
 
 } // namespace ConfigDB
+
+String toString(ConfigDB::PropertyType type);

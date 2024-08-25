@@ -19,20 +19,20 @@
 
 #include "include/ConfigDB/PropertyInfo.h"
 
-namespace ConfigDB
-{
-const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
-
-String toString(PropertyType type)
+String toString(ConfigDB::PropertyType type)
 {
 	switch(type) {
 #define XX(name, ...)                                                                                                  \
-	case PropertyType::name:                                                                                           \
+	case ConfigDB::PropertyType::name:                                                                                 \
 		return F(#name);
 		CONFIGDB_PROPERTY_TYPE_MAP(XX)
 #undef XX
 	}
 	return nullptr;
 }
+
+namespace ConfigDB
+{
+const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
 
 } // namespace ConfigDB

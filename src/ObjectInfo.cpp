@@ -19,21 +19,21 @@
 
 #include "include/ConfigDB/ObjectInfo.h"
 
-namespace ConfigDB
-{
-const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
-
-String toString(ObjectType type)
+String toString(ConfigDB::ObjectType type)
 {
 	switch(type) {
 #define XX(name)                                                                                                       \
-	case ObjectType::name:                                                                                             \
+	case ConfigDB::ObjectType::name:                                                                                   \
 		return F(#name);
 		CONFIGDB_OBJECT_TYPE_MAP(XX)
 #undef XX
 	}
 	return nullptr;
 }
+
+namespace ConfigDB
+{
+const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
 
 size_t ObjectInfo::getOffset() const
 {
@@ -91,10 +91,10 @@ int ObjectInfo::findProperty(const char* name, size_t length) const
 String ObjectInfo::getTypeDesc() const
 {
 	String s;
-	s += toString(type);
+	s += ::toString(type);
 	if(type == ObjectType::Array) {
 		s += '[';
-		s += toString(propinfo[0].type);
+		s += ::toString(propinfo[0].type);
 		s += ']';
 	} else if(type == ObjectType::ObjectArray) {
 		s += "[Object]";
