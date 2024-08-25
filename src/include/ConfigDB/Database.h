@@ -20,7 +20,6 @@
 #pragma once
 
 #include "Store.h"
-#include "Format.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
 #include <WVector.h>
@@ -80,6 +79,20 @@ public:
 	 * @brief Get the storage format to use for a store
 	 */
 	virtual const Format& getFormat(const Store& store) const;
+
+	size_t exportToStream(const Format& format, Print& output)
+	{
+		return format.exportToStream(*this, output);
+	}
+
+	bool exportToFile(const String& filename, const Format& format);
+
+	bool importFromStream(const Format& format, Stream& source)
+	{
+		return format.importFromStream(*this, source);
+	}
+
+	bool importFromFile(const String& filename, const Format& format);
 
 	const DatabaseInfo& typeinfo;
 

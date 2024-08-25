@@ -20,6 +20,8 @@
 #include "include/ConfigDB/Database.h"
 #include "include/ConfigDB/Json/Format.h"
 #include <Platform/System.h>
+#include <Data/Stream/FileStream.h>
+#include <Data/Buffer/PrintBuffer.h>
 
 namespace ConfigDB
 {
@@ -137,10 +139,9 @@ std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
 	if(!store) {
 		return nullptr;
 	}
+
 	auto& format = getFormat(*store);
-	store->incUpdate();
-	format.importFromFile(*store);
-	store->decUpdate();
+	store->importFromFile(format);
 	store->dirty = false;
 	return store;
 }
@@ -174,7 +175,7 @@ bool Database::save(Store& store) const
 	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
 
 	auto& format = getFormat(store);
-	bool result = format.exportToFile(store);
+	bool result = store.exportToFile(format);
 
 	// Invalidate cached stores: Some data may have changed even on failure
 	int storeIndex = typeinfo.indexOf(store.typeinfo());
@@ -184,6 +185,34 @@ bool Database::save(Store& store) const
 	}
 
 	return result;
+}
+
+bool Database::exportToFile(const String& filename, const Format& format)
+{
+	FileStream stream;
+	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
+		StaticPrintBuffer<512> buffer(stream);
+		format.exportToStream(*this, buffer);
+	}
+
+	if(stream.getLastError() == FS_OK) {
+		debug_d("[CFGDB] Database saved '%s' OK", filename.c_str());
+		return true;
+	}
+
+	debug_e("[CFGDB] Database save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+	return false;
+}
+
+bool Database::importFromFile(const String& filename, const Format& format)
+{
+	FileStream stream;
+	if(!stream.open(filename, File::ReadOnly)) {
+		debug_w("open('%s') failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+		return false;
+	}
+
+	return format.importFromStream(*this, stream);
 }
 
 } // namespace ConfigDB

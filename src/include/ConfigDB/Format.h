@@ -19,11 +19,15 @@
 
 #pragma once
 
-#include "Store.h"
 #include <Data/Stream/ReadWriteStream.h>
+#include <memory>
 
 namespace ConfigDB
 {
+class Database;
+class Store;
+class Object;
+
 /**
  * @brief Abstract base class wrapping support for a specific storage format, such as JSON
  */
@@ -67,10 +71,9 @@ public:
 	virtual std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store) const = 0;
 
 	/**
-	 * @brief De-serialise content from stream into store (RAM)
-	 * The store is not saved by this operation.
+	 * @brief De-serialise content from stream into object (RAM)
 	 */
-	virtual bool importFromStream(Store& store, Stream& source) const = 0;
+	virtual bool importFromStream(Object& object, Stream& source) const = 0;
 
 	/**
 	 * @brief De-serialise content from stream into database
@@ -88,41 +91,6 @@ public:
 	 * @brief Get the MIME type for this reader format
 	 */
 	virtual MimeType getMimeType() const = 0;
-
-	//// Try to get rid of these methods so this is a pure virtual class
-	//// This code can go into Database, Object, Store, etc.
-
-	/**
-	 * @brief Serialise a store directly to a local file
-	 */
-	bool exportToFile(const Store& store, const String& filename) const;
-
-	/**
-	 * @brief Serialise a store directly to the default file as determined by the database path
-	 */
-	bool exportToFile(const Store& store) const;
-
-	/**
-	 * @brief Serialise entire database to a file
-	 */
-	bool exportToFile(Database& database, const String& filename) const;
-
-	/**
-	 * @brief De-serialise content from file into store
-	 * The store is not saved by this operation.
-	 */
-	bool importFromFile(Store& store, const String& filename) const;
-
-	/**
-	 * @brief De-serialise content from default location into store
-	 * The store is not saved by this operation.
-	 */
-	bool importFromFile(Store& store) const;
-
-	/**
-	 * @brief De-serialise content from file into database
-	 */
-	bool importFromFile(Database& database, const String& filename) const;
 };
 
 } // namespace ConfigDB

@@ -41,6 +41,11 @@ public:
 		return {getStore(), getItemType(), getArray()[index]};
 	}
 
+	Property addProperty()
+	{
+		return {getStore(), getItemType(), getArray().add()};
+	}
+
 	PropertyConst getProperty(unsigned index) const
 	{
 		return {getStore(), getItemType(), getArray()[index]};

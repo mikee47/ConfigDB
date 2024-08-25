@@ -38,7 +38,11 @@ public:
 	{
 	}
 
-	WriteStream(std::shared_ptr<Store> store) : storeRef(store), store(store.get()), parser(this)
+	WriteStream(std::shared_ptr<Store> store) : store(store), info{*store}, parser(this)
+	{
+	}
+
+	WriteStream(Object& object) : info{object}, parser(this)
 	{
 	}
 
@@ -46,7 +50,7 @@ public:
 
 	static JSON::Status parse(Database& db, Stream& source);
 
-	static JSON::Status parse(Store& store, Stream& source);
+	static JSON::Status parse(Object& object, Stream& source);
 
 	bool isValid() const override
 	{
@@ -79,7 +83,7 @@ public:
 
 	String getName() const override
 	{
-		return db ? db->getName() : store ? store->getName() : nullptr;
+		return db ? db->getName() : info[0].getName();
 	}
 
 	MimeType getMimeType() const override
@@ -102,10 +106,9 @@ private:
 
 private:
 	Database* db{};
-	std::shared_ptr<Store> storeRef;
-	Store* store{};
-	JSON::StaticStreamingParser<1024> parser;
+	std::shared_ptr<Store> store;
 	Object info[JSON::StreamingParser::maxNesting]{};
+	JSON::StaticStreamingParser<1024> parser;
 	JSON::Status status{};
 };
 

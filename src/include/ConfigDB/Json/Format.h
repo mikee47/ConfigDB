@@ -22,6 +22,7 @@
 #include "../Format.h"
 #include "ReadStream.h"
 #include "WriteStream.h"
+#include <debug_progmem.h>
 
 namespace ConfigDB::Json
 {
@@ -30,17 +31,17 @@ class Format : public ConfigDB::Format
 public:
 	DEFINE_FSTR_LOCAL(fileExtension, ".json")
 
-	std::unique_ptr<IDataSourceStream> createExportStream(Database& db) const
+	std::unique_ptr<IDataSourceStream> createExportStream(Database& db) const override
 	{
 		return std::make_unique<ReadStream>(db, pretty);
 	}
 
-	std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store) const
+	std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store) const override
 	{
 		return std::make_unique<ReadStream>(store, pretty);
 	}
 
-	size_t exportToStream(const Object& object, Print& output) const
+	size_t exportToStream(const Object& object, Print& output) const override
 	{
 		Printer printer(output, object, pretty, Printer::RootStyle::braces);
 		size_t n{0};
@@ -50,35 +51,34 @@ public:
 		return n;
 	}
 
-	size_t exportToStream(Database& database, Print& output) const
+	size_t exportToStream(Database& database, Print& output) const override
 	{
 		return ReadStream::print(database, output, pretty);
 	}
 
-	std::unique_ptr<ReadWriteStream> createImportStream(Database& db) const
+	std::unique_ptr<ReadWriteStream> createImportStream(Database& db) const override
 	{
 		return std::make_unique<WriteStream>(db);
 	}
 
-	std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store) const
+	std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store) const override
 	{
 		return std::make_unique<WriteStream>(store);
 	}
 
-	bool importFromStream(Store& store, Stream& source) const
+	bool importFromStream(Object& object, Stream& source) const override
 	{
-		store.clear();
-		auto status = WriteStream::parse(store, source);
+		auto status = WriteStream::parse(object, source);
 
 		if(status == JSON::Status::EndOfDocument) {
 			return true;
 		}
 
-		debug_w("JSON load '%s': %s", store.getName().c_str(), toString(status).c_str());
+		debug_w("JSON load '%s': %s", object.getName().c_str(), toString(status).c_str());
 		return false;
 	}
 
-	bool importFromStream(Database& database, Stream& source) const
+	bool importFromStream(Database& database, Stream& source) const override
 	{
 		auto status = WriteStream::parse(database, source);
 

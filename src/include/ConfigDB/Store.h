@@ -156,6 +156,28 @@ public:
 
 	bool writeCheck() const;
 
+	using Object::exportToFile;
+
+	bool exportToFile(const Format& format) const
+	{
+		String filename = getFilePath() + format.getFileExtension();
+		return exportToFile(format, filename);
+	}
+
+	bool importFromFile(const Format& format, const String& filename)
+	{
+		incUpdate();
+		bool result = Object::importFromFile(format, filename);
+		decUpdate();
+		return result;
+	}
+
+	bool importFromFile(const Format& format)
+	{
+		String filename = getFilePath() + format.getFileExtension();
+		return importFromFile(format, filename);
+	}
+
 protected:
 	friend class Object;
 	friend class ArrayBase;
