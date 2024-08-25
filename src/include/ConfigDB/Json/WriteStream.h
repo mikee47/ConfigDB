@@ -55,6 +55,8 @@ public:
 		return true;
 	}
 
+	using ReadWriteStream::write;
+
 	size_t write(const uint8_t* data, size_t size) override;
 
 	uint16_t readMemoryBlock(char*, int) override

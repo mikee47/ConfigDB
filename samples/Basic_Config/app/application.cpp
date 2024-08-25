@@ -77,8 +77,8 @@ SimpleTimer statTimer;
 			.green = 44,
 			.blue = 8,
 		};
-		auto async =
-			BasicConfig::Color::Brightness(database).update([values](BasicConfig::Color::Brightness::Updater upd) {
+		auto async = BasicConfig::Color::Brightness(database).update(
+			[values](BasicConfig::Color::ContainedBrightness::Updater upd) {
 				Serial << "ASYNC UPDATE" << endl;
 				upd.setRed(values.red);
 				upd.setGreen(values.green);
@@ -207,15 +207,12 @@ void onFile(HttpRequest& request, HttpResponse& response)
 	Serial << toString(request.method) << " REQ" << endl;
 
 	if(request.method == HTTP_POST) {
-		if(!request.args) {
-			// Empty body?
-			debug_e("Where is my stream?");
-			return;
-		}
-		auto stream = static_cast<ConfigDB::Json::WriteStream*>(request.args);
-		auto status = stream->getStatus();
-		response.sendString(F("Result: ") + toString(stream->getStatus()));
-		delete stream;
+		auto status = JSON::Status(uintptr_t(request.args));
+		String msg;
+		msg += F("Result: ");
+		msg += toString(status);
+		response.sendString(msg);
+		Serial << msg << endl;
 		switch(status) {
 		case JSON::Status::EndOfDocument:
 			break;
@@ -251,18 +248,20 @@ size_t bodyToConfigParser(HttpRequest& request, const char* at, int length)
 
 	if(length == PARSE_DATASTART) {
 		assert(request.args == nullptr);
-		auto stream = ConfigDB::Json::writer.createStream(database);
-		request.args = stream.release();
+		request.args = new ConfigDB::Json::WriteStream(database);
 		return 0;
 	}
 
-	auto stream = static_cast<Print*>(request.args);
+	auto stream = static_cast<ConfigDB::Json::WriteStream*>(request.args);
 	if(stream == nullptr) {
 		debug_e("Invalid request argument");
 		return 0;
 	}
 
 	if(length == PARSE_DATAEND || length < 0) {
+		auto status = stream->getStatus();
+		delete stream;
+		request.args = reinterpret_cast<void*>(status);
 		return 0;
 	}
 
