@@ -18,7 +18,7 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
-#include "include/ConfigDB/Json/Reader.h"
+#include "include/ConfigDB/Json/Format.h"
 
 namespace ConfigDB
 {
@@ -250,9 +250,9 @@ PropertyConst Object::getProperty(unsigned index) const
 
 size_t Object::printTo(Print& p) const
 {
-	Json::Reader reader;
-	reader.setFormat(Json::Format::Pretty);
-	return reader.saveToStream(*this, p);
+	Json::Format format;
+	format.setPretty(true);
+	return format.exportToStream(*this, p);
 }
 
 } // namespace ConfigDB

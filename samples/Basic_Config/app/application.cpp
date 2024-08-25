@@ -2,9 +2,7 @@
 #include <LittleFS.h>
 #include <IFS/Debug.h>
 #include <basic-config.h>
-#include <ConfigDB/Json/Reader.h>
-#include <ConfigDB/Json/Writer.h>
-#include <ConfigDB/Json/WriteStream.h>
+#include <ConfigDB/Json/Format.h>
 #include <Data/CStringArray.h>
 #include <Data/Format/Json.h>
 
@@ -131,7 +129,7 @@ SimpleTimer statTimer;
 {
 	Serial << endl << _F("** Stream **") << endl;
 
-	auto stream = ConfigDB::Json::reader.createStream(database);
+	auto stream = ConfigDB::Json::format.createExportStream(database);
 	Serial.copyFrom(stream.get());
 }
 
@@ -232,7 +230,7 @@ void onFile(HttpRequest& request, HttpResponse& response)
 		return;
 	}
 
-	auto stream = ConfigDB::Json::reader.createStream(database);
+	auto stream = ConfigDB::Json::format.createExportStream(database);
 	auto mimeType = stream->getMimeType();
 	response.sendDataStream(stream.release(), mimeType);
 }
@@ -285,8 +283,6 @@ void gotIP(IpAddress ip, IpAddress netmask, IpAddress gateway)
 }
 
 } // namespace
-
-#include <ConfigDB/Json/Reader.h>
 
 void init()
 {

@@ -22,8 +22,7 @@
 
 namespace ConfigDB::Json
 {
-Printer::Printer(Print& p, const Object& object, Format format, RootStyle style)
-	: p(&p), pretty(format == Format::Pretty)
+Printer::Printer(Print& p, const Object& object, bool pretty, RootStyle style) : p(&p), pretty(pretty)
 {
 	objects[0] = object;
 	switch(style) {

@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Reader.cpp
+ * ConfigDB/Format.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,18 +17,18 @@
  *
  ****/
 
-#include "include/ConfigDB/Reader.h"
+#include "include/ConfigDB/Format.h"
 #include <Data/Stream/FileStream.h>
 #include <Data/Buffer/PrintBuffer.h>
 
 namespace ConfigDB
 {
-bool Reader::saveToFile(const Store& store, const String& filename)
+bool Format::exportToFile(const Store& store, const String& filename) const
 {
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		saveToStream(store, buffer);
+		exportToStream(store, buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {
@@ -40,18 +40,18 @@ bool Reader::saveToFile(const Store& store, const String& filename)
 	return false;
 }
 
-bool Reader::saveToFile(const Store& store)
+bool Format::exportToFile(const Store& store) const
 {
 	String filename = store.getFilePath() + getFileExtension();
-	return saveToFile(store, filename);
+	return exportToFile(store, filename);
 }
 
-bool Reader::saveToFile(Database& database, const String& filename)
+bool Format::exportToFile(Database& database, const String& filename) const
 {
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		saveToStream(database, buffer);
+		exportToStream(database, buffer);
 	}
 
 	if(stream.getLastError() == FS_OK) {
@@ -61,6 +61,37 @@ bool Reader::saveToFile(Database& database, const String& filename)
 
 	debug_e("[JSON] Store save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
 	return false;
+}
+
+bool Format::importFromFile(Store& store, const String& filename) const
+{
+	FileStream stream;
+	if(!stream.open(filename, File::ReadOnly)) {
+		if(stream.getLastError() == IFS::Error::NotFound) {
+			return true;
+		}
+		debug_w("open('%s') failed", filename.c_str());
+		return false;
+	}
+
+	return importFromStream(store, stream);
+}
+
+bool Format::importFromFile(Store& store) const
+{
+	String filename = store.getFilePath() + getFileExtension();
+	return importFromFile(store, filename);
+}
+
+bool Format::importFromFile(Database& database, const String& filename) const
+{
+	FileStream stream;
+	if(!stream.open(filename, File::ReadOnly)) {
+		debug_w("open('%s') failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+		return false;
+	}
+
+	return importFromStream(database, stream);
 }
 
 } // namespace ConfigDB

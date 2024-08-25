@@ -1,5 +1,5 @@
 /**
- * ConfigDB/Json/Writer.h
+ * ConfigDB/Json/Format.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,31 +17,9 @@
  *
  ****/
 
-#pragma once
-
-#include "../Writer.h"
+#include <ConfigDB/Json/Format.h>
 
 namespace ConfigDB::Json
 {
-DECLARE_FSTR(fileExtension)
-
-class Writer : public ConfigDB::Writer
-{
-public:
-	using ConfigDB::Writer::Writer;
-
-	std::unique_ptr<ReadWriteStream> createStream(Database& db) const override;
-	std::unique_ptr<ReadWriteStream> createStream(std::shared_ptr<Store> store) const override;
-
-	bool loadFromStream(Store& store, Stream& source) override;
-	bool loadFromStream(Database& database, Stream& source) override;
-
-	String getFileExtension() const override
-	{
-		return fileExtension;
-	}
-};
-
-extern Writer writer;
-
-} // namespace ConfigDB::Json
+Format format;
+}

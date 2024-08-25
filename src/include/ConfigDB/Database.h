@@ -20,8 +20,7 @@
 #pragma once
 
 #include "Store.h"
-#include "Reader.h"
-#include "Writer.h"
+#include "Format.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
 #include <WVector.h>
@@ -77,8 +76,7 @@ public:
 	 */
 	bool lockStore(std::shared_ptr<Store>& store);
 
-	virtual Reader& getReader(const Store& store) const;
-	virtual Writer& getWriter(const Store& store) const;
+	virtual const Format& getFormat(const Store& store) const;
 
 	const DatabaseInfo& typeinfo;
 

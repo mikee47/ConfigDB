@@ -19,8 +19,7 @@
 
 #pragma once
 
-#include "../Database.h"
-#include <Data/WebConstants.h>
+#include <ConfigDB/Database.h>
 #include <Data/Stream/MemoryDataStream.h>
 #include "Printer.h"
 
@@ -32,15 +31,15 @@ namespace ConfigDB::Json
 class ReadStream : public IDataSourceStream
 {
 public:
-	ReadStream(Database& db, Format format) : db(&db), format(format)
+	ReadStream(Database& db, bool pretty) : db(&db), pretty(pretty)
 	{
 	}
 
-	ReadStream(std::shared_ptr<Store> store, Format format) : store(store), format(format)
+	ReadStream(std::shared_ptr<Store> store, bool pretty) : store(store), pretty(pretty)
 	{
 	}
 
-	static size_t print(Database& db, Print& p, Format format);
+	static size_t print(Database& db, Print& p, bool pretty);
 
 	bool isValid() const override
 	{
@@ -73,7 +72,7 @@ private:
 	std::shared_ptr<Store> store;
 	Printer printer;
 	MemoryDataStream stream;
-	Format format;
+	bool pretty;
 	uint8_t storeIndex{0};
 	bool done{false};
 };

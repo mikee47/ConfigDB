@@ -18,8 +18,7 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
-#include "include/ConfigDB/Json/Reader.h"
-#include "include/ConfigDB/Json/Writer.h"
+#include "include/ConfigDB/Json/Format.h"
 #include <Platform/System.h>
 
 namespace ConfigDB
@@ -28,14 +27,9 @@ std::shared_ptr<Store> Database::readStoreRef;
 int8_t Database::readStoreIndex{-1};
 bool Database::callbackQueued;
 
-Reader& Database::getReader(const Store&) const
+const Format& Database::getFormat(const Store&) const
 {
-	return Json::reader;
-}
-
-Writer& Database::getWriter(const Store&) const
-{
-	return Json::writer;
+	return Json::format;
 }
 
 std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
@@ -143,9 +137,9 @@ std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
 	if(!store) {
 		return nullptr;
 	}
-	auto& writer = getWriter(*store);
+	auto& format = getFormat(*store);
 	store->incUpdate();
-	writer.loadFromFile(*store);
+	format.importFromFile(*store);
 	store->decUpdate();
 	store->dirty = false;
 	return store;
@@ -179,8 +173,8 @@ bool Database::save(Store& store) const
 {
 	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
 
-	auto& reader = getReader(store);
-	bool result = reader.saveToFile(store);
+	auto& format = getFormat(store);
+	bool result = format.exportToFile(store);
 
 	// Invalidate cached stores: Some data may have changed even on failure
 	int storeIndex = typeinfo.indexOf(store.typeinfo());

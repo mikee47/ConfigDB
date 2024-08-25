@@ -19,9 +19,7 @@
 
 #pragma once
 
-#include "../Database.h"
-#include <Data/WebConstants.h>
-#include <Data/Stream/ReadWriteStream.h>
+#include <ConfigDB/Database.h>
 #include <JSON/StreamingParser.h>
 
 namespace ConfigDB::Json
