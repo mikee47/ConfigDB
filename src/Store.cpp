@@ -83,13 +83,13 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 	case PropertyType::Int8:
 	case PropertyType::Int16:
 	case PropertyType::Int32:
-		return {.int32 = strtol(value, nullptr, 0)};
+		return {.int32 = int32_t(strtol(value, nullptr, 0))};
 	case PropertyType::Int64:
 		return {.int64 = strtoll(value, nullptr, 0)};
 	case PropertyType::UInt8:
 	case PropertyType::UInt16:
 	case PropertyType::UInt32:
-		return {.uint32 = strtoul(value, nullptr, 0)};
+		return {.uint32 = uint32_t(strtoul(value, nullptr, 0))};
 	case PropertyType::UInt64:
 		return {.uint64 = strtoull(value, nullptr, 0)};
 	case PropertyType::String:
