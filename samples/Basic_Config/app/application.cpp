@@ -129,8 +129,7 @@ SimpleTimer statTimer;
 {
 	Serial << endl << _F("** Stream **") << endl;
 
-	auto stream = ConfigDB::Json::format.createExportStream(database);
-	Serial.copyFrom(stream.get());
+	db.exportToStream(ConfigDB::Json::format, Serial);
 }
 
 void printPoolData(const String& name, const ConfigDB::PoolData& data)
@@ -230,9 +229,8 @@ void onFile(HttpRequest& request, HttpResponse& response)
 		return;
 	}
 
-	auto stream = ConfigDB::Json::format.createExportStream(database);
-	auto mimeType = stream->getMimeType();
-	response.sendDataStream(stream.release(), mimeType);
+	auto stream = database.createExportStream(ConfigDB::Json::format);
+	response.sendDataStream(stream.release(), MIME_JSON);
 }
 
 /*

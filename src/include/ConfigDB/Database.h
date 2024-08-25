@@ -80,6 +80,11 @@ public:
 	 */
 	virtual const Format& getFormat(const Store& store) const;
 
+	std::unique_ptr<IDataSourceStream> createExportStream(const Format& format)
+	{
+		return format.createExportStream(*this);
+	}
+
 	size_t exportToStream(const Format& format, Print& output)
 	{
 		return format.exportToStream(*this, output);
@@ -93,6 +98,11 @@ public:
 	}
 
 	bool importFromFile(const String& filename, const Format& format);
+
+	std::unique_ptr<ReadWriteStream> createImportStream(const Format& format)
+	{
+		return format.createImportStream(*this);
+	}
 
 	const DatabaseInfo& typeinfo;
 
