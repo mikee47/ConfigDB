@@ -30,3 +30,4 @@ The sample starts a basic HTTP server which can be visited to view the database 
 An HTTP POST request can also be used to update the database contents.
 This must have `Content-Type: application/json` encoding.
 For example, send `{"security":{"api_secured":"false"}}` to update a single value.
+Use the `update` endpoint. In the host emulator, for example, POST to `http://192.168.13.10/update`.

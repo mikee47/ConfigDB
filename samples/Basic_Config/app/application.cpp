@@ -3,6 +3,7 @@
 #include <IFS/Debug.h>
 #include <basic-config.h>
 #include <ConfigDB/Json/Format.h>
+#include <ConfigDB/Network/HttpImportResource.h>
 #include <Data/CStringArray.h>
 #include <Data/Format/Json.h>
 
@@ -199,33 +200,45 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 	}
 }
 
+std::unique_ptr<ReadWriteStream> onUpdateRequest(HttpRequest&, MimeType mimeType)
+{
+	debug_i("UPDATE REQ");
+
+	if(mimeType != MIME_JSON) {
+		return nullptr;
+	}
+
+	return database.createImportStream(ConfigDB::Json::format);
+}
+
+int onUpdateComplete(HttpRequest& request, HttpResponse& response, ReadWriteStream& stream)
+{
+	auto status = static_cast<ConfigDB::Json::WriteStream&>(stream).getStatus();
+
+	String msg;
+	msg += F("Result: ");
+	msg += toString(status);
+	response.sendString(msg);
+	Serial << msg << endl;
+	switch(status) {
+	case JSON::Status::EndOfDocument:
+		break;
+	case JSON::Status::Cancelled:
+		response.code = HTTP_STATUS_CONFLICT;
+		break;
+	default:
+		response.code = HTTP_STATUS_BAD_REQUEST;
+	}
+
+	return 0;
+}
+
 void onFile(HttpRequest& request, HttpResponse& response)
 {
 	Serial << toString(request.method) << " REQ" << endl;
 
-	if(request.method == HTTP_POST) {
-		auto status = JSON::Status(uintptr_t(request.args));
-		String msg;
-		msg += F("Result: ");
-		msg += toString(status);
-		response.sendString(msg);
-		Serial << msg << endl;
-		switch(status) {
-		case JSON::Status::EndOfDocument:
-			break;
-		case JSON::Status::Cancelled:
-			response.code = HTTP_STATUS_CONFLICT;
-			break;
-		default:
-			response.code = HTTP_STATUS_BAD_REQUEST;
-		}
-		request.args = nullptr;
-		return;
-	}
-
-	assert(!request.args);
-
 	if(request.method != HTTP_GET) {
+		response.code = HTTP_STATUS_BAD_REQUEST;
 		return;
 	}
 
@@ -233,42 +246,11 @@ void onFile(HttpRequest& request, HttpResponse& response)
 	response.sendDataStream(stream.release(), MIME_JSON);
 }
 
-/*
- * This parses incoming JSON data and updates the database
- */
-size_t bodyToConfigParser(HttpRequest& request, const char* at, int length)
-{
-	if(request.method != HTTP_POST) {
-		return 0;
-	}
-
-	if(length == PARSE_DATASTART) {
-		assert(request.args == nullptr);
-		request.args = new ConfigDB::Json::WriteStream(database);
-		return 0;
-	}
-
-	auto stream = static_cast<ConfigDB::Json::WriteStream*>(request.args);
-	if(stream == nullptr) {
-		debug_e("Invalid request argument");
-		return 0;
-	}
-
-	if(length == PARSE_DATAEND || length < 0) {
-		auto status = stream->getStatus();
-		delete stream;
-		request.args = reinterpret_cast<void*>(status);
-		return 0;
-	}
-
-	return stream->write(at, length);
-}
-
 void startWebServer()
 {
 	server.listen(80);
 	server.paths.setDefault(onFile);
-	server.setBodyParser(MIME_JSON, bodyToConfigParser);
+	server.paths.set(F("/update"), new ConfigDB::HttpImportResource(onUpdateRequest, onUpdateComplete));
 
 	Serial.println("\r\n=== WEB SERVER STARTED ===");
 	Serial.println(WifiStation.getIP());
