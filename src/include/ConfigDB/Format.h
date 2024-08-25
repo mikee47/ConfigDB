@@ -20,6 +20,7 @@
 #pragma once
 
 #include <Data/Stream/ReadWriteStream.h>
+#include <IFS/Error.h>
 #include <memory>
 
 namespace ConfigDB
@@ -27,6 +28,51 @@ namespace ConfigDB
 class Database;
 class Store;
 class Object;
+
+enum class Result {
+	ok,
+	formatError,
+	updateConflict,
+	fileError,
+};
+
+struct Status {
+	Result result{};
+	int fileError{};
+
+	explicit operator bool() const
+	{
+		return result == Result::ok;
+	}
+
+	String toString() const
+	{
+		switch(result) {
+		case Result::ok:
+			return F("OK");
+		case Result::formatError:
+			return F("Format Error");
+		case Result::updateConflict:
+			return F("Update Conflict");
+		case Result::fileError:
+			return IFS::Error::toString(fileError ?: IFS::Error::WriteFailure);
+		default:
+			return nullptr;
+		}
+	}
+};
+
+class ImportStream : public ReadWriteStream
+{
+public:
+	Status status;
+};
+
+class ExportStream : public IDataSourceStream
+{
+public:
+	Status status;
+};
 
 /**
  * @brief Abstract base class wrapping support for a specific storage format, such as JSON
@@ -38,7 +84,7 @@ public:
 	 * @brief Create a stream to serialize the entire database
 	 * This is used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<IDataSourceStream> createExportStream(Database& db) const = 0;
+	virtual std::unique_ptr<ExportStream> createExportStream(Database& db) const = 0;
 
 	/**
 	 * @brief Create a stream to serialize an Object
@@ -47,8 +93,8 @@ public:
 	 *
 	 * Used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store,
-																  const Object& object) const = 0;
+	virtual std::unique_ptr<ExportStream> createExportStream(std::shared_ptr<Store> store,
+															 const Object& object) const = 0;
 
 	/**
 	 * @brief Print object
@@ -66,7 +112,7 @@ public:
 	 * @brief Create a stream for de-serialising (writing) into the database
 	 * Used when updating a database from a remote web client, for example via HttpRequest.
 	 */
-	virtual std::unique_ptr<ReadWriteStream> createImportStream(Database& db) const = 0;
+	virtual std::unique_ptr<ImportStream> createImportStream(Database& db) const = 0;
 
 	/**
 	 * @brief Create a stream for de-serialising (writing) into a store
@@ -75,7 +121,7 @@ public:
 	 *
 	 * Used when updating a store from a remote web client, for example via HttpRequest
 	 */
-	virtual std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store, Object& object) const = 0;
+	virtual std::unique_ptr<ImportStream> createImportStream(std::shared_ptr<Store> store, Object& object) const = 0;
 
 	/**
 	 * @brief De-serialise content from stream into object (RAM)
@@ -101,3 +147,8 @@ public:
 };
 
 } // namespace ConfigDB
+
+inline String toString(ConfigDB::Status status)
+{
+	return status.toString();
+}

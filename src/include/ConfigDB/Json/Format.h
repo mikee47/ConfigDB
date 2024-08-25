@@ -31,13 +31,12 @@ class Format : public ConfigDB::Format
 public:
 	DEFINE_FSTR_LOCAL(fileExtension, ".json")
 
-	std::unique_ptr<IDataSourceStream> createExportStream(Database& db) const override
+	std::unique_ptr<ExportStream> createExportStream(Database& db) const override
 	{
 		return std::make_unique<ReadStream>(db, pretty);
 	}
 
-	std::unique_ptr<IDataSourceStream> createExportStream(std::shared_ptr<Store> store,
-														  const Object& object) const override
+	std::unique_ptr<ExportStream> createExportStream(std::shared_ptr<Store> store, const Object& object) const override
 	{
 		return std::make_unique<ReadStream>(store, object, pretty);
 	}
@@ -57,12 +56,12 @@ public:
 		return ReadStream::print(database, output, pretty);
 	}
 
-	std::unique_ptr<ReadWriteStream> createImportStream(Database& db) const override
+	std::unique_ptr<ImportStream> createImportStream(Database& db) const override
 	{
 		return std::make_unique<WriteStream>(db);
 	}
 
-	std::unique_ptr<ReadWriteStream> createImportStream(std::shared_ptr<Store> store, Object& object) const override
+	std::unique_ptr<ImportStream> createImportStream(std::shared_ptr<Store> store, Object& object) const override
 	{
 		return std::make_unique<WriteStream>(store, object);
 	}

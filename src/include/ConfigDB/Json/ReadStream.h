@@ -28,7 +28,7 @@ namespace ConfigDB::Json
 /**
  * @brief Forward-reading stream for serializing entire database contents
  */
-class ReadStream : public IDataSourceStream
+class ReadStream : public ExportStream
 {
 public:
 	ReadStream(Database& db, bool pretty) : db(&db), pretty(pretty)

@@ -118,11 +118,20 @@ bool WriteStream::startElement(const JSON::Element& element)
 
 size_t WriteStream::write(const uint8_t* data, size_t size)
 {
-	if(status != JSON::Status::Ok) {
+	if(!status) {
 		return 0;
 	}
 
-	status = parser.parse(reinterpret_cast<const char*>(data), size);
+	auto jsonStatus = parser.parse(reinterpret_cast<const char*>(data), size);
+	switch(jsonStatus) {
+	case JSON::Status::EndOfDocument:
+		break;
+	case JSON::Status::Cancelled:
+		status.result = Result::updateConflict;
+		break;
+	default:
+		status.result = Result::formatError;
+	}
 	return size;
 }
 

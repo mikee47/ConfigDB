@@ -27,7 +27,7 @@ namespace ConfigDB::Json
 /**
  * @brief Stream for deserialising JSON into database
  */
-class WriteStream : public ReadWriteStream, private JSON::Listener
+class WriteStream : public ImportStream, private JSON::Listener
 {
 public:
 	WriteStream() : parser(this)
@@ -91,11 +91,6 @@ public:
 		return MimeType::JSON;
 	}
 
-	JSON::Status getStatus() const
-	{
-		return status;
-	}
-
 private:
 	bool startElement(const JSON::Element& element) override;
 
@@ -109,7 +104,6 @@ private:
 	std::shared_ptr<Store> store;
 	Object info[JSON::StreamingParser::maxNesting]{};
 	JSON::StaticStreamingParser<1024> parser;
-	JSON::Status status{};
 };
 
 } // namespace ConfigDB::Json

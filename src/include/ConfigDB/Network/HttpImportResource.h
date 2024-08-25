@@ -37,7 +37,7 @@ public:
 	 * @retval std::unique_ptr<ReadWriteStream> Writeable stream created by calling, for example, `ConfigDB::Database.createExportStream`
 	 * Return null if request is to be rejected
 	 */
-	using OnRequest = Delegate<std::unique_ptr<ReadWriteStream>(HttpRequest& request, MimeType mimeType)>;
+	using OnRequest = Delegate<std::unique_ptr<ImportStream>(HttpRequest& request, MimeType mimeType)>;
 
 	/**
 	 * @brief Callback invoked when a POST request has completed
@@ -47,12 +47,50 @@ public:
 	 *
 	 * Typically this callback will inspect the status of the update operation and return a suitable code or message in the response.
 	 */
-	using OnComplete = Delegate<void(HttpRequest& request, HttpResponse& response, ReadWriteStream& stream)>;
+	using OnComplete = Delegate<void(HttpRequest& request, HttpResponse& response, ImportStream& stream)>;
 
 	/**
 	 * @brief Construct a resource handler
 	 */
 	HttpImportResource(OnRequest onRequest, OnComplete onComplete) : onRequest(onRequest), onComplete(onComplete)
+	{
+		init();
+	}
+
+	HttpImportResource(Database& database, const Format& format)
+	{
+		init();
+
+		onRequest = [&database, &format](HttpRequest&, MimeType mimeType) -> std::unique_ptr<ImportStream> {
+			debug_i("POST REQ");
+			if(mimeType != format.getMimeType()) {
+				return nullptr;
+			}
+			return database.createImportStream(format);
+		};
+
+		onComplete = [](HttpRequest&, HttpResponse& response, ImportStream& stream) -> void {
+			String msg;
+			msg += F("Result: ");
+			msg += toString(stream.status);
+			response.sendString(msg);
+			debug_i("%s, %u", msg.c_str(), stream.status.result);
+			switch(stream.status.result) {
+			case Result::ok:
+				break;
+			case Result::formatError:
+			case Result::updateConflict:
+				response.code = HTTP_STATUS_CONFLICT;
+				break;
+			case Result::fileError:
+				response.code = HTTP_STATUS_INTERNAL_SERVER_ERROR;
+				break;
+			}
+		};
+	}
+
+private:
+	void init()
 	{
 		onHeadersComplete = [this](HttpServerConnection&, HttpRequest& request, HttpResponse& response) -> int {
 			if(request.args) {
@@ -77,13 +115,12 @@ public:
 		};
 
 		onBody = [this](HttpServerConnection&, HttpRequest& request, const char* at, int length) -> int {
-			auto stream = static_cast<ReadWriteStream*>(request.args);
+			auto stream = static_cast<ImportStream*>(request.args);
 			return (stream && stream->write(at, length) == size_t(length)) ? 0 : 1;
 		};
 
 		onRequestComplete = [this](HttpServerConnection&, HttpRequest& request, HttpResponse& response) -> int {
-			auto stream = static_cast<ReadWriteStream*>(request.args);
-			debug_i("%s %p", __FUNCTION__, stream);
+			auto stream = static_cast<ImportStream*>(request.args);
 			if(stream) {
 				this->onComplete(request, response, *stream);
 				delete stream;
@@ -93,7 +130,6 @@ public:
 		};
 	}
 
-private:
 	OnRequest onRequest;
 	OnComplete onComplete;
 };

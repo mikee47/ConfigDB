@@ -200,39 +200,6 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 	}
 }
 
-std::unique_ptr<ReadWriteStream> onUpdateRequest(HttpRequest&, MimeType mimeType)
-{
-	debug_i("UPDATE REQ");
-
-	if(mimeType != MIME_JSON) {
-		return nullptr;
-	}
-
-	return database.createImportStream(ConfigDB::Json::format);
-}
-
-int onUpdateComplete(HttpRequest& request, HttpResponse& response, ReadWriteStream& stream)
-{
-	auto status = static_cast<ConfigDB::Json::WriteStream&>(stream).getStatus();
-
-	String msg;
-	msg += F("Result: ");
-	msg += toString(status);
-	response.sendString(msg);
-	Serial << msg << endl;
-	switch(status) {
-	case JSON::Status::EndOfDocument:
-		break;
-	case JSON::Status::Cancelled:
-		response.code = HTTP_STATUS_CONFLICT;
-		break;
-	default:
-		response.code = HTTP_STATUS_BAD_REQUEST;
-	}
-
-	return 0;
-}
-
 void onFile(HttpRequest& request, HttpResponse& response)
 {
 	Serial << toString(request.method) << " REQ" << endl;
@@ -250,7 +217,7 @@ void startWebServer()
 {
 	server.listen(80);
 	server.paths.setDefault(onFile);
-	server.paths.set(F("/update"), new ConfigDB::HttpImportResource(onUpdateRequest, onUpdateComplete));
+	server.paths.set(F("/update"), new ConfigDB::HttpImportResource(database, ConfigDB::Json::format));
 
 	Serial.println("\r\n=== WEB SERVER STARTED ===");
 	Serial.println(WifiStation.getIP());

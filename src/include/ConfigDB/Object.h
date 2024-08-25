@@ -278,7 +278,7 @@ public:
 		this->unlockStore(*store);
 	}
 
-	std::unique_ptr<ReadWriteStream> createImportStream(const Format& format)
+	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{
 		return format.createImportStream(store, *this);
 	}
@@ -305,7 +305,7 @@ public:
 	{
 	}
 
-	std::unique_ptr<IDataSourceStream> createExportStream(const Format& format) const
+	std::unique_ptr<ExportStream> createExportStream(const Format& format) const
 	{
 		return format.createExportStream(store, *this);
 	}

@@ -80,7 +80,7 @@ public:
 	 */
 	virtual const Format& getFormat(const Store& store) const;
 
-	std::unique_ptr<IDataSourceStream> createExportStream(const Format& format)
+	std::unique_ptr<ExportStream> createExportStream(const Format& format)
 	{
 		return format.createExportStream(*this);
 	}
@@ -99,7 +99,7 @@ public:
 
 	bool importFromFile(const String& filename, const Format& format);
 
-	std::unique_ptr<ReadWriteStream> createImportStream(const Format& format)
+	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{
 		return format.createImportStream(*this);
 	}
