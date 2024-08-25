@@ -1,0 +1,20 @@
+name: CI Dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      sming_repo:
+        description: 'Full URL for Sming repository'
+        default: 'https://github.com/SmingHub/Sming'
+        type: string
+      sming_branch:
+        description: 'Sming branch to run against'
+        default: 'develop'
+        type: string
+
+jobs:
+  build:
+    uses: SmingHub/Sming/.github/workflows/library.yml@develop
+    with:
+      sming_repo: ${{ inputs.sming_repo }}
+      sming_branch: ${{ inputs.sming_branch }}
