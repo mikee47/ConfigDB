@@ -76,6 +76,9 @@ public:
 	 */
 	bool lockStore(std::shared_ptr<Store>& store);
 
+	/**
+	 * @brief Get the storage format to use for a store
+	 */
 	virtual const Format& getFormat(const Store& store) const;
 
 	const DatabaseInfo& typeinfo;

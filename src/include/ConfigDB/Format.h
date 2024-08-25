@@ -25,21 +25,7 @@
 namespace ConfigDB
 {
 /**
- * @brief Abstract base class for serialising data (reading from database)
- *
- * Serialisation requirements:
- * 
- * - Single object (and children) including a Store (e.g. for saving)
- * - Entire database (multiple stores)
- * - To file or as read-only stream passed in http response
- *
- * Some options:
- * 
- * - Inherit from IDataSourceStream, Printable and initialise in constructor
- * - Standard default constructor but add methods to print or createStream as required
- *
- * This sounds better. As such this is just a simple container.
- * It's not a namespace as it can't be virtually constructed.
+ * @brief Abstract base class wrapping support for a specific storage format, such as JSON
  */
 class Format
 {
@@ -83,13 +69,6 @@ public:
 	/**
 	 * @brief De-serialise content from stream into store (RAM)
 	 * The store is not saved by this operation.
-	 *
-	 * Not normally called directly by applications.
-	 *
-	 * Loading starts with default data loaded from schema, which is then updated during load.
-	 * Failure indicates corrupt JSON file, but any readable data is available.
-	 *
-	 * @note All existing objects are invalidated
 	 */
 	virtual bool importFromStream(Store& store, Stream& source) const = 0;
 
