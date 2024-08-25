@@ -29,6 +29,7 @@ struct DatabaseInfo {
 	const ObjectInfo* stores[];
 
 	int findStore(const char* name, size_t nameLength) const;
+	int indexOf(const ObjectInfo& objinfo) const;
 };
 
 } // namespace ConfigDB

@@ -181,6 +181,10 @@ class Object:
         return self.typename if self.is_item else 'Contained' + self.typename
 
     @property
+    def typename_updater(self):
+        return f'{self.typename}Updater'
+
+    @property
     def typename_struct(self):
         return self.typename_contained + '::Struct'
 
@@ -452,12 +456,16 @@ def generate_database(db: Database) -> CodeLines:
     def generate_outer_class(obj: Object) -> list:
         return [
             '',
-            f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.store.typename_contained}>',
+            f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>',
             '{',
             'public:',
-            ['using OuterObjectTemplate::OuterObjectTemplate;'],
+            [
+                'using OuterObjectTemplate::OuterObjectTemplate;',
+            ],
             *[generate_outer_class(child) for child in obj.children if not obj.is_item],
             '};'
+        ] if obj.children else [
+            f'using {obj.typename} = ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>;'
         ]
     for store in db.children:
         lines.header.append(generate_outer_class(store))
@@ -478,13 +486,17 @@ def generate_database(db: Database) -> CodeLines:
     return lines
 
 
-def declare_templated_class(obj: Object, tparams: list = None) -> list[str]:
+def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool = False) -> list[str]:
+    typename = obj.typename_updater if is_updater else obj.typename_contained
+    template = 'UpdaterTemplate' if is_updater else 'Template'
     params = [f'{obj.typename_contained}']
+    if is_updater:
+        params.insert(0, typename)
     if tparams:
         params += tparams
     return [
         '',
-        f'class {obj.typename_contained}: public ConfigDB::{obj.base_class}Template<{", ".join(params)}>',
+        f'class {typename}: public ConfigDB::{obj.base_class}{template}<{", ".join(params)}>',
         '{',
         'public:',
     ]
@@ -549,8 +561,6 @@ def generate_object_struct(obj: Object) -> CodeLines:
         '',
         'struct __attribute__((packed)) Struct {',
         [
-            'using Ptr = Struct*;',
-            '',
             *(f'{child.typename_struct} {child.id}{{}};' for child in obj.children),
             *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
         ],
@@ -571,12 +581,23 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        ['return ' + ('getString(' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'Struct::Ptr(getData())->{prop.id});'],
+        ['return ' + ('getString(' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'getData<const Struct>()->{prop.id});'],
         '}',
+        ) for prop in obj.properties)]
+
+
+def generate_property_write_accessors(obj: Object) -> list:
+    '''Generate typed get/set methods for each property'''
+
+    return [*((
         '',
         f'void set{prop.typename}({prop.ctype_constref} value)',
         '{',
-        [f'Struct::Ptr(getData())->{prop.id} = ' + ('getStringId' if prop.ptype == 'string' else prop.ctype_struct) + '(value);'],
+        [
+            'if(auto data = getData<Struct>()) {',
+            [f'data->{prop.id} = ' + ('getStringId' if prop.ptype == 'string' else prop.ctype_struct) + '(value);'],
+            '}'
+        ],
         '}'
         ) for prop in obj.properties)]
 
@@ -586,32 +607,43 @@ def generate_object(obj: Object) -> CodeLines:
 
     typeinfo = generate_typeinfo(obj)
     constructors = generate_contained_constructors(obj)
+    updater = generate_updater(obj)
+    updater_fwd = [
+        '',
+        f'class {obj.typename_updater};'
+    ]
 
     if isinstance(obj, ObjectArray):
         item_lines = generate_object(obj.items)
         return CodeLines(
             [
+                *updater_fwd,
                 *item_lines.header,
                 *declare_templated_class(obj, [obj.items.typename]),
                 typeinfo.header,
                 constructors,
                 '};',
+                *updater,
             ],
             item_lines.source + typeinfo.source)
 
     if isinstance(obj, Array):
         return CodeLines(
             [
+                *updater_fwd,
                 *declare_templated_class(obj, [obj.items.ctype]),
                 typeinfo.header,
                 constructors,
                 '};',
+                *updater,
             ],
             typeinfo.source)
 
     lines = CodeLines(
         [
+            *updater_fwd,
             *declare_templated_class(obj),
+            [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
         ],
         [])
@@ -631,33 +663,74 @@ def generate_object(obj: Object) -> CodeLines:
     if obj.children:
         lines.header += [
             '',
-            [f'{child.typename_contained} {child.id};' for child in obj.children],
+            [f'const {child.typename_contained} {child.id};' for child in obj.children],
         ]
 
     lines.header += ['};']
+    lines.header += updater
 
     return lines
 
 
-def generate_contained_constructors(obj: Object) -> list:
+def generate_updater(obj: Object) -> list:
+    '''Generate code for Object Updater implementation'''
+
+    constructors = generate_contained_constructors(obj, True)
+
+    if isinstance(obj, ObjectArray):
+        return [
+            *declare_templated_class(obj, [obj.items.typename_updater], True),
+            constructors,
+            '};',
+        ]
+
+    if isinstance(obj, Array):
+        return [
+            *declare_templated_class(obj, [obj.items.ctype], True),
+            constructors,
+            '};',
+        ]
+
+    return [
+        *declare_templated_class(obj, [], True),
+        constructors,
+        *generate_property_write_accessors(obj),
+        '',
+        [f'{child.typename_updater} {child.id};' for child in obj.children],
+        '};'
+    ]
+
+
+def generate_contained_constructors(obj: Object, is_updater = False) -> list:
+    template = 'UpdaterTemplate' if is_updater else 'Template'
+
+    if not obj.children:
+        return [
+            f'using {obj.base_class}{template}::{obj.base_class}{template};'
+        ]
+
     if obj.is_item:
+        typename = obj.typename_updater if is_updater else obj.typename
+        const = '' if is_updater else 'const '
         return [
             '',
-            f'{obj.typename}(ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
+            f'{typename}({const}ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
             [', '.join([
-                f'{obj.classname}Template({obj.parent.id}, dataRef)',
+                f'{obj.classname}{template}({obj.parent.id}, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ])],
             '{',
             '}',
         ]
 
+    typename = obj.typename_updater if is_updater else obj.typename_contained
+    parent_typename = obj.parent.typename_updater if is_updater else obj.parent.typename_contained
     headers = []
     if not obj.is_item_member:
         headers = [
             '',
-            f'{obj.typename_contained}(ConfigDB::Store& store): ' + ', '.join([
-                f'{obj.base_class}Template(store)',
+            f'{typename}(ConfigDB::Store& store): ' + ', '.join([
+                f'{obj.base_class}{template}(store)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',
@@ -667,8 +740,8 @@ def generate_contained_constructors(obj: Object) -> list:
     if not obj.is_root:
         headers += [
             '',
-            f'{obj.typename_contained}({obj.parent.typename_contained}& parent, uint16_t dataRef): ' + ', '.join([
-                f'{obj.base_class}Template(parent, dataRef)',
+            f'{typename}({parent_typename}& parent, uint16_t dataRef): ' + ', '.join([
+                f'{obj.base_class}{template}(parent, dataRef)',
                 *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
             ]),
             '{',

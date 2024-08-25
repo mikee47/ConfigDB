@@ -47,20 +47,30 @@ public:
 		return getArray()[index];
 	}
 
+	const void* getItem(unsigned index) const
+	{
+		return getArray()[index];
+	}
+
 	void addItem(const void* value)
 	{
 		getArray().add(value);
 	}
 
+	void clear()
+	{
+		getArray().clear();
+	}
+
 protected:
 	ArrayId& getId()
 	{
-		return *static_cast<ArrayId*>(getData());
+		return *getData<ArrayId>();
 	}
 
 	ArrayId getId() const
 	{
-		return *static_cast<const ArrayId*>(getData());
+		return *getData<const ArrayId>();
 	}
 
 	ArrayData& getArray();

@@ -61,12 +61,11 @@ bool WriteStream::startElement(const JSON::Element& element)
 		int i = root.findObject(element.key, element.keyLength);
 		if(i >= 0) {
 			storeRef.reset();
-			storeRef = db->openStore(root);
+			storeRef = db->openStore(root, true);
 			store = storeRef.get();
-			// Clear the root store first time it's loaded
-			if(!rootSeen) {
-				store->clear();
-				rootSeen = true;
+			if(!store || !*store) {
+				// Fatal: store is locked
+				return false;
 			}
 			info[0] = *store;
 			info[1] = store->getObject(i);
@@ -78,15 +77,19 @@ bool WriteStream::startElement(const JSON::Element& element)
 			db->save(*store);
 		}
 		storeRef.reset();
-		storeRef = db->findStore(element.key, element.keyLength);
-		store = storeRef.get();
-		if(store) {
-			store->clear();
-			info[1] = Object(*store);
+		i = db->typeinfo.findStore(element.key, element.keyLength);
+		if(i < 0) {
+			debug_w("[JSON] Object '%s' not in schema", element.key);
 			return true;
 		}
-
-		debug_w("[JSON] Object '%s' not in schema", element.key);
+		auto& type = *db->typeinfo.stores[i];
+		storeRef = db->openStore(type, true);
+		store = storeRef.get();
+		if(!store || !*store) {
+			// Fatal: store is locked
+			return false;
+		}
+		info[1] = Object(*store);
 		return true;
 	}
 
@@ -103,6 +106,8 @@ bool WriteStream::startElement(const JSON::Element& element)
 			obj = parent.findObject(element.key, element.keyLength);
 			if(!obj) {
 				debug_w("[JSON] Object '%s' not in schema", element.key);
+			} else if(obj.typeinfo().isArray()) {
+				static_cast<ArrayBase&>(obj).clear();
 			}
 		}
 		info[element.level] = obj;
@@ -120,8 +125,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		debug_w("[JSON] Property '%s' not in schema", element.key);
 		return true;
 	}
-	prop.setJsonValue(element.value, element.valueLength);
-	return true;
+	return prop.setJsonValue(element.value, element.valueLength);
 }
 
 size_t WriteStream::write(const uint8_t* data, size_t size)

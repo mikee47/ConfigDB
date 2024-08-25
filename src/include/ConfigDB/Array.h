@@ -41,6 +41,11 @@ public:
 		return {getStore(), getItemType(), getArray()[index]};
 	}
 
+	PropertyConst getProperty(unsigned index) const
+	{
+		return {getStore(), getItemType(), getArray()[index]};
+	}
+
 	const PropertyInfo& getItemType() const
 	{
 		assert(typeinfo().propertyCount == 1);
@@ -56,27 +61,11 @@ public:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
-	struct ItemRef {
-		Array& array;
-		unsigned index;
-
-		operator ItemType() const
-		{
-			return static_cast<ClassType&>(array).getItem(index);
-		}
-
-		ItemRef& operator=(const String& value)
-		{
-			static_cast<ClassType&>(array).setItem(index, value);
-			return *this;
-		}
-	};
-
 	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
 	{
 	}
 
-	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, &parent, dataRef)
+	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
 	{
 	}
 
@@ -85,6 +74,39 @@ public:
 		return *static_cast<const ItemType*>(getArray()[index]);
 	}
 
+	const ItemType operator[](unsigned index) const
+	{
+		return static_cast<const ClassType*>(this)->getItem(index);
+	}
+};
+
+/**
+ * @brief Used by code generator for integral-typed arrays
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
+ * @tparam ItemType Updater item type
+ */
+template <class UpdaterType, class ClassType, typename ItemType> class ArrayUpdaterTemplate : public ClassType
+{
+public:
+	struct ItemRef {
+		Array& array;
+		unsigned index;
+
+		operator ItemType() const
+		{
+			return static_cast<UpdaterType&>(array).getItem(index);
+		}
+
+		ItemRef& operator=(const ItemType& value)
+		{
+			static_cast<UpdaterType&>(array).setItem(index, value);
+			return *this;
+		}
+	};
+
+	using ClassType::ClassType;
+
 	void setItem(unsigned index, ItemType value)
 	{
 		*static_cast<ItemType*>(ArrayBase::getItem(index)) = value;
@@ -92,22 +114,17 @@ public:
 
 	void addItem(ItemType value)
 	{
-		getArray().add(&value);
+		this->getArray().add(&value);
 	}
 
 	void insertItem(unsigned index, ItemType value)
 	{
-		getArray().insert(index, &value);
+		this->getArray().insert(index, &value);
 	}
 
 	ItemRef operator[](unsigned index)
 	{
 		return {*this, index};
-	}
-
-	const ItemType operator[](unsigned index) const
-	{
-		return this->getItem(index);
 	}
 };
 
@@ -126,19 +143,32 @@ public:
 		auto id = *static_cast<const StringId*>(this->getArray()[index]);
 		return this->getString(id);
 	}
+};
 
-	void setItem(unsigned index, const String& value)
+/**
+ * @brief Used by code generator for String-typed arrays
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
+ * @tparam ItemType always String, but could support string-like objects if we want
+ */
+template <class UpdaterType, class ClassType, typename ItemType>
+class StringArrayUpdaterTemplate : public ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType>
+{
+public:
+	using ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType>::ArrayUpdaterTemplate;
+
+	void setItem(unsigned index, const ItemType& value)
 	{
 		*static_cast<StringId*>(ArrayBase::getItem(index)) = this->getStringId(value);
 	}
 
-	void addItem(const String& value)
+	void addItem(const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
 		this->getArray().add(&stringId);
 	}
 
-	void insertItem(unsigned index, const String& value)
+	void insertItem(unsigned index, const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
 		this->getArray().insert(index, &stringId);

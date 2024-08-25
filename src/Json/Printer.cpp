@@ -58,7 +58,7 @@ size_t Printer::operator()()
 		++indentLength;
 	}
 
-	bool isObject = (object.typeinfo().type <= ObjectType::Object);
+	bool isArray = object.typeinfo().isArray();
 
 	auto quote = [](String s) {
 		::Format::json.escape(s);
@@ -83,13 +83,13 @@ size_t Printer::operator()()
 			n += p->print(quote(*name));
 			n += p->print(colon);
 		}
-		n += p->print(isObject ? '{' : '[');
+		n += p->print(isArray ? '[' : '{');
 	}
 
 	// Print child object
 	auto objectCount = object.getObjectCount();
 	if(index < objectCount) {
-		auto obj = const_cast<Object&>(object).getObject(index);
+		auto obj = object.getObject(index);
 		if(object.streamPos++) {
 			n += p->print(',');
 		}
@@ -107,7 +107,7 @@ size_t Printer::operator()()
 
 	// Print property
 	if(index < object.getPropertyCount()) {
-		auto prop = const_cast<Object&>(object).getProperty(index);
+		auto prop = static_cast<const Object&>(object).getProperty(index);
 		if(object.streamPos++) {
 			n += p->print(',');
 		}
@@ -130,7 +130,7 @@ size_t Printer::operator()()
 			n += newline();
 			n += p->print(indent);
 		}
-		n += p->print(isObject ? '}' : ']');
+		n += p->print(isArray ? ']' : '}');
 	}
 
 	--nesting;

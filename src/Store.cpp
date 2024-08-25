@@ -18,15 +18,19 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
+#include <debug_progmem.h>
 
 namespace ConfigDB
 {
+uint8_t Store::instanceCount;
+
 void Store::clear()
 {
 	auto& root = typeinfo();
 	memcpy_P(rootData.get(), root.defaultData, root.structSize);
 	stringPool.clear();
 	arrayPool.clear();
+	dirty = true;
 }
 
 String Store::getFilePath() const
@@ -96,6 +100,48 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 	}
 
 	return {};
+}
+
+bool Store::writeCheck() const
+{
+	if(isLocked()) {
+		return true;
+	}
+	debug_e("[CFGDB] Store is Read-only");
+	return false;
+}
+
+void Store::queueUpdate(Object::UpdateCallback callback)
+{
+	return db.queueUpdate(*this, callback);
+}
+
+void Store::decUpdate()
+{
+	if(updaterCount == 0) {
+		// No updaters: this happens where earlier call to `Database::lockStore()` failed
+		return;
+	}
+	--updaterCount;
+	CFGDB_DEBUG(" %u", updaterCount)
+	if(updaterCount == 0) {
+		commit();
+		db.checkUpdateQueue(*this);
+	}
+}
+
+bool Store::commit()
+{
+	if(!dirty) {
+		return true;
+	}
+
+	if(!db.save(*this)) {
+		return false;
+	}
+
+	dirty = false;
+	return true;
 }
 
 } // namespace ConfigDB

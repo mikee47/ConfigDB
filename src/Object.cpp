@@ -22,7 +22,7 @@
 
 namespace ConfigDB
 {
-Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, &store, store.getObjectDataRef(typeinfo))
+Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store, store.getObjectDataRef(typeinfo))
 {
 }
 
@@ -35,9 +35,33 @@ Object& Object::operator=(const Object& other)
 	return *this;
 }
 
-std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo)
+std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite)
 {
-	return db.openStore(typeinfo);
+	return db.openStore(typeinfo, lockForWrite);
+}
+
+bool Object::lockStore(std::shared_ptr<Store>& store)
+{
+	if(store->isLocked()) {
+		store->incUpdate();
+		return true;
+	}
+	if(!store->getDatabase().lockStore(store)) {
+		return false;
+	}
+	// Need to find the root Store and change its reference
+	auto obj = this;
+	while(obj->parent->typeinfo().type != ObjectType::Store) {
+		obj = obj->parent;
+	}
+	assert(obj->parent);
+	obj->parent = store.get();
+	return true;
+}
+
+void Object::unlockStore(Store& store)
+{
+	store.decUpdate();
 }
 
 Store& Object::getStore()
@@ -51,18 +75,44 @@ Store& Object::getStore()
 	return *store;
 }
 
-void* Object::getData()
+bool Object::isLocked() const
 {
+	return getStore().isLocked();
+}
+
+bool Object::writeCheck() const
+{
+	return getStore().writeCheck();
+}
+
+void* Object::getDataPtr()
+{
+	if(!writeCheck()) {
+		return nullptr;
+	}
 	if(!parent) {
 		assert(typeinfo().type == ObjectType::Store);
 		return static_cast<Store*>(this)->getRootData();
 	}
+	if(parent->typeinfo().isArray()) {
+		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
+	}
+	return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef;
+}
+
+const void* Object::getDataPtr() const
+{
+	if(!parent) {
+		assert(typeinfo().type == ObjectType::Store);
+		return static_cast<const Store*>(this)->getRootData();
+	}
 	switch(parent->typeinfo().type) {
 	case ObjectType::Array:
 	case ObjectType::ObjectArray:
-		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
+		return static_cast<const ArrayBase*>(parent)->getItem(dataRef);
 	default:
-		return static_cast<uint8_t*>(parent->getData()) + dataRef;
+		auto data = static_cast<const Object*>(parent)->getDataPtr();
+		return static_cast<const uint8_t*>(data) + dataRef;
 	}
 }
 
@@ -85,12 +135,12 @@ Object Object::getObject(unsigned index)
 	}
 
 	auto typ = typeinfo().objinfo[index];
-	return Object(*typ, this, typ->getOffset());
+	return Object(*typ, *this, typ->getOffset());
 }
 
 Object Object::findObject(const char* name, size_t length)
 {
-	if(typeinfo().type > ObjectType::Object) {
+	if(typeinfo().isArray()) {
 		return {};
 	}
 	int i = typeinfo().findObject(name, length);
@@ -99,17 +149,21 @@ Object Object::findObject(const char* name, size_t length)
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	if(typeinfo().type > ObjectType::Object) {
+	if(typeinfo().isArray()) {
 		return {};
 	}
 	int i = typeinfo().findProperty(name, length);
 	return i >= 0 ? getProperty(i) : Property();
 }
 
+void Object::queueUpdate(UpdateCallback callback)
+{
+	return getStore().queueUpdate(callback);
+}
+
 bool Object::commit()
 {
-	auto& store = getStore();
-	return store.getDatabase().save(store);
+	return getStore().commit();
 }
 
 Database& Object::getDatabase()
@@ -170,8 +224,26 @@ Property Object::getProperty(unsigned index)
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
-	auto propData = static_cast<uint8_t*>(getData());
-	propData += typeinfo().getPropertyOffset(index);
+	auto propData = getData<uint8_t>();
+	if(propData) {
+		propData += typeinfo().getPropertyOffset(index);
+	}
+	return {getStore(), typeinfo().propinfo[index], propData};
+}
+
+PropertyConst Object::getProperty(unsigned index) const
+{
+	if(typeinfo().type == ObjectType::Array) {
+		return static_cast<const Array*>(this)->getProperty(index);
+	}
+
+	if(index >= typeinfo().propertyCount) {
+		return {};
+	}
+	auto propData = getData<const uint8_t>();
+	if(propData) {
+		propData += typeinfo().getPropertyOffset(index);
+	}
 	return {getStore(), typeinfo().propinfo[index], propData};
 }
 

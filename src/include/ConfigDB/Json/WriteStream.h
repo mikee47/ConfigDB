@@ -55,6 +55,8 @@ public:
 		return true;
 	}
 
+	using ReadWriteStream::write;
+
 	size_t write(const uint8_t* data, size_t size) override;
 
 	uint16_t readMemoryBlock(char*, int) override
@@ -87,6 +89,11 @@ public:
 		return MimeType::JSON;
 	}
 
+	JSON::Status getStatus() const
+	{
+		return status;
+	}
+
 private:
 	bool startElement(const JSON::Element& element) override;
 
@@ -102,7 +109,6 @@ private:
 	JSON::StaticStreamingParser<1024> parser;
 	Object info[JSON::StreamingParser::maxNesting]{};
 	JSON::Status status{};
-	bool rootSeen{}; ///< Set first time root store is seen (and cleared)
 };
 
 } // namespace ConfigDB::Json

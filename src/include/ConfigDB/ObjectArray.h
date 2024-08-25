@@ -33,7 +33,7 @@ public:
 
 	Object getObject(unsigned index)
 	{
-		return Object(getItemType(), this, index);
+		return Object(getItemType(), *this, index);
 	}
 
 	unsigned getObjectCount() const
@@ -47,7 +47,7 @@ public:
 		auto& array = getArray();
 		auto ref = array.getCount();
 		array.add(itemType.defaultData);
-		return Object(itemType, this, ref);
+		return Object(itemType, *this, ref);
 	}
 
 	const ObjectInfo& getItemType() const
@@ -68,23 +68,38 @@ public:
 	{
 	}
 
-	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, &parent, dataRef)
+	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, parent, dataRef)
 	{
-	}
-
-	ItemType operator[](unsigned index)
-	{
-		return ItemType(*this, index);
 	}
 
 	const ItemType operator[](unsigned index) const
 	{
 		return ItemType(*this, index);
 	}
+};
+
+/**
+ * @brief Used by code generator
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
+ * @tparam ItemType Updater item type
+ */
+template <class UpdaterType, class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ClassType
+{
+public:
+	using ClassType::ClassType;
+
+	ItemType operator[](unsigned index)
+	{
+		return ItemType(*this, index);
+	}
 
 	ItemType addItem()
 	{
-		auto& array = getArray();
+		if(!this->writeCheck()) {
+			return ItemType(*this, 0);
+		}
+		auto& array = this->getArray();
 		auto index = array.getCount();
 		array.add(ItemType::typeinfo.defaultData);
 		return ItemType(*this, index);
@@ -92,7 +107,10 @@ public:
 
 	ItemType insertItem(unsigned index)
 	{
-		getArray().insert(index, ItemType::typeinfo.defaultData);
+		if(!this->writeCheck()) {
+			return Item(*this, 0);
+		}
+		this->getArray().insert(index, ItemType::typeinfo.defaultData);
 		return ItemType(*this, index);
 	}
 };

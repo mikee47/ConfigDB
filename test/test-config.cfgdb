@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "simple-bool": {
+      "type": "boolean"
+    },
+    "int array": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "string array": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "object array": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "intval1": {
+            "type": "integer"
+          },
+          "stringval2": {
+            "type": "string"
+          }
+        }
+      }
+    }
+
+  }
+}

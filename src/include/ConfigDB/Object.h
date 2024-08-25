@@ -21,6 +21,7 @@
 
 #include "Property.h"
 #include "ObjectInfo.h"
+#include <Platform/System.h>
 #include <memory>
 
 namespace ConfigDB
@@ -54,8 +55,8 @@ public:
 
 	Object(const ObjectInfo& typeinfo, Store& store);
 
-	Object(const ObjectInfo& typeinfo, Object* parent, uint16_t dataRef)
-		: typeinfoPtr(&typeinfo), parent(parent), dataRef(dataRef)
+	Object(const ObjectInfo& typeinfo, Object& parent, uint16_t dataRef)
+		: typeinfoPtr(&typeinfo), parent(&parent), dataRef(dataRef)
 	{
 	}
 
@@ -69,7 +70,7 @@ public:
 	 */
 	bool isStore() const
 	{
-		return typeinfoPtr->type == ObjectType::Store && !parent && typeinfoPtr != &ObjectInfo::empty;
+		return typeinfoPtr->type == ObjectType::Store && !parent;
 	}
 
 	Store& getStore();
@@ -97,6 +98,11 @@ public:
 	 */
 	Object getObject(unsigned index);
 
+	const Object getObject(unsigned index) const
+	{
+		return const_cast<Object*>(this)->getObject(index);
+	}
+
 	/**
 	 * @brief Find child object by name
 	 */
@@ -114,10 +120,7 @@ public:
 	 */
 	Property getProperty(unsigned index);
 
-	PropertyConst getProperty(unsigned index) const
-	{
-		return const_cast<Object*>(this)->getProperty(index);
-	}
+	PropertyConst getProperty(unsigned index) const;
 
 	/**
 	 * @brief Find property by name
@@ -140,15 +143,42 @@ public:
 		return *typeinfoPtr;
 	}
 
-	void* getData();
-
-	const void* getData() const
+	template <typename T> T* getData()
 	{
-		return const_cast<Object*>(this)->getData();
+		return static_cast<T*>(getDataPtr());
 	}
 
+	template <typename T> const T* getData() const
+	{
+		return static_cast<const T*>(getDataPtr());
+	}
+
+	using UpdateCallback = Delegate<void(Store& store)>;
+
+	void queueUpdate(UpdateCallback callback);
+
 protected:
-	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo);
+	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite = false);
+
+	bool isLocked() const;
+
+	bool isWriteable() const
+	{
+		if(isLocked()) {
+			assert(getDataPtr());
+		}
+		return isLocked() && getDataPtr();
+	}
+
+	bool lockStore(std::shared_ptr<Store>& store);
+
+	void unlockStore(Store& store);
+
+	bool writeCheck() const;
+
+	void* getDataPtr();
+
+	const void* getDataPtr() const;
 
 	String getString(StringId id) const;
 
@@ -179,7 +209,7 @@ public:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store)
+	ObjectTemplate() : Object(ClassType::typeinfo)
 	{
 	}
 
@@ -187,29 +217,113 @@ public:
 	{
 	}
 
-	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, &parent, dataRef)
+	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
+	{
+	}
+
+	ObjectTemplate(const Object& parent, uint16_t dataRef)
+		: Object(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
 	{
 	}
 };
 
 /**
  * @brief Used by code generator
- * @tparam ClassType Concrete type provided by code generator
- * @tparam StoreType Object type for store root
+ * @tparam UpdaterType
+ * @tparam ClassType Contained class with type information
  */
-template <class ContainedClassType, class StoreType> class OuterObjectTemplate : public ContainedClassType
+template <class UpdaterType, class ClassType> class ObjectUpdaterTemplate : public ClassType
+{
+public:
+	using ClassType::ClassType;
+
+	explicit operator bool() const
+	{
+		return Object::operator bool() && this->isWriteable();
+	}
+};
+
+/**
+ * @brief Used by code generator
+ * @tparam UpdaterType
+ * @tparam StoreType
+ */
+template <class UpdaterType, class StoreType> class OuterObjectUpdaterTemplate : public UpdaterType
+{
+public:
+	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : UpdaterType(*store), store(store)
+	{
+	}
+
+	explicit OuterObjectUpdaterTemplate(Database& db)
+		: OuterObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo, true))
+	{
+	}
+
+	~OuterObjectUpdaterTemplate()
+	{
+		this->unlockStore(*store);
+	}
+
+private:
+	std::shared_ptr<Store> store;
+};
+
+/**
+ * @brief Used by code generator
+ * @tparam ContainedClassType
+ * @tparam UpdaterType
+ * @tparam StoreType
+ */
+template <class ContainedClassType, class UpdaterType, class StoreType>
+class OuterObjectTemplate : public ContainedClassType
 {
 public:
 	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
 	{
 	}
 
-	OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
+	explicit OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
 	{
 	}
 
+	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, StoreType>;
+
+	/**
+	 * @brief Create an update object
+	 * @retval Updater Instance to allow setting values
+	 * Caller **must** check validity of returned updater as update may already be in progress.
+	 *
+	 * 		if (auto upd = myobject.update()) {
+	 * 			// OK, proceed with update
+	 * 			upd.setValue(...);
+	 *		} else {
+	 *			// Cannot update at the moment
+	 *		}
+	 */
+	OuterUpdater update()
+	{
+		this->lockStore(store);
+		return OuterUpdater(store);
+	}
+
+	/**
+	 * @brief Run an update asynchronously
+	 * @param callback User callback which will receive an updater instance
+	 * @retval bool true if update was performed immediately, false if it's been queued
+	 */
+	bool update(Delegate<void(UpdaterType)> callback)
+	{
+		if(auto upd = update()) {
+			callback(upd);
+			return true;
+		}
+		Object::queueUpdate([this, callback](Store& store) { callback(UpdaterType(store)); });
+		return false;
+	}
+
 private:
-	std::shared_ptr<ConfigDB::Store> store;
+	std::shared_ptr<Store> store;
 };
 
 } // namespace ConfigDB

@@ -24,6 +24,7 @@
 #include "Writer.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
+#include <WVector.h>
 
 namespace ConfigDB
 {
@@ -34,7 +35,8 @@ public:
 	 * @brief Database instance
 	 * @param path Path to root directory where all data is stored
 	 */
-	Database(const DatabaseInfo& typeinfo, const String& path) : typeinfo(typeinfo), path(path.c_str())
+	Database(const DatabaseInfo& typeinfo, const String& path)
+		: typeinfo(typeinfo), path(path.c_str()), updateRefs(new UpdateRef[typeinfo.storeCount])
 	{
 	}
 
@@ -57,19 +59,23 @@ public:
 	/**
 	 * @brief Open a store instance, load it and return a shared pointer
 	 */
-	std::shared_ptr<Store> openStore(const ObjectInfo& typeinfo);
+	std::shared_ptr<Store> openStore(unsigned index, bool lockForWrite = false);
 
-	std::shared_ptr<Store> getStore(unsigned index)
+	std::shared_ptr<Store> openStore(const ObjectInfo& objinfo, bool lockForWrite = false)
 	{
-		if(index < typeinfo.storeCount) {
-			return openStore(*typeinfo.stores[index]);
-		}
-		return nullptr;
+		return openStore(typeinfo.indexOf(objinfo), lockForWrite);
 	}
 
-	std::shared_ptr<Store> findStore(const char* name, size_t nameLength);
+	void queueUpdate(Store& store, Object::UpdateCallback callback);
+	void checkUpdateQueue(Store& store);
 
 	bool save(Store& store) const;
+
+	/**
+	 * @brief Lock a store for writing
+	 * @retval bool Fails if called more than once
+	 */
+	bool lockStore(std::shared_ptr<Store>& store);
 
 	virtual Reader& getReader(const Store& store) const;
 	virtual Writer& getWriter(const Store& store) const;
@@ -77,13 +83,27 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
-	friend class Store;
+	using UpdateRef = std::weak_ptr<Store>;
+
+	struct UpdateQueueItem {
+		uint8_t storeIndex;
+		Object::UpdateCallback callback;
+
+		bool operator==(int index) const
+		{
+			return int(storeIndex) == index;
+		}
+	};
+
+	std::shared_ptr<Store> loadStore(const ObjectInfo& storeInfo);
 
 	CString path;
 
 	// Hold store open for a brief period to avoid thrashing
-	static const ObjectInfo* storeType;
-	static std::shared_ptr<Store> storeRef;
+	static std::shared_ptr<Store> readStoreRef;
+	std::unique_ptr<UpdateRef[]> updateRefs;
+	Vector<UpdateQueueItem> updateQueue;
+	static int8_t readStoreIndex;
 	static bool callbackQueued;
 };
 

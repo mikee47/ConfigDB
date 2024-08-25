@@ -26,6 +26,13 @@
 #include <WString.h>
 #include <memory>
 
+#if DEBUG_VERBOSE_LEVEL == DBG
+#include <debug_progmem.h>
+#define CFGDB_DEBUG(fmt, ...) debug_e("[CFGDB] %s() %s %p" fmt, __FUNCTION__, getName().c_str(), this, ##__VA_ARGS__);
+#else
+#define CFGDB_DEBUG(...)
+#endif
+
 namespace ConfigDB
 {
 class Database;
@@ -37,6 +44,15 @@ class Store : public Object
 {
 public:
 	/**
+	 * @brief This is an empty Store instance
+	 * Object chain is built via references so need a valid Store instance which can be identifyed as empty.
+	 * We don't update the instance count here since it will never contain anything
+	 */
+	Store(Database& db) : Object(), db(db)
+	{
+	}
+
+	/**
 	 * @brief Storage instance
 	 * @param db Database which manages this store
 	 * @param typeinfo Store type information
@@ -44,9 +60,31 @@ public:
 	Store(Database& db, const ObjectInfo& typeinfo)
 		: Object(typeinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo.structSize))
 	{
+		++instanceCount;
+		CFGDB_DEBUG(" %u", instanceCount)
 	}
 
-	Store(const Store&) = delete;
+	/**
+	 * @brief Copy constructor
+	 */
+	explicit Store(const Store& store)
+		: Object(store.typeinfo()), arrayPool(store.arrayPool), stringPool(store.stringPool), db(store.db),
+		  rootData(std::make_unique<uint8_t[]>(store.typeinfo().structSize))
+	{
+		++instanceCount;
+		CFGDB_DEBUG(" COPY %u", instanceCount)
+		memcpy(rootData.get(), store.rootData.get(), typeinfo().structSize);
+	}
+
+	Store(Store&&) = delete;
+
+	~Store()
+	{
+		if(*this) {
+			--instanceCount;
+			CFGDB_DEBUG(" %u", instanceCount);
+		}
+	}
 
 	String getFileName() const
 	{
@@ -72,6 +110,15 @@ public:
 
 	uint8_t* getRootData()
 	{
+		if(!writeCheck()) {
+			return nullptr;
+		}
+		dirty = true;
+		return rootData.get();
+	}
+
+	const uint8_t* getRootData() const
+	{
 		return rootData.get();
 	}
 
@@ -94,9 +141,37 @@ public:
 		return arrayPool;
 	}
 
+	bool isLocked() const
+	{
+		return updaterCount != 0;
+	}
+
+	/**
+	 * @brief Get number of valid (non-empty) Store instances in existence
+	 */
+	static uint8_t getInstanceCount()
+	{
+		return instanceCount;
+	}
+
+	bool writeCheck() const;
+
 protected:
 	friend class Object;
 	friend class ArrayBase;
+	friend class Database;
+
+	void queueUpdate(Object::UpdateCallback callback);
+
+	bool commit();
+
+	void incUpdate()
+	{
+		++updaterCount;
+		CFGDB_DEBUG(" %u", updaterCount)
+	}
+
+	void decUpdate();
 
 	ArrayPool arrayPool;
 	StringPool stringPool;
@@ -104,6 +179,9 @@ protected:
 private:
 	Database& db;
 	std::unique_ptr<uint8_t[]> rootData;
+	uint8_t updaterCount{};
+	bool dirty{};
+	static uint8_t instanceCount;
 };
 
 } // namespace ConfigDB

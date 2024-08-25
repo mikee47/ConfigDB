@@ -3,6 +3,8 @@
 #include <IFS/Debug.h>
 #include <basic-config.h>
 #include <ConfigDB/Json/Reader.h>
+#include <ConfigDB/Json/Writer.h>
+#include <ConfigDB/Json/WriteStream.h>
 #include <Data/CStringArray.h>
 #include <Data/Format/Json.h>
 
@@ -48,37 +50,50 @@ SimpleTimer statTimer;
 
 	{
 		BasicConfig::Root::Security sec(database);
-		sec.setApiSecured(true);
-		sec.commit();
+		if(auto update = sec.update()) {
+			update.setApiSecured(true);
+		}
 	}
 
 	{
-		BasicConfig::General general(database);
+		BasicConfig::General::OuterUpdater general(database);
 		general.setDeviceName(F("Test Device #") + os_random());
 		Serial << general.getPath() << ".deviceName = " << general.getDeviceName() << endl;
-		general.commit();
 	}
 
 	{
 		BasicConfig::Color color(database);
-		color.colortemp.setWw(12);
+		auto update = color.update();
+		update.colortemp.setWw(12);
 		Serial << color.colortemp.getPath() << ".WW = " << color.colortemp.getWw() << endl;
 
-		BasicConfig::Color::Brightness bri(database);
-		bri.setBlue(12);
+		auto& bri = color.brightness;
+		update.brightness.setBlue(12);
 		Serial << bri.getPath() << ".Blue = " << bri.getBlue() << endl;
 
-		color.commit();
+		// OK, since we have an update in progress let's try another one asynchronously
+		BasicConfig::Color::Brightness::Struct values{
+			.red = 12,
+			.green = 44,
+			.blue = 8,
+		};
+		auto async = BasicConfig::Color::Brightness(database).update(
+			[values](BasicConfig::Color::ContainedBrightness::Updater upd) {
+				Serial << "ASYNC UPDATE" << endl;
+				upd.setRed(values.red);
+				upd.setGreen(values.green);
+				upd.setBlue(values.blue);
+			});
+		Serial << F("Async update ") << (async ? "completed" : "pending") << endl;
 	}
 
 	{
-		BasicConfig::Events events(database);
+		BasicConfig::Events::OuterUpdater events(database);
 		events.setColorMinintervalMs(1200);
-		events.commit();
 	}
 
 	{
-		BasicConfig::General::Channels channels(database);
+		BasicConfig::General::Channels::OuterUpdater channels(database);
 		auto item = channels.addItem();
 		item.setName(F("Channel #") + os_random());
 		item.setPin(12);
@@ -98,15 +113,13 @@ SimpleTimer statTimer;
 		item.notes.insertItem(0, F("Inserted at #0 on ") + SystemClock.getSystemTimeString());
 		item.notes.insertItem(2, F("Inserted at #2"));
 
-		item.commit();
 		Serial << channels.getPath() << " = " << item << endl;
 	}
 
 	{
-		BasicConfig::General::SupportedColorModels models(database);
+		BasicConfig::General::SupportedColorModels::OuterUpdater models(database);
 		models.addItem(F("New Model #") + os_random());
 		models.insertItem(0, F("Inserted at #0"));
-		models.commit();
 		Serial << models.getPath() << " = " << models << endl;
 	}
 }
@@ -177,7 +190,8 @@ void printArrayPool(const ConfigDB::ArrayPool& pool, bool detailed)
 
 void printStoreStats(ConfigDB::Database& db, bool detailed)
 {
-	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
+	for(unsigned i = 0; i < db.typeinfo.storeCount; ++i) {
+		auto store = db.openStore(i);
 		Serial << F("Store '") << store->getName() << "':" << endl;
 		Serial << F("  Root: ") << store->typeinfo().structSize << endl;
 		printStringPool(store->getStringPool(), detailed);
@@ -190,15 +204,75 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 
 void onFile(HttpRequest& request, HttpResponse& response)
 {
+	Serial << toString(request.method) << " REQ" << endl;
+
+	if(request.method == HTTP_POST) {
+		auto status = JSON::Status(uintptr_t(request.args));
+		String msg;
+		msg += F("Result: ");
+		msg += toString(status);
+		response.sendString(msg);
+		Serial << msg << endl;
+		switch(status) {
+		case JSON::Status::EndOfDocument:
+			break;
+		case JSON::Status::Cancelled:
+			response.code = HTTP_STATUS_CONFLICT;
+			break;
+		default:
+			response.code = HTTP_STATUS_BAD_REQUEST;
+		}
+		request.args = nullptr;
+		return;
+	}
+
+	assert(!request.args);
+
+	if(request.method != HTTP_GET) {
+		return;
+	}
+
 	auto stream = ConfigDB::Json::reader.createStream(database);
 	auto mimeType = stream->getMimeType();
 	response.sendDataStream(stream.release(), mimeType);
+}
+
+/*
+ * This parses incoming JSON data and updates the database
+ */
+size_t bodyToConfigParser(HttpRequest& request, const char* at, int length)
+{
+	if(request.method != HTTP_POST) {
+		return 0;
+	}
+
+	if(length == PARSE_DATASTART) {
+		assert(request.args == nullptr);
+		request.args = new ConfigDB::Json::WriteStream(database);
+		return 0;
+	}
+
+	auto stream = static_cast<ConfigDB::Json::WriteStream*>(request.args);
+	if(stream == nullptr) {
+		debug_e("Invalid request argument");
+		return 0;
+	}
+
+	if(length == PARSE_DATAEND || length < 0) {
+		auto status = stream->getStatus();
+		delete stream;
+		request.args = reinterpret_cast<void*>(status);
+		return 0;
+	}
+
+	return stream->write(at, length);
 }
 
 void startWebServer()
 {
 	server.listen(80);
 	server.paths.setDefault(onFile);
+	server.setBodyParser(MIME_JSON, bodyToConfigParser);
 
 	Serial.println("\r\n=== WEB SERVER STARTED ===");
 	Serial.println(WifiStation.getIP());
@@ -247,6 +321,9 @@ void init()
 	Serial << endl << endl;
 
 	printStoreStats(database, true);
+
+	// Un-comment this line to test web client locking conflict behaviour
+	// auto dirtyLock = new BasicConfig::Root::OuterUpdater(database);
 
 	statTimer.initializeMs<5000>([]() {
 		printHeap();

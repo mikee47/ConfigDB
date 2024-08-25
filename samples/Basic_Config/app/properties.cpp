@@ -21,7 +21,7 @@ void printItem(Print& output, const String& tag, unsigned indent, const String& 
 	output << s << value << endl;
 }
 
-void printObject(Print& output, const String& tag, unsigned indent, ConfigDB::Object& obj)
+void printObject(Print& output, const String& tag, unsigned indent, const ConfigDB::Object& obj)
 {
 	printItem(output, tag, indent, toString(obj.typeinfo().type), obj.getName());
 	auto n = obj.getPropertyCount();
@@ -50,7 +50,8 @@ void listProperties(ConfigDB::Database& db, Print& output)
 	output << endl << _F("** Inspect Properties **") << endl;
 
 	output << _F("Database \"") << db.getName() << '"' << endl;
-	for(unsigned i = 0; auto store = db.getStore(i); ++i) {
+	for(unsigned i = 0; i < db.typeinfo.storeCount; ++i) {
+		auto store = db.openStore(i);
 		printObject(output, nullptr, 2, *store);
 	}
 }
