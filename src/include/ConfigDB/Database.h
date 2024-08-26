@@ -20,8 +20,6 @@
 #pragma once
 
 #include "Store.h"
-#include "Reader.h"
-#include "Writer.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
 #include <WVector.h>
@@ -77,8 +75,34 @@ public:
 	 */
 	bool lockStore(std::shared_ptr<Store>& store);
 
-	virtual Reader& getReader(const Store& store) const;
-	virtual Writer& getWriter(const Store& store) const;
+	/**
+	 * @brief Get the storage format to use for a store
+	 */
+	virtual const Format& getFormat(const Store& store) const;
+
+	std::unique_ptr<ExportStream> createExportStream(const Format& format)
+	{
+		return format.createExportStream(*this);
+	}
+
+	size_t exportToStream(const Format& format, Print& output)
+	{
+		return format.exportToStream(*this, output);
+	}
+
+	bool exportToFile(const String& filename, const Format& format);
+
+	bool importFromStream(const Format& format, Stream& source)
+	{
+		return format.importFromStream(*this, source);
+	}
+
+	bool importFromFile(const String& filename, const Format& format);
+
+	std::unique_ptr<ImportStream> createImportStream(const Format& format)
+	{
+		return format.createImportStream(*this);
+	}
 
 	const DatabaseInfo& typeinfo;
 

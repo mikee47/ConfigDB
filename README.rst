@@ -77,13 +77,10 @@ By default, stores are saved as JSON files to the local filesystem.
 The code generator creates a default :cpp:class:`ConfigDB::Database` class.
 This can be overridden to customise loading/saving behaviour.
 
-The :cpp:method:`ConfigDB::Database::getReader` method is called to get a reader instance when saving a store.
-A :cpp:class:`ConfigDB::Reader` instance has various methods for serialising database content.
+The :cpp:func:`ConfigDB::Database::getFormat` method is called to get the storage format for a given Store.
+A :cpp:class:`ConfigDB::Format` implementation provides various methods for serializing and de-serializing database and object content.
 
-Similarly, :cpp:method:`ConfigDB::Database::getWriter` returns the writer instance for loading data into a store.
-A :cpp:class:`ConfigDB::Writer` instance has various methods for de-serialising database content.
-
-Currently only **json** is implemented - see :cpp:namespace:`ConfigDB::Json`.
+Currently only **json** is implemented - see :cpp:class:`ConfigDB::Json::Format`.
 Each store is contained in a separate file.
 The name of the store forms the JSONPath prefix for any contained objects and values.
 
@@ -141,13 +138,13 @@ For example:
 
 - *basic-config.cfgdb* is compiled into *basic-config.h* and *basic-config.cpp*
 - The applications will *#include <basic-config.h>*
-- This file contains defines the `BasicConfig` class which contains all accessible objects and array items
-- Each object defined in the schema, such as *network*, gets a corresponding *contained* class such as `ContainedNetwork`, and an *outer* class such as `Network`.
+- This file contains defines the **BasicConfig** class which contains all accessible objects and array items
+- Each object defined in the schema, such as *network*, gets a corresponding *contained* class such as **ContainedNetwork**, and an *outer* class such as **Network**.
 - Both of these classes provide *read-only* access to the data via `getXXX` methods.
-- Outer classes contain a `shared_ptr<Store>`, whereas contained classes do not (they obtain the store from their parent object).
-- Application code can instantiate the *outer* class directly `BasicConfig::Network network(database);`
-- Child objects within classes are defined as member variables, such as `network.mqtt`, which is a `ContainedMqtt` class instance.
-- A third *updater* class type is also generated which adds `setXXX` methods for changing values.
+- Outer classes contain a :cpp:class:`shared_ptr<ConfigDB::Store>`, whereas contained classes do not (they obtain the store from their parent object).
+- Application code can instantiate the *outer* class directly **BasicConfig::Network network(database);**
+- Child objects within classes are defined as member variables, such as **network.mqtt**, which is a **ContainedMqtt** class instance.
+- A third *updater* class type is also generated which adds *setXXX* methods for changing values.
 - Only one *updater* per store can be open at a time. This ensures consistent data updates.
 
 
@@ -158,29 +155,52 @@ Updaters
 
 Code can update database entries in several ways.
 
-1. Using updater created on read-only class::
+1.  Using updater created on read-only class::
 
       BasicConfig::Root::Security sec(database);
       if(auto update = sec.update()) {
         update.setApiSecured(true);
       }
 
-  The `update` value is a `BasicConfig::Root::Security::Updater` instance.
+    The `update` value is a `BasicConfig::Root::Security::Updater` instance.
 
-2. Directly instantiate updater class::
+2.  Directly instantiate updater class::
 
       if(auto update = BasicConfig::Root::Security::Updater(database)) {
         update.setApiSecured(true);
       }
 
-  This form is more direct.
-
-3. Asynchronous update::
+3.  Asynchronous update::
 
       BasicConfig::Root::Security sec(database);
       bool completed = sec.update([](auto update) {
         update.setApiSecured(true);
       });
 
-    If there are no other updates in progress then the update happens immediately and `completed` is `true`.
-    Otherwise the update is queued and `false` is returned. The update will be executed when the store is released.
+    If there are no other updates in progress then the update happens immediately and *completed* is *true*.
+    Otherwise the update is queued and *false* is returned. The update will be executed when the store is released.
+
+
+API Reference
+-------------
+
+.. doxygenclass:: ConfigDB::Database
+   :members:
+
+.. doxygenclass:: ConfigDB::Store
+   :members:
+
+.. doxygenclass:: ConfigDB::Object
+   :members:
+
+.. doxygenclass:: ConfigDB::Array
+   :members:
+
+.. doxygenclass:: ConfigDB::StringArray
+   :members:
+
+.. doxygenclass:: ConfigDB::ObjectArray
+   :members:
+
+.. doxygenclass:: ConfigDB::Format
+   :members:

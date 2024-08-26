@@ -18,7 +18,9 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
-#include "include/ConfigDB/Json/Reader.h"
+#include "include/ConfigDB/Json/Format.h"
+#include <Data/Stream/FileStream.h>
+#include <Data/Buffer/PrintBuffer.h>
 
 namespace ConfigDB
 {
@@ -250,9 +252,40 @@ PropertyConst Object::getProperty(unsigned index) const
 
 size_t Object::printTo(Print& p) const
 {
-	Json::Reader reader;
-	reader.setFormat(Json::Format::Pretty);
-	return reader.saveToStream(*this, p);
+	Json::Format format;
+	format.setPretty(true);
+	return format.exportToStream(*this, p);
+}
+
+bool Object::exportToFile(const Format& format, const String& filename) const
+{
+	FileStream stream;
+	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
+		StaticPrintBuffer<512> buffer(stream);
+		exportToStream(format, buffer);
+	}
+
+	if(stream.getLastError() == FS_OK) {
+		debug_d("[JSON] Store saved '%s' OK", filename.c_str());
+		return true;
+	}
+
+	debug_e("[JSON] Store save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+	return false;
+}
+
+bool Object::importFromFile(const Format& format, const String& filename)
+{
+	FileStream stream;
+	if(!stream.open(filename, File::ReadOnly)) {
+		if(stream.getLastError() == IFS::Error::NotFound) {
+			return true;
+		}
+		debug_w("open('%s') failed", filename.c_str());
+		return false;
+	}
+
+	return format.importFromStream(*this, stream);
 }
 
 } // namespace ConfigDB

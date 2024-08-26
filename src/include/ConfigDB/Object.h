@@ -21,8 +21,7 @@
 
 #include "Property.h"
 #include "ObjectInfo.h"
-#include <Platform/System.h>
-#include <memory>
+#include "Format.h"
 
 namespace ConfigDB
 {
@@ -137,6 +136,20 @@ public:
 	String getPath() const;
 
 	size_t printTo(Print& p) const;
+
+	bool exportToStream(const Format& format, Print& output) const
+	{
+		return format.exportToStream(*this, output);
+	}
+
+	bool exportToFile(const Format& format, const String& filename) const;
+
+	bool importFromStream(const Format& format, Stream& source)
+	{
+		return format.importFromStream(*this, source);
+	}
+
+	bool importFromFile(const Format& format, const String& filename);
 
 	const ObjectInfo& typeinfo() const
 	{
@@ -265,6 +278,11 @@ public:
 		this->unlockStore(*store);
 	}
 
+	std::unique_ptr<ImportStream> createImportStream(const Format& format)
+	{
+		return format.createImportStream(store, *this);
+	}
+
 private:
 	std::shared_ptr<Store> store;
 };
@@ -285,6 +303,11 @@ public:
 
 	explicit OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
 	{
+	}
+
+	std::unique_ptr<ExportStream> createExportStream(const Format& format) const
+	{
+		return format.createExportStream(store, *this);
 	}
 
 	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, StoreType>;

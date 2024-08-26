@@ -17,13 +17,13 @@
  *
  ****/
 
-#include <ConfigDB/Json/ReadStream.h>
+#include "ReadStream.h"
 
 namespace ConfigDB::Json
 {
-size_t ReadStream::print(Database& db, Print& p, Format format)
+size_t ReadStream::print(Database& db, Print& p, bool pretty)
 {
-	ReadStream rs(db, format);
+	ReadStream rs(db, pretty);
 	size_t n{0};
 	while(!rs.done) {
 		n += rs.fillStream(p);
@@ -46,10 +46,10 @@ size_t ReadStream::fillStream(Print& p)
 			}
 			store = db->openStore(storeIndex);
 			auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
-			printer = Printer(p, *store, format, style);
+			printer = Printer(p, *store, pretty, style);
 		}
 	} else if(!printer) {
-		printer = Printer(p, *store, format, Printer::RootStyle::normal);
+		printer = Printer(p, *store, pretty, Printer::RootStyle::normal);
 	}
 
 	n += printer();

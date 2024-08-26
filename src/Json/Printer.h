@@ -19,19 +19,11 @@
 
 #pragma once
 
-#include "../Object.h"
+#include <ConfigDB/Object.h>
 #include <JSON/StreamingParser.h>
 
 namespace ConfigDB::Json
 {
-/**
- * @brief Serialisation format
- */
-enum class Format {
-	Compact,
-	Pretty,
-};
-
 /**
  * @brief Class to serialise objects in stages to minimise RAM usage
  */
@@ -49,7 +41,7 @@ public:
 
 	Printer() = default;
 
-	Printer(Print& p, const Object& object, Format format, RootStyle style);
+	Printer(Print& p, const Object& object, bool pretty, RootStyle style);
 
 	explicit operator bool() const
 	{

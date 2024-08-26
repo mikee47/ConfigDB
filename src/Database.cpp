@@ -18,9 +18,10 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
-#include "include/ConfigDB/Json/Reader.h"
-#include "include/ConfigDB/Json/Writer.h"
+#include "include/ConfigDB/Json/Format.h"
 #include <Platform/System.h>
+#include <Data/Stream/FileStream.h>
+#include <Data/Buffer/PrintBuffer.h>
 
 namespace ConfigDB
 {
@@ -28,14 +29,9 @@ std::shared_ptr<Store> Database::readStoreRef;
 int8_t Database::readStoreIndex{-1};
 bool Database::callbackQueued;
 
-Reader& Database::getReader(const Store&) const
+const Format& Database::getFormat(const Store&) const
 {
-	return Json::reader;
-}
-
-Writer& Database::getWriter(const Store&) const
-{
-	return Json::writer;
+	return Json::format;
 }
 
 std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
@@ -143,10 +139,9 @@ std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
 	if(!store) {
 		return nullptr;
 	}
-	auto& writer = getWriter(*store);
-	store->incUpdate();
-	writer.loadFromFile(*store);
-	store->decUpdate();
+
+	auto& format = getFormat(*store);
+	store->importFromFile(format);
 	store->dirty = false;
 	return store;
 }
@@ -179,8 +174,8 @@ bool Database::save(Store& store) const
 {
 	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
 
-	auto& reader = getReader(store);
-	bool result = reader.saveToFile(store);
+	auto& format = getFormat(store);
+	bool result = store.exportToFile(format);
 
 	// Invalidate cached stores: Some data may have changed even on failure
 	int storeIndex = typeinfo.indexOf(store.typeinfo());
@@ -190,6 +185,34 @@ bool Database::save(Store& store) const
 	}
 
 	return result;
+}
+
+bool Database::exportToFile(const String& filename, const Format& format)
+{
+	FileStream stream;
+	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
+		StaticPrintBuffer<512> buffer(stream);
+		format.exportToStream(*this, buffer);
+	}
+
+	if(stream.getLastError() == FS_OK) {
+		debug_d("[CFGDB] Database saved '%s' OK", filename.c_str());
+		return true;
+	}
+
+	debug_e("[CFGDB] Database save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+	return false;
+}
+
+bool Database::importFromFile(const String& filename, const Format& format)
+{
+	FileStream stream;
+	if(!stream.open(filename, File::ReadOnly)) {
+		debug_w("open('%s') failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+		return false;
+	}
+
+	return format.importFromStream(*this, stream);
 }
 
 } // namespace ConfigDB

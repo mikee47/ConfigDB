@@ -19,9 +19,7 @@
 
 #pragma once
 
-#include "../Database.h"
-#include <Data/WebConstants.h>
-#include <Data/Stream/ReadWriteStream.h>
+#include <ConfigDB/Database.h>
 #include <JSON/StreamingParser.h>
 
 namespace ConfigDB::Json
@@ -29,7 +27,7 @@ namespace ConfigDB::Json
 /**
  * @brief Stream for deserialising JSON into database
  */
-class WriteStream : public ReadWriteStream, private JSON::Listener
+class WriteStream : public ImportStream, private JSON::Listener
 {
 public:
 	WriteStream() : parser(this)
@@ -40,7 +38,11 @@ public:
 	{
 	}
 
-	WriteStream(std::shared_ptr<Store> store) : storeRef(store), store(store.get()), parser(this)
+	WriteStream(std::shared_ptr<Store> store, Object& object) : store(store), info{object}, parser(this)
+	{
+	}
+
+	WriteStream(Object& object) : info{object}, parser(this)
 	{
 	}
 
@@ -48,7 +50,7 @@ public:
 
 	static JSON::Status parse(Database& db, Stream& source);
 
-	static JSON::Status parse(Store& store, Stream& source);
+	static JSON::Status parse(Object& object, Stream& source);
 
 	bool isValid() const override
 	{
@@ -81,17 +83,12 @@ public:
 
 	String getName() const override
 	{
-		return db ? db->getName() : store ? store->getName() : nullptr;
+		return db ? db->getName() : info[0].getName();
 	}
 
 	MimeType getMimeType() const override
 	{
 		return MimeType::JSON;
-	}
-
-	JSON::Status getStatus() const
-	{
-		return status;
 	}
 
 private:
@@ -104,11 +101,9 @@ private:
 
 private:
 	Database* db{};
-	std::shared_ptr<Store> storeRef;
-	Store* store{};
-	JSON::StaticStreamingParser<1024> parser;
+	std::shared_ptr<Store> store;
 	Object info[JSON::StreamingParser::maxNesting]{};
-	JSON::Status status{};
+	JSON::StaticStreamingParser<1024> parser;
 };
 
 } // namespace ConfigDB::Json

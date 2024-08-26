@@ -17,7 +17,7 @@
  *
  ****/
 
-#include <ConfigDB/Json/WriteStream.h>
+#include "WriteStream.h"
 #include <JSON/StreamingParser.h>
 #include <debug_progmem.h>
 
@@ -32,26 +32,17 @@ WriteStream::~WriteStream()
 
 JSON::Status WriteStream::parse(Database& database, Stream& source)
 {
-	JSON::Status status;
-	{
-		WriteStream stream;
-		stream.db = &database;
-		status = stream.parser.parse(source);
-	}
-	return status;
+	return WriteStream(database).parser.parse(source);
 }
 
-JSON::Status WriteStream::parse(Store& store, Stream& source)
+JSON::Status WriteStream::parse(Object& object, Stream& source)
 {
-	WriteStream stream;
-	stream.store = &store;
-	return stream.parser.parse(source);
+	return WriteStream(object).parser.parse(source);
 }
 
 bool WriteStream::startElement(const JSON::Element& element)
 {
 	if(element.level == 0) {
-		info[0] = db ? Object() : *store;
 		return true;
 	}
 
@@ -60,9 +51,8 @@ bool WriteStream::startElement(const JSON::Element& element)
 		auto& root = *db->typeinfo.stores[0];
 		int i = root.findObject(element.key, element.keyLength);
 		if(i >= 0) {
-			storeRef.reset();
-			storeRef = db->openStore(root, true);
-			store = storeRef.get();
+			store.reset();
+			store = db->openStore(root, true);
 			if(!store || !*store) {
 				// Fatal: store is locked
 				return false;
@@ -76,15 +66,14 @@ bool WriteStream::startElement(const JSON::Element& element)
 		if(store) {
 			db->save(*store);
 		}
-		storeRef.reset();
+		store.reset();
 		i = db->typeinfo.findStore(element.key, element.keyLength);
 		if(i < 0) {
 			debug_w("[JSON] Object '%s' not in schema", element.key);
 			return true;
 		}
 		auto& type = *db->typeinfo.stores[i];
-		storeRef = db->openStore(type, true);
-		store = storeRef.get();
+		store = db->openStore(type, true);
 		if(!store || !*store) {
 			// Fatal: store is locked
 			return false;
@@ -114,27 +103,35 @@ bool WriteStream::startElement(const JSON::Element& element)
 		return true;
 	}
 
+	Property prop;
 	if(parent.typeinfo().type == ObjectType::Array) {
-		auto& array = static_cast<Array&>(parent);
-		auto propdata = store->parseString(array.getItemType(), element.value, element.valueLength);
-		array.addItem(&propdata);
-		return true;
-	}
-	auto prop = parent.findProperty(element.key, element.keyLength);
-	if(!prop) {
-		debug_w("[JSON] Property '%s' not in schema", element.key);
-		return true;
+		prop = static_cast<Array&>(parent).addProperty();
+	} else {
+		prop = parent.findProperty(element.key, element.keyLength);
+		if(!prop) {
+			debug_w("[JSON] Property '%s' not in schema", element.key);
+			return true;
+		}
 	}
 	return prop.setJsonValue(element.value, element.valueLength);
 }
 
 size_t WriteStream::write(const uint8_t* data, size_t size)
 {
-	if(status != JSON::Status::Ok) {
+	if(!status) {
 		return 0;
 	}
 
-	status = parser.parse(reinterpret_cast<const char*>(data), size);
+	auto jsonStatus = parser.parse(reinterpret_cast<const char*>(data), size);
+	switch(jsonStatus) {
+	case JSON::Status::EndOfDocument:
+		break;
+	case JSON::Status::Cancelled:
+		status.result = Result::updateConflict;
+		break;
+	default:
+		status.result = Result::formatError;
+	}
 	return size;
 }
 
