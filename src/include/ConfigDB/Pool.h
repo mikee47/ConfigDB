@@ -49,11 +49,14 @@ public:
 
 	PoolData& operator=(const PoolData& other)
 	{
-		buffer = malloc(other.usage());
+		clear();
 		count = other.count;
 		space = other.space;
 		itemSize = other.itemSize;
-		memcpy(buffer, other.buffer, count * itemSize);
+		if(getCapacity()) {
+			buffer = malloc(other.usage());
+			memcpy(buffer, other.buffer, count * itemSize);
+		}
 		return *this;
 	}
 

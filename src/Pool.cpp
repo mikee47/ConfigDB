@@ -152,6 +152,7 @@ ArrayId ArrayPool::add(size_t itemSize)
 	if(!ptr) {
 		return 0;
 	}
+	memset(ptr, 0, sizeof(ArrayData));
 	*static_cast<ArrayData*>(ptr) = ArrayData(itemSize);
 	return count;
 }

@@ -46,15 +46,16 @@ bool Object::lockStore(std::shared_ptr<Store>& store)
 		store->incUpdate();
 		return true;
 	}
-	if(!store->getDatabase().lockStore(store)) {
-		return false;
-	}
-	// Need to find the root Store and change its reference
+	// Get root object which has pointer to Store: this may change
 	auto obj = this;
 	while(obj->parent->typeinfo().type != ObjectType::Store) {
 		obj = obj->parent;
 	}
 	assert(obj->parent);
+	// Update store pointer
+	if(!store->getDatabase().lockStore(store)) {
+		return false;
+	}
 	obj->parent = store.get();
 	return true;
 }
