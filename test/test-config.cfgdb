@@ -9,27 +9,27 @@
       "type": "string",
       "default": "donkey"
     },
-    "int array": {
+    "int_array": {
       "type": "array",
       "items": {
         "type": "integer"
       }
     },
-    "string array": {
+    "string_array": {
       "type": "array",
       "items": {
         "type": "string"
       }
     },
-    "object array": {
+    "object_array": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "intval1": {
+          "intval": {
             "type": "integer"
           },
-          "stringval2": {
+          "stringval": {
             "type": "string"
           }
         }

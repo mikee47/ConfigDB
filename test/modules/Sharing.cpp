@@ -126,10 +126,10 @@ public:
 		if(auto update = root.update()) {
 			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 			auto item = update.objectArray.addItem();
-			item.setIntval1(12);
-			REQUIRE_EQ(root.objectArray[0].getIntval1(), 12);
-			item.setStringval2(myString);
-			REQUIRE_EQ(root.objectArray[0].getStringval2(), myString);
+			item.setIntval(12);
+			REQUIRE_EQ(root.objectArray[0].getIntval(), 12);
+			item.setStringval(myString);
+			REQUIRE_EQ(root.objectArray[0].getStringval(), myString);
 			Serial << root.objectArray << endl;
 		}
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
