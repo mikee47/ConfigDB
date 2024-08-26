@@ -17,7 +17,7 @@
  *
  ****/
 
-#include <ConfigDB/Json/ReadStream.h>
+#include "ReadStream.h"
 
 namespace ConfigDB::Json
 {

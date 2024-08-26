@@ -17,7 +17,7 @@
  *
  ****/
 
-#include <ConfigDB/Json/WriteStream.h>
+#include "WriteStream.h"
 #include <JSON/StreamingParser.h>
 #include <debug_progmem.h>
 
