@@ -46,6 +46,19 @@ bool WriteStream::startElement(const JSON::Element& element)
 		return true;
 	}
 
+	auto notInSchema = [&element]() -> bool {
+		debug_e("[JSON] '%s' not in schema", element.key);
+		return false;
+	};
+
+	auto setProperty = [&](Property prop) -> bool {
+		if(!prop) {
+			return notInSchema();
+		}
+		const char* value = (element.type == JSON::Element::Type::Null) ? nullptr : element.value;
+		return prop.setJsonValue(value, element.valueLength);
+	};
+
 	if(db && element.level == 1) {
 		// Look in root store for a matching object
 		auto& root = *db->typeinfo.stores[0];
@@ -69,8 +82,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		store.reset();
 		i = db->typeinfo.findStore(element.key, element.keyLength);
 		if(i < 0) {
-			debug_w("[JSON] Object '%s' not in schema", element.key);
-			return false;
+			return notInSchema();
 		}
 		auto& type = *db->typeinfo.stores[i];
 		store = db->openStore(type, true);
@@ -94,8 +106,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		} else {
 			obj = parent.findObject(element.key, element.keyLength);
 			if(!obj) {
-				debug_w("[JSON] Object '%s' not in schema", element.key);
-				return false;
+				return notInSchema();
 			}
 			if(obj.isArray()) {
 				static_cast<ArrayBase&>(obj).clear();
@@ -105,19 +116,12 @@ bool WriteStream::startElement(const JSON::Element& element)
 		return true;
 	}
 
-	Property prop;
 	if(parent.typeIs(ObjectType::Array)) {
-		prop = static_cast<Array&>(parent).addProperty();
-	} else {
-		prop = parent.findProperty(element.key, element.keyLength);
-		if(!prop) {
-			debug_w("[JSON] Property '%s' not in schema", element.key);
-			return false;
-		}
+		auto& array = static_cast<Array&>(parent);
+		return setProperty(array.addProperty());
 	}
 
-	const char* value = (element.type == JSON::Element::Type::Null) ? nullptr : element.value;
-	return prop.setJsonValue(value, element.valueLength);
+	return setProperty(parent.findProperty(element.key, element.keyLength));
 }
 
 size_t WriteStream::write(const uint8_t* data, size_t size)
