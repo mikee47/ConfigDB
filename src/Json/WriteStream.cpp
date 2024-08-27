@@ -114,7 +114,8 @@ bool WriteStream::startElement(const JSON::Element& element)
 	// Check for array selector expression
 	auto sel = strchr(element.key, '[');
 	if(sel) {
-		if(element.key[element.keyLength - 1] != ']') {
+		auto keyEnd = element.key + element.keyLength - 1;
+		if(*keyEnd != ']') {
 			return badSelector();
 		}
 		obj = parent.findObject(element.key, sel - element.key);
@@ -126,8 +127,14 @@ bool WriteStream::startElement(const JSON::Element& element)
 		}
 		auto& array = static_cast<ArrayBase&>(obj);
 		int16_t len = array.getItemCount();
-		if(sel[1] == ']') {
+		if(sel + 1 == keyEnd) {
 			// Append only
+			if(!element.isContainer()) {
+				if(array.typeIs(ObjectType::ObjectArray)) {
+					return badSelector();
+				}
+				return setProperty(static_cast<Array&>(array).addItem());
+			}
 			obj.streamPos = len;
 			return true;
 		}
@@ -161,7 +168,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		if(start < 0) {
 			start += len;
 		}
-		if(*ptr == ']') {
+		if(ptr == keyEnd) {
 			// Single index, value can be a property or object
 			if(start >= len) {
 				return badSelector();
@@ -193,7 +200,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 				}
 			}
 		}
-		if(*ptr != ']') {
+		if(ptr != keyEnd) {
 			return badSelector();
 		}
 		// Range
@@ -226,7 +233,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 
 	if(parent.typeIs(ObjectType::Array)) {
 		auto& array = static_cast<Array&>(parent);
-		return setProperty(array.insertProperty(parent.streamPos++));
+		return setProperty(array.insertItem(parent.streamPos++));
 	}
 
 	return setProperty(parent.findProperty(element.key, element.keyLength));

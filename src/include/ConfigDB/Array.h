@@ -41,12 +41,12 @@ public:
 		return {getStore(), getItemType(), getArray()[index]};
 	}
 
-	Property addProperty()
+	Property addItem()
 	{
 		return {getStore(), getItemType(), getArray().add()};
 	}
 
-	Property insertProperty(unsigned index)
+	Property insertItem(unsigned index)
 	{
 		return {getStore(), getItemType(), getArray().insert(index)};
 	}
