@@ -30,6 +30,7 @@ struct ArrayTestCase {
 	Pos result;
 };
 
+IMPORT_FSTR_LOCAL(arrayTestData, PROJECT_DIR "/resource/array-test.json")
 #include <array-test.h>
 
 namespace json

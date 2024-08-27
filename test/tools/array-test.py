@@ -1,6 +1,8 @@
 '''Script to generate array selector test cases
 '''
+from __future__ import annotations
 import sys
+import os
 import re
 import json
 from dataclasses import dataclass
@@ -186,17 +188,19 @@ def main():
     json_data += b'\n}'
 
     if len(sys.argv) > 1:
-        filename = sys.argv[1]
-        print(f'Creating {filename}.json and {filename}.h')
-        with open(filename + '.json', 'wb') as f:
+        path = sys.argv[1]
+        hdr_file = os.path.join(path, 'include/array-test.h')
+        json_file = os.path.join(path, 'resource/array-test.json')
+        print(f'Creating {json_file} and {hdr_file}')
+        with open(json_file, 'wb') as f:
             f.write(json_data)
-        with open(filename + '.h', 'w') as f:
+        with open(hdr_file, 'w') as f:
             f.write('''\
 #pragma once
 
-#include <FlashString/Array.hpp>
+// clang-format off
 
-IMPORT_FSTR_LOCAL(arrayTestData, PROJECT_DIR "/out/ConfigDB/array-test.json")
+#include <FlashString/Array.hpp>
 
 ''')
             for array_name, cases in array_tests.items():

@@ -1,0 +1,206 @@
+{
+	"int_array": {
+		"Overwrite array": [
+			{
+				"expr": {"int_array": [5,6,7,8]},
+				"result": [5,6,7,8]
+			},
+			{
+				"expr": {"int_array[0:]": [8,9]},
+				"result": [8,9]
+			}
+		],
+		"Clear array": [
+			{
+				"expr": {"int_array": []},
+				"result": []
+			}
+		],
+		"Update single item": [
+			{
+				"expr": {"int_array[0]": 8},
+				"result": [8,2,3,4]
+			},
+			{
+				"expr": {"int_array[2]": 8},
+				"result": [1,2,8,4]
+			},
+			{
+				"expr": {"int_array[-1]": 8},
+				"result": [1,2,3,8]
+			},
+			{
+				"expr": {"int_array[4]": 8},
+				"result": "list assignment index out of range"
+			}
+		],
+		"Update multiple items": [
+			{
+				"expr": {"int_array[0:2]": [8,9]},
+				"result": [8,9,3,4]
+			},
+			{
+				"expr": {"int_array[1:1]": [8,9]},
+				"result": [1,8,9,2,3,4]
+			},
+			{
+				"expr": {"int_array[1:2]": [8,9]},
+				"result": [1,8,9,3,4]
+			},
+			{
+				"expr": {"int_array[2:]": [8,9]},
+				"result": [1,2,8,9]
+			},
+			{
+				"expr": {"int_array[0:1]": 8},
+				"result": "can only assign an iterable"
+			},
+			{
+				"expr": {"int_array[pin]": 8},
+				"result": "name 'pin' is not defined"
+			}
+		],
+		"Insert item": [
+			{
+				"expr": {"int_array[3:0]": [8]},
+				"result": [1,2,3,8,4]
+			},
+			{
+				"expr": {"int_array[3:3]": [8]},
+				"result": [1,2,3,8,4]
+			},
+			{
+				"expr": {"int_array[-1:]": [8,9]},
+				"result": [1,2,3,8,9]
+			}
+		],
+		"Append items": [
+			{
+				"expr": {"int_array[]": [8,9]},
+				"result": [1,2,3,4,8,9]
+			},
+			{
+				"expr": {"int_array[10:]": [8,9]},
+				"result": [1,2,3,4,8,9]
+			},
+			{
+				"expr": {"int_array[10:]": 8},
+				"result": "can only assign an iterable"
+			},
+			{
+				"expr": {"int_array[]": 8},
+				"result": [1,2,3,4,8]
+			},
+			{
+				"expr": {"int_array[]]": 8},
+				"result": "unmatched ']' (<string>, line 1)"
+			}
+		]
+	},
+	"object_array": {
+		"Overwrite array": [
+			{
+				"expr": {"object_array": [{"intval":5,"stringval":"e"},{"intval":6,"stringval":"f"},{"intval":7,"stringval":"g"},{"intval":8,"stringval":"h"}]},
+				"result": [{"intval":5,"stringval":"e"},{"intval":6,"stringval":"f"},{"intval":7,"stringval":"g"},{"intval":8,"stringval":"h"}]
+			},
+			{
+				"expr": {"object_array[0:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+			}
+		],
+		"Clear array": [
+			{
+				"expr": {"object_array": []},
+				"result": []
+			}
+		],
+		"Update single item": [
+			{
+				"expr": {"object_array[0]": {}},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[0]": {"intval":8,"stringval":"baboo"}},
+				"result": [{"intval":8,"stringval":"baboo"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[2]": {"intval":8,"stringval":"baboo"}},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":8,"stringval":"baboo"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[-1]": {"intval":8,"stringval":"baboo"}},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":"baboo"}]
+			},
+			{
+				"expr": {"object_array[4]": {"intval":8,"stringval":"baboo"}},
+				"result": "list assignment index out of range"
+			},
+			{
+				"expr": {"object_array[stringval=c]": {"intval":8,"stringval":"baboo"}},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":8,"stringval":"baboo"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[intval=1]": {}},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[intval=0]": {}},
+				"result": "Bad selector"
+			}
+		],
+		"Update multiple items": [
+			{
+				"expr": {"object_array[0:2]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":8,"stringval":null},{"intval":9,"stringval":null},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[1:1]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":8,"stringval":null},{"intval":9,"stringval":null},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[1:2]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":8,"stringval":null},{"intval":9,"stringval":null},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[2:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+			},
+			{
+				"expr": {"object_array[0:1]": {}},
+				"result": "Require array value"
+			},
+			{
+				"expr": {"object_array[pin]": {}},
+				"result": "name 'pin' is not defined"
+			}
+		],
+		"Insert item": [
+			{
+				"expr": {"object_array[3:0]": [{"intval":8,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":null},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[3:3]": [{"intval":8,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":null},{"intval":4,"stringval":"d"}]
+			},
+			{
+				"expr": {"object_array[-1:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+			}
+		],
+		"Append items": [
+			{
+				"expr": {"object_array[]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+			},
+			{
+				"expr": {"object_array[10:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+			},
+			{
+				"expr": {"object_array[10:]": {}},
+				"result": "Require array value"
+			}
+		]
+	}
+}
