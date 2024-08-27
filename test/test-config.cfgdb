@@ -5,6 +5,10 @@
     "simple-bool": {
       "type": "boolean"
     },
+    "simple-string": {
+      "type": "string",
+      "default": "donkey"
+    },
     "int array": {
       "type": "array",
       "items": {
@@ -31,6 +35,5 @@
         }
       }
     }
-
   }
 }

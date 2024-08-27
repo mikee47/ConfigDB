@@ -193,13 +193,13 @@ protected:
 
 	const void* getDataPtr() const;
 
-	String getString(StringId id) const;
+	String getString(const PropertyInfo& prop, StringId id) const;
 
 	StringId getStringId(const char* value, uint16_t valueLength);
 
 	StringId getStringId(const String& value)
 	{
-		return getStringId(value.c_str(), value.length());
+		return value ? getStringId(value.c_str(), value.length()) : 0;
 	}
 
 	template <typename T> StringId getStringId(const T& value)

@@ -200,14 +200,17 @@ String Object::getPath() const
 	return path;
 }
 
-String Object::getString(StringId id) const
+String Object::getString(const PropertyInfo& prop, StringId id) const
 {
-	return String(getStore().stringPool[id]);
+	if(id) {
+		return String(getStore().stringPool[id]);
+	}
+	return prop.defaultValue ? String(*prop.defaultValue) : nullptr;
 }
 
 StringId Object::getStringId(const char* value, uint16_t valueLength)
 {
-	return getStore().stringPool.findOrAdd({value, valueLength});
+	return value ? getStore().stringPool.findOrAdd({value, valueLength}) : 0;
 }
 
 unsigned Object::getPropertyCount() const

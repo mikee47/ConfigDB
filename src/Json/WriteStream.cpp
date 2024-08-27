@@ -113,7 +113,9 @@ bool WriteStream::startElement(const JSON::Element& element)
 			return true;
 		}
 	}
-	return prop.setJsonValue(element.value, element.valueLength);
+
+	const char* value = (element.type == JSON::Element::Type::Null) ? nullptr : element.value;
+	return prop.setJsonValue(value, element.valueLength);
 }
 
 size_t WriteStream::write(const uint8_t* data, size_t size)

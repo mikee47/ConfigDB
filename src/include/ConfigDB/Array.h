@@ -146,7 +146,7 @@ public:
 	String getItem(unsigned index) const
 	{
 		auto id = *static_cast<const StringId*>(this->getArray()[index]);
-		return this->getString(id);
+		return this->getString(this->getItemType(), id);
 	}
 };
 

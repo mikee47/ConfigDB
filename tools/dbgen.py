@@ -581,9 +581,9 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        ['return ' + ('getString(' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'getData<const Struct>()->{prop.id});'],
+        ['return ' + (f'getString(typeinfo.propinfo[{index}], ' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'getData<const Struct>()->{prop.id});'],
         '}',
-        ) for prop in obj.properties)]
+        ) for index, prop in enumerate(obj.properties))]
 
 
 def generate_property_write_accessors(obj: Object) -> list:

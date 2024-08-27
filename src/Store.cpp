@@ -77,6 +77,10 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 
 PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
+	if(!value) {
+		return {};
+	}
+
 	switch(prop.type) {
 	case PropertyType::Boolean:
 		return {.b = (valueLength == 4) && memicmp(value, "true", 4) == 0};
