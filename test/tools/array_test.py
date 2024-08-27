@@ -5,6 +5,25 @@ import re
 import json
 from dataclasses import dataclass
 
+def get_default_vars() -> dict():
+    '''Return test config value dictionary which can be modified without side-effects'''
+    return {
+        'int_array': [1, 2, 3, 4],
+        'object_array': [
+            {"intval": 1, "stringval": "a"},
+            {"intval": 2, "stringval": "b"},
+            {"intval": 3, "stringval": "c"},
+            {"intval": 4, "stringval": "d"},
+        ]
+    }
+
+def json_dumps(value):
+    '''Compact JSON text'''
+    return json.dumps(value, separators=(',', ':'))
+
+# Default JSON text
+OBJECT_ARRAY = json_dumps(get_default_vars()['object_array'])
+
 '''Cases grouped by array type, then category containing list of test cases.
 A test case is a python expression equivalent to the JSON operation we want.
 In some cases this is invalid python so a tuple is given instead with the expected result.
@@ -55,11 +74,13 @@ TEST_CASES = {
             'x = []',
         ],
         'Update single item': [
+            ('x[0] = {}', OBJECT_ARRAY),
             'x[0] = {"intval":8,"stringval":"baboo"}',
             'x[2] = {"intval":8,"stringval":"baboo"}',
             'x[-1] = {"intval":8,"stringval":"baboo"}',
             'x[4] = {"intval":8,"stringval":"baboo"}',
             'x[stringval=c] = {"intval":8,"stringval":"baboo"}',
+            ('x[intval=1] = {}', OBJECT_ARRAY),
             ('x[intval=0] = {}', '"Bad selector"')
         ],
         'Update multiple items': [
@@ -102,6 +123,38 @@ class ArrayTestCase:
         return f'{{{self.expr}, {self.result}}}'
 
 
+def parse_expression(array_name: str, expr: str | tuple[str, str]) -> tuple[str, str]:
+    '''Parse a test expression and return the JSON text for (expr, result)'''
+    if isinstance(expr, tuple):
+        expr, result = expr
+    else:
+        result = None
+    key, _, value = expr.partition(' = ')
+    value = value.replace(' ','')
+    key = key.replace('x', array_name)
+    expr = f'{{"{key}": {value}}}'
+    if result:
+        return expr, result
+    vars = get_default_vars()
+    vars['null'] = None
+    try:
+        # Convert `x[] = ...` into valid python
+        tmp_key = key.replace('[]', '[100:0]')
+        if '=' in tmp_key:
+            # Require valid python for `array[name=value]` expression
+            m = re.match(r'^(.*)?\[(.*)?=(.*)?]', tmp_key)
+            name, key_name, key_value = m.group(1), m.group(2), m.group(3)
+            i = next(i for i, x in enumerate(vars[name]) if x[key_name] == key_value)
+            # print(f'{name}; {key_name}; {key_value}; {i}; {vars[name]}; {value}')
+            tmp_expr = f'{name}[{i}] = {value}'
+        else:
+            tmp_expr = f'{tmp_key} = {value}'
+        exec(tmp_expr, None, vars)
+        return expr, json_dumps(vars[array_name])
+    except Exception as e:
+        return expr, f'"{e}"'
+
+
 def main():
     json_data: bytearray = b'{\n'  # JSON string data
     array_tests: dict[str, list[ArrayTestCase]] = {} # array_name, list[ArrayTestCase]
@@ -116,47 +169,9 @@ def main():
             if case_index:
                 json_data += b',\n'
             json_data += f'\t\t"{title}": [\n'.encode()
-            # print(f'  // {title}')
             for expr_index, expr in enumerate(expressions):
-                if isinstance(expr, tuple):
-                    expr, result = expr
-                else:
-                    result = None
-                key, _, value = expr.partition(' = ')
-                value = value.replace(' ','')
-                key = key.replace('x', array_name)
-                if result is None:
-                    vars = {
-                        'null': None,
-                        'int_array': [1, 2, 3, 4],
-                        'object_array': [
-                            {"intval": 1, "stringval": "a"},
-                            {"intval": 2, "stringval": "b"},
-                            {"intval": 3, "stringval": "c"},
-                            {"intval": 4, "stringval": "d"},
-                        ]
-                    }
-                    err = None
-                    try:
-                        # `x[] = ...` isn't valid python but can be made so easily
-                        tmp_key = key.replace('[]', '[100:0]')
-                        if '=' in tmp_key:
-                            # Require valid python for `array[name=value]` expression
-                            m = re.match(r'^(.*)?\[(.*)?=(.*)?]', tmp_key)
-                            name, key_name, key_value = m.group(1), m.group(2), m.group(3)
-                            i = next(i for i, x in enumerate(vars[name]) if x[key_name] == key_value)
-                            # print(f'{name}; {key_name}; {key_value}; {i}; {vars[name]}; {value}')
-                            expr = f'{name}[{i}] = {value}'
-                        else:
-                            expr = f'{tmp_key} = {value}'
-                        exec(expr, None, vars)
-                    except Exception as e:
-                        err = str(e)
-                    if err is None:
-                        result = json.dumps(vars[array_name], separators=(',', ':'))
-                    else:
-                        result = f'"{err}"'
-                expr = f'{{"{key}": {value}}}'.encode()
+                expr, result = parse_expression(array_name, expr)
+                expr = expr.encode()
                 result = result.encode()
                 if expr_index:
                     json_data += b',\n'
