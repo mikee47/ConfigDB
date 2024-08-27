@@ -143,42 +143,33 @@ public:
 	{
 		TEST_CASE("Indexed int array update")
 		{
-			for(auto test : int_array_test_cases) {
-				String expr = test.expr.get(arrayTestData);
-				String result = test.result.get(arrayTestData);
-				bool isValid = (result[0] == '[');
-				Serial << expr << " -> ";
-				TestConfig::Root::OuterUpdater root(database);
-				CHECK(root);
-				CHECK(importObject(root, json::array_test_default));
-				CHECK_EQ(importObject(root, expr), isValid);
-				if(isValid) {
-					String s = exportObject(root.intArray);
-					Serial << s;
-					CHECK_EQ(s, result);
-				}
-				Serial << " - " << result << endl;
-			}
+			arrayTests(int_array_test_cases, false);
 		}
 
 		TEST_CASE("Indexed object array update")
 		{
-			for(auto test : object_array_test_cases) {
-				String expr = test.expr.get(arrayTestData);
-				String result = test.result.get(arrayTestData);
-				bool isValid = (result[0] == '[');
-				Serial << expr << " -> ";
-				TestConfig::Root::OuterUpdater root(database);
-				CHECK(root);
-				CHECK(importObject(root, json::array_test_default));
-				CHECK_EQ(importObject(root, expr), isValid);
-				if(isValid) {
-					String s = exportObject(root.objectArray);
-					Serial << s;
-					CHECK_EQ(s, result);
-				}
-				Serial << " - " << result << endl;
+			arrayTests(object_array_test_cases, true);
+		}
+	}
+
+	void arrayTests(const FSTR::Array<ArrayTestCase>& testCases, bool isObject)
+	{
+		for(auto test : testCases) {
+			String expr = test.expr.get(arrayTestData);
+			String result = test.result.get(arrayTestData);
+			bool isValid = (result[0] == '[');
+			Serial << expr << " -> ";
+			TestConfig::Root::OuterUpdater root(database);
+			CHECK(root);
+			CHECK(importObject(root, json::array_test_default));
+			CHECK_EQ(importObject(root, expr), isValid);
+			if(isValid) {
+				String s = isObject ? exportObject(root.objectArray) : exportObject(root.intArray);
+				Serial << s;
+				CHECK_EQ(s, result);
 			}
+			Serial << " - " << result << endl;
+			root.clearDirty();
 		}
 	}
 };

@@ -141,6 +141,12 @@ public:
 	 */
 	bool commit();
 
+	/**
+	 * @brief Clear store dirty flag so changes don't get committed
+	 * @note Store must be reloaded to roll back any changes
+	 */
+	void clearDirty();
+
 	String getName() const;
 
 	String getPath() const;

@@ -187,6 +187,11 @@ protected:
 
 	bool commit();
 
+	void clearDirty()
+	{
+		dirty = false;
+	}
+
 	void incUpdate()
 	{
 		++updaterCount;

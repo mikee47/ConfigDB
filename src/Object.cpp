@@ -166,6 +166,11 @@ bool Object::commit()
 	return getStore().commit();
 }
 
+void Object::clearDirty()
+{
+	getStore().clearDirty();
+}
+
 Database& Object::getDatabase()
 {
 	return getStore().getDatabase();
