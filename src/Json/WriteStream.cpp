@@ -114,6 +114,9 @@ bool WriteStream::startElement(const JSON::Element& element)
 	// Check for array selector expression
 	auto sel = strchr(element.key, '[');
 	if(sel) {
+		if(element.key[element.keyLength - 1] != ']') {
+			return badSelector();
+		}
 		obj = parent.findObject(element.key, sel - element.key);
 		if(!obj) {
 			return notInSchema();
@@ -127,6 +130,30 @@ bool WriteStream::startElement(const JSON::Element& element)
 			// Append only
 			obj.streamPos = len;
 			return true;
+		}
+
+		auto sep = strchr(sel, '=');
+		if(sep) {
+			// name=value selector
+			auto name = sel + 1;
+			auto namelen = sep - name;
+			auto value = sep + 1;
+			auto valuelen = element.key + element.keyLength - value - 1;
+			arrayParent = static_cast<ObjectArray&>(obj);
+			auto propIndex = arrayParent.getItemType().findProperty(name, namelen);
+			if(propIndex < 0) {
+				return badSelector();
+			}
+			for(unsigned i = 0; i < array.getItemCount(); ++i) {
+				auto item = arrayParent.getItem(i);
+				auto prop = item.getProperty(propIndex);
+				auto propValue = prop.getValue();
+				if(propValue.equals(value, valuelen)) {
+					obj = item;
+					return true;
+				}
+			}
+			return badSelector();
 		}
 
 		char* ptr;

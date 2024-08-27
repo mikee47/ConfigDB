@@ -36,6 +36,11 @@ public:
 		return Object(getItemType(), *this, index);
 	}
 
+	Object getItem(unsigned index)
+	{
+		return getObject(index);
+	}
+
 	unsigned getObjectCount() const
 	{
 		return getItemCount();

@@ -1,6 +1,7 @@
 '''Script to generate array selector test cases
 '''
 import sys
+import re
 import json
 from dataclasses import dataclass
 
@@ -56,6 +57,8 @@ TEST_CASES = {
             'x[2] = {"intval":8,"stringval":"baboo"}',
             'x[-1] = {"intval":8,"stringval":"baboo"}',
             'x[4] = {"intval":8,"stringval":"baboo"}',
+            'x[stringval=c] = {"intval":8,"stringval":"baboo"}',
+            ('x[intval=0] = {}', '"Bad selector"')
         ],
         'Update multiple items': [
             'x[0:2] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
@@ -117,7 +120,8 @@ def main():
                     expr, result = expr
                 else:
                     result = None
-                key, _, value = expr.replace(' ','').partition('=')
+                key, _, value = expr.partition(' = ')
+                value = value.replace(' ','')
                 key = key.replace('x', array_name)
                 if result is None:
                     vars = {
@@ -130,11 +134,20 @@ def main():
                             {"intval": 4, "stringval": "d"},
                         ]
                     }
+                    err = None
                     try:
                         # `x[] = ...` isn't valid python but can be made so easily
                         tmp_key = key.replace('[]', '[100:0]')
-                        exec(f'{tmp_key} = {value}', None, vars)
-                        err = None
+                        if '=' in tmp_key:
+                            # Require valid python for `array[name=value]` expression
+                            m = re.match(r'^(.*)?\[(.*)?=(.*)?]', tmp_key)
+                            name, key_name, key_value = m.group(1), m.group(2), m.group(3)
+                            i = next(i for i, x in enumerate(vars[name]) if x[key_name] == key_value)
+                            # print(f'{name}; {key_name}; {key_value}; {i}; {vars[name]}; {value}')
+                            expr = f'{name}[{i}] = {value}'
+                        else:
+                            expr = f'{tmp_key} = {value}'
+                        exec(expr, None, vars)
                     except Exception as e:
                         err = str(e)
                     if err is None:
