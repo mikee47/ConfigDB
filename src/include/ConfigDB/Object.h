@@ -64,6 +64,16 @@ public:
 		return typeinfoPtr != &ObjectInfo::empty;
 	}
 
+	bool typeIs(ObjectType type) const
+	{
+		return *this && typeinfo().type == type;
+	}
+
+	bool isArray() const
+	{
+		return typeinfo().isArray();
+	}
+
 	/**
 	 * @brief Determine if this object *is* a store (not just a reference to it)
 	 */

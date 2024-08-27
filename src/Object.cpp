@@ -50,7 +50,7 @@ bool Object::lockStore(std::shared_ptr<Store>& store)
 	}
 	// Get root object which has pointer to Store: this may change
 	auto obj = this;
-	while(obj->parent->typeinfo().type != ObjectType::Store) {
+	while(!obj->parent->typeIs(ObjectType::Store)) {
 		obj = obj->parent;
 	}
 	assert(obj->parent);
@@ -94,10 +94,10 @@ void* Object::getDataPtr()
 		return nullptr;
 	}
 	if(!parent) {
-		assert(typeinfo().type == ObjectType::Store);
+		assert(typeIs(ObjectType::Store));
 		return static_cast<Store*>(this)->getRootData();
 	}
-	if(parent->typeinfo().isArray()) {
+	if(parent->isArray()) {
 		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
 	}
 	return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef;
@@ -106,22 +106,19 @@ void* Object::getDataPtr()
 const void* Object::getDataPtr() const
 {
 	if(!parent) {
-		assert(typeinfo().type == ObjectType::Store);
+		assert(typeIs(ObjectType::Store));
 		return static_cast<const Store*>(this)->getRootData();
 	}
-	switch(parent->typeinfo().type) {
-	case ObjectType::Array:
-	case ObjectType::ObjectArray:
+	if(parent->isArray()) {
 		return static_cast<const ArrayBase*>(parent)->getItem(dataRef);
-	default:
-		auto data = static_cast<const Object*>(parent)->getDataPtr();
-		return static_cast<const uint8_t*>(data) + dataRef;
 	}
+	auto data = static_cast<const Object*>(parent)->getDataPtr();
+	return static_cast<const uint8_t*>(data) + dataRef;
 }
 
 unsigned Object::getObjectCount() const
 {
-	if(typeinfo().type == ObjectType::ObjectArray) {
+	if(typeIs(ObjectType::ObjectArray)) {
 		return static_cast<const ObjectArray*>(this)->getObjectCount();
 	}
 	return typeinfo().objectCount;
@@ -129,7 +126,7 @@ unsigned Object::getObjectCount() const
 
 Object Object::getObject(unsigned index)
 {
-	if(typeinfo().type == ObjectType::ObjectArray) {
+	if(typeIs(ObjectType::ObjectArray)) {
 		return static_cast<ObjectArray*>(this)->getObject(index);
 	}
 
@@ -143,7 +140,7 @@ Object Object::getObject(unsigned index)
 
 Object Object::findObject(const char* name, size_t length)
 {
-	if(typeinfo().isArray()) {
+	if(isArray()) {
 		return {};
 	}
 	int i = typeinfo().findObject(name, length);
@@ -152,7 +149,7 @@ Object Object::findObject(const char* name, size_t length)
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	if(typeinfo().isArray()) {
+	if(isArray()) {
 		return {};
 	}
 	int i = typeinfo().findProperty(name, length);
@@ -176,7 +173,7 @@ Database& Object::getDatabase()
 
 String Object::getName() const
 {
-	if(parent && (parent->typeinfo().type == ObjectType::Array || parent->typeinfo().type == ObjectType::ObjectArray)) {
+	if(parent && parent->isArray()) {
 		String path;
 		path += '[';
 		path += dataRef; // TODO: When items are deleted index will change, so use parent->getItemIndex(*this);
@@ -215,7 +212,7 @@ StringId Object::getStringId(const char* value, uint16_t valueLength)
 
 unsigned Object::getPropertyCount() const
 {
-	if(typeinfo().type == ObjectType::Array) {
+	if(typeIs(ObjectType::Array)) {
 		return static_cast<const Array*>(this)->getPropertyCount();
 	}
 	return typeinfo().propertyCount;
@@ -223,7 +220,7 @@ unsigned Object::getPropertyCount() const
 
 Property Object::getProperty(unsigned index)
 {
-	if(typeinfo().type == ObjectType::Array) {
+	if(typeIs(ObjectType::Array)) {
 		return static_cast<Array*>(this)->getProperty(index);
 	}
 
@@ -239,7 +236,7 @@ Property Object::getProperty(unsigned index)
 
 PropertyConst Object::getProperty(unsigned index) const
 {
-	if(typeinfo().type == ObjectType::Array) {
+	if(typeIs(ObjectType::Array)) {
 		return static_cast<const Array*>(this)->getProperty(index);
 	}
 

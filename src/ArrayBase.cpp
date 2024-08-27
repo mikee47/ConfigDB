@@ -27,7 +27,7 @@ ArrayData& ArrayBase::getArray()
 	auto& store = getStore();
 	auto& id = getId();
 	if(id == 0) {
-		if(typeinfo().type == ObjectType::ObjectArray) {
+		if(typeIs(ObjectType::ObjectArray)) {
 			id = store.arrayPool.add(*typeinfo().objinfo[0]);
 		} else {
 			id = store.arrayPool.add(typeinfo().propinfo[0]);

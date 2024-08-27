@@ -89,13 +89,13 @@ bool WriteStream::startElement(const JSON::Element& element)
 
 	if(element.isContainer()) {
 		Object obj;
-		if(parent.typeinfo().type == ObjectType::ObjectArray) {
+		if(parent.typeIs(ObjectType::ObjectArray)) {
 			obj = static_cast<ObjectArray&>(parent).addItem();
 		} else {
 			obj = parent.findObject(element.key, element.keyLength);
 			if(!obj) {
 				debug_w("[JSON] Object '%s' not in schema", element.key);
-			} else if(obj.typeinfo().isArray()) {
+			} else if(obj.isArray()) {
 				static_cast<ArrayBase&>(obj).clear();
 			}
 		}
@@ -104,7 +104,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 	}
 
 	Property prop;
-	if(parent.typeinfo().type == ObjectType::Array) {
+	if(parent.typeIs(ObjectType::Array)) {
 		prop = static_cast<Array&>(parent).addProperty();
 	} else {
 		prop = parent.findProperty(element.key, element.keyLength);

@@ -57,7 +57,7 @@ size_t Printer::operator()()
 		++indentLength;
 	}
 
-	bool isArray = object.typeinfo().isArray();
+	bool isArray = object.isArray();
 
 	auto quote = [](String s) {
 		::Format::json.escape(s);
@@ -93,7 +93,7 @@ size_t Printer::operator()()
 			n += p->print(',');
 		}
 		n += newline();
-		if(pretty && object.typeinfo().type == ObjectType::ObjectArray) {
+		if(pretty && object.typeIs(ObjectType::ObjectArray)) {
 			n += p->print(indent);
 			n += p->print("  ");
 		}
