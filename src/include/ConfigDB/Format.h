@@ -60,6 +60,11 @@ struct Status {
 			return nullptr;
 		}
 	}
+
+	size_t printTo(Print& p) const
+	{
+		return p.print(toString());
+	}
 };
 
 class ImportStream : public ReadWriteStream
@@ -126,14 +131,14 @@ public:
 	/**
 	 * @brief De-serialise content from stream into object (RAM)
 	 */
-	virtual bool importFromStream(Object& object, Stream& source) const = 0;
+	virtual Status importFromStream(Object& object, Stream& source) const = 0;
 
 	/**
 	 * @brief De-serialise content from stream into database
 	 * Each store is overwritten as it is loadded.
 	 * If a store entry is not represented in the data then it is left untouched.
 	 */
-	virtual bool importFromStream(Database& database, Stream& source) const = 0;
+	virtual Status importFromStream(Database& database, Stream& source) const = 0;
 
 	/**
 	 * @brief Get the standard file extension for the reader implementation

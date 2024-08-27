@@ -92,12 +92,12 @@ public:
 
 	bool exportToFile(const Format& format, const String& filename);
 
-	bool importFromStream(const Format& format, Stream& source)
+	Status importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
-	bool importFromFile(const Format& format, const String& filename);
+	Status importFromFile(const Format& format, const String& filename);
 
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{

@@ -160,12 +160,12 @@ public:
 
 	bool exportToFile(const Format& format, const String& filename) const;
 
-	bool importFromStream(const Format& format, Stream& source)
+	Status importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
-	bool importFromFile(const Format& format, const String& filename);
+	Status importFromFile(const Format& format, const String& filename);
 
 	const ObjectInfo& typeinfo() const
 	{

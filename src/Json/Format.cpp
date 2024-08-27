@@ -61,28 +61,22 @@ std::unique_ptr<ImportStream> Format::createImportStream(std::shared_ptr<Store> 
 	return std::make_unique<WriteStream>(store, object);
 }
 
-bool Format::importFromStream(Object& object, Stream& source) const
+Status Format::importFromStream(Object& object, Stream& source) const
 {
 	auto status = WriteStream::parse(object, source);
-
-	if(status == JSON::Status::EndOfDocument) {
-		return true;
+	if(!status) {
+		debug_w("JSON load '%s': %s", object.getName().c_str(), toString(status).c_str());
 	}
-
-	debug_w("JSON load '%s': %s", object.getName().c_str(), toString(status).c_str());
-	return false;
+	return status;
 }
 
-bool Format::importFromStream(Database& database, Stream& source) const
+Status Format::importFromStream(Database& database, Stream& source) const
 {
 	auto status = WriteStream::parse(database, source);
-
-	if(status == JSON::Status::EndOfDocument) {
-		return true;
+	if(!status) {
+		debug_w("JSON load '%s': %s", database.getName().c_str(), toString(status).c_str());
 	}
-
-	debug_w("JSON load '%s': %s", database.getName().c_str(), toString(status).c_str());
-	return false;
+	return status;
 }
 
 } // namespace ConfigDB::Json

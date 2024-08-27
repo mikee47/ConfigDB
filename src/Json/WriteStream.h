@@ -48,9 +48,9 @@ public:
 
 	~WriteStream();
 
-	static JSON::Status parse(Database& db, Stream& source);
+	static Status parse(Database& db, Stream& source);
 
-	static JSON::Status parse(Object& object, Stream& source);
+	static Status parse(Object& object, Stream& source);
 
 	bool isValid() const override
 	{

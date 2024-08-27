@@ -79,6 +79,8 @@ public:
 			case Result::ok:
 				break;
 			case Result::formatError:
+				response.code = HTTP_STATUS_BAD_REQUEST;
+				break;
 			case Result::updateConflict:
 				response.code = HTTP_STATUS_CONFLICT;
 				break;

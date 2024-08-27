@@ -127,7 +127,8 @@ public:
 	{
 		MemoryDataStream mem;
 		mem << data;
-		return object.importFromStream(ConfigDB::Json::format, mem);
+		auto status = object.importFromStream(ConfigDB::Json::format, mem);
+		return bool(status);
 	}
 
 	template <typename T> String exportObject(T& object)

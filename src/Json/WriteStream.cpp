@@ -30,14 +30,18 @@ WriteStream::~WriteStream()
 	}
 }
 
-JSON::Status WriteStream::parse(Database& database, Stream& source)
+Status WriteStream::parse(Database& database, Stream& source)
 {
-	return WriteStream(database).parser.parse(source);
+	WriteStream writer(database);
+	writer.parser.parse(source);
+	return writer.status;
 }
 
-JSON::Status WriteStream::parse(Object& object, Stream& source)
+Status WriteStream::parse(Object& object, Stream& source)
 {
-	return WriteStream(object).parser.parse(source);
+	WriteStream writer(object);
+	writer.parser.parse(source);
+	return writer.status;
 }
 
 bool WriteStream::startElement(const JSON::Element& element)
@@ -46,18 +50,21 @@ bool WriteStream::startElement(const JSON::Element& element)
 		return true;
 	}
 
-	auto notInSchema = [&element]() -> bool {
-		debug_e("[JSON] '%s' not in schema", element.key);
+	auto notInSchema = [&]() -> bool {
+		debug_w("[CFGDB] '%s' not in schema", element.key);
+		status.result = Result::formatError;
 		return false;
 	};
 
-	auto arrayExpected = [&element]() -> bool {
-		debug_w("[JSON] '%s' not an array", element.key);
+	auto arrayExpected = [&]() -> bool {
+		debug_w("[CFGDB] '%s' not an array", element.key);
+		status.result = Result::formatError;
 		return false;
 	};
 
-	auto badSelector = [&element]() -> bool {
-		debug_w("[JSON] '%s' bad selector", element.key);
+	auto badSelector = [&]() -> bool {
+		debug_w("[CFGDB] '%s' bad selector", element.key);
+		status.result = Result::formatError;
 		return false;
 	};
 
@@ -66,7 +73,11 @@ bool WriteStream::startElement(const JSON::Element& element)
 			return notInSchema();
 		}
 		const char* value = (element.type == JSON::Element::Type::Null) ? nullptr : element.value;
-		return prop.setJsonValue(value, element.valueLength);
+		if(!prop.setJsonValue(value, element.valueLength)) {
+			status.result = Result::formatError;
+			return false;
+		}
+		return true;
 	};
 
 	if(db && element.level == 1) {
@@ -77,7 +88,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 			store.reset();
 			store = db->openStore(root, true);
 			if(!store || !*store) {
-				// Fatal: store is locked
+				status.result = Result::updateConflict;
 				return false;
 			}
 			info[0] = *store;
@@ -97,7 +108,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		auto& type = *db->typeinfo.stores[i];
 		store = db->openStore(type, true);
 		if(!store || !*store) {
-			// Fatal: store is locked
+			status.result = Result::updateConflict;
 			return false;
 		}
 		info[1] = Object(*store);
@@ -247,10 +258,9 @@ size_t WriteStream::write(const uint8_t* data, size_t size)
 
 	auto jsonStatus = parser.parse(reinterpret_cast<const char*>(data), size);
 	switch(jsonStatus) {
+	case JSON::Status::Ok:
 	case JSON::Status::EndOfDocument:
-		break;
 	case JSON::Status::Cancelled:
-		status.result = Result::updateConflict;
 		break;
 	default:
 		status.result = Result::formatError;
