@@ -253,8 +253,8 @@ void init()
 
 	readWriteValues();
 
-	// ConfigDB::Json::reader.saveToFile(db, F("test/database.json"));
-	// ConfigDB::Json::writer.loadFromFile(db, F("test/database.json"));
+	// database.exportToFile(ConfigDB::Json::format, F("test/database.json"));
+	// database.importFromFile(ConfigDB::Json::format, F("test/database.json"));
 
 	// stream(database);
 

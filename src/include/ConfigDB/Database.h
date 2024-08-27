@@ -90,14 +90,14 @@ public:
 		return format.exportToStream(*this, output);
 	}
 
-	bool exportToFile(const String& filename, const Format& format);
+	bool exportToFile(const Format& format, const String& filename);
 
 	bool importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
-	bool importFromFile(const String& filename, const Format& format);
+	bool importFromFile(const Format& format, const String& filename);
 
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{

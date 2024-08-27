@@ -187,7 +187,7 @@ bool Database::save(Store& store) const
 	return result;
 }
 
-bool Database::exportToFile(const String& filename, const Format& format)
+bool Database::exportToFile(const Format& format, const String& filename)
 {
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
@@ -204,7 +204,7 @@ bool Database::exportToFile(const String& filename, const Format& format)
 	return false;
 }
 
-bool Database::importFromFile(const String& filename, const Format& format)
+bool Database::importFromFile(const Format& format, const String& filename)
 {
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
