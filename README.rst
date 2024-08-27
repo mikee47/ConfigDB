@@ -86,46 +86,181 @@ The name of the store forms the JSONPath prefix for any contained objects and va
 
 The :sample:`BasicConfig` sample demonstrates using the stream classes to read and write data from a web client.
 
+.. important::
+
+  Any invalid data in a JSON update file will cause the import to stop immediately with an error. This includes values which do not exist in the schema.
+
+
+Update mechanism
+~~~~~~~~~~~~~~~~
+
 .. highlight: JSON
 
-.. note::
+The default streaming update (writing) behaviour is to **overwrite** only those values received.
+This allows selective updating of properties. For example::
 
-    Current streaming update (writing) behaviour is to overwrite only those values received.
-    This allows selective updating of properties. For example::
+  {
+      "security": {
+          "api_secured": "false"
+      }
+  }
 
-        {
-          "security": {
-            "api_secured": "false"
-          }
-        }
+This updates the **api_secured** value in the database, leaving everything else unchanged.
 
-    This updates one value in the database, leaving everything else unchanged.
+Arrays are handled slightly differently. To *overwrites* the array with new values::
 
-    Arrays are overwritten entirely::
+  "x": [1, 2, 3, 4]
 
-        {
-          "general": {
-            "supported_color_models": [
-              "RGB",
-              "RAW"
-            ]
-          }
-        }
+To *clear* the array::
 
-    replaces everything in *general.supported_color_models*, and this::
+  "x": []
 
-        {
-          "general": {
-            "channels": [
-              {
-                "pin": 1,
-                "name": "dummy"
-              }
-            ]
-          }
-        }
+**Indexed array operations**
 
-    Deletes all existing entries in *general.channels* and replaces it with the one object provided.
+Array selectors can be used which operate in the same way as python list operations.
+So **x[i]** corresponds to a single element at index i, **x[i:j]** is a 'slice' starting at index i and ending with index (j-1). Negative numbers refer to offsets from the end of the array, so **-1** is the last element.
+
+When selecting a single array element **x[5]**, the provided index *must* exist in the array or import will fail.
+When updating a range, index values equal to or greater than the array length will be treated as an append operation.
+
+The following example operations demonstrate what happens with an initial JSON array **x**::
+
+  {
+    "x": [1, 2, 3, 4]
+  }
+
+The *result* value shows the value for *x* after the update operation.
+The same operations are supported for arrays of other types, including objects.
+
+*Update single item*::
+
+  {
+    "x[0]" : 8,
+    "result": [8, 2, 3, 4]
+  },
+  {
+    "x[2]" : 8,
+    "result": [1, 2, 8, 4]
+  },
+  {
+    "x[-1]" : 8,
+    "result": [1, 2, 3, 8]
+  }
+
+*Update multiple items*
+
+Note that the assigned value *must* be an array or the import will fail::
+
+  {
+    "x[0:2]" : [8, 9],
+    "result": [8, 9, 3, 4]
+  },
+  {
+    "x[1:1]": [8, 9],
+    "result": [1, 8, 9, 2, 3, 4]
+  },
+    "x[1:2]": [8, 9],
+    "result": [1, 8, 9, 3, 4]
+  },
+  {
+    "x[2:]": [8, 9],
+    "result": [1, 2, 8, 9]
+  }
+
+*Insert item*::
+
+  {
+    "x[3:0]" : [8],
+    "result": [1, 2, 3, 8, 4]
+  },
+  {
+    "x[3:3]": [8],
+    "result": [1, 2, 3, 8, 4]
+  },
+  {
+    "x[-1:]" : [8, 9],
+    "result": [1, 2, 3, 8, 9]
+  }
+
+*Append item*::
+
+  {
+    "x[]": [8, 9],
+    "result": [1, 2, 3, 4, 8, 9]
+  },
+  {
+    "x[]": 8,
+    "result": [1, 2, 3, 4, 8]
+  }
+
+*Append multiple items*::
+
+  {
+    "x[]": [8, 9],
+    "result": [1, 2, 3, 4, 8, 9]
+  },
+  {
+    "x[10:]": [8, 9],
+    "result": [1, 2, 3, 4, 8, 9]
+  }
+
+
+**Object array selection**
+
+The **x[name=value]** syntax can be used to select *one* object from an array of objects. Here's the test data::
+
+  {
+    "x": [
+      {
+        "name": "object 1",
+        "value": 1
+      },
+      {
+        "name": "object 2",
+        "value": 2
+      }
+    ]
+  }
+
+And the selector can be used like this::
+
+  {
+    "x[name=object 1]": { "value": 8 },
+    "result": [
+      {
+        "name": "object 1",
+        "value": 8
+      },
+      {
+        "name": "object 2",
+        "value": 2
+      }
+    ]
+  }
+
+or::
+
+  {
+    "x[value=2]": { "value": 8 },
+    "x[value=1]": { "value": 1234 },
+    "result": [
+      {
+        "name": "object 1",
+        "value": 1234
+      },
+      {
+        "name": "object 2",
+        "value": 8
+      }
+    ]
+  }
+
+Limitations:
+
+- Only the first matching object will be selected
+- Only one object key can be matched
+
+You can find more examples in the test application under *resource/array-test.json*.
 
 
 C++ API code generation
