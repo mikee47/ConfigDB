@@ -70,7 +70,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		i = db->typeinfo.findStore(element.key, element.keyLength);
 		if(i < 0) {
 			debug_w("[JSON] Object '%s' not in schema", element.key);
-			return true;
+			return false;
 		}
 		auto& type = *db->typeinfo.stores[i];
 		store = db->openStore(type, true);
@@ -95,7 +95,9 @@ bool WriteStream::startElement(const JSON::Element& element)
 			obj = parent.findObject(element.key, element.keyLength);
 			if(!obj) {
 				debug_w("[JSON] Object '%s' not in schema", element.key);
-			} else if(obj.isArray()) {
+				return false;
+			}
+			if(obj.isArray()) {
 				static_cast<ArrayBase&>(obj).clear();
 			}
 		}
@@ -110,7 +112,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		prop = parent.findProperty(element.key, element.keyLength);
 		if(!prop) {
 			debug_w("[JSON] Property '%s' not in schema", element.key);
-			return true;
+			return false;
 		}
 	}
 
