@@ -44,10 +44,23 @@ public:
 	Object addItem()
 	{
 		auto& itemType = getItemType();
+		if(!this->writeCheck()) {
+			return Object(itemType, *this, 0);
+		}
 		auto& array = getArray();
 		auto ref = array.getCount();
 		array.add(itemType.defaultData);
 		return Object(itemType, *this, ref);
+	}
+
+	Object insertItem(unsigned index)
+	{
+		auto& itemType = getItemType();
+		if(!this->writeCheck()) {
+			return Object(itemType, *this, 0);
+		}
+		getArray().insert(index, itemType.defaultData);
+		return Object(itemType, *this, index);
 	}
 
 	const ObjectInfo& getItemType() const

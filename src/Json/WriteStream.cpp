@@ -51,6 +51,16 @@ bool WriteStream::startElement(const JSON::Element& element)
 		return false;
 	};
 
+	auto arrayExpected = [&element]() -> bool {
+		debug_w("[JSON] '%s' not an array", element.key);
+		return false;
+	};
+
+	auto badSelector = [&element]() -> bool {
+		debug_w("[JSON] '%s' bad selector", element.key);
+		return false;
+	};
+
 	auto setProperty = [&](Property prop) -> bool {
 		if(!prop) {
 			return notInSchema();
@@ -99,10 +109,82 @@ bool WriteStream::startElement(const JSON::Element& element)
 		return true;
 	}
 
+	auto& obj = info[element.level];
+
+	// Check for array selector expression
+	auto sel = strchr(element.key, '[');
+	if(sel) {
+		obj = parent.findObject(element.key, sel - element.key);
+		if(!obj) {
+			return notInSchema();
+		}
+		if(!obj.isArray()) {
+			return arrayExpected();
+		}
+		auto& array = static_cast<ArrayBase&>(obj);
+		int16_t len = array.getItemCount();
+		if(sel[1] == ']') {
+			// Append only
+			obj.streamPos = len;
+			return true;
+		}
+
+		char* ptr;
+		int16_t start = strtol(sel + 1, &ptr, 0);
+		if(start < 0) {
+			start += len;
+		}
+		if(*ptr == ']') {
+			// Single index, value can be a property or object
+			if(start >= len) {
+				return badSelector();
+			}
+			// If its an object we set info and finish
+			if(obj.typeIs(ObjectType::ObjectArray)) {
+				if(!element.isContainer()) {
+					return badSelector();
+				}
+				arrayParent = static_cast<ObjectArray&>(obj);
+				obj = arrayParent.getObject(start);
+				return true;
+			}
+			// If its a property we can set it now
+			return setProperty(array.getProperty(start));
+		}
+
+		// Range
+		int16_t end = -1;
+		if(*ptr == ':') {
+			start = std::min(start, len);
+			if(ptr[1] == ']') {
+				end = len;
+				++ptr;
+			} else {
+				end = strtol(ptr + 1, &ptr, 0);
+				if(end < 0) {
+					end += len;
+				}
+			}
+		}
+		if(*ptr != ']') {
+			return badSelector();
+		}
+		// Range
+		if(element.type != JSON::Element::Type::Array) {
+			return arrayExpected();
+		}
+		// Remove items in range
+		while(end > start) {
+			array.removeItem(start);
+			--end;
+		}
+		obj.streamPos = start; // Where to insert new items
+		return true;
+	}
+
 	if(element.isContainer()) {
-		Object obj;
 		if(parent.typeIs(ObjectType::ObjectArray)) {
-			obj = static_cast<ObjectArray&>(parent).addItem();
+			obj = static_cast<ObjectArray&>(parent).insertItem(parent.streamPos++);
 		} else {
 			obj = parent.findObject(element.key, element.keyLength);
 			if(!obj) {
@@ -112,13 +194,12 @@ bool WriteStream::startElement(const JSON::Element& element)
 				static_cast<ArrayBase&>(obj).clear();
 			}
 		}
-		info[element.level] = obj;
 		return true;
 	}
 
 	if(parent.typeIs(ObjectType::Array)) {
 		auto& array = static_cast<Array&>(parent);
-		return setProperty(array.addProperty());
+		return setProperty(array.insertProperty(parent.streamPos++));
 	}
 
 	return setProperty(parent.findProperty(element.key, element.keyLength));

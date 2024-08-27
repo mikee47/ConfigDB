@@ -103,6 +103,7 @@ private:
 	Database* db{};
 	std::shared_ptr<Store> store;
 	Object info[JSON::StreamingParser::maxNesting]{};
+	ObjectArray arrayParent; ///< Temporary required when using selectors
 	JSON::StaticStreamingParser<1024> parser;
 };
 
