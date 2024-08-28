@@ -115,7 +115,7 @@ public:
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
 			update.stringArray[0] = nullptr;
-			REQUIRE_EQ(root.stringArray[0], nullptr);
+			REQUIRE_EQ(root.stringArray[0], "abc");
 			update.stringArray[0] = myString;
 			Serial << root.stringArray << endl;
 		}

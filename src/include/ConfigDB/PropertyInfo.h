@@ -57,7 +57,7 @@ using StringId = uint16_t;
 struct PropertyInfo {
 	PropertyType type;
 	const FlashString& name;
-	const FlashString* defaultValue; ///< Only required for strings
+	const FlashString& defaultValue;
 
 	static const PropertyInfo empty;
 

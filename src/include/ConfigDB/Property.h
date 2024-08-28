@@ -85,6 +85,11 @@ public:
 	using PropertyConst::PropertyConst;
 
 	bool setJsonValue(const char* value, size_t valueLength);
+
+	bool setJsonValue(const String& value)
+	{
+		return setJsonValue(value.c_str(), value.length());
+	}
 };
 
 } // namespace ConfigDB

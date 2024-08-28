@@ -544,7 +544,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             *(make_static_initializer([
                 f'{prop.property_type}',
                 'fstr_empty' if obj.is_array else strings[prop.name],
-                'nullptr' if prop.default is None or prop.ptype != 'string' else f'&{strings[prop.default]}',
+                strings[str(prop.default or '')],
             ], ',') for prop in propinfo),
             '}',
         ] if propinfo else None,
