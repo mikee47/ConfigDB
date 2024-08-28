@@ -34,7 +34,7 @@ public:
 	{
 	}
 
-	WriteStream(Database& db) : db(&db), parser(this)
+	WriteStream(Database& database) : database(&database), parser(this)
 	{
 	}
 
@@ -48,9 +48,9 @@ public:
 
 	~WriteStream();
 
-	static JSON::Status parse(Database& db, Stream& source);
+	static Status parse(Database& database, Stream& source);
 
-	static JSON::Status parse(Object& object, Stream& source);
+	static Status parse(Object& object, Stream& source);
 
 	bool isValid() const override
 	{
@@ -83,13 +83,15 @@ public:
 
 	String getName() const override
 	{
-		return db ? db->getName() : info[0].getName();
+		return database ? database->getName() : info[0].getName();
 	}
 
 	MimeType getMimeType() const override
 	{
 		return MimeType::JSON;
 	}
+
+	Status getStatus() const override;
 
 private:
 	bool startElement(const JSON::Element& element) override;
@@ -99,11 +101,20 @@ private:
 		return true;
 	}
 
+	bool locateStoreOrRoot(const JSON::Element& element);
+	bool handleSelector(const JSON::Element& element, const char* sel);
+	bool setProperty(const JSON::Element& element, Object& object, Property prop);
+	bool handleError(FormatError err, Object& object, const String& arg);
+	bool handleError(FormatError err, const String& arg);
+
 private:
-	Database* db{};
+	Database* database{};
 	std::shared_ptr<Store> store;
 	Object info[JSON::StreamingParser::maxNesting]{};
+	ObjectArray arrayParent; ///< Temporary required when using selectors
 	JSON::StaticStreamingParser<1024> parser;
+	JSON::Status jsonStatus{};
+	Status status;
 };
 
 } // namespace ConfigDB::Json

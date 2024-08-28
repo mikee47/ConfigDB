@@ -34,8 +34,8 @@ public:
 	size_t exportToStream(Database& database, Print& output) const override;
 	std::unique_ptr<ImportStream> createImportStream(Database& db) const override;
 	std::unique_ptr<ImportStream> createImportStream(std::shared_ptr<Store> store, Object& object) const override;
-	bool importFromStream(Object& object, Stream& source) const override;
-	bool importFromStream(Database& database, Stream& source) const override;
+	Status importFromStream(Object& object, Stream& source) const override;
+	Status importFromStream(Database& database, Stream& source) const override;
 
 	String getFileExtension() const override
 	{

@@ -1,0 +1,28 @@
+{
+    "int_array": [
+        1,
+        2,
+        3,
+        4
+    ],
+    "string_array": [],
+    "object_array": [
+        {
+            "intval": 1,
+            "stringval": "a"
+        },
+        {
+            "intval": 2,
+            "stringval": "b"
+        },
+        {
+            "intval": 3,
+            "stringval": "c"
+        },
+        {
+            "intval": 4,
+            "stringval": "d"
+        }
+    ],
+    "simple-bool": true
+}

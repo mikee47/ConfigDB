@@ -80,6 +80,17 @@ public:
 	 */
 	virtual const Format& getFormat(const Store& store) const;
 
+	/**
+	 * @brief Called during import
+	 * @param object The object to which this error relates
+	 * @param arg String parameter which failed validation
+	 * @param err The specific error type
+	 * @retval bool Return true to continue processing, false to stop
+	 *
+	 * Default behaviour is to report errors but continue processing.
+	 */
+	virtual bool handleFormatError(FormatError err, const Object& object, const String& arg);
+
 	std::unique_ptr<ExportStream> createExportStream(const Format& format)
 	{
 		return format.createExportStream(*this);
@@ -92,12 +103,12 @@ public:
 
 	bool exportToFile(const Format& format, const String& filename);
 
-	bool importFromStream(const Format& format, Stream& source)
+	Status importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
-	bool importFromFile(const Format& format, const String& filename);
+	Status importFromFile(const Format& format, const String& filename);
 
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{

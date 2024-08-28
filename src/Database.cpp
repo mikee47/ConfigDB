@@ -34,6 +34,25 @@ const Format& Database::getFormat(const Store&) const
 	return Json::format;
 }
 
+bool Database::handleFormatError(FormatError err, const Object& object, const String& arg)
+{
+#if DEBUG_VERBOSE_LEVEL >= WARN
+	String msg;
+	if(arg) {
+		msg += " \"";
+		msg += arg;
+		msg += '"';
+	}
+	if(object) {
+		msg += " in \"";
+		msg += object.getName();
+		msg += '"';
+	}
+	debug_e("[CFGDB] %s%s", toString(err).c_str(), msg.c_str());
+#endif
+	return true;
+}
+
 std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 {
 	if(index >= typeinfo.storeCount) {
@@ -196,20 +215,20 @@ bool Database::exportToFile(const Format& format, const String& filename)
 	}
 
 	if(stream.getLastError() == FS_OK) {
-		debug_d("[CFGDB] Database saved '%s' OK", filename.c_str());
+		debug_d("[CFGDB] Database saved to '%s'", filename.c_str());
 		return true;
 	}
 
-	debug_e("[CFGDB] Database save '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+	debug_e("[CFGDB] Database save to '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
 	return false;
 }
 
-bool Database::importFromFile(const Format& format, const String& filename)
+Status Database::importFromFile(const Format& format, const String& filename)
 {
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
-		debug_w("open('%s') failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
-		return false;
+		debug_w("[CFGDB] open '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
+		return Status::fileError(stream.getLastError());
 	}
 
 	return format.importFromStream(*this, stream);

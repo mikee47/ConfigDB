@@ -141,6 +141,12 @@ public:
 	 */
 	bool commit();
 
+	/**
+	 * @brief Clear store dirty flag so changes don't get committed
+	 * @note Store must be reloaded to roll back any changes
+	 */
+	void clearDirty();
+
 	String getName() const;
 
 	String getPath() const;
@@ -154,12 +160,12 @@ public:
 
 	bool exportToFile(const Format& format, const String& filename) const;
 
-	bool importFromStream(const Format& format, Stream& source)
+	Status importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
-	bool importFromFile(const Format& format, const String& filename);
+	Status importFromFile(const Format& format, const String& filename);
 
 	const ObjectInfo& typeinfo() const
 	{

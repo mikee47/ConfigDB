@@ -72,17 +72,20 @@ public:
 		onComplete = [](HttpRequest&, HttpResponse& response, ImportStream& stream) -> void {
 			String msg;
 			msg += F("Result: ");
-			msg += toString(stream.status);
+			auto status = stream.getStatus();
+			msg += toString(status);
 			response.sendString(msg);
-			debug_i("%s, %u", msg.c_str(), stream.status.result);
-			switch(stream.status.result) {
-			case Result::ok:
+			debug_i("%s", msg.c_str());
+			switch(status.error) {
+			case Error::OK:
 				break;
-			case Result::formatError:
-			case Result::updateConflict:
+			case Error::FormatError:
+				response.code = HTTP_STATUS_BAD_REQUEST;
+				break;
+			case Error::UpdateConflict:
 				response.code = HTTP_STATUS_CONFLICT;
 				break;
-			case Result::fileError:
+			case Error::FileError:
 				response.code = HTTP_STATUS_INTERNAL_SERVER_ERROR;
 				break;
 			}

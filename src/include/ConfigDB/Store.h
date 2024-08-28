@@ -164,15 +164,15 @@ public:
 		return exportToFile(format, filename);
 	}
 
-	bool importFromFile(const Format& format, const String& filename)
+	Status importFromFile(const Format& format, const String& filename)
 	{
 		incUpdate();
-		bool result = Object::importFromFile(format, filename);
+		auto result = Object::importFromFile(format, filename);
 		decUpdate();
 		return result;
 	}
 
-	bool importFromFile(const Format& format)
+	Status importFromFile(const Format& format)
 	{
 		String filename = getFilePath() + format.getFileExtension();
 		return importFromFile(format, filename);
@@ -186,6 +186,11 @@ protected:
 	void queueUpdate(Object::UpdateCallback callback);
 
 	bool commit();
+
+	void clearDirty()
+	{
+		dirty = false;
+	}
 
 	void incUpdate()
 	{

@@ -20,7 +20,7 @@
 #pragma once
 
 #include <Data/Stream/ReadWriteStream.h>
-#include <IFS/Error.h>
+#include "Status.h"
 #include <memory>
 
 namespace ConfigDB
@@ -29,49 +29,16 @@ class Database;
 class Store;
 class Object;
 
-enum class Result {
-	ok,
-	formatError,
-	updateConflict,
-	fileError,
-};
-
-struct Status {
-	Result result{};
-	int fileError{};
-
-	explicit operator bool() const
-	{
-		return result == Result::ok;
-	}
-
-	String toString() const
-	{
-		switch(result) {
-		case Result::ok:
-			return F("OK");
-		case Result::formatError:
-			return F("Format Error");
-		case Result::updateConflict:
-			return F("Update Conflict");
-		case Result::fileError:
-			return IFS::Error::toString(fileError ?: IFS::Error::WriteFailure);
-		default:
-			return nullptr;
-		}
-	}
-};
-
 class ImportStream : public ReadWriteStream
 {
 public:
-	Status status;
+	virtual Status getStatus() const = 0;
 };
 
 class ExportStream : public IDataSourceStream
 {
 public:
-	Status status;
+	virtual Status getStatus() const = 0;
 };
 
 /**
@@ -126,14 +93,14 @@ public:
 	/**
 	 * @brief De-serialise content from stream into object (RAM)
 	 */
-	virtual bool importFromStream(Object& object, Stream& source) const = 0;
+	virtual Status importFromStream(Object& object, Stream& source) const = 0;
 
 	/**
 	 * @brief De-serialise content from stream into database
 	 * Each store is overwritten as it is loadded.
 	 * If a store entry is not represented in the data then it is left untouched.
 	 */
-	virtual bool importFromStream(Database& database, Stream& source) const = 0;
+	virtual Status importFromStream(Database& database, Stream& source) const = 0;
 
 	/**
 	 * @brief Get the standard file extension for the reader implementation
@@ -147,8 +114,3 @@ public:
 };
 
 } // namespace ConfigDB
-
-inline String toString(ConfigDB::Status status)
-{
-	return status.toString();
-}
