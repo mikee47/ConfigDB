@@ -19,7 +19,8 @@
 
 #include "WriteStream.h"
 #include <JSON/StreamingParser.h>
-#include <debug_progmem.h>
+
+using Element = JSON::Element;
 
 namespace ConfigDB::Json
 {
@@ -44,38 +45,27 @@ Status WriteStream::parse(Object& object, Stream& source)
 	return writer.status;
 }
 
-bool WriteStream::startElement(const JSON::Element& element)
+bool WriteStream::handleError(FormatError err, Object& object, const String& arg)
+{
+	status = err;
+	Database& db = database ? *database : info[0].getDatabase();
+	return db.handleFormatError(err, object, arg);
+	return true;
+}
+
+bool WriteStream::startElement(const Element& element)
 {
 	if(element.level == 0) {
+		if(element.type != Element::Type::Object) {
+			return handleError(FormatError::BadType, toString(element.type));
+		}
 		return true;
 	}
 
-	auto notInSchema = [&]() -> bool {
-		debug_w("[CFGDB] '%s' not in schema", element.key);
-		status.result = Result::formatError;
-		return false;
-	};
-
-	auto arrayExpected = [&]() -> bool {
-		debug_w("[CFGDB] '%s' not an array", element.key);
-		status.result = Result::formatError;
-		return false;
-	};
-
-	auto badSelector = [&]() -> bool {
-		debug_w("[CFGDB] '%s' bad selector", element.key);
-		status.result = Result::formatError;
-		return false;
-	};
-
-	auto setProperty = [&](Property prop) -> bool {
-		if(!prop) {
-			return notInSchema();
-		}
-		const char* value = (element.type == JSON::Element::Type::Null) ? nullptr : element.value;
+	auto setProperty = [&](Object& object, Property prop) -> bool {
+		const char* value = (element.type == Element::Type::Null) ? nullptr : element.value;
 		if(!prop.setJsonValue(value, element.valueLength)) {
-			status.result = Result::formatError;
-			return false;
+			return handleError(FormatError::SetPropFailed, object, String(element.value, element.valueLength));
 		}
 		return true;
 	};
@@ -92,8 +82,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 			store.reset();
 			store = database->openStore(root, true);
 			if(!store || !*store) {
-				status.result = Result::updateConflict;
-				return false;
+				return handleError(FormatError::UpdateConflict, element.getKey());
 			}
 			parent = *store;
 			obj = store->getObject(i);
@@ -107,19 +96,14 @@ bool WriteStream::startElement(const JSON::Element& element)
 		store.reset();
 		i = database->typeinfo.findStore(element.key, element.keyLength);
 		if(i < 0) {
-			return notInSchema();
+			return handleError(FormatError::NotInSchema, element.getKey());
 		}
 		auto& type = *database->typeinfo.stores[i];
 		store = database->openStore(type, true);
 		if(!store || !*store) {
-			status.result = Result::updateConflict;
-			return false;
+			return handleError(FormatError::UpdateConflict, type.name);
 		}
 		obj = *store;
-		return true;
-	}
-
-	if(!parent) {
 		return true;
 	}
 
@@ -128,14 +112,14 @@ bool WriteStream::startElement(const JSON::Element& element)
 	if(sel) {
 		auto keyEnd = element.key + element.keyLength - 1;
 		if(*keyEnd != ']') {
-			return badSelector();
+			return handleError(FormatError::BadSelector, parent, element.getKey());
 		}
 		obj = parent.findObject(element.key, sel - element.key);
 		if(!obj) {
-			return notInSchema();
+			return handleError(FormatError::NotInSchema, parent, element.getKey());
 		}
 		if(!obj.isArray()) {
-			return arrayExpected();
+			return handleError(FormatError::BadType, obj, toString(obj.typeinfo().type));
 		}
 		auto& array = static_cast<ArrayBase&>(obj);
 		int16_t len = array.getItemCount();
@@ -143,10 +127,13 @@ bool WriteStream::startElement(const JSON::Element& element)
 		if(sel == keyEnd) {
 			// Append only
 			if(!element.isContainer()) {
-				if(array.typeIs(ObjectType::ObjectArray)) {
-					return badSelector();
+				if(!array.typeIs(ObjectType::Array)) {
+					return handleError(FormatError::BadType, array, toString(element.type));
 				}
-				return setProperty(static_cast<Array&>(array).addItem());
+				return setProperty(array, static_cast<Array&>(array).addItem());
+			}
+			if(element.type == Element::Type::Object && !array.typeIs(ObjectType::ObjectArray)) {
+				return handleError(FormatError::BadType, array, toString(element.type));
 			}
 			obj.streamPos = len;
 			return true;
@@ -162,7 +149,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 			arrayParent = static_cast<ObjectArray&>(obj);
 			auto propIndex = arrayParent.getItemType().findProperty(name, namelen);
 			if(propIndex < 0) {
-				return badSelector();
+				return handleError(FormatError::NotInSchema, obj, String(name, namelen));
 			}
 			for(unsigned i = 0; i < array.getItemCount(); ++i) {
 				auto item = arrayParent.getItem(i);
@@ -173,7 +160,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 					return true;
 				}
 			}
-			return badSelector();
+			return handleError(FormatError::BadSelector, obj, String(value, valuelen));
 		}
 
 		char* ptr;
@@ -184,19 +171,23 @@ bool WriteStream::startElement(const JSON::Element& element)
 		if(ptr == keyEnd) {
 			// Single index, value can be a property or object
 			if(start >= len) {
-				return badSelector();
+				return handleError(FormatError::BadIndex, obj, String(start));
 			}
 			// If its an object we set info and finish
 			if(obj.typeIs(ObjectType::ObjectArray)) {
 				if(!element.isContainer()) {
-					return badSelector();
+					return handleError(FormatError::BadType, obj, element.getKey());
 				}
 				arrayParent = static_cast<ObjectArray&>(obj);
 				obj = arrayParent.getObject(start);
 				return true;
 			}
 			// If its a property we can set it now
-			return setProperty(array.getProperty(start));
+			auto prop = array.getProperty(start);
+			if(!prop) {
+				return handleError(FormatError::NotInSchema, array, String(start));
+			}
+			return setProperty(array, prop);
 		}
 
 		// Range
@@ -214,11 +205,11 @@ bool WriteStream::startElement(const JSON::Element& element)
 			}
 		}
 		if(ptr != keyEnd) {
-			return badSelector();
+			return handleError(FormatError::BadSelector, array, String(sel, keyEnd - sel));
 		}
 		// Range
-		if(element.type != JSON::Element::Type::Array) {
-			return arrayExpected();
+		if(element.type != Element::Type::Array) {
+			return handleError(FormatError::BadType, array, toString(element.type));
 		}
 		// Remove items in range
 		while(end > start) {
@@ -235,7 +226,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		} else {
 			obj = parent.findObject(element.key, element.keyLength);
 			if(!obj) {
-				return notInSchema();
+				return handleError(FormatError::NotInSchema, parent, element.getKey());
 			}
 			if(obj.isArray()) {
 				static_cast<ArrayBase&>(obj).clear();
@@ -246,10 +237,14 @@ bool WriteStream::startElement(const JSON::Element& element)
 
 	if(parent.typeIs(ObjectType::Array)) {
 		auto& array = static_cast<Array&>(parent);
-		return setProperty(array.insertItem(parent.streamPos++));
+		return setProperty(array, array.insertItem(parent.streamPos++));
 	}
 
-	return setProperty(parent.findProperty(element.key, element.keyLength));
+	auto prop = parent.findProperty(element.key, element.keyLength);
+	if(!prop) {
+		return handleError(FormatError::NotInSchema, parent, element.getKey());
+	}
+	return setProperty(parent, prop);
 }
 
 size_t WriteStream::write(const uint8_t* data, size_t size)
@@ -265,7 +260,7 @@ size_t WriteStream::write(const uint8_t* data, size_t size)
 	case JSON::Status::Cancelled:
 		break;
 	default:
-		status.result = Result::formatError;
+		status = FormatError{};
 	}
 	return size;
 }

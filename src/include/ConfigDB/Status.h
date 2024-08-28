@@ -19,41 +19,66 @@
 
 #pragma once
 
+#include <WString.h>
 #include <IFS/Error.h>
+
+#define CONFIGDB_ERROR_MAP(XX)                                                                                         \
+	XX(OK)                                                                                                             \
+	XX(FormatError)                                                                                                    \
+	XX(UpdateConflict)                                                                                                 \
+	XX(FileError)
+
+#define CONFIGDB_FORMAT_ERROR_MAP(XX)                                                                                  \
+	XX(OK)                                                                                                             \
+	XX(FormatError)                                                                                                    \
+	XX(NotInSchema)                                                                                                    \
+	XX(BadType)                                                                                                 \
+	XX(BadSelector)                                                                                                    \
+	XX(BadIndex)                                                                                                       \
+	XX(UpdateConflict)                                                                                                 \
+	XX(SetPropFailed)
 
 namespace ConfigDB
 {
-enum class Result {
-	ok,
-	formatError,
-	updateConflict,
-	fileError,
+enum class Error {
+#define XX(err) err,
+	CONFIGDB_ERROR_MAP(XX)
+#undef XX
+};
+
+enum class FormatError {
+#define XX(err) err,
+	CONFIGDB_FORMAT_ERROR_MAP(XX)
+#undef XX
 };
 
 struct Status {
-	Result result{};
-	int fileError{};
+	struct Code {
+		int fileError{};
+		FormatError formatError;
+	};
+
+	Error error{};
+	Code code;
+
+	static Status fileError(int errorCode)
+	{
+		return Status{Error::FileError, {.fileError = errorCode}};
+	}
+
+	Status& operator=(FormatError err)
+	{
+		error = Error::FormatError;
+		code.formatError = err;
+		return *this;
+	}
 
 	explicit operator bool() const
 	{
-		return result == Result::ok;
+		return error == Error::OK;
 	}
 
-	String toString() const
-	{
-		switch(result) {
-		case Result::ok:
-			return F("OK");
-		case Result::formatError:
-			return F("Format Error");
-		case Result::updateConflict:
-			return F("Update Conflict");
-		case Result::fileError:
-			return IFS::Error::toString(fileError ?: IFS::Error::WriteFailure);
-		default:
-			return nullptr;
-		}
-	}
+	String toString() const;
 
 	size_t printTo(Print& p) const
 	{
@@ -67,3 +92,5 @@ inline String toString(ConfigDB::Status status)
 {
 	return status.toString();
 }
+
+String toString(ConfigDB::FormatError error);

@@ -287,7 +287,7 @@ Status Object::importFromFile(const Format& format, const String& filename)
 			return {};
 		}
 		debug_w("[CFGDB] open '%s' failed", filename.c_str());
-		return {Result::fileError, stream.getLastError()};
+		return Status::fileError(stream.getLastError());
 	}
 
 	return format.importFromStream(*this, stream);

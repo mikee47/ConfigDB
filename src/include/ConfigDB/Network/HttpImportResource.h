@@ -74,17 +74,17 @@ public:
 			msg += F("Result: ");
 			msg += toString(stream.status);
 			response.sendString(msg);
-			debug_i("%s, %u", msg.c_str(), stream.status.result);
-			switch(stream.status.result) {
-			case Result::ok:
+			debug_i("%s", msg.c_str());
+			switch(stream.status.error) {
+			case Error::OK:
 				break;
-			case Result::formatError:
+			case Error::FormatError:
 				response.code = HTTP_STATUS_BAD_REQUEST;
 				break;
-			case Result::updateConflict:
+			case Error::UpdateConflict:
 				response.code = HTTP_STATUS_CONFLICT;
 				break;
-			case Result::fileError:
+			case Error::FileError:
 				response.code = HTTP_STATUS_INTERNAL_SERVER_ERROR;
 				break;
 			}

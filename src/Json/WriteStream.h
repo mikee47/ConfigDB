@@ -99,6 +99,14 @@ private:
 		return true;
 	}
 
+	bool handleError(FormatError err, Object& object, const String& arg = nullptr);
+
+	bool handleError(FormatError err, const String& arg)
+	{
+		Object object;
+		return handleError(err, object, arg);
+	}
+
 private:
 	Database* database{};
 	std::shared_ptr<Store> store;

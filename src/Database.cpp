@@ -34,6 +34,25 @@ const Format& Database::getFormat(const Store&) const
 	return Json::format;
 }
 
+bool Database::handleFormatError(FormatError err, const Object& object, const String& arg)
+{
+#if DEBUG_VERBOSE_LEVEL >= WARN
+	String msg;
+	if(arg) {
+		msg += " \"";
+		msg += arg;
+		msg += '"';
+	}
+	if(object) {
+		msg += " in \"";
+		msg += object.getName();
+		msg += '"';
+	}
+	debug_e("[CFGDB] %s%s", toString(err).c_str(), msg.c_str());
+#endif
+	return true;
+}
+
 std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 {
 	if(index >= typeinfo.storeCount) {
@@ -209,7 +228,7 @@ Status Database::importFromFile(const Format& format, const String& filename)
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
 		debug_w("[CFGDB] open '%s' failed: %s", filename.c_str(), stream.getLastErrorString().c_str());
-		return {Result::fileError, stream.getLastError()};
+		return Status::fileError(stream.getLastError());
 	}
 
 	return format.importFromStream(*this, stream);
