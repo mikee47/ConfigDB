@@ -20,7 +20,7 @@
 #pragma once
 
 #include <Data/Stream/ReadWriteStream.h>
-#include <IFS/Error.h>
+#include "Status.h"
 #include <memory>
 
 namespace ConfigDB
@@ -28,44 +28,6 @@ namespace ConfigDB
 class Database;
 class Store;
 class Object;
-
-enum class Result {
-	ok,
-	formatError,
-	updateConflict,
-	fileError,
-};
-
-struct Status {
-	Result result{};
-	int fileError{};
-
-	explicit operator bool() const
-	{
-		return result == Result::ok;
-	}
-
-	String toString() const
-	{
-		switch(result) {
-		case Result::ok:
-			return F("OK");
-		case Result::formatError:
-			return F("Format Error");
-		case Result::updateConflict:
-			return F("Update Conflict");
-		case Result::fileError:
-			return IFS::Error::toString(fileError ?: IFS::Error::WriteFailure);
-		default:
-			return nullptr;
-		}
-	}
-
-	size_t printTo(Print& p) const
-	{
-		return p.print(toString());
-	}
-};
 
 class ImportStream : public ReadWriteStream
 {
@@ -152,8 +114,3 @@ public:
 };
 
 } // namespace ConfigDB
-
-inline String toString(ConfigDB::Status status)
-{
-	return status.toString();
-}
