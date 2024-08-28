@@ -126,11 +126,9 @@ class Property:
     @property
     def property_type(self):
         if self.ptype != 'integer':
-            tag = self.ptype.capitalize()
-        else:
-            r = self.get_intrange()
-            tag = f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
-        return 'PropertyType::' + tag
+            return self.ptype.capitalize()
+        r = self.get_intrange()
+        return f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
 
     @property
     def id(self):
@@ -525,6 +523,13 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     lines.header += [
         'static const ConfigDB::ObjectInfo typeinfo;'
     ]
+
+    def getPropData(prop: Property, value) -> str:
+        if prop.ptype == 'string':
+            fstr = strings[str(prop.default or '')]
+            return f'{{.string = &{fstr}}}'
+        return f'{{.{prop.property_type} = {value}}}'
+
     lines.source += [
         '',
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
@@ -542,9 +547,9 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         [
             '{',
             *(make_static_initializer([
-                f'{prop.property_type}',
+                f'PropertyType::{prop.property_type}',
                 'fstr_empty' if obj.is_array else strings[prop.name],
-                strings[str(prop.default or '')],
+                getPropData(prop, prop.default_str),
             ], ',') for prop in propinfo),
             '}',
         ] if propinfo else None,

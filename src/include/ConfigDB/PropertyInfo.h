@@ -55,9 +55,22 @@ using StringId = uint16_t;
  * @brief Property metadata
  */
 struct PropertyInfo {
+	union PropData {
+		int32_t Boolean;
+		int32_t Int8;
+		int32_t Int16;
+		int32_t Int32;
+		int64_t* Int64;
+		uint32_t UInt8;
+		uint32_t UInt16;
+		uint32_t UInt32;
+		uint64_t* UInt64;
+		const FlashString* string;
+	};
+
 	PropertyType type;
 	const FlashString& name;
-	const FlashString& defaultValue;
+	PropData defaultValue;
 
 	static const PropertyInfo empty;
 

@@ -20,6 +20,15 @@
 #include "include/ConfigDB/Database.h"
 #include <debug_progmem.h>
 
+namespace
+{
+template <typename T> T getPtrValue(const T* value)
+{
+	return value ? *value : 0;
+}
+
+} // namespace
+
 namespace ConfigDB
 {
 uint8_t Store::instanceCount;
@@ -67,37 +76,36 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 		if(propData.string) {
 			return String(stringPool[propData.string]);
 		}
-		return info.defaultValue;
+		if(info.defaultValue.string) {
+			return *info.defaultValue.string;
+		}
+		return nullptr;
 	}
 	return nullptr;
 }
 
 PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
-	String s;
-	if(!value) {
-		s = prop.defaultValue;
-		value = s.c_str();
-		valueLength = s.length();
-	}
-
 	switch(prop.type) {
 	case PropertyType::Boolean:
-		return {.b = (valueLength == 4) && memicmp(value, "true", 4) == 0};
+		if(value) {
+			return {.b = (valueLength == 4) && memicmp(value, "true", 4) == 0};
+		}
+		return {.b = prop.defaultValue.Boolean != 0};
 	case PropertyType::Int8:
 	case PropertyType::Int16:
 	case PropertyType::Int32:
-		return {.int32 = int32_t(strtol(value, nullptr, 0))};
+		return {.int32 = value ? int32_t(strtol(value, nullptr, 0)) : prop.defaultValue.Int32};
 	case PropertyType::Int64:
-		return {.int64 = strtoll(value, nullptr, 0)};
+		return {.int64 = value ? strtoll(value, nullptr, 0) : getPtrValue(prop.defaultValue.Int64)};
 	case PropertyType::UInt8:
 	case PropertyType::UInt16:
 	case PropertyType::UInt32:
-		return {.uint32 = uint32_t(strtoul(value, nullptr, 0))};
+		return {.uint32 = value ? uint32_t(strtoul(value, nullptr, 0)) : prop.defaultValue.UInt32};
 	case PropertyType::UInt64:
-		return {.uint64 = strtoull(value, nullptr, 0)};
+		return {.uint64 = value ? strtoull(value, nullptr, 0) : getPtrValue(prop.defaultValue.UInt64)};
 	case PropertyType::String:
-		if(prop.defaultValue == value) {
+		if(!value || (prop.defaultValue.string && *prop.defaultValue.string == value)) {
 			return {.string = 0};
 		}
 		return {.string = stringPool.findOrAdd({value, valueLength})};

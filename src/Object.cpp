@@ -207,7 +207,11 @@ String Object::getString(const PropertyInfo& prop, StringId id) const
 	if(id) {
 		return String(getStore().stringPool[id]);
 	}
-	return prop.defaultValue;
+	if(prop.type == PropertyType::String) {
+		assert(prop.defaultValue.string);
+		return *prop.defaultValue.string;
+	}
+	return nullptr;
 }
 
 StringId Object::getStringId(const char* value, uint16_t valueLength)
