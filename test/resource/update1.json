@@ -1,1 +1,4 @@
-{"simple-bool": true}
+{
+    "simple-bool": true,
+    "simple-int": 101
+}

@@ -20,15 +20,6 @@
 #include "include/ConfigDB/Database.h"
 #include <debug_progmem.h>
 
-namespace
-{
-template <typename T> T getPtrValue(const T* value)
-{
-	return value ? *value : 0;
-}
-
-} // namespace
-
 namespace ConfigDB
 {
 uint8_t Store::instanceCount;
@@ -86,32 +77,47 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 
 PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
-	switch(prop.type) {
-	case PropertyType::Boolean:
-		if(value) {
-			return {.b = (valueLength == 4) && memicmp(value, "true", 4) == 0};
-		}
-		return {.b = prop.defaultValue.Boolean != 0};
-	case PropertyType::Int8:
-	case PropertyType::Int16:
-	case PropertyType::Int32:
-		return {.int32 = value ? int32_t(strtol(value, nullptr, 0)) : prop.defaultValue.Int32};
-	case PropertyType::Int64:
-		return {.int64 = value ? strtoll(value, nullptr, 0) : getPtrValue(prop.defaultValue.Int64)};
-	case PropertyType::UInt8:
-	case PropertyType::UInt16:
-	case PropertyType::UInt32:
-		return {.uint32 = value ? uint32_t(strtoul(value, nullptr, 0)) : prop.defaultValue.UInt32};
-	case PropertyType::UInt64:
-		return {.uint64 = value ? strtoull(value, nullptr, 0) : getPtrValue(prop.defaultValue.UInt64)};
-	case PropertyType::String:
+	if(prop.type == PropertyType::String) {
 		if(!value || (prop.defaultValue.string && *prop.defaultValue.string == value)) {
 			return {.string = 0};
 		}
 		return {.string = stringPool.findOrAdd({value, valueLength})};
 	}
 
-	return {};
+	if(!value) {
+		PropertyData dst{};
+		dst.setValue(prop, nullptr);
+		return dst;
+	}
+
+	PropertyData src{};
+
+	switch(prop.type) {
+	case PropertyType::Boolean:
+		return {.b = (valueLength == 4) && memicmp(value, "true", 4) == 0};
+	case PropertyType::Int8:
+	case PropertyType::Int16:
+	case PropertyType::Int32:
+		src.int32 = strtol(value, nullptr, 0);
+		break;
+	case PropertyType::Int64:
+		src.int64 = strtoll(value, nullptr, 0);
+		break;
+	case PropertyType::UInt8:
+	case PropertyType::UInt16:
+	case PropertyType::UInt32:
+		src.uint32 = strtoul(value, nullptr, 0);
+		break;
+	case PropertyType::UInt64:
+		src.uint64 = strtoull(value, nullptr, 0);
+		break;
+	case PropertyType::String:
+		break;
+	}
+
+	PropertyData dst{};
+	dst.setValue(prop, &src);
+	return dst;
 }
 
 bool Store::writeCheck() const

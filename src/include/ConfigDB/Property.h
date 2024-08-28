@@ -37,6 +37,12 @@ union __attribute__((packed)) PropertyData {
 	bool b;
 	float f;
 	StringId string;
+
+	/**
+	 * @brief Range-check raw binary value. Do not use with Strings.
+	 * @param src If null, default will be applied
+	 */
+	void setValue(const PropertyInfo& prop, const PropertyData* src);
 };
 
 /**
@@ -91,5 +97,6 @@ public:
 		return setJsonValue(value.c_str(), value.length());
 	}
 };
+
 
 } // namespace ConfigDB

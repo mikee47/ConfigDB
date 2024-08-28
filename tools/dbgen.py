@@ -509,6 +509,13 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             return f'{{.string = &{fstr}}}'
         return f'{{.{prop.property_type} = {value}}}'
 
+    def getPropRange(prop: Property):
+        r = prop.get_intrange()
+        return [
+            getPropData(prop, r.minimum),
+            getPropData(prop, r.maximum)
+        ] if r else []
+
     lines.source += [
         '',
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
@@ -529,6 +536,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 f'PropertyType::{prop.property_type}',
                 'fstr_empty' if obj.is_array else strings[prop.name],
                 getPropData(prop, prop.default_str),
+                *getPropRange(prop)
             ], ',') for prop in propinfo),
             '}',
         ] if propinfo else None,

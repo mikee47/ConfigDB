@@ -20,6 +20,16 @@
 #include "include/ConfigDB/Property.h"
 #include "include/ConfigDB/Store.h"
 #include <Data/Format/Json.h>
+#include <Data/Range.h>
+
+namespace
+{
+template <typename T> T getPtrValue(const T* value)
+{
+	return value ? *value : 0;
+}
+
+} // namespace
 
 namespace ConfigDB
 {
@@ -55,6 +65,40 @@ bool Property::setJsonValue(const char* value, size_t valueLength)
 	auto propdata = const_cast<Store*>(store)->parseString(*info, value, valueLength);
 	memcpy(const_cast<void*>(data), &propdata, info->getSize());
 	return true;
+}
+
+void PropertyData::setValue(const PropertyInfo& prop, const PropertyData* src)
+{
+	switch(prop.type) {
+	case PropertyType::Boolean:
+		b = src ? src->b : (prop.defaultValue.Int32 != 0);
+		break;
+	case PropertyType::Int8:
+		int8 = src ? TRange(prop.minimum.Int32, prop.maximum.Int32).clip(src->int8) : prop.defaultValue.Int32;
+		break;
+	case PropertyType::Int16:
+		int16 = src ? TRange(prop.minimum.Int32, prop.maximum.Int32).clip(src->int16) : prop.defaultValue.Int32;
+		break;
+	case PropertyType::Int32:
+		int32 = src ? TRange(prop.minimum.Int32, prop.maximum.Int32).clip(src->int32) : prop.defaultValue.Int32;
+		break;
+	case PropertyType::Int64:
+		int64 = src ? src->int64 : getPtrValue(prop.defaultValue.Int64);
+	case PropertyType::UInt8:
+		uint8 = src ? TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(src->uint8) : prop.defaultValue.UInt32;
+		break;
+	case PropertyType::UInt16:
+		uint16 = src ? TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(src->uint16) : prop.defaultValue.UInt32;
+		break;
+	case PropertyType::UInt32:
+		uint32 = src ? TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(src->uint32) : prop.defaultValue.UInt32;
+		break;
+	case PropertyType::UInt64:
+		uint64 = src ? src->uint64 : getPtrValue(prop.defaultValue.UInt64);
+	case PropertyType::String:
+		assert(false);
+		break;
+	}
 }
 
 } // namespace ConfigDB

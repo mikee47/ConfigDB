@@ -226,11 +226,14 @@ void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const v
 		return;
 	}
 	data += offset;
-	memcpy(data, value, prop.getSize());
+	auto& dst = *reinterpret_cast<PropertyData*>(data);
+	auto src = static_cast<const PropertyData*>(value);
+	dst.setValue(prop, src);
 }
 
 void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value)
 {
+	assert(prop.type == PropertyType::String);
 	auto data = getData<uint8_t>();
 	if(!data) {
 		return;

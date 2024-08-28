@@ -71,6 +71,8 @@ struct PropertyInfo {
 	PropertyType type;
 	const FlashString& name;
 	PropData defaultValue;
+	PropData minimum;
+	PropData maximum;
 
 	static const PropertyInfo empty;
 
