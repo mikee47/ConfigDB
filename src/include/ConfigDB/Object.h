@@ -223,6 +223,9 @@ protected:
 		return getStringId(toString(value));
 	}
 
+	void setPropertyValue(const PropertyInfo& prop, uint16_t offset, const void* value);
+	void setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value);
+
 	const ObjectInfo* typeinfoPtr;
 	Object* parent{};
 	uint16_t dataRef{}; //< Relative to parent

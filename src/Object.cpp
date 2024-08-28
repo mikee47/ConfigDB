@@ -219,6 +219,27 @@ StringId Object::getStringId(const char* value, uint16_t valueLength)
 	return value ? getStore().stringPool.findOrAdd({value, valueLength}) : 0;
 }
 
+void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const void* value)
+{
+	auto data = getData<uint8_t>();
+	if(!data) {
+		return;
+	}
+	data += offset;
+	memcpy(data, value, prop.getSize());
+}
+
+void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value)
+{
+	auto data = getData<uint8_t>();
+	if(!data) {
+		return;
+	}
+	auto id = getStringId(value);
+	data += offset;
+	memcpy(data, &id, sizeof(id));
+}
+
 unsigned Object::getPropertyCount() const
 {
 	if(typeIs(ObjectType::Array)) {
