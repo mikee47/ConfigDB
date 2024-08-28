@@ -67,18 +67,18 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 		if(propData.string) {
 			return String(stringPool[propData.string]);
 		}
-		if(info.defaultValue) {
-			return *info.defaultValue;
-		}
-		return nullptr;
+		return info.defaultValue;
 	}
 	return nullptr;
 }
 
 PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
+	String s;
 	if(!value) {
-		return {};
+		s = prop.defaultValue;
+		value = s.c_str();
+		valueLength = s.length();
 	}
 
 	switch(prop.type) {
@@ -97,7 +97,7 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 	case PropertyType::UInt64:
 		return {.uint64 = strtoull(value, nullptr, 0)};
 	case PropertyType::String:
-		if(prop.defaultValue && *prop.defaultValue == value) {
+		if(prop.defaultValue == value) {
 			return {.string = 0};
 		}
 		return {.string = stringPool.findOrAdd({value, valueLength})};

@@ -9,6 +9,12 @@
       "type": "string",
       "default": "donkey"
     },
+    "simple-int": {
+      "type": "integer",
+      "minimum": -5,
+      "maximum": 100,
+      "default": -1
+    },
     "int_array": {
       "type": "array",
       "items": {
@@ -18,7 +24,8 @@
     "string_array": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "default": "abc"
       }
     },
     "object_array": {

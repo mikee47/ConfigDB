@@ -104,8 +104,8 @@
 				"result": [{"intval":5,"stringval":"e"},{"intval":6,"stringval":"f"},{"intval":7,"stringval":"g"},{"intval":8,"stringval":"h"}]
 			},
 			{
-				"expr": {"object_array[0:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+				"expr": {"object_array[0:]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]
 			}
 		],
 		"Clear array": [
@@ -150,20 +150,20 @@
 		],
 		"Update multiple items": [
 			{
-				"expr": {"object_array[0:2]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":8,"stringval":null},{"intval":9,"stringval":null},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+				"expr": {"object_array[0:2]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
 			},
 			{
-				"expr": {"object_array[1:1]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":8,"stringval":null},{"intval":9,"stringval":null},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+				"expr": {"object_array[1:1]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
 			},
 			{
-				"expr": {"object_array[1:2]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":8,"stringval":null},{"intval":9,"stringval":null},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
+				"expr": {"object_array[1:2]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
 			},
 			{
-				"expr": {"object_array[2:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+				"expr": {"object_array[2:]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]
 			},
 			{
 				"expr": {"object_array[0:1]": {}},
@@ -176,26 +176,26 @@
 		],
 		"Insert item": [
 			{
-				"expr": {"object_array[3:0]": [{"intval":8,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":null},{"intval":4,"stringval":"d"}]
+				"expr": {"object_array[3:0]": [{"intval":8,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":"abc"},{"intval":4,"stringval":"d"}]
 			},
 			{
-				"expr": {"object_array[3:3]": [{"intval":8,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":null},{"intval":4,"stringval":"d"}]
+				"expr": {"object_array[3:3]": [{"intval":8,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":"abc"},{"intval":4,"stringval":"d"}]
 			},
 			{
-				"expr": {"object_array[-1:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+				"expr": {"object_array[-1:]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]
 			}
 		],
 		"Append items": [
 			{
-				"expr": {"object_array[]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+				"expr": {"object_array[]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"},{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]
 			},
 			{
-				"expr": {"object_array[10:]": [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]},
-				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"},{"intval":8,"stringval":null},{"intval":9,"stringval":null}]
+				"expr": {"object_array[10:]": [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"},{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]
 			},
 			{
 				"expr": {"object_array[10:]": {}},

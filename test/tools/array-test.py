@@ -70,7 +70,7 @@ TEST_CASES = {
     'object_array': {
         'Overwrite array': [
             'x = [{"intval":5,"stringval":"e"},{"intval":6,"stringval":"f"},{"intval":7,"stringval":"g"},{"intval":8,"stringval":"h"}]',
-            'x[0:] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
+            'x[0:] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
         ],
         'Clear array': [
             'x = []',
@@ -86,21 +86,21 @@ TEST_CASES = {
             ('x[intval=0] = {}', '"Bad selector"')
         ],
         'Update multiple items': [
-            'x[0:2] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
-            'x[1:1] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
-            'x[1:2] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
-            'x[2:] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
+            'x[0:2] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
+            'x[1:1] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
+            'x[1:2] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
+            'x[2:] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
             ('x[0:1] = {}', '"Require array value"'),
             'x[pin] = {}',
         ],
         'Insert item': [
-            'x[3:0] = [{"intval":8,"stringval":null}]',
-            'x[3:3] = [{"intval":8,"stringval":null}]',
-            'x[-1:] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
+            'x[3:0] = [{"intval":8,"stringval":"abc"}]',
+            'x[3:3] = [{"intval":8,"stringval":"abc"}]',
+            'x[-1:] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
         ],
         'Append items': [
-            'x[] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
-            'x[10:] = [{"intval":8,"stringval":null},{"intval":9,"stringval":null}]',
+            'x[] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
+            'x[10:] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
             ('x[10:] = {}', '"Require array value"')
         ]
     }

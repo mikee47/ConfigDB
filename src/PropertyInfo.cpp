@@ -33,6 +33,6 @@ String toString(ConfigDB::PropertyType type)
 
 namespace ConfigDB
 {
-const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty};
+const PropertyInfo PropertyInfo::empty PROGMEM{.name = fstr_empty, .defaultValue = fstr_empty};
 
 } // namespace ConfigDB
