@@ -66,6 +66,11 @@ public:
 		return MimeType::JSON;
 	}
 
+	Status getStatus() const override
+	{
+		return Status{};
+	}
+
 private:
 	size_t fillStream(Print& p);
 

@@ -91,6 +91,8 @@ public:
 		return MimeType::JSON;
 	}
 
+	Status getStatus() const override;
+
 private:
 	bool startElement(const JSON::Element& element) override;
 
@@ -111,6 +113,8 @@ private:
 	Object info[JSON::StreamingParser::maxNesting]{};
 	ObjectArray arrayParent; ///< Temporary required when using selectors
 	JSON::StaticStreamingParser<1024> parser;
+	JSON::Status jsonStatus{};
+	Status status;
 };
 
 } // namespace ConfigDB::Json

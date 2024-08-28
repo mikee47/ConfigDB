@@ -72,10 +72,11 @@ public:
 		onComplete = [](HttpRequest&, HttpResponse& response, ImportStream& stream) -> void {
 			String msg;
 			msg += F("Result: ");
-			msg += toString(stream.status);
+			auto status = stream.getStatus();
+			msg += toString(status);
 			response.sendString(msg);
 			debug_i("%s", msg.c_str());
-			switch(stream.status.error) {
+			switch(status.error) {
 			case Error::OK:
 				break;
 			case Error::FormatError:

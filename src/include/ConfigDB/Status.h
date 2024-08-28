@@ -29,14 +29,13 @@
 	XX(FileError)
 
 #define CONFIGDB_FORMAT_ERROR_MAP(XX)                                                                                  \
-	XX(OK)                                                                                                             \
-	XX(FormatError)                                                                                                    \
-	XX(NotInSchema)                                                                                                    \
-	XX(BadType)                                                                                                 \
+	XX(BadSyntax)                                                                                                      \
+	XX(BadType)                                                                                                        \
 	XX(BadSelector)                                                                                                    \
 	XX(BadIndex)                                                                                                       \
-	XX(UpdateConflict)                                                                                                 \
-	XX(SetPropFailed)
+	XX(BadProperty)                                                                                                    \
+	XX(NotInSchema)                                                                                                    \
+	XX(UpdateConflict)
 
 namespace ConfigDB
 {
@@ -64,6 +63,11 @@ struct Status {
 	static Status fileError(int errorCode)
 	{
 		return Status{Error::FileError, {.fileError = errorCode}};
+	}
+
+	static Status formatError(FormatError err)
+	{
+		return Status{Error::FormatError, {.formatError = err}};
 	}
 
 	Status& operator=(FormatError err)

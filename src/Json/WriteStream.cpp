@@ -31,18 +31,30 @@ WriteStream::~WriteStream()
 	}
 }
 
+Status WriteStream::getStatus() const
+{
+	switch(jsonStatus) {
+	case JSON::Status::EndOfDocument:
+	case JSON::Status::Cancelled:
+		return status;
+	case JSON::Status::Ok:
+	default:
+		return Status::formatError(FormatError::BadSyntax);
+	}
+}
+
 Status WriteStream::parse(Database& database, Stream& source)
 {
 	WriteStream writer(database);
-	writer.parser.parse(source);
-	return writer.status;
+	writer.jsonStatus = writer.parser.parse(source);
+	return writer.getStatus();
 }
 
 Status WriteStream::parse(Object& object, Stream& source)
 {
 	WriteStream writer(object);
-	writer.parser.parse(source);
-	return writer.status;
+	writer.jsonStatus = writer.parser.parse(source);
+	return writer.getStatus();
 }
 
 bool WriteStream::handleError(FormatError err, Object& object, const String& arg)
@@ -79,26 +91,33 @@ bool WriteStream::startElement(const Element& element)
 	}
 
 	auto& parent = info[element.level - 1];
+	auto& obj = info[element.level];
 
-	if(element.isContainer()) {
-		auto& obj = info[element.level];
-		if(parent.typeIs(ObjectType::ObjectArray)) {
-			obj = static_cast<ObjectArray&>(parent).insertItem(parent.streamPos++);
-		} else {
-			obj = parent.findObject(element.key, element.keyLength);
-			if(!obj) {
-				return handleError(FormatError::NotInSchema, parent, element.getKey());
-			}
-			if(obj.isArray()) {
-				static_cast<ArrayBase&>(obj).clear();
-			}
+	if(parent.typeIs(ObjectType::ObjectArray)) {
+		if(element.type != Element::Type::Object) {
+			return handleError(FormatError::BadType, parent, toString(element.type));
 		}
+		obj = static_cast<ObjectArray&>(parent).insertItem(parent.streamPos++);
 		return true;
 	}
 
 	if(parent.typeIs(ObjectType::Array)) {
+		if(element.isContainer()) {
+			return handleError(FormatError::BadType, parent, toString(element.type));
+		}
 		auto& array = static_cast<Array&>(parent);
 		return setProperty(element, array, array.insertItem(parent.streamPos++));
+	}
+
+	if(element.isContainer()) {
+		obj = parent.findObject(element.key, element.keyLength);
+		if(!obj) {
+			return handleError(FormatError::NotInSchema, parent, element.getKey());
+		}
+		if(obj.isArray()) {
+			static_cast<ArrayBase&>(obj).clear();
+		}
+		return true;
 	}
 
 	auto prop = parent.findProperty(element.key, element.keyLength);
@@ -117,6 +136,10 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	auto& parent = info[element.level - 1];
 	auto& obj = info[element.level];
 	obj = {};
+
+	if(element.type != Element::Type::Object) {
+		return handleError(FormatError::BadType, toString(element.type));
+	}
 
 	// Look in root store for a matching object
 	auto& root = *database->typeinfo.stores[0];
@@ -280,26 +303,18 @@ bool WriteStream::setProperty(const Element& element, Object& object, Property p
 {
 	const char* value = (element.type == Element::Type::Null) ? nullptr : element.value;
 	if(!prop.setJsonValue(value, element.valueLength)) {
-		return handleError(FormatError::SetPropFailed, object, String(element.value, element.valueLength));
+		return handleError(FormatError::BadProperty, object, String(element.value, element.valueLength));
 	}
 	return true;
 }
 
 size_t WriteStream::write(const uint8_t* data, size_t size)
 {
-	if(!status) {
+	if(jsonStatus != JSON::Status::Ok) {
 		return 0;
 	}
 
-	auto jsonStatus = parser.parse(reinterpret_cast<const char*>(data), size);
-	switch(jsonStatus) {
-	case JSON::Status::Ok:
-	case JSON::Status::EndOfDocument:
-	case JSON::Status::Cancelled:
-		break;
-	default:
-		status = FormatError{};
-	}
+	jsonStatus = parser.parse(reinterpret_cast<const char*>(data), size);
 	return size;
 }
 

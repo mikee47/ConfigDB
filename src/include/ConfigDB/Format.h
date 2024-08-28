@@ -32,13 +32,13 @@ class Object;
 class ImportStream : public ReadWriteStream
 {
 public:
-	Status status;
+	virtual Status getStatus() const = 0;
 };
 
 class ExportStream : public IDataSourceStream
 {
 public:
-	Status status;
+	virtual Status getStatus() const = 0;
 };
 
 /**

@@ -88,7 +88,8 @@ The :sample:`BasicConfig` sample demonstrates using the stream classes to read a
 
 .. important::
 
-  Any invalid data in a JSON update file will cause the import to stop immediately with an error. This includes values which do not exist in the schema.
+  Any invalid data in a JSON update file will produce a debug warning, but will not cause processing to stop.
+  This behaviour can be changed by implementing a custom :cpp:func:`ConfigDB::Database::handleFormatError` method.
 
 
 Update mechanism
