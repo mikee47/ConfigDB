@@ -99,13 +99,11 @@ private:
 		return true;
 	}
 
-	bool handleError(FormatError err, Object& object, const String& arg = nullptr);
-
-	bool handleError(FormatError err, const String& arg)
-	{
-		Object object;
-		return handleError(err, object, arg);
-	}
+	bool locateStoreOrRoot(const JSON::Element& element);
+	bool handleSelector(const JSON::Element& element, const char* sel);
+	bool setProperty(const JSON::Element& element, Object& object, Property prop);
+	bool handleError(FormatError err, Object& object, const String& arg);
+	bool handleError(FormatError err, const String& arg);
 
 private:
 	Database* database{};
