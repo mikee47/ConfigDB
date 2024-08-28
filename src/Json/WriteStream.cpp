@@ -25,8 +25,8 @@ namespace ConfigDB::Json
 {
 WriteStream::~WriteStream()
 {
-	if(db && store) {
-		db->save(*store);
+	if(database && store) {
+		database->save(*store);
 	}
 }
 
@@ -80,47 +80,48 @@ bool WriteStream::startElement(const JSON::Element& element)
 		return true;
 	};
 
-	if(db && element.level == 1) {
+	auto& parent = info[element.level - 1];
+	auto& obj = info[element.level];
+	obj = {};
+
+	if(database && element.level == 1) {
 		// Look in root store for a matching object
-		auto& root = *db->typeinfo.stores[0];
+		auto& root = *database->typeinfo.stores[0];
 		int i = root.findObject(element.key, element.keyLength);
 		if(i >= 0) {
 			store.reset();
-			store = db->openStore(root, true);
+			store = database->openStore(root, true);
 			if(!store || !*store) {
 				status.result = Result::updateConflict;
 				return false;
 			}
-			info[0] = *store;
-			info[1] = store->getObject(i);
+			parent = *store;
+			obj = store->getObject(i);
 			return true;
 		}
 
 		// Now check for a matching store
 		if(store) {
-			db->save(*store);
+			database->save(*store);
 		}
 		store.reset();
-		i = db->typeinfo.findStore(element.key, element.keyLength);
+		i = database->typeinfo.findStore(element.key, element.keyLength);
 		if(i < 0) {
 			return notInSchema();
 		}
-		auto& type = *db->typeinfo.stores[i];
-		store = db->openStore(type, true);
+		auto& type = *database->typeinfo.stores[i];
+		store = database->openStore(type, true);
 		if(!store || !*store) {
 			status.result = Result::updateConflict;
 			return false;
 		}
-		info[1] = Object(*store);
+		obj = *store;
 		return true;
 	}
 
-	auto& parent = info[element.level - 1];
 	if(!parent) {
 		return true;
 	}
-
-	auto& obj = info[element.level];
 
 	// Check for array selector expression
 	auto sel = strchr(element.key, '[');
@@ -138,7 +139,8 @@ bool WriteStream::startElement(const JSON::Element& element)
 		}
 		auto& array = static_cast<ArrayBase&>(obj);
 		int16_t len = array.getItemCount();
-		if(sel + 1 == keyEnd) {
+		++sel;
+		if(sel == keyEnd) {
 			// Append only
 			if(!element.isContainer()) {
 				if(array.typeIs(ObjectType::ObjectArray)) {
@@ -153,10 +155,10 @@ bool WriteStream::startElement(const JSON::Element& element)
 		auto sep = strchr(sel, '=');
 		if(sep) {
 			// name=value selector
-			auto name = sel + 1;
+			auto name = sel;
 			auto namelen = sep - name;
 			auto value = sep + 1;
-			auto valuelen = element.key + element.keyLength - value - 1;
+			auto valuelen = keyEnd - value;
 			arrayParent = static_cast<ObjectArray&>(obj);
 			auto propIndex = arrayParent.getItemType().findProperty(name, namelen);
 			if(propIndex < 0) {
@@ -175,7 +177,7 @@ bool WriteStream::startElement(const JSON::Element& element)
 		}
 
 		char* ptr;
-		int16_t start = strtol(sel + 1, &ptr, 0);
+		int16_t start = strtol(sel, &ptr, 0);
 		if(start < 0) {
 			start += len;
 		}

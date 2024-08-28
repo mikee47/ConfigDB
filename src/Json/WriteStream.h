@@ -34,7 +34,7 @@ public:
 	{
 	}
 
-	WriteStream(Database& db) : db(&db), parser(this)
+	WriteStream(Database& database) : database(&database), parser(this)
 	{
 	}
 
@@ -48,7 +48,7 @@ public:
 
 	~WriteStream();
 
-	static Status parse(Database& db, Stream& source);
+	static Status parse(Database& database, Stream& source);
 
 	static Status parse(Object& object, Stream& source);
 
@@ -83,7 +83,7 @@ public:
 
 	String getName() const override
 	{
-		return db ? db->getName() : info[0].getName();
+		return database ? database->getName() : info[0].getName();
 	}
 
 	MimeType getMimeType() const override
@@ -100,7 +100,7 @@ private:
 	}
 
 private:
-	Database* db{};
+	Database* database{};
 	std::shared_ptr<Store> store;
 	Object info[JSON::StreamingParser::maxNesting]{};
 	ObjectArray arrayParent; ///< Temporary required when using selectors
