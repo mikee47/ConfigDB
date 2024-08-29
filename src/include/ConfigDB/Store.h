@@ -122,7 +122,8 @@ public:
 	void clear();
 
 	String getValueString(const PropertyInfo& info, const void* data) const;
-	PropertyData parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength);
+	bool parseString(const PropertyInfo& prop, PropertyData& dst, const PropertyData* defaultData, const char* value,
+					 uint16_t valueLength);
 
 	const StringPool& getStringPool() const
 	{

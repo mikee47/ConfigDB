@@ -47,7 +47,7 @@ String PropertyConst::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	if(info->type < PropertyType::String) {
+	if(info->type != PropertyType::String) {
 		return value;
 	}
 	::Format::json.escape(value);
@@ -61,16 +61,8 @@ bool Property::setJsonValue(const char* value, size_t valueLength)
 	if(!store || !data) {
 		return false;
 	}
-	auto dst = const_cast<void*>(data);
-	if(value) {
-		auto propdata = const_cast<Store*>(store)->parseString(*info, value, valueLength);
-		memcpy(dst, &propdata, info->getSize());
-	} else if(defaultData) {
-		memcpy_P(dst, defaultData, info->getSize());
-	} else {
-		memset(dst, 0, info->getSize());
-	}
-	return true;
+	auto& dst = *const_cast<PropertyData*>(data);
+	return const_cast<Store*>(store)->parseString(*info, dst, defaultData, value, valueLength);
 }
 
 void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)

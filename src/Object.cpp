@@ -205,48 +205,49 @@ String Object::getPropertyString(unsigned index, StringId id) const
 		return String(getStore().stringPool[id]);
 	}
 	auto& prop = typeinfo().getProperty(index);
-	if(prop.type == PropertyType::String) {
-		assert(prop.defaultString);
+	if(prop.type == PropertyType::String && prop.defaultString) {
 		return *prop.defaultString;
 	}
 	return nullptr;
 }
 
-StringId Object::getStringId(const char* value, uint16_t valueLength)
+String Object::getPropertyString(unsigned index) const
 {
-	return value ? getStore().stringPool.findOrAdd({value, valueLength}) : 0;
+	auto data = getPropertyData(index);
+	return data ? getPropertyString(index, data->string) : nullptr;
+}
+
+StringId Object::getStringId(const PropertyInfo& prop, const char* value, uint16_t valueLength)
+{
+	PropertyData dst{};
+	auto defaultData = PropertyData::fromStruct(prop, getDataPtr());
+	getStore().parseString(prop, dst, defaultData, value, valueLength);
+	return dst.string;
 }
 
 void Object::setPropertyValue(unsigned index, const void* value)
 {
-	auto data = getData<uint8_t>();
+	auto& prop = typeinfo().getProperty(index);
+	auto data = PropertyData::fromStruct(prop, getDataPtr());
 	if(!data) {
 		return;
 	}
-	auto& prop = typeinfo().getProperty(index);
-	data += prop.offset;
-	auto dst = reinterpret_cast<PropertyData*>(data);
 	if(value) {
 		auto src = static_cast<const PropertyData*>(value);
-		dst->setValue(prop, *src);
+		data->setValue(prop, *src);
 	} else {
-		auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
-		defaultData += prop.offset;
-		memcpy_P(dst, defaultData, prop.getSize());
+		auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
+		memcpy_P(data, defaultData, prop.getSize());
 	}
 }
 
 void Object::setPropertyValue(unsigned index, const String& value)
 {
 	auto& prop = typeinfo().getProperty(index);
-	assert(prop.type == PropertyType::String);
-	auto data = getData<uint8_t>();
-	if(!data) {
-		return;
+	auto data = PropertyData::fromStruct(prop, getDataPtr());
+	if(data) {
+		data->string = getStringId(prop, value);
 	}
-	auto id = getStringId(value);
-	data += prop.offset;
-	memcpy(data, &id, sizeof(id));
 }
 
 unsigned Object::getPropertyCount() const
@@ -266,16 +267,9 @@ Property Object::getProperty(unsigned index)
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
-	index += typeinfo().objectCount;
-	auto& prop = typeinfo().propinfo[index];
-	auto propData = getData<uint8_t>();
-	if(propData) {
-		propData += prop.offset;
-	}
-	auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
-	if(defaultData) {
-		defaultData += prop.offset;
-	}
+	auto& prop = typeinfo().getProperty(index);
+	auto propData = getPropertyData(index);
+	auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
 	return {getStore(), prop, propData, defaultData};
 }
 
@@ -287,12 +281,8 @@ PropertyConst Object::getProperty(unsigned index) const
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
-	index += typeinfo().objectCount;
-	auto& prop = typeinfo().propinfo[index];
-	auto propData = getData<const uint8_t>();
-	if(propData) {
-		propData += prop.offset;
-	}
+	auto& prop = typeinfo().getProperty(index);
+	auto propData = getPropertyData(index);
 	return {getStore(), prop, propData, nullptr};
 }
 

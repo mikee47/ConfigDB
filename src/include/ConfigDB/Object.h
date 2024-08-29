@@ -172,14 +172,14 @@ public:
 		return *typeinfoPtr;
 	}
 
-	template <typename T> T* getData()
+	PropertyData* getPropertyData(unsigned index)
 	{
-		return static_cast<T*>(getDataPtr());
+		return PropertyData::fromStruct(typeinfo().getProperty(index), getDataPtr());
 	}
 
-	template <typename T> const T* getData() const
+	const PropertyData* getPropertyData(unsigned index) const
 	{
-		return static_cast<const T*>(getDataPtr());
+		return PropertyData::fromStruct(typeinfo().getProperty(index), getDataPtr());
 	}
 
 	using UpdateCallback = Delegate<void(Store& store)>;
@@ -211,16 +211,18 @@ protected:
 
 	String getPropertyString(unsigned index, StringId id) const;
 
-	StringId getStringId(const char* value, uint16_t valueLength);
+	String getPropertyString(unsigned index) const;
 
-	StringId getStringId(const String& value)
+	StringId getStringId(const PropertyInfo& prop, const char* value, uint16_t valueLength);
+
+	StringId getStringId(const PropertyInfo& prop, const String& value)
 	{
-		return value ? getStringId(value.c_str(), value.length()) : 0;
+		return value ? getStringId(prop, value.c_str(), value.length()) : 0;
 	}
 
-	template <typename T> StringId getStringId(const T& value)
+	template <typename T> StringId getStringId(const PropertyInfo& prop, const T& value)
 	{
-		return getStringId(toString(value));
+		return getStringId(prop, toString(value));
 	}
 
 	void setPropertyValue(unsigned index, const void* value);

@@ -78,25 +78,35 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 	return nullptr;
 }
 
-PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength)
+bool Store::parseString(const PropertyInfo& prop, PropertyData& dst, const PropertyData* defaultData, const char* value,
+						uint16_t valueLength)
 {
-	if(!value) {
-		assert(false);
-		return {};
+	if(prop.type == PropertyType::String) {
+		if(!value) {
+			dst.string = 0;
+		} else if(prop.defaultString && *prop.defaultString == value) {
+			dst.string = 0;
+		} else {
+			dst.string = stringPool.findOrAdd({value, valueLength});
+		}
+		return true;
 	}
 
-	if(prop.type == PropertyType::String) {
-		if(prop.defaultString && *prop.defaultString == value) {
-			return {.string = 0};
+	if(!value) {
+		if(defaultData) {
+			memcpy_P(&dst.int8, defaultData, prop.getSize());
+		} else {
+			memset(&dst.int8, 0, prop.getSize());
 		}
-		return {.string = stringPool.findOrAdd({value, valueLength})};
+		return true;
 	}
 
 	PropertyData src{};
 
 	switch(prop.type) {
 	case PropertyType::Boolean:
-		return {.boolean = (valueLength == 4) && memicmp(value, "true", 4) == 0};
+		dst.boolean = (valueLength == 4) && memicmp(value, "true", 4) == 0;
+		return true;
 	case PropertyType::Int8:
 	case PropertyType::Int16:
 	case PropertyType::Int32:
@@ -118,9 +128,8 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 		break;
 	}
 
-	PropertyData dst{};
 	dst.setValue(prop, src);
-	return dst;
+	return true;
 }
 
 bool Store::writeCheck() const

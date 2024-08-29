@@ -141,6 +141,10 @@ class Property:
         return f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
 
     @property
+    def propdata_id(self):
+        return self.property_type.lower()
+
+    @property
     def data_size(self):
         '''Size of the corresponding C++ storage type'''
         return CPP_TYPESIZES[self.ctype]
@@ -671,9 +675,9 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        [f'return getPropertyString({index}, getData<const Struct>()->{prop.id});']
+        [f'return getPropertyString({index});']
         if prop.ptype == 'string' else
-        [f'return {prop.ctype_ret}(getData<const Struct>()->{prop.id});'],
+        [f'return {prop.ctype_ret}(getPropertyData({index})->{prop.propdata_id});'],
         '}',
         ) for index, prop in enumerate(obj.properties))]
 

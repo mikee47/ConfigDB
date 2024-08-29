@@ -38,28 +38,45 @@ public:
 
 	Property getProperty(unsigned index)
 	{
-		return {getStore(), getItemType(), getArray()[index], nullptr};
+		return makeProperty(getArray()[index]);
 	}
 
 	Property addItem()
 	{
-		return {getStore(), getItemType(), getArray().add(), nullptr};
+		return makeProperty(getArray().add());
 	}
 
 	Property insertItem(unsigned index)
 	{
-		return {getStore(), getItemType(), getArray().insert(index), nullptr};
+		return makeProperty(getArray().insert(index));
 	}
 
 	PropertyConst getProperty(unsigned index) const
 	{
-		return {getStore(), getItemType(), getArray()[index], nullptr};
+		return makeProperty(getArray()[index]);
 	}
 
 	const PropertyInfo& getItemType() const
 	{
 		assert(typeinfo().propertyCount == 1);
 		return typeinfo().propinfo[0];
+	}
+
+protected:
+	StringId getStringId(const String& value)
+	{
+		return ArrayBase::getStringId(getItemType(), value);
+	}
+
+private:
+	Property makeProperty(void* data)
+	{
+		return {getStore(), getItemType(), static_cast<PropertyData*>(data), nullptr};
+	}
+
+	PropertyConst makeProperty(const void* data) const
+	{
+		return {getStore(), getItemType(), static_cast<const PropertyData*>(data), nullptr};
 	}
 };
 
