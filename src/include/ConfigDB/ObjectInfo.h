@@ -25,7 +25,8 @@
 	XX(Store)                                                                                                          \
 	XX(Object)                                                                                                         \
 	XX(Array)                                                                                                          \
-	XX(ObjectArray)
+	XX(ObjectArray)                                                                                                    \
+	XX(Union)
 
 namespace ConfigDB
 {

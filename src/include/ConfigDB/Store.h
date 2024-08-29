@@ -22,6 +22,7 @@
 #include "Object.h"
 #include "Array.h"
 #include "ObjectArray.h"
+#include "Union.h"
 #include "Pool.h"
 #include <WString.h>
 #include <memory>

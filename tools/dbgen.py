@@ -13,13 +13,15 @@ MAX_STRINGID_LEN = 32
 CPP_TYPENAMES = {
     'object': '-',
     'array': '-',
+    'union': '-',
     'string': 'String',
     'integer': 'int',
     'boolean': 'bool',
 }
 
-STRINGID_SIZE = 2
-ARRAYID_SIZE = 2
+STRING_ID_SIZE = 2
+ARRAY_ID_SIZE = 2
+UNION_TAG_SIZE = 1
 
 CPP_TYPESIZES = {
 	'bool': 1,
@@ -31,7 +33,7 @@ CPP_TYPESIZES = {
     'uint16_t': 2,
     'uint32_t': 4,
     'uint64_t': 8,
-    'String': STRINGID_SIZE,
+    'String': STRING_ID_SIZE,
 }
 
 STRING_PREFIX = 'fstr_'
@@ -108,6 +110,8 @@ class Property:
 
     @property
     def ptype(self):
+        if 'oneOf' in self.fields:
+            return 'union'
         return self.fields['type']
 
     def get_intrange(self) -> IntRange | None:
@@ -237,6 +241,10 @@ class Object:
         return False
 
     @property
+    def is_union(self):
+        return False
+
+    @property
     def is_item(self):
         return self.parent.is_array
 
@@ -268,7 +276,7 @@ class Array(Object):
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return ARRAYID_SIZE
+        return ARRAY_ID_SIZE
 
 
 @dataclass
@@ -286,7 +294,14 @@ class ObjectArray(Object):
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return ARRAYID_SIZE
+        return ARRAY_ID_SIZE
+
+
+@dataclass
+class Union(Object):
+    @property
+    def is_union(self):
+        return True
 
 
 @dataclass
@@ -382,11 +397,8 @@ def load_schema(filename: str) -> dict:
     return config
 
 
-def resolve_ref(prop: Property, db: Database) -> dict:
+def resolve_ref(ref: str, db: Database) -> tuple[str, dict]:
     '''If property contains a reference, deal with it'''
-    ref = prop.fields.get('$ref')
-    if not ref:
-        return prop.fields
     if not db.definitions:
         raise ValueError('Schema missing definitions')
     prefix = '#/$defs/'
@@ -396,7 +408,15 @@ def resolve_ref(prop: Property, db: Database) -> dict:
         resolved_ref = db.definitions.get(ref)
     if not resolved_ref:
         raise ValueError('Cannot resolve ' + ref)
-    prop.ref = ref
+    return ref, resolved_ref
+
+
+def resolve_prop_ref(prop: Property, db: Database) -> dict:
+    '''If property contains a reference, deal with it'''
+    ref = prop.fields.get('$ref')
+    if not ref:
+        return prop.fields
+    prop.ref, resolved_ref = resolve_ref(ref, db)
     if resolved_ref['type'] == 'object':
         prop.fields = resolved_ref
     else:
@@ -419,7 +439,7 @@ def load_config(filename: str) -> Database:
         for key, value in properties.items():
             # Filter out support property types
             prop = Property(key, value)
-            value = resolve_ref(prop, database)
+            value = resolve_prop_ref(prop, database)
             if not prop.ctype:
                 print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
                 continue
@@ -438,6 +458,7 @@ def load_config(filename: str) -> Database:
             if prop.ptype == 'object':
                 ref = database.object_defs.get(prop.ref)
                 if ref:
+                    print("REF REF REF")
                     child = ref
                 else:
                     child = Object(obj, key)
@@ -460,6 +481,16 @@ def load_config(filename: str) -> Database:
                     assert len(arr.properties) == 1
                     arr.items = arr.properties[0]
                     arr.properties = []
+            elif prop.ptype == 'union':
+                union = Union(obj, key)
+                obj.children.append(union)
+                for opt in value['oneOf']:
+                    ref, opt = resolve_ref(opt['$ref'], database)
+                    choice = Object(union, ref)
+                    choice.ref = ref
+                    database.object_defs[choice.ref] = choice
+                    union.children.append(choice)
+                    parse(choice, opt['properties'])
             else:
                 raise ValueError('Bad type ' + repr(prop))
 
@@ -592,7 +623,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
 
     proplist = []
-    offset = 0
+    offset = UNION_TAG_SIZE if obj.is_union else 0
 
     objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
     for child in objinfo:
@@ -602,7 +633,15 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             offset,
             f'{{.object = &{child.namespace}::{child.typename_contained}::typeinfo}}'
         ]]
-        offset += child.data_size
+        if not obj.is_union:
+            offset += child.data_size
+
+    if obj.is_union:
+        proplist += [[
+            'PropertyType::UInt8',
+            strings['tag'],
+            0,
+        ]]
 
     propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     for prop in propinfo:
@@ -628,7 +667,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             'nullptr' if obj.is_array else '&defaultData',
             'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)',
             len(objinfo),
-            len(propinfo),
+            len(propinfo) + obj.is_union,
         ]),
         [
             '{',
@@ -652,25 +691,46 @@ def generate_object_struct(obj: Object) -> CodeLines:
             return make_comment(prop.default) if prop.default else ''
         return prop.default_str
 
+    members = [
+        *(f'{child.typename_struct} {child.id};' for child in obj.children),
+        *(f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties)
+    ]
+
+    if obj.is_union:
+        body = [
+            'uint8_t tag{0};' if obj.is_union else '',
+            'union __attribute__((packed)) {',
+            members,
+            '};'
+        ]
+    else:
+        body = members
+
     return CodeLines([
         '',
         'struct __attribute__((packed)) Struct {',
-        [
-            *(f'{child.typename_struct} {child.id}{{}};' for child in obj.children),
-            *(f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties)
-        ],
+        body,
         '};',
         '',
         'static const Struct defaultData;',
     ],
     [
         '',
-        f'const {obj.namespace}::{obj.typename_contained}::Struct PROGMEM {obj.namespace}::{obj.typename_contained}::defaultData;'
+        f'const {obj.namespace}::{obj.typename_contained}::Struct PROGMEM {obj.namespace}::{obj.typename_contained}::defaultData{{}};'
     ])
 
 
 def generate_property_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
+
+    if obj.is_union:
+        return [*((
+            '',
+            f'const {child.typename_contained} get{child.name}() const',
+            '{',
+            [f'return {child.typename_contained}(*this, {UNION_TAG_SIZE});'],
+            '}',
+            ) for child in obj.children)]
 
     return [*((
         '',
@@ -766,7 +826,7 @@ def generate_object(obj: Object) -> CodeLines:
     lines.source += typeinfo.source
 
     # Contained children member variables
-    if obj.children:
+    if obj.children and not obj.is_union:
         lines.header += [
             '',
             [f'const {child.typename_contained} {child.id};' for child in obj.children],
@@ -810,7 +870,7 @@ def generate_updater(obj: Object) -> list:
 def generate_contained_constructors(obj: Object, is_updater = False) -> list:
     template = 'UpdaterTemplate' if is_updater else 'Template'
 
-    if not obj.children:
+    if not obj.children or obj.is_union:
         return [
             f'using {obj.base_class}{template}::{obj.base_class}{template};'
         ]

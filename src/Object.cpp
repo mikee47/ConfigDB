@@ -121,6 +121,9 @@ unsigned Object::getObjectCount() const
 	if(typeIs(ObjectType::ObjectArray)) {
 		return static_cast<const ObjectArray*>(this)->getObjectCount();
 	}
+	if(typeIs(ObjectType::Union)) {
+		return 1;
+	}
 	return typeinfo().objectCount;
 }
 
@@ -129,7 +132,9 @@ Object Object::getObject(unsigned index)
 	if(typeIs(ObjectType::ObjectArray)) {
 		return static_cast<ObjectArray*>(this)->getObject(index);
 	}
-
+	if(typeIs(ObjectType::Union)) {
+		return static_cast<Union*>(this)->getObject(index);
+	}
 	auto& prop = typeinfo().getObject(index);
 	const volatile uint32_t offset = prop.offset; // Strict alignment
 	return Object(*prop.object, *this, offset);
@@ -137,7 +142,7 @@ Object Object::getObject(unsigned index)
 
 Object Object::findObject(const char* name, size_t length)
 {
-	if(isArray()) {
+	if(isArray() || typeIs(ObjectType::Union)) {
 		return {};
 	}
 	int i = typeinfo().findObject(name, length);
@@ -146,7 +151,7 @@ Object Object::findObject(const char* name, size_t length)
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	if(isArray()) {
+	if(isArray() || typeIs(ObjectType::Union)) {
 		return {};
 	}
 	int i = typeinfo().findProperty(name, length);

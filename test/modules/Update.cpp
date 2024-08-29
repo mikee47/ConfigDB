@@ -5,6 +5,7 @@
 #include <ConfigDBTest.h>
 #include <test-config-range.h>
 #include <test-config-ref.h>
+#include <test-config-union.h>
 #include <ConfigDB/Json/Format.h>
 
 class UpdateTest : public TestGroup
@@ -73,6 +74,17 @@ public:
 				TEST_ASSERT(false);
 			}
 			db.exportToStream(ConfigDB::Json::format, Serial);
+		}
+
+		TEST_CASE("Union")
+		{
+			TestConfigUnion db(F("out/test-union"));
+			TestConfigUnion::Root root(db);
+			auto rgb = root.color.getRGB();
+			auto ptr = root.color.getPropertyData(0);
+			Serial << "rgb: " << rgb << endl;
+			Serial << "color: " << root.color << endl;
+			Serial << "root: " << root << endl;
 		}
 	}
 };

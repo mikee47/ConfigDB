@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "color": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RGB"
+        },
+        {
+          "$ref": "#/$defs/HSV"
+        },
+        {
+          "$ref": "#/$defs/RAW"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "RGB": {
+      "type": "object",
+      "properties": {
+        "red": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "green": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "blue": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1023
+        }
+      }
+    },
+    "HSV": {
+      "type": "object",
+      "properties": {
+        "hue": {
+          "type": "integer",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 359
+        },
+        "saturation": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 100
+        },
+        "value": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "RAW": {
+      "type": "object",
+      "properties": {
+        "red": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "green": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "blue": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "warm-white": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 255
+        },
+        "cold-white": {
+          "type": "integer",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    }
+  }
+}
