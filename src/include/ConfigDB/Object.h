@@ -209,7 +209,7 @@ protected:
 
 	const void* getDataPtr() const;
 
-	String getString(const PropertyInfo& prop, StringId id) const;
+	String getPropertyString(unsigned index, StringId id) const;
 
 	StringId getStringId(const char* value, uint16_t valueLength);
 
@@ -223,8 +223,8 @@ protected:
 		return getStringId(toString(value));
 	}
 
-	void setPropertyValue(const PropertyInfo& prop, uint16_t offset, const void* value);
-	void setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value);
+	void setPropertyValue(unsigned index, const void* value);
+	void setPropertyValue(unsigned index, const String& value);
 
 	const ObjectInfo* typeinfoPtr;
 	Object* parent{};

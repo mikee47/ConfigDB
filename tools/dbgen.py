@@ -18,6 +18,22 @@ CPP_TYPENAMES = {
     'boolean': 'bool',
 }
 
+STRINGID_SIZE = 2
+ARRAYID_SIZE = 2
+
+CPP_TYPESIZES = {
+	'bool': 1,
+    'int8_t': 1,
+    'int16_t': 2,
+    'int32_t': 4,
+    'int64_t': 8,
+    'uint8_t': 1,
+    'uint16_t': 2,
+    'uint32_t': 4,
+    'uint64_t': 8,
+    'String': STRINGID_SIZE,
+}
+
 STRING_PREFIX = 'fstr_'
 
 class StringTable:
@@ -125,6 +141,11 @@ class Property:
         return f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
 
     @property
+    def data_size(self):
+        '''Size of the corresponding C++ storage type'''
+        return CPP_TYPESIZES[self.ctype]
+
+    @property
     def id(self):
         return make_identifier(self.name)
 
@@ -173,6 +194,11 @@ class Object:
     @property
     def typename_struct(self):
         return self.typename_contained + '::Struct'
+
+    @property
+    def data_size(self):
+        '''Size of the corresponding C++ storage'''
+        return sum(prop.data_size for prop in self.properties)
 
     @property
     def namespace(self):
@@ -235,6 +261,11 @@ class Array(Object):
     def typename_struct(self):
         return 'ConfigDB::ArrayId'
 
+    @property
+    def data_size(self):
+        '''Size of the corresponding C++ storage'''
+        return ARRAYID_SIZE
+
 
 @dataclass
 class ObjectArray(Object):
@@ -247,6 +278,11 @@ class ObjectArray(Object):
     @property
     def typename_struct(self):
         return 'ConfigDB::ArrayId'
+
+    @property
+    def data_size(self):
+        '''Size of the corresponding C++ storage'''
+        return ARRAYID_SIZE
 
 
 @dataclass
@@ -533,21 +569,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 
     lines = CodeLines([], [])
 
-    objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
-    if objinfo:
-        objinfo_var = f'{obj.namespace}_{obj.typename}_objinfo'.replace('::', '_')
-        lines.source += [
-            '',
-            'namespace {',
-            f'constexpr const ObjectInfo* {objinfo_var}[] PROGMEM {{',
-            [f'&{ob.namespace}::{ob.typename_contained}::typeinfo,' for ob in objinfo],
-            '};',
-            '}'
-        ]
-    else:
-        objinfo_var = 'nullptr'
-
-    propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     lines.header += [
         'static const ConfigDB::ObjectInfo typeinfo;'
     ]
@@ -565,11 +586,32 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         tag = 'int32' if r.is_signed else 'uint32'
         return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
 
+    proplist = []
+    offset = 0
+
+    objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
+    for child in objinfo:
+        proplist += [[
+            'PropertyType::Object',
+            'fstr_empty' if obj.is_array else strings[child.name],
+            offset,
+            f'{{.object = &{child.namespace}::{child.typename_contained}::typeinfo}}'
+        ]]
+        offset += child.data_size
+
+    propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     for prop in propinfo:
         r = prop.get_intrange()
         if r and r.bits > 32:
             lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
             lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
+        proplist += [[
+            f'PropertyType::{prop.property_type}',
+            'fstr_empty' if obj.is_array else strings[prop.name],
+            offset,
+            *getVariantInfo(prop)
+        ]]
+        offset += prop.data_size
 
     lines.source += [
         '',
@@ -578,8 +620,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         *([str(e) + ','] for e in [
             'ObjectType::' + ('Store' if obj.is_root else obj.classname),
             'fstr_empty' if obj.is_item else strings[obj.name],
-            'nullptr' if obj.is_root else f'&{obj.parent.typename_contained}::typeinfo',
-            objinfo_var,
             'nullptr' if obj.is_array else '&defaultData',
             'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)',
             len(objinfo),
@@ -587,13 +627,9 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         ]),
         [
             '{',
-            *(make_static_initializer([
-                f'PropertyType::{prop.property_type}',
-                'fstr_empty' if obj.is_array else strings[prop.name],
-                *getVariantInfo(prop)
-            ], ',') for prop in propinfo),
-            '}',
-        ] if propinfo else None,
+            *(make_static_initializer(prop, ',') for prop in proplist),
+            '}'
+        ],
         '};'
     ]
 
@@ -635,7 +671,7 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        [f'return getString(typeinfo.propinfo[{index}], getData<const Struct>()->{prop.id});']
+        [f'return getPropertyString({index}, getData<const Struct>()->{prop.id});']
         if prop.ptype == 'string' else
         [f'return {prop.ctype_ret}(getData<const Struct>()->{prop.id});'],
         '}',
@@ -661,7 +697,7 @@ def generate_property_write_accessors(obj: Object) -> list:
         '',
         f'void set{prop.typename}({get_ctype(prop)} value)',
         '{',
-        [f'setPropertyValue(typeinfo.propinfo[{index}], offsetof(Struct, {prop.id}), {get_value_expr(prop)});'],
+        [f'setPropertyValue({index}, {get_value_expr(prop)});'],
         '}'
         ) for index, prop in enumerate(obj.properties))]
 

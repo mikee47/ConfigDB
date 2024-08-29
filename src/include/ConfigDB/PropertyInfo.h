@@ -35,7 +35,8 @@
 	XX(UInt16, 2)                                                                                                      \
 	XX(UInt32, 4)                                                                                                      \
 	XX(UInt64, 8)                                                                                                      \
-	XX(String, sizeof(StringId))
+	XX(String, sizeof(StringId))                                                                                       \
+	XX(Object, sizeof(ObjectInfo*))
 
 namespace ConfigDB
 {
@@ -51,6 +52,8 @@ enum class PropertyType : uint32_t {
  * @brief Defines contained string data using index into string pool
  */
 using StringId = uint16_t;
+
+struct ObjectInfo;
 
 /**
  * @brief Property metadata
@@ -79,9 +82,11 @@ struct PropertyInfo {
 	};
 	PropertyType type;
 	const FlashString& name;
+	uint32_t offset; ///< Location of property data in parent object
 	// Variant property information depends on type
 	union {
 		const FlashString* defaultString;
+		const ObjectInfo* object;
 		RangeTemplate<int32_t> int32;
 		RangeTemplate<uint32_t> uint32;
 		RangePtrTemplate<int64_t> int64;
@@ -91,6 +96,11 @@ struct PropertyInfo {
 	static const PropertyInfo empty;
 
 	PropertyInfo(const PropertyInfo&) = delete;
+
+	explicit operator bool() const
+	{
+		return this != &empty;
+	}
 
 	/**
 	 * @brief Get number of bytes required to store this property value within a structure

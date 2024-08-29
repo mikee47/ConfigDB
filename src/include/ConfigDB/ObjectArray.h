@@ -70,7 +70,7 @@ public:
 
 	const ObjectInfo& getItemType() const
 	{
-		return *typeinfo().objinfo[0];
+		return *typeinfo().propinfo[0].object;
 	}
 };
 

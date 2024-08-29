@@ -38,8 +38,6 @@ enum class ObjectType : uint32_t {
 struct ObjectInfo {
 	ObjectType type;
 	const FlashString& name;
-	const ObjectInfo* parent;
-	const ObjectInfo* const* objinfo;
 	PGM_VOID_P defaultData;
 	uint32_t structSize;
 	uint32_t objectCount;
@@ -57,19 +55,21 @@ struct ObjectInfo {
 
 	String getTypeDesc() const;
 
-	/**
-	 * @brief Get offset of this object's data relative to its parent
-	 */
-	size_t getOffset() const;
-
-	/**
-	 * @brief Get offset of data for a property from the start of *this* object's data
-	 */
-	size_t getPropertyOffset(unsigned index) const;
-
 	int findObject(const char* name, size_t length) const;
 
 	int findProperty(const char* name, size_t length) const;
+
+	const PropertyInfo& getObject(unsigned index) const
+	{
+		assert(index < objectCount);
+		return (index < objectCount) ? propinfo[index] : PropertyInfo::empty;
+	}
+
+	const PropertyInfo& getProperty(unsigned index) const
+	{
+		assert(index < propertyCount);
+		return (index < propertyCount) ? propinfo[objectCount + index] : PropertyInfo::empty;
+	}
 };
 
 } // namespace ConfigDB

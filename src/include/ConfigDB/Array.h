@@ -151,7 +151,7 @@ public:
 	String getItem(unsigned index) const
 	{
 		auto id = *static_cast<const StringId*>(this->getArray()[index]);
-		return this->getString(this->getItemType(), id);
+		return this->getPropertyString(0, id);
 	}
 };
 

@@ -101,15 +101,6 @@ public:
 		return db;
 	}
 
-	uint16_t getObjectDataRef(const ObjectInfo& object)
-	{
-		size_t offset{0};
-		for(auto obj = &object; obj; obj = obj->parent) {
-			offset += obj->getOffset();
-		}
-		return offset;
-	}
-
 	uint8_t* getRootData()
 	{
 		if(!writeCheck()) {

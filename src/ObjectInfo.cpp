@@ -35,43 +35,10 @@ namespace ConfigDB
 {
 const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
 
-size_t ObjectInfo::getOffset() const
-{
-	if(!parent) {
-		return 0;
-	}
-	size_t offset{0};
-	for(unsigned i = 0; i < parent->objectCount; ++i) {
-		auto obj = parent->objinfo[i];
-		if(obj == this) {
-			return offset;
-		}
-		offset += obj->structSize;
-	}
-	assert(false);
-	return 0;
-}
-
-size_t ObjectInfo::getPropertyOffset(unsigned index) const
-{
-	size_t offset{0};
-	for(unsigned i = 0; i < objectCount; ++i) {
-		offset += objinfo[i]->structSize;
-	}
-	for(unsigned i = 0; i < propertyCount; ++i) {
-		if(i == index) {
-			return offset;
-		}
-		offset += propinfo[i].getSize();
-	}
-	assert(false);
-	return 0;
-}
-
 int ObjectInfo::findObject(const char* name, size_t length) const
 {
 	for(unsigned i = 0; i < objectCount; ++i) {
-		if(objinfo[i]->name.equals(name, length)) {
+		if(propinfo[i].name.equals(name, length)) {
 			return i;
 		}
 	}
@@ -81,7 +48,7 @@ int ObjectInfo::findObject(const char* name, size_t length) const
 int ObjectInfo::findProperty(const char* name, size_t length) const
 {
 	for(unsigned i = 0; i < propertyCount; ++i) {
-		if(propinfo[i].name.equals(name, length)) {
+		if(propinfo[objectCount + i].name.equals(name, length)) {
 			return i;
 		}
 	}

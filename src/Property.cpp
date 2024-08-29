@@ -107,6 +107,9 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		assert(false);
 		string = src.string;
 		break;
+	case PropertyType::Object:
+		assert(false);
+		break;
 	}
 }
 

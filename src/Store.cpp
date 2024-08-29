@@ -71,6 +71,9 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 			return *info.defaultString;
 		}
 		return nullptr;
+	case PropertyType::Object:
+		assert(false);
+		return nullptr;
 	}
 	return nullptr;
 }
@@ -111,6 +114,7 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 		src.uint64 = strtoull(value, nullptr, 0);
 		break;
 	case PropertyType::String:
+	case PropertyType::Object:
 		break;
 	}
 

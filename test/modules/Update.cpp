@@ -4,6 +4,7 @@
 
 #include <ConfigDBTest.h>
 #include <test-config-range.h>
+#include <test-config-ref.h>
 #include <ConfigDB/Json/Format.h>
 
 class UpdateTest : public TestGroup
@@ -16,6 +17,9 @@ public:
 
 	void execute() override
 	{
+		// TestConfigRef db("test-ref");
+		// TestConfigRef::Root root(db);
+
 		// Verify initial value
 		TestConfig::Root root(database);
 		Serial << root << endl;
