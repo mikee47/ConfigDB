@@ -98,19 +98,19 @@ private:
 		onHeadersComplete = [this](HttpServerConnection&, HttpRequest& request, HttpResponse& response) -> int {
 			if(request.args) {
 				response.code = HTTP_STATUS_INTERNAL_SERVER_ERROR;
-				return 1;
+				return 0;
 			}
 
 			if(request.method != HTTP_POST) {
 				response.code = HTTP_STATUS_BAD_REQUEST;
-				return 1;
+				return 0;
 			}
 
 			String contentType = request.headers[HTTP_HEADER_CONTENT_TYPE];
 			auto stream = this->onRequest(request, ContentType::fromString(contentType));
 			if(!stream) {
 				response.code = HTTP_STATUS_BAD_REQUEST;
-				return 1;
+				return 0;
 			}
 
 			request.args = stream.release();
@@ -119,7 +119,10 @@ private:
 
 		onBody = [this](HttpServerConnection&, HttpRequest& request, const char* at, int length) -> int {
 			auto stream = static_cast<ImportStream*>(request.args);
-			return (stream && stream->write(at, length) == size_t(length)) ? 0 : 1;
+			if(!stream) {
+				return 0;
+			}
+			return stream->write(at, length) == size_t(length) ? 0 : 1;
 		};
 
 		onRequestComplete = [this](HttpServerConnection&, HttpRequest& request, HttpResponse& response) -> int {
