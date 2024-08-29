@@ -396,11 +396,13 @@ def resolve_ref(prop: Property, db: Database) -> dict:
         resolved_ref = db.definitions.get(ref)
     if not resolved_ref:
         raise ValueError('Cannot resolve ' + ref)
-    if resolved_ref.get('type') != 'object':
-        raise ValueError('Reference must be an object: ' + ref)
-    print('REF', ref, resolved_ref)
     prop.ref = ref
-    prop.fields = resolved_ref
+    if resolved_ref['type'] == 'object':
+        prop.fields = resolved_ref
+    else:
+        for key, value in resolved_ref.items():
+            if key not in prop.fields:
+                prop.fields[key] = value;
     return resolved_ref
 
 
@@ -503,7 +505,6 @@ def generate_database(db: Database) -> CodeLines:
         ])
 
     for obj in db.object_defs.values():
-        print('OBJECT DEF', obj.name)
         lines.append(generate_object(obj))
 
     for store in db.children:
