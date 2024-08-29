@@ -82,6 +82,13 @@ class Property:
     name: str
     fields: dict
 
+    def validate(self):
+        r = self.get_intrange()
+        if not r:
+            return
+        if not (r.minimum <= self.default <= r.maximum):
+            raise ValueError(f'{self.name} bad default {self.default}: {r.minimum} <= value <= {r.maximum}')
+
     @property
     def ptype(self):
         return self.fields['type']
@@ -344,6 +351,7 @@ def load_config(filename: str) -> Database:
             if not prop.ctype:
                 print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
                 continue
+            prop.validate()
             if prop.ctype != '-': # object or array
                 parent.properties.append(prop)
                 continue
