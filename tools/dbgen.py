@@ -81,6 +81,7 @@ class IntRange:
 class Property:
     name: str
     fields: dict
+    ref: dict | None = None
 
     def validate(self):
         r = self.get_intrange()
@@ -151,6 +152,7 @@ class Object:
     name: str
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
+    ref: Object | None = None
 
     @property
     def store(self):
@@ -174,6 +176,8 @@ class Object:
 
     @property
     def namespace(self):
+        if self.ref:
+            return self.store.parent.typename
         obj = self.parent
         ns = []
         while obj:
@@ -247,6 +251,9 @@ class ObjectArray(Object):
 
 @dataclass
 class Database(Object):
+    definitions: dict = None
+    object_defs: dict[Object] = field(default_factory=dict)
+
     @property
     def is_item_member(self):
         return False
@@ -335,11 +342,33 @@ def load_schema(filename: str) -> dict:
     return config
 
 
+def resolve_ref(prop: Property, db: Database) -> dict:
+    '''If property contains a reference, deal with it'''
+    ref = prop.fields.get('$ref')
+    if not ref:
+        return prop.fields
+    if not db.definitions:
+        raise ValueError('Schema missing definitions')
+    prefix = '#/$defs/'
+    resolved_ref = None
+    if ref.startswith(prefix):
+        ref = ref[len(prefix):]
+        resolved_ref = db.definitions.get(ref)
+    if not resolved_ref:
+        raise ValueError('Cannot resolve ' + ref)
+    if resolved_ref.get('type') != 'object':
+        raise ValueError('Reference must be an object: ' + ref)
+    print('REF', ref, resolved_ref)
+    prop.ref = ref
+    prop.fields = resolved_ref
+    return resolved_ref
+
+
 def load_config(filename: str) -> Database:
     '''Load, validate and parse schema into python objects'''
     config = load_schema(filename)
     dbname = os.path.splitext(os.path.basename(filename))[0]
-    database = Database(None, dbname, properties=config['properties'])
+    database = Database(None, dbname, properties=config['properties'], definitions=config.get('$defs'))
     database.include = config.get('include', [])
     root = Object(database, '')
     database.children.append(root)
@@ -348,6 +377,7 @@ def load_config(filename: str) -> Database:
         for key, value in properties.items():
             # Filter out support property types
             prop = Property(key, value)
+            value = resolve_ref(prop, database)
             if not prop.ctype:
                 print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
                 continue
@@ -364,9 +394,16 @@ def load_config(filename: str) -> Database:
             else:
                 obj = parent
             if prop.ptype == 'object':
-                child = Object(obj, key)
-                obj.children.append(child)
-                parse(child, value['properties'])
+                ref = database.object_defs.get(prop.ref)
+                if ref:
+                    child = ref
+                else:
+                    child = Object(obj, key)
+                    obj.children.append(child)
+                    parse(child, value['properties'])
+                    if prop.ref:
+                        database.object_defs[prop.ref] = child
+                        child.ref = prop.ref
             elif prop.ptype == 'array':
                 items = value['items']
                 if items['type'] == 'object':
@@ -424,6 +461,10 @@ def generate_database(db: Database) -> CodeLines:
             ],
             '};'
         ])
+
+    for obj in db.object_defs.values():
+        print('OBJECT DEF', obj.name)
+        lines.append(generate_object(obj))
 
     for store in db.children:
         lines.append(generate_object(store))
@@ -673,7 +714,8 @@ def generate_object(obj: Object) -> CodeLines:
 
     # Append child object definitions
     for child in obj.children:
-        lines.append(generate_object(child))
+        if not child.ref:
+            lines.append(generate_object(child))
 
     lines.append(generate_object_struct(obj))
     lines.header += [
