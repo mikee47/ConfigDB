@@ -208,8 +208,8 @@ String Object::getString(const PropertyInfo& prop, StringId id) const
 		return String(getStore().stringPool[id]);
 	}
 	if(prop.type == PropertyType::String) {
-		assert(prop.defaultValue.string);
-		return *prop.defaultValue.string;
+		assert(prop.minimum.string);
+		return *prop.minimum.string;
 	}
 	return nullptr;
 }
@@ -226,9 +226,15 @@ void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const v
 		return;
 	}
 	data += offset;
-	auto& dst = *reinterpret_cast<PropertyData*>(data);
-	auto src = static_cast<const PropertyData*>(value);
-	dst.setValue(prop, src);
+	auto dst = reinterpret_cast<PropertyData*>(data);
+	if(value) {
+		auto src = static_cast<const PropertyData*>(value);
+		dst->setValue(prop, *src);
+	} else {
+		auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
+		defaultData += offset;
+		memcpy_P(dst, defaultData, prop.getSize());
+	}
 }
 
 void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value)
@@ -260,11 +266,16 @@ Property Object::getProperty(unsigned index)
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
+	auto offset = typeinfo().getPropertyOffset(index);
 	auto propData = getData<uint8_t>();
 	if(propData) {
-		propData += typeinfo().getPropertyOffset(index);
+		propData += offset;
 	}
-	return {getStore(), typeinfo().propinfo[index], propData};
+	auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
+	if(defaultData) {
+		defaultData += offset;
+	}
+	return {getStore(), typeinfo().propinfo[index], propData, defaultData};
 }
 
 PropertyConst Object::getProperty(unsigned index) const
@@ -272,7 +283,6 @@ PropertyConst Object::getProperty(unsigned index) const
 	if(typeIs(ObjectType::Array)) {
 		return static_cast<const Array*>(this)->getProperty(index);
 	}
-
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
@@ -280,7 +290,7 @@ PropertyConst Object::getProperty(unsigned index) const
 	if(propData) {
 		propData += typeinfo().getPropertyOffset(index);
 	}
-	return {getStore(), typeinfo().propinfo[index], propData};
+	return {getStore(), typeinfo().propinfo[index], propData, nullptr};
 }
 
 size_t Object::printTo(Print& p) const

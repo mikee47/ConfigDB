@@ -67,8 +67,8 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 		if(propData.string) {
 			return String(stringPool[propData.string]);
 		}
-		if(info.defaultValue.string) {
-			return *info.defaultValue.string;
+		if(info.minimum.string) {
+			return *info.minimum.string;
 		}
 		return nullptr;
 	}
@@ -77,17 +77,17 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 
 PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
+	if(!value) {
+		assert(false);
+		return {};
+	}
+
 	if(prop.type == PropertyType::String) {
-		if(!value || (prop.defaultValue.string && *prop.defaultValue.string == value)) {
+		auto defstring = prop.minimum.string;
+		if(defstring && *defstring == value) {
 			return {.string = 0};
 		}
 		return {.string = stringPool.findOrAdd({value, valueLength})};
-	}
-
-	if(!value) {
-		PropertyData dst{};
-		dst.setValue(prop, nullptr);
-		return dst;
 	}
 
 	PropertyData src{};
@@ -116,7 +116,7 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 	}
 
 	PropertyData dst{};
-	dst.setValue(prop, &src);
+	dst.setValue(prop, src);
 	return dst;
 }
 

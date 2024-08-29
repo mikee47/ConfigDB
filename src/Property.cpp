@@ -62,41 +62,52 @@ bool Property::setJsonValue(const char* value, size_t valueLength)
 	if(!store || !data) {
 		return false;
 	}
-	auto propdata = const_cast<Store*>(store)->parseString(*info, value, valueLength);
-	memcpy(const_cast<void*>(data), &propdata, info->getSize());
+	auto dst = const_cast<void*>(data);
+	if(value) {
+		auto propdata = const_cast<Store*>(store)->parseString(*info, value, valueLength);
+		memcpy(dst, &propdata, info->getSize());
+	} else if(defaultData) {
+		memcpy_P(dst, defaultData, info->getSize());
+	} else {
+		memset(dst, 0, info->getSize());
+	}
 	return true;
 }
 
-void PropertyData::setValue(const PropertyInfo& prop, const PropertyData* src)
+void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 {
+	auto clipInt32 = [&prop](int32_t value) { return TRange(prop.minimum.Int32, prop.maximum.Int32).clip(value); };
+	auto clipUInt32 = [&prop](uint32_t value) { return TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(value); };
+
 	switch(prop.type) {
 	case PropertyType::Boolean:
-		b = src ? src->b : (prop.defaultValue.Int32 != 0);
+		b = src.b;
 		break;
 	case PropertyType::Int8:
-		int8 = src ? TRange(prop.minimum.Int32, prop.maximum.Int32).clip(src->int8) : prop.defaultValue.Int32;
+		int8 = clipInt32(src.int8);
 		break;
 	case PropertyType::Int16:
-		int16 = src ? TRange(prop.minimum.Int32, prop.maximum.Int32).clip(src->int16) : prop.defaultValue.Int32;
+		int16 = clipInt32(src.int16);
 		break;
 	case PropertyType::Int32:
-		int32 = src ? TRange(prop.minimum.Int32, prop.maximum.Int32).clip(src->int32) : prop.defaultValue.Int32;
+		int32 = clipInt32(src.int32);
 		break;
 	case PropertyType::Int64:
-		int64 = src ? src->int64 : getPtrValue(prop.defaultValue.Int64);
+		int64 = src.int64;
 	case PropertyType::UInt8:
-		uint8 = src ? TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(src->uint8) : prop.defaultValue.UInt32;
+		uint8 = clipUInt32(src.uint8);
 		break;
 	case PropertyType::UInt16:
-		uint16 = src ? TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(src->uint16) : prop.defaultValue.UInt32;
+		uint16 = clipUInt32(src.uint16);
 		break;
 	case PropertyType::UInt32:
-		uint32 = src ? TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(src->uint32) : prop.defaultValue.UInt32;
+		uint32 = clipUInt32(src.uint32);
 		break;
 	case PropertyType::UInt64:
-		uint64 = src ? src->uint64 : getPtrValue(prop.defaultValue.UInt64);
+		uint64 = src.uint64;
 	case PropertyType::String:
 		assert(false);
+		string = src.string;
 		break;
 	}
 }

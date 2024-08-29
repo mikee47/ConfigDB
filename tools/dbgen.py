@@ -510,6 +510,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         return f'{{.{prop.property_type} = {value}}}'
 
     def getPropRange(prop: Property):
+        if prop.ptype == 'string':
+            return [getPropData(prop, prop.default_str)]
         r = prop.get_intrange()
         return [
             getPropData(prop, r.minimum),
@@ -535,7 +537,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             *(make_static_initializer([
                 f'PropertyType::{prop.property_type}',
                 'fstr_empty' if obj.is_array else strings[prop.name],
-                getPropData(prop, prop.default_str),
                 *getPropRange(prop)
             ], ',') for prop in propinfo),
             '}',
