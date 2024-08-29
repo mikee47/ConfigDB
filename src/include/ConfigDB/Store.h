@@ -60,6 +60,7 @@ public:
 	Store(Database& db, const ObjectInfo& typeinfo)
 		: Object(typeinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo.structSize))
 	{
+		memcpy_P(rootData.get(), typeinfo.defaultData, typeinfo.structSize);
 		++instanceCount;
 		CFGDB_DEBUG(" %u", instanceCount)
 	}
