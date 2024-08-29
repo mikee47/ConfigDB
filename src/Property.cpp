@@ -93,7 +93,12 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		int32 = clipInt32(src.int32);
 		break;
 	case PropertyType::Int64:
-		int64 = src.int64;
+		if(prop.minimum.Int64 || prop.maximum.Int64) {
+			int64 = TRange(getPtrValue(prop.minimum.Int64), getPtrValue(prop.maximum.Int64)).clip(src.int64);
+		} else {
+			int64 = src.int64;
+		}
+		break;
 	case PropertyType::UInt8:
 		uint8 = clipUInt32(src.uint8);
 		break;
@@ -104,7 +109,12 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		uint32 = clipUInt32(src.uint32);
 		break;
 	case PropertyType::UInt64:
-		uint64 = src.uint64;
+		if(prop.minimum.UInt64 || prop.maximum.UInt64) {
+			uint64 = TRange(getPtrValue(prop.minimum.UInt64), getPtrValue(prop.maximum.UInt64)).clip(src.uint64);
+		} else {
+			uint64 = src.uint64;
+		}
+		break;
 	case PropertyType::String:
 		assert(false);
 		string = src.string;

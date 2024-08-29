@@ -86,7 +86,7 @@ class Property:
         r = self.get_intrange()
         if not r:
             return
-        if not (r.minimum <= self.default <= r.maximum):
+        if not (r.minimum <= (self.default or 0) <= r.maximum):
             raise ValueError(f'{self.name} bad default {self.default}: {r.minimum} <= value <= {r.maximum}')
 
     @property
@@ -521,10 +521,23 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         if prop.ptype == 'string':
             return [getPropData(prop, prop.default_str)]
         r = prop.get_intrange()
+        if r is None:
+            return []
+        if r.bits > 32:
+            return [
+                getPropData(prop, f'&{prop.name}_minimum'),
+                getPropData(prop, f'&{prop.name}_maximum'),
+            ]
         return [
             getPropData(prop, r.minimum),
             getPropData(prop, r.maximum)
-        ] if r else []
+        ]
+
+    for prop in propinfo:
+        r = prop.get_intrange()
+        if r and r.bits > 32:
+            lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
+            lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
 
     lines.source += [
         '',

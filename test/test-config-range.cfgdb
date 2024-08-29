@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "intval": {
+      "type": "integer",
+      "minimum": -5,
+      "maximum": 100,
+      "default": -1
+    },
+    "int64val": {
+      "type": "integer",
+      "minimum": -100000000000,
+      "maximum": 100000000000,
+      "default": -1
+    }
+  }
+}

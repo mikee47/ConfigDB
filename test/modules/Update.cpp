@@ -3,6 +3,8 @@
  */
 
 #include <ConfigDBTest.h>
+#include <test-config-range.h>
+#include <ConfigDB/Json/Format.h>
 
 class UpdateTest : public TestGroup
 {
@@ -50,6 +52,23 @@ public:
 			} else {
 				TEST_ASSERT(false);
 			}
+		}
+
+		TEST_CASE("Int64")
+		{
+			TestConfigRange db(F("out/test-range"));
+			db.openStore(0, true)->clear();
+			TestConfigRange::Root root(db);
+			REQUIRE_EQ(root.getInt64val(), -1);
+			if(auto update = root.update()) {
+				update.setInt64val(-100000000001LL);
+				REQUIRE_EQ(root.getInt64val(), -100000000000LL);
+				update.setInt64val(100000000001LL);
+				REQUIRE_EQ(root.getInt64val(), 100000000000LL);
+			} else {
+				TEST_ASSERT(false);
+			}
+			db.exportToStream(ConfigDB::Json::format, Serial);
 		}
 	}
 };
