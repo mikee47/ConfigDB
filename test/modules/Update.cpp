@@ -79,12 +79,30 @@ public:
 		TEST_CASE("Union")
 		{
 			TestConfigUnion db(F("out/test-union"));
-			TestConfigUnion::Root root(db);
-			auto rgb = root.color.getRGB();
-			auto ptr = root.color.getPropertyData(0);
-			Serial << "rgb: " << rgb << endl;
-			Serial << "color: " << root.color << endl;
-			Serial << "root: " << root << endl;
+			db.openStore(0, true)->clear();
+			using Color = TestConfigUnion::Root::Color;
+			Color color(db);
+			Serial << color << endl;
+			if(auto updater = color.update()) {
+				for(unsigned i = 0; i < 3; ++i) {
+					auto tag = Color::Tag(i);
+					updater.setTag(tag);
+					Serial << "color: " << color << endl;
+				}
+				updater.clearDirty();
+			}
+			switch(color.getTag()) {
+			case Color::Tag::RGB:
+				Serial << "rgb: " << color.getRGB() << endl;
+				break;
+			case Color::Tag::HSV:
+				Serial << "hsv: " << color.getHSV() << endl;
+				break;
+			case Color::Tag::RAW:
+				Serial << "raw: " << color.getRAW() << endl;
+				break;
+			}
+			Serial << "color: " << color << endl;
 		}
 	}
 };

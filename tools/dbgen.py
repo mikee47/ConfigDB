@@ -562,7 +562,7 @@ def generate_database(db: Database) -> CodeLines:
             ],
             *[generate_outer_class(child) for child in obj.children if not obj.is_item],
             '};'
-        ] if obj.children else [
+        ] if obj.children and not obj.is_union else [
             f'using {obj.typename} = ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>;'
         ]
     for store in db.children:
@@ -724,13 +724,29 @@ def generate_property_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
     if obj.is_union:
-        return [*((
+        return [
             '',
-            f'const {child.typename_contained} get{child.name}() const',
-            '{',
-            [f'return {child.typename_contained}(*this, {UNION_TAG_SIZE});'],
-            '}',
-            ) for child in obj.children)]
+            [
+                'enum class Tag {',
+                [f'{child.name},' for child in obj.children],
+                '};',
+                '',
+                'Tag getTag() const',
+                '{',
+                ['return Tag(Union::getTag());'],
+                '}'
+            ],
+            *((
+                '',
+                f'const {child.typename_contained} get{child.name}() const',
+                '{',
+                [
+                    f'assert(getTag() == Tag::{child.name});',
+                    f'return {child.typename_contained}(*this, {UNION_TAG_SIZE});'
+                ],
+                '}',
+                ) for index, child in enumerate(obj.children))
+            ]
 
     return [*((
         '',
@@ -757,6 +773,15 @@ def generate_property_write_accessors(obj: Object) -> list:
         if ctype:
             return f'const {ctype}&'
         return 'const String&' if prop.ptype == 'string' else prop.ctype
+
+    if obj.is_union:
+        return [[
+            '',
+            'void setTag(Tag tag)',
+            '{',
+            ['Union::setTag(unsigned(tag));'],
+            '}'
+        ]]
 
     return [*((
         '',
@@ -861,8 +886,10 @@ def generate_updater(obj: Object) -> list:
         *declare_templated_class(obj, [], True),
         constructors,
         *generate_property_write_accessors(obj),
-        '',
-        [f'{child.typename_updater} {child.id};' for child in obj.children],
+        None if obj.is_union else [
+            '',
+            (f'{child.typename_updater} {child.id};' for child in obj.children)
+        ],
         '};'
     ]
 

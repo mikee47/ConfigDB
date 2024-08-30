@@ -68,33 +68,33 @@
       "properties": {
         "red": {
           "type": "integer",
-          "default": 100,
+          "default": 800,
           "minimum": 0,
           "maximum": 1023
         },
         "green": {
           "type": "integer",
-          "default": 100,
+          "default": 500,
           "minimum": 0,
           "maximum": 1023
         },
         "blue": {
           "type": "integer",
-          "default": 100,
+          "default": 200,
           "minimum": 0,
           "maximum": 1023
         },
         "warm-white": {
           "type": "integer",
-          "default": 100,
+          "default": 1023,
           "minimum": 0,
-          "maximum": 255
+          "maximum": 1023
         },
         "cold-white": {
           "type": "integer",
-          "default": 100,
+          "default": 0,
           "minimum": 0,
-          "maximum": 255
+          "maximum": 1023
         }
       }
     }

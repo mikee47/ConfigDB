@@ -114,6 +114,8 @@ public:
 
 	/**
 	 * @brief Find child object by name
+	 * @note For Union objects this also sets the tag on successful match,
+	 * which clears the Object to its default value.
 	 */
 	Object findObject(const char* name, size_t length);
 

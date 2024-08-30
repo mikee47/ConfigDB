@@ -38,6 +38,16 @@ public:
 		return getPropertyData(0)->uint8;
 	}
 
+	void setTag(Tag tag)
+	{
+		assert(tag < typeinfo().objectCount);
+		getPropertyData(0)->uint8 = tag;
+		auto& prop = typeinfo().propinfo[tag];
+		auto data = static_cast<uint8_t*>(getDataPtr());
+		data += sizeof(Tag);
+		memcpy_P(data, prop.object->defaultData, prop.object->structSize);
+	}
+
 	Object getObject(unsigned index)
 	{
 		assert(index == 0);
@@ -51,23 +61,23 @@ public:
  * @brief Used by code generator
  * @tparam ClassType Concrete type provided by code generator
  */
-template <class ClassType> class UnionTemplate : public Object
+template <class ClassType> class UnionTemplate : public Union
 {
 public:
-	UnionTemplate() : Object(ClassType::typeinfo)
+	UnionTemplate() : Union(ClassType::typeinfo)
 	{
 	}
 
-	explicit UnionTemplate(Store& store) : Object(ClassType::typeinfo, store)
+	explicit UnionTemplate(Store& store) : Union(ClassType::typeinfo, store)
 	{
 	}
 
-	UnionTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
+	UnionTemplate(Object& parent, uint16_t dataRef) : Union(ClassType::typeinfo, parent, dataRef)
 	{
 	}
 
 	UnionTemplate(const Object& parent, uint16_t dataRef)
-		: Object(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
+		: Union(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
 	{
 	}
 };
