@@ -207,12 +207,46 @@ String Object::getString(const PropertyInfo& prop, StringId id) const
 	if(id) {
 		return String(getStore().stringPool[id]);
 	}
-	return prop.defaultValue;
+	if(prop.type == PropertyType::String) {
+		assert(prop.defaultString);
+		return *prop.defaultString;
+	}
+	return nullptr;
 }
 
 StringId Object::getStringId(const char* value, uint16_t valueLength)
 {
 	return value ? getStore().stringPool.findOrAdd({value, valueLength}) : 0;
+}
+
+void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const void* value)
+{
+	auto data = getData<uint8_t>();
+	if(!data) {
+		return;
+	}
+	data += offset;
+	auto dst = reinterpret_cast<PropertyData*>(data);
+	if(value) {
+		auto src = static_cast<const PropertyData*>(value);
+		dst->setValue(prop, *src);
+	} else {
+		auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
+		defaultData += offset;
+		memcpy_P(dst, defaultData, prop.getSize());
+	}
+}
+
+void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value)
+{
+	assert(prop.type == PropertyType::String);
+	auto data = getData<uint8_t>();
+	if(!data) {
+		return;
+	}
+	auto id = getStringId(value);
+	data += offset;
+	memcpy(data, &id, sizeof(id));
 }
 
 unsigned Object::getPropertyCount() const
@@ -232,11 +266,16 @@ Property Object::getProperty(unsigned index)
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
+	auto offset = typeinfo().getPropertyOffset(index);
 	auto propData = getData<uint8_t>();
 	if(propData) {
-		propData += typeinfo().getPropertyOffset(index);
+		propData += offset;
 	}
-	return {getStore(), typeinfo().propinfo[index], propData};
+	auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
+	if(defaultData) {
+		defaultData += offset;
+	}
+	return {getStore(), typeinfo().propinfo[index], propData, defaultData};
 }
 
 PropertyConst Object::getProperty(unsigned index) const
@@ -244,7 +283,6 @@ PropertyConst Object::getProperty(unsigned index) const
 	if(typeIs(ObjectType::Array)) {
 		return static_cast<const Array*>(this)->getProperty(index);
 	}
-
 	if(index >= typeinfo().propertyCount) {
 		return {};
 	}
@@ -252,7 +290,7 @@ PropertyConst Object::getProperty(unsigned index) const
 	if(propData) {
 		propData += typeinfo().getPropertyOffset(index);
 	}
-	return {getStore(), typeinfo().propinfo[index], propData};
+	return {getStore(), typeinfo().propinfo[index], propData, nullptr};
 }
 
 size_t Object::printTo(Print& p) const

@@ -46,7 +46,7 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 	auto& propData = *static_cast<const PropertyData*>(data);
 	switch(info.type) {
 	case PropertyType::Boolean:
-		return propData.b ? "true" : "false";
+		return propData.boolean ? "true" : "false";
 	case PropertyType::Int8:
 		return String(propData.int8);
 	case PropertyType::Int16:
@@ -67,43 +67,56 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 		if(propData.string) {
 			return String(stringPool[propData.string]);
 		}
-		return info.defaultValue;
+		if(info.defaultString) {
+			return *info.defaultString;
+		}
+		return nullptr;
 	}
 	return nullptr;
 }
 
 PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
-	String s;
 	if(!value) {
-		s = prop.defaultValue;
-		value = s.c_str();
-		valueLength = s.length();
+		assert(false);
+		return {};
 	}
 
-	switch(prop.type) {
-	case PropertyType::Boolean:
-		return {.b = (valueLength == 4) && memicmp(value, "true", 4) == 0};
-	case PropertyType::Int8:
-	case PropertyType::Int16:
-	case PropertyType::Int32:
-		return {.int32 = int32_t(strtol(value, nullptr, 0))};
-	case PropertyType::Int64:
-		return {.int64 = strtoll(value, nullptr, 0)};
-	case PropertyType::UInt8:
-	case PropertyType::UInt16:
-	case PropertyType::UInt32:
-		return {.uint32 = uint32_t(strtoul(value, nullptr, 0))};
-	case PropertyType::UInt64:
-		return {.uint64 = strtoull(value, nullptr, 0)};
-	case PropertyType::String:
-		if(prop.defaultValue == value) {
+	if(prop.type == PropertyType::String) {
+		if(prop.defaultString && *prop.defaultString == value) {
 			return {.string = 0};
 		}
 		return {.string = stringPool.findOrAdd({value, valueLength})};
 	}
 
-	return {};
+	PropertyData src{};
+
+	switch(prop.type) {
+	case PropertyType::Boolean:
+		return {.boolean = (valueLength == 4) && memicmp(value, "true", 4) == 0};
+	case PropertyType::Int8:
+	case PropertyType::Int16:
+	case PropertyType::Int32:
+		src.int32 = strtol(value, nullptr, 0);
+		break;
+	case PropertyType::Int64:
+		src.int64 = strtoll(value, nullptr, 0);
+		break;
+	case PropertyType::UInt8:
+	case PropertyType::UInt16:
+	case PropertyType::UInt32:
+		src.uint32 = strtoul(value, nullptr, 0);
+		break;
+	case PropertyType::UInt64:
+		src.uint64 = strtoull(value, nullptr, 0);
+		break;
+	case PropertyType::String:
+		break;
+	}
+
+	PropertyData dst{};
+	dst.setValue(prop, src);
+	return dst;
 }
 
 bool Store::writeCheck() const

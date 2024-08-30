@@ -82,6 +82,13 @@ class Property:
     name: str
     fields: dict
 
+    def validate(self):
+        r = self.get_intrange()
+        if not r:
+            return
+        if not (r.minimum <= (self.default or 0) <= r.maximum):
+            raise ValueError(f'{self.name} bad default {self.default}: {r.minimum} <= value <= {r.maximum}')
+
     @property
     def ptype(self):
         return self.fields['type']
@@ -110,27 +117,11 @@ class Property:
         return self.fields.get('ctype', self.ctype)
 
     @property
-    def ctype_constref(self):
-        '''Type to use for accessor parameter type'''
-        ctype = self.fields.get('ctype')
-        if ctype:
-            return f'const {ctype}&'
-        return 'const String&' if self.ptype == 'string' else self.ctype
-
-    @property
-    def ctype_struct(self):
-        if self.ptype == 'string':
-            return 'ConfigDB::StringId'
-        return self.ctype
-
-    @property
     def property_type(self):
         if self.ptype != 'integer':
-            tag = self.ptype.capitalize()
-        else:
-            r = self.get_intrange()
-            tag = f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
-        return 'PropertyType::' + tag
+            return self.ptype.capitalize()
+        r = self.get_intrange()
+        return f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
 
     @property
     def id(self):
@@ -152,13 +143,6 @@ class Property:
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
         return str(default) if default else 0
-
-    @property
-    def default_structval(self):
-        '''Value suitable for static initialisation {x}'''
-        if self.ptype == 'string':
-            return make_comment(self.default) if self.default else ''
-        return self.default_str
 
 
 @dataclass
@@ -367,6 +351,7 @@ def load_config(filename: str) -> Database:
             if not prop.ctype:
                 print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
                 continue
+            prop.validate()
             if prop.ctype != '-': # object or array
                 parent.properties.append(prop)
                 continue
@@ -525,6 +510,26 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     lines.header += [
         'static const ConfigDB::ObjectInfo typeinfo;'
     ]
+
+    def getVariantInfo(prop: Property) -> list:
+        if prop.ptype == 'string':
+            fstr = strings[str(prop.default or '')]
+            return [f'{{.defaultString = &{fstr}}}']
+        r = prop.get_intrange()
+        if r is None:
+            return []
+        if r.bits > 32:
+            tag = 'int64' if r.is_signed else 'uint64'
+            return [f'.{tag} = {{&{prop.name}_minimum, &{prop.name}_maximum}}']
+        tag = 'int32' if r.is_signed else 'uint32'
+        return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
+
+    for prop in propinfo:
+        r = prop.get_intrange()
+        if r and r.bits > 32:
+            lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
+            lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
+
     lines.source += [
         '',
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
@@ -542,9 +547,9 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         [
             '{',
             *(make_static_initializer([
-                f'{prop.property_type}',
+                f'PropertyType::{prop.property_type}',
                 'fstr_empty' if obj.is_array else strings[prop.name],
-                strings[str(prop.default or '')],
+                *getVariantInfo(prop)
             ], ',') for prop in propinfo),
             '}',
         ] if propinfo else None,
@@ -557,12 +562,20 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 def generate_object_struct(obj: Object) -> CodeLines:
     '''Generate struct definition for this object'''
 
+    def get_ctype(prop):
+        return 'ConfigDB::StringId' if prop.ptype == 'string' else prop.ctype
+
+    def get_default(prop):
+        if prop.ptype == 'string':
+            return make_comment(prop.default) if prop.default else ''
+        return prop.default_str
+
     return CodeLines([
         '',
         'struct __attribute__((packed)) Struct {',
         [
             *(f'{child.typename_struct} {child.id}{{}};' for child in obj.children),
-            *(f'{prop.ctype_struct} {prop.id}{{{prop.default_structval}}};' for prop in obj.properties)
+            *(f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties)
         ],
         '};',
         '',
@@ -581,7 +594,9 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        ['return ' + (f'getString(typeinfo.propinfo[{index}], ' if prop.ptype == 'string' else f'{prop.ctype_ret}(') + f'getData<const Struct>()->{prop.id});'],
+        [f'return getString(typeinfo.propinfo[{index}], getData<const Struct>()->{prop.id});']
+        if prop.ptype == 'string' else
+        [f'return {prop.ctype_ret}(getData<const Struct>()->{prop.id});'],
         '}',
         ) for index, prop in enumerate(obj.properties))]
 
@@ -589,17 +604,25 @@ def generate_property_accessors(obj: Object) -> list:
 def generate_property_write_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
+    def get_value_expr(prop: Property) -> str:
+        if prop.ptype == 'string':
+            stype = prop.ctype_ret
+            return 'value' if stype == 'String' else f'String(value)'
+        return '&value'
+
+    def get_ctype(prop):
+        ctype = prop.fields.get('ctype')
+        if ctype:
+            return f'const {ctype}&'
+        return 'const String&' if prop.ptype == 'string' else prop.ctype
+
     return [*((
         '',
-        f'void set{prop.typename}({prop.ctype_constref} value)',
+        f'void set{prop.typename}({get_ctype(prop)} value)',
         '{',
-        [
-            'if(auto data = getData<Struct>()) {',
-            [f'data->{prop.id} = ' + ('getStringId' if prop.ptype == 'string' else prop.ctype_struct) + '(value);'],
-            '}'
-        ],
+        [f'setPropertyValue(typeinfo.propinfo[{index}], offsetof(Struct, {prop.id}), {get_value_expr(prop)});'],
         '}'
-        ) for prop in obj.properties)]
+        ) for index, prop in enumerate(obj.properties))]
 
 
 def generate_object(obj: Object) -> CodeLines:

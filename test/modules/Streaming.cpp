@@ -51,7 +51,7 @@ public:
 
 	void execute() override
 	{
-		// general();
+		general();
 		arrays();
 	}
 
@@ -61,39 +61,27 @@ public:
 		TestConfig::Root root(database);
 		CHECK(!root.getSimpleBool());
 
-		// Setup test stream for reading
-		MemoryDataStream mem;
-		mem << json::update1;
-
 		// Check streaming into read-only object fails, and data is not changed
 		TEST_CASE("Streaming import, read-only")
 		{
-			REQUIRE(!root.importFromStream(ConfigDB::Json::format, mem));
+			REQUIRE(!importObject(root, json::update1));
 			REQUIRE(!root.getSimpleBool());
+			REQUIRE_EQ(root.getSimpleInt(), -1);
 		}
 
 		// Change value
 		TEST_CASE("Streaming import, updater")
 		{
 			if(auto updater = root.update()) {
-				mem.seekFrom(0, SeekOrigin::Start);
-				REQUIRE(updater.importFromStream(ConfigDB::Json::format, mem));
-
+				REQUIRE(importObject(updater, json::update1));
 				REQUIRE_EQ(root.getSimpleBool(), true);
+				REQUIRE_EQ(root.getSimpleInt(), 100);
 			} else {
 				TEST_ASSERT(false);
 			}
 
-			mem.clear();
-			root.exportToStream(ConfigDB::Json::format, mem);
-			String content;
-			mem.moveString(content);
-			REQUIRE_EQ(content, json::root1);
-
-			mem.clear();
-			database.exportToStream(ConfigDB::Json::format, mem);
-			mem.moveString(content);
-			REQUIRE_EQ(content, json::root1);
+			REQUIRE_EQ(exportObject(root), json::root1);
+			REQUIRE_EQ(exportObject(database), json::root1);
 		}
 
 		/* Streaming objects */
@@ -102,7 +90,7 @@ public:
 		TEST_CASE("Streaming object import")
 		{
 			if(auto updater = root.update()) {
-				mem.clear();
+				MemoryDataStream mem;
 				mem << json::update1;
 				auto stream = updater.createImportStream(ConfigDB::Json::format);
 				REQUIRE_EQ(stream->copyFrom(&mem), json::update1.length());
@@ -114,7 +102,7 @@ public:
 
 		TEST_CASE("Streaming object export")
 		{
-			mem.clear();
+			MemoryDataStream mem;
 			auto stream = root.createExportStream(ConfigDB::Json::format);
 			mem.copyFrom(stream.get());
 			String content;

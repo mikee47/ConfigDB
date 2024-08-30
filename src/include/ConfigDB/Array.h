@@ -38,22 +38,22 @@ public:
 
 	Property getProperty(unsigned index)
 	{
-		return {getStore(), getItemType(), getArray()[index]};
+		return {getStore(), getItemType(), getArray()[index], nullptr};
 	}
 
 	Property addItem()
 	{
-		return {getStore(), getItemType(), getArray().add()};
+		return {getStore(), getItemType(), getArray().add(), nullptr};
 	}
 
 	Property insertItem(unsigned index)
 	{
-		return {getStore(), getItemType(), getArray().insert(index)};
+		return {getStore(), getItemType(), getArray().insert(index), nullptr};
 	}
 
 	PropertyConst getProperty(unsigned index) const
 	{
-		return {getStore(), getItemType(), getArray()[index]};
+		return {getStore(), getItemType(), getArray()[index], nullptr};
 	}
 
 	const PropertyInfo& getItemType() const

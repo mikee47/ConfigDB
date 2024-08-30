@@ -34,13 +34,18 @@ union __attribute__((packed)) PropertyData {
 	int16_t int16;
 	int32_t int32;
 	int64_t int64;
-	bool b;
+	bool boolean;
 	float f;
 	StringId string;
+
+	/**
+	 * @brief Range-check raw binary value. Do not use with Strings.
+	 */
+	void setValue(const PropertyInfo& prop, const PropertyData& src);
 };
 
 /**
- * @brief Manages a key/value pair stored in an object
+ * @brief Manages a key/value pair stored in an object, or a simple array value
  */
 class PropertyConst
 {
@@ -54,8 +59,8 @@ public:
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	PropertyConst(const Store& store, const PropertyInfo& info, const void* data)
-		: info(&info), store(&store), data(data)
+	PropertyConst(const Store& store, const PropertyInfo& info, const void* data, const void* defaultData)
+		: info(&info), store(&store), data(data), defaultData(defaultData)
 	{
 	}
 
@@ -77,6 +82,7 @@ protected:
 	const PropertyInfo* info;
 	const Store* store{};
 	const void* data{};
+	const void* defaultData{};
 };
 
 class Property : public PropertyConst

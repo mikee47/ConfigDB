@@ -3,6 +3,8 @@
  */
 
 #include <ConfigDBTest.h>
+#include <test-config-range.h>
+#include <ConfigDB/Json/Format.h>
 
 class UpdateTest : public TestGroup
 {
@@ -17,19 +19,56 @@ public:
 		// Verify initial value
 		TestConfig::Root root(database);
 		Serial << root << endl;
-		String s = root.getSimpleString();
-		DEFINE_FSTR_LOCAL(donkey, "donkey")
-		REQUIRE_EQ(s, donkey);
 
-		// Change value
-		if(auto updater = root.update()) {
-			DEFINE_FSTR_LOCAL(banana, "banana")
-			updater.setSimpleString(banana);
-			REQUIRE_EQ(updater.getSimpleString(), banana);
-			updater.setSimpleString(nullptr);
-			REQUIRE_EQ(updater.getSimpleString(), donkey);
-		} else {
-			TEST_ASSERT(false);
+		TEST_CASE("String")
+		{
+			String s = root.getSimpleString();
+			DEFINE_FSTR_LOCAL(donkey, "donkey")
+			REQUIRE_EQ(s, donkey);
+
+			// Change value
+			if(auto updater = root.update()) {
+				DEFINE_FSTR_LOCAL(banana, "banana")
+				updater.setSimpleString(banana);
+				REQUIRE_EQ(updater.getSimpleString(), banana);
+				updater.setSimpleString(nullptr);
+				REQUIRE_EQ(updater.getSimpleString(), donkey);
+			} else {
+				TEST_ASSERT(false);
+			}
+		}
+
+		TEST_CASE("Integer")
+		{
+			REQUIRE_EQ(root.getSimpleInt(), -1);
+
+			// Change value
+			if(auto updater = root.update()) {
+				// Check clipping
+				updater.setSimpleInt(101);
+				REQUIRE_EQ(root.getSimpleInt(), 100);
+				updater.setSimpleInt(-6);
+				REQUIRE_EQ(root.getSimpleInt(), -5);
+			} else {
+				TEST_ASSERT(false);
+			}
+		}
+
+		TEST_CASE("Int64")
+		{
+			TestConfigRange db(F("out/test-range"));
+			db.openStore(0, true)->clear();
+			TestConfigRange::Root root(db);
+			REQUIRE_EQ(root.getInt64val(), -1);
+			if(auto update = root.update()) {
+				update.setInt64val(-100000000001LL);
+				REQUIRE_EQ(root.getInt64val(), -100000000000LL);
+				update.setInt64val(100000000001LL);
+				REQUIRE_EQ(root.getInt64val(), 100000000000LL);
+			} else {
+				TEST_ASSERT(false);
+			}
+			db.exportToStream(ConfigDB::Json::format, Serial);
 		}
 	}
 };
