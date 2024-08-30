@@ -138,7 +138,6 @@ private:
 	static std::shared_ptr<Store> readStoreRef;
 	std::unique_ptr<UpdateRef[]> updateRefs;
 	Vector<UpdateQueueItem> updateQueue;
-	static int8_t readStoreIndex;
 	static bool callbackQueued;
 };
 

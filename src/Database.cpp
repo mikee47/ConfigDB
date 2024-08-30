@@ -26,7 +26,6 @@
 namespace ConfigDB
 {
 std::shared_ptr<Store> Database::readStoreRef;
-int8_t Database::readStoreIndex{-1};
 bool Database::callbackQueued;
 
 const Format& Database::getFormat(const Store&) const
@@ -60,11 +59,12 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 		return nullptr;
 	}
 
-	if(!lockForWrite && index == unsigned(readStoreIndex)) {
+	auto& storeInfo = *typeinfo.stores[index];
+
+	if(!lockForWrite && readStoreRef && readStoreRef->typeinfoPtr == &storeInfo) {
 		return readStoreRef;
 	}
 
-	auto& storeInfo = *typeinfo.stores[index];
 	auto& updateRef = updateRefs[index];
 	auto store = updateRef.lock();
 
@@ -82,12 +82,10 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 	if(store && !store->isLocked()) {
 		// Not locked, we can use it
 		readStoreRef = store;
-		readStoreIndex = index;
 		return store;
 	}
 
 	readStoreRef.reset();
-	readStoreIndex = -1;
 
 	store = loadStore(storeInfo);
 	if(!store) {
@@ -95,12 +93,10 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 	}
 
 	readStoreRef = store;
-	readStoreIndex = index;
 
 	if(!callbackQueued) {
 		System.queueCallback(InterruptCallback([]() {
 			readStoreRef.reset();
-			readStoreIndex = -1;
 			callbackQueued = false;
 		}));
 		callbackQueued = true;
@@ -133,11 +129,14 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 	}
 
 	// If no-one else is using this store instance we can safely update it
-	if(store.use_count() == 1 + (storeIndex == readStoreIndex)) {
-		if(storeIndex == readStoreIndex) {
-			readStoreIndex = -1;
+	auto use_count = store.use_count();
+	if(readStoreRef && readStoreRef->typeinfoPtr == &storeInfo) {
+		--use_count;
+		if(use_count == 1) {
 			readStoreRef.reset();
 		}
+	}
+	if(use_count == 1) {
 		updateRef = store;
 		store->incUpdate();
 		return true;
@@ -197,9 +196,7 @@ bool Database::save(Store& store) const
 	bool result = store.exportToFile(format);
 
 	// Invalidate cached stores: Some data may have changed even on failure
-	int storeIndex = typeinfo.indexOf(store.typeinfo());
-	if(storeIndex == readStoreIndex) {
-		readStoreIndex = -1;
+	if(readStoreRef && readStoreRef->typeinfoPtr == store.typeinfoPtr) {
 		readStoreRef.reset();
 	}
 
