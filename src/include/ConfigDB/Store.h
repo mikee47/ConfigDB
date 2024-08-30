@@ -82,6 +82,7 @@ public:
 	~Store()
 	{
 		if(*this) {
+			commit();
 			--instanceCount;
 			CFGDB_DEBUG(" %u", instanceCount);
 		}
@@ -179,14 +180,14 @@ public:
 		return importFromFile(format, filename);
 	}
 
+	bool commit();
+
 protected:
 	friend class Object;
 	friend class ArrayBase;
 	friend class Database;
 
 	void queueUpdate(Object::UpdateCallback callback);
-
-	bool commit();
 
 	void clearDirty()
 	{
