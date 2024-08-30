@@ -17,12 +17,16 @@ CPP_TYPENAMES = {
     'string': 'String',
     'integer': 'int',
     'boolean': 'bool',
+    'number': 'float',
 }
 
 STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
 UNION_TAG_SIZE = 1
 UNION_TAG_TYPE = 'uint8_t'
+# See dtostrf_p() in System/stringconversion.cpp
+NUMBER_MIN = -4294967040.0
+NUMBER_MAX = 4294967040.0
 
 CPP_TYPESIZES = {
 	'bool': 1,
@@ -34,6 +38,7 @@ CPP_TYPESIZES = {
     'uint16_t': 2,
     'uint32_t': 4,
     'uint64_t': 8,
+    'float': 4,
     'String': STRING_ID_SIZE,
 }
 
@@ -108,19 +113,23 @@ class Property:
     ref: dict | None = None
 
     def validate(self):
-        r = self.get_intrange()
-        if not r:
+        if self.ptype == 'integer':
+            r = self.get_intrange()
+            minimum, maximum = r.minimum, r.maximum
+        elif self.ptype == 'number':
+            minimum, maximum = self.get_numrange()
+        else:
             return
-        if not (r.minimum <= (self.default or 0) <= r.maximum):
-            raise ValueError(f'{self.name} bad default {self.default}: {r.minimum} <= value <= {r.maximum}')
+        if minimum <= (self.default or 0) <= maximum:
+            return
+        raise ValueError(f'{self.name} bad default {self.default}: {minimum} <= value <= {maximum}')
 
     @property
     def ptype(self):
         return get_ptype(self.fields)
 
     def get_intrange(self) -> IntRange | None:
-        if self.ptype != 'integer':
-            return None
+        assert self.ptype == 'integer'
         int32 = IntRange(True, 32, 0, 0)
         minval = self.fields.get('minimum', int32.typemin)
         maxval = self.fields.get('maximum', int32.typemax)
@@ -129,12 +138,18 @@ class Property:
             r.bits *= 2
         return r
 
+    def get_numrange(self) -> tuple[float, float]:
+        assert self.ptype == 'number'
+        minval = self.fields.get('minimum', NUMBER_MIN)
+        maxval = self.fields.get('maximum', NUMBER_MAX)
+        return minval, maxval
+
     @property
     def ctype(self):
-        if self.ptype != 'integer':
-            return CPP_TYPENAMES[self.ptype]
-        r = self.get_intrange()
-        return f'int{r.bits}_t' if r.is_signed else f'uint{r.bits}_t'
+        if self.ptype == 'integer':
+            r = self.get_intrange()
+            return f'int{r.bits}_t' if r.is_signed else f'uint{r.bits}_t'
+        return CPP_TYPENAMES[self.ptype]
 
     @property
     def ctype_ret(self):
@@ -143,10 +158,10 @@ class Property:
 
     @property
     def property_type(self):
-        if self.ptype != 'integer':
-            return self.ptype.capitalize()
-        r = self.get_intrange()
-        return f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
+        if self.ptype == 'integer':
+            r = self.get_intrange()
+            return f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
+        return self.ptype.capitalize()
 
     @property
     def propdata_id(self):
@@ -741,14 +756,17 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         if prop.ptype == 'string':
             fstr = strings[str(prop.default or '')]
             return [f'{{.defaultString = &{fstr}}}']
-        r = prop.get_intrange()
-        if r is None:
-            return []
-        if r.bits > 32:
-            tag = 'int64' if r.is_signed else 'uint64'
-            return [f'.{tag} = {{&{prop.name}_minimum, &{prop.name}_maximum}}']
-        tag = 'int32' if r.is_signed else 'uint32'
-        return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
+        if prop.ptype == 'number':
+            minimum, maximum = prop.get_numrange()
+            return [f'.number = {{{minimum}, {maximum}}}']
+        if prop.ptype == 'integer':
+            r = prop.get_intrange()
+            if r.bits > 32:
+                tag = 'int64' if r.is_signed else 'uint64'
+                return [f'.{tag} = {{&{prop.name}_minimum, &{prop.name}_maximum}}']
+            tag = 'int32' if r.is_signed else 'uint32'
+            return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
+        return []
 
     proplist = []
     offset = 0
@@ -773,10 +791,11 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 
     propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     for prop in propinfo:
-        r = prop.get_intrange()
-        if r and r.bits > 32:
-            lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
-            lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
+        if prop.ptype == 'integer':
+            r = prop.get_intrange()
+            if r and r.bits > 32:
+                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
+                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
         proplist += [[
             f'PropertyType::{prop.property_type}',
             'fstr_empty' if obj.is_array else strings[prop.name],

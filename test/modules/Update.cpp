@@ -83,6 +83,24 @@ public:
 		}
 
 		testUnion();
+
+		TEST_CASE("Number")
+		{
+			auto f = root.getSimpleFloat();
+			auto diff = f - 3.141592654;
+			Serial << String(f, 8) << ", " << String(diff, 8) << endl;
+			REQUIRE(abs(diff) < 0.000001);
+
+			// Change value
+			if(auto updater = root.update()) {
+				const auto newFloat = 12e6;
+				Serial << newFloat << endl;
+				updater.setSimpleFloat(newFloat);
+				REQUIRE_EQ(root.getSimpleFloat(), newFloat);
+			} else {
+				TEST_ASSERT(false);
+			}
+		}
 	}
 
 	void testUnion()

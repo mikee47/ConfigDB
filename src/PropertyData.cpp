@@ -42,6 +42,8 @@ String PropertyData::getString(const PropertyInfo& info) const
 		return String(uint32);
 	case PropertyType::UInt64:
 		return String(uint64);
+	case PropertyType::Number:
+		return String(number, 8);
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;
@@ -79,6 +81,9 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		break;
 	case PropertyType::UInt64:
 		uint64 = prop.uint64.clip(src.uint64);
+		break;
+	case PropertyType::Number:
+		number = prop.number.clip(src.number);
 		break;
 	case PropertyType::String:
 		assert(false);
@@ -119,6 +124,9 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 		return true;
 	case PropertyType::UInt64:
 		uint64 = strtoull(value, nullptr, 0);
+		return true;
+	case PropertyType::Number:
+		number = strtof(value, nullptr);
 		return true;
 	case PropertyType::String:
 	case PropertyType::Object:

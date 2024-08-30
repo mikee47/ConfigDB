@@ -51,7 +51,7 @@ union __attribute__((packed)) PropertyData {
 	int32_t int32;
 	int64_t int64;
 	bool boolean;
-	float f;
+	float number;
 	ArrayId array;
 	StringId string;
 

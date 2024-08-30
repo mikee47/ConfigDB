@@ -35,6 +35,7 @@
 	XX(UInt16, 2)                                                                                                      \
 	XX(UInt32, 4)                                                                                                      \
 	XX(UInt64, 8)                                                                                                      \
+	XX(Number, 4)                                                                                                       \
 	XX(String, sizeof(StringId))                                                                                       \
 	XX(Object, sizeof(ObjectInfo*))
 
@@ -89,6 +90,7 @@ struct PropertyInfo {
 		const ObjectInfo* object;
 		RangeTemplate<int32_t> int32;
 		RangeTemplate<uint32_t> uint32;
+		RangeTemplate<float> number;
 		RangePtrTemplate<int64_t> int64;
 		RangePtrTemplate<uint64_t> uint64;
 	};
