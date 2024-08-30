@@ -20,7 +20,6 @@
 #include "include/ConfigDB/Property.h"
 #include "include/ConfigDB/Store.h"
 #include <Data/Format/Json.h>
-#include <Data/Range.h>
 
 namespace
 {
@@ -76,44 +75,33 @@ bool Property::setJsonValue(const char* value, size_t valueLength)
 
 void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 {
-	auto clipInt32 = [&prop](int32_t value) { return TRange(prop.minimum.Int32, prop.maximum.Int32).clip(value); };
-	auto clipUInt32 = [&prop](uint32_t value) { return TRange(prop.minimum.UInt32, prop.maximum.UInt32).clip(value); };
-
 	switch(prop.type) {
 	case PropertyType::Boolean:
-		b = src.b;
+		boolean = src.boolean;
 		break;
 	case PropertyType::Int8:
-		int8 = clipInt32(src.int8);
+		int8 = prop.int32.clip(src.int8);
 		break;
 	case PropertyType::Int16:
-		int16 = clipInt32(src.int16);
+		int16 = prop.int32.clip(src.int16);
 		break;
 	case PropertyType::Int32:
-		int32 = clipInt32(src.int32);
+		int32 = prop.int32.clip(src.int32);
 		break;
 	case PropertyType::Int64:
-		if(prop.minimum.Int64 || prop.maximum.Int64) {
-			int64 = TRange(getPtrValue(prop.minimum.Int64), getPtrValue(prop.maximum.Int64)).clip(src.int64);
-		} else {
-			int64 = src.int64;
-		}
+		int64 = prop.int64.clip(src.int64);
 		break;
 	case PropertyType::UInt8:
-		uint8 = clipUInt32(src.uint8);
+		uint8 = prop.uint32.clip(src.uint8);
 		break;
 	case PropertyType::UInt16:
-		uint16 = clipUInt32(src.uint16);
+		uint16 = prop.uint32.clip(src.uint16);
 		break;
 	case PropertyType::UInt32:
-		uint32 = clipUInt32(src.uint32);
+		uint32 = prop.uint32.clip(src.uint32);
 		break;
 	case PropertyType::UInt64:
-		if(prop.minimum.UInt64 || prop.maximum.UInt64) {
-			uint64 = TRange(getPtrValue(prop.minimum.UInt64), getPtrValue(prop.maximum.UInt64)).clip(src.uint64);
-		} else {
-			uint64 = src.uint64;
-		}
+		uint64 = prop.uint64.clip(src.uint64);
 		break;
 	case PropertyType::String:
 		assert(false);

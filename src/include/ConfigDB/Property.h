@@ -34,7 +34,7 @@ union __attribute__((packed)) PropertyData {
 	int16_t int16;
 	int32_t int32;
 	int64_t int64;
-	bool b;
+	bool boolean;
 	float f;
 	StringId string;
 

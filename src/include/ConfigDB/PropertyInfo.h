@@ -20,6 +20,7 @@
 #pragma once
 
 #include <WString.h>
+#include <Data/Range.h>
 
 /**
  * @brief Property types with storage size
@@ -55,23 +56,37 @@ using StringId = uint16_t;
  * @brief Property metadata
  */
 struct PropertyInfo {
-	union PropData {
-		int32_t Boolean;
-		int32_t Int8;
-		int32_t Int16;
-		int32_t Int32;
-		const int64_t* Int64;
-		uint32_t UInt8;
-		uint32_t UInt16;
-		uint32_t UInt32;
-		const uint64_t* UInt64;
-		const FlashString* string;
-	};
+	template <typename T> struct RangeTemplate {
+		T minimum;
+		T maximum;
 
+		T clip(T value) const
+		{
+			return TRange(minimum, maximum).clip(value);
+		}
+	};
+	template <typename T> struct RangePtrTemplate {
+		const T* minimum;
+		const T* maximum;
+
+		T clip(T value) const
+		{
+			if(minimum || maximum) {
+				return TRange(minimum ? *minimum : 0, maximum ? *maximum : 0).clip(value);
+			}
+			return value;
+		}
+	};
 	PropertyType type;
 	const FlashString& name;
-	PropData minimum; ///< Default for string
-	PropData maximum;
+	// Variant property information depends on type
+	union {
+		const FlashString* defaultString;
+		RangeTemplate<int32_t> int32;
+		RangeTemplate<uint32_t> uint32;
+		RangePtrTemplate<int64_t> int64;
+		RangePtrTemplate<uint64_t> uint64;
+	};
 
 	static const PropertyInfo empty;
 

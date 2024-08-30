@@ -208,8 +208,8 @@ String Object::getString(const PropertyInfo& prop, StringId id) const
 		return String(getStore().stringPool[id]);
 	}
 	if(prop.type == PropertyType::String) {
-		assert(prop.minimum.string);
-		return *prop.minimum.string;
+		assert(prop.defaultString);
+		return *prop.defaultString;
 	}
 	return nullptr;
 }

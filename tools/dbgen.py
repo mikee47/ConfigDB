@@ -511,27 +511,18 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         'static const ConfigDB::ObjectInfo typeinfo;'
     ]
 
-    def getPropData(prop: Property, value) -> str:
+    def getVariantInfo(prop: Property) -> list:
         if prop.ptype == 'string':
             fstr = strings[str(prop.default or '')]
-            return f'{{.string = &{fstr}}}'
-        return f'{{.{prop.property_type} = {value}}}'
-
-    def getPropRange(prop: Property):
-        if prop.ptype == 'string':
-            return [getPropData(prop, prop.default_str)]
+            return [f'{{.defaultString = &{fstr}}}']
         r = prop.get_intrange()
         if r is None:
             return []
         if r.bits > 32:
-            return [
-                getPropData(prop, f'&{prop.name}_minimum'),
-                getPropData(prop, f'&{prop.name}_maximum'),
-            ]
-        return [
-            getPropData(prop, r.minimum),
-            getPropData(prop, r.maximum)
-        ]
+            tag = 'int64' if r.is_signed else 'uint64'
+            return [f'.{tag} = {{&{prop.name}_minimum, &{prop.name}_maximum}}']
+        tag = 'int32' if r.is_signed else 'uint32'
+        return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
 
     for prop in propinfo:
         r = prop.get_intrange()
@@ -558,7 +549,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             *(make_static_initializer([
                 f'PropertyType::{prop.property_type}',
                 'fstr_empty' if obj.is_array else strings[prop.name],
-                *getPropRange(prop)
+                *getVariantInfo(prop)
             ], ',') for prop in propinfo),
             '}',
         ] if propinfo else None,

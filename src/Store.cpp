@@ -46,7 +46,7 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 	auto& propData = *static_cast<const PropertyData*>(data);
 	switch(info.type) {
 	case PropertyType::Boolean:
-		return propData.b ? "true" : "false";
+		return propData.boolean ? "true" : "false";
 	case PropertyType::Int8:
 		return String(propData.int8);
 	case PropertyType::Int16:
@@ -67,8 +67,8 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 		if(propData.string) {
 			return String(stringPool[propData.string]);
 		}
-		if(info.minimum.string) {
-			return *info.minimum.string;
+		if(info.defaultString) {
+			return *info.defaultString;
 		}
 		return nullptr;
 	}
@@ -83,8 +83,7 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 	}
 
 	if(prop.type == PropertyType::String) {
-		auto defstring = prop.minimum.string;
-		if(defstring && *defstring == value) {
+		if(prop.defaultString && *prop.defaultString == value) {
 			return {.string = 0};
 		}
 		return {.string = stringPool.findOrAdd({value, valueLength})};
@@ -94,7 +93,7 @@ PropertyData Store::parseString(const PropertyInfo& prop, const char* value, uin
 
 	switch(prop.type) {
 	case PropertyType::Boolean:
-		return {.b = (valueLength == 4) && memicmp(value, "true", 4) == 0};
+		return {.boolean = (valueLength == 4) && memicmp(value, "true", 4) == 0};
 	case PropertyType::Int8:
 	case PropertyType::Int16:
 	case PropertyType::Int32:
