@@ -25,8 +25,26 @@
 
 namespace ConfigDB
 {
-std::shared_ptr<Store> Database::readStoreRef;
+std::shared_ptr<Store> Database::cache;
 bool Database::callbackQueued;
+
+Database::~Database()
+{
+	if(!cache) {
+		return;
+	}
+	for(unsigned i = 0; i < typeinfo.storeCount; ++i) {
+		if(isCached(*typeinfo.stores[i])) {
+			cache.reset();
+			break;
+		}
+	}
+}
+
+bool Database::isCached(const ObjectInfo& store) const
+{
+	return cache && cache->typeinfoPtr == &store;
+}
 
 const Format& Database::getFormat(const Store&) const
 {
@@ -61,8 +79,8 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 
 	auto& storeInfo = *typeinfo.stores[index];
 
-	if(!lockForWrite && readStoreRef && readStoreRef->typeinfoPtr == &storeInfo) {
-		return readStoreRef;
+	if(!lockForWrite && isCached(storeInfo)) {
+		return cache;
 	}
 
 	auto& updateRef = updateRefs[index];
@@ -81,22 +99,22 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 
 	if(store && !store->isLocked()) {
 		// Not locked, we can use it
-		readStoreRef = store;
+		cache = store;
 		return store;
 	}
 
-	readStoreRef.reset();
+	cache.reset();
 
 	store = loadStore(storeInfo);
 	if(!store) {
 		return nullptr;
 	}
 
-	readStoreRef = store;
+	cache = store;
 
 	if(!callbackQueued) {
 		System.queueCallback(InterruptCallback([]() {
-			readStoreRef.reset();
+			cache.reset();
 			callbackQueued = false;
 		}));
 		callbackQueued = true;
@@ -130,10 +148,10 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 
 	// If no-one else is using this store instance we can safely update it
 	auto use_count = store.use_count();
-	if(readStoreRef && readStoreRef->typeinfoPtr == &storeInfo) {
+	if(isCached(storeInfo)) {
 		--use_count;
 		if(use_count == 1) {
-			readStoreRef.reset();
+			cache.reset();
 		}
 	}
 	if(use_count == 1) {
@@ -196,8 +214,8 @@ bool Database::save(Store& store) const
 	bool result = store.exportToFile(format);
 
 	// Invalidate cached stores: Some data may have changed even on failure
-	if(readStoreRef && readStoreRef->typeinfoPtr == store.typeinfoPtr) {
-		readStoreRef.reset();
+	if(isCached(store.typeinfo())) {
+		cache.reset();
 	}
 
 	return result;

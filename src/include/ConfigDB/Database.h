@@ -38,9 +38,7 @@ public:
 	{
 	}
 
-	virtual ~Database()
-	{
-	}
+	virtual ~Database();
 
 	String getName() const
 	{
@@ -132,10 +130,12 @@ private:
 
 	std::shared_ptr<Store> loadStore(const ObjectInfo& storeInfo);
 
+	bool isCached(const ObjectInfo& store) const;
+
 	CString path;
 
 	// Hold store open for a brief period to avoid thrashing
-	static std::shared_ptr<Store> readStoreRef;
+	static std::shared_ptr<Store> cache;
 	std::unique_ptr<UpdateRef[]> updateRefs;
 	Vector<UpdateQueueItem> updateQueue;
 	static bool callbackQueued;
