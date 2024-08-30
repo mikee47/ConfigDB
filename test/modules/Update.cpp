@@ -81,28 +81,21 @@ public:
 			TestConfigUnion db(F("out/test-union"));
 			db.openStore(0, true)->clear();
 			using Color = TestConfigUnion::Root::Color;
-			Color color(db);
-			Serial << color << endl;
-			if(auto updater = color.update()) {
-				for(unsigned i = 0; i < 3; ++i) {
-					auto tag = Color::Tag(i);
+			Color::Tag expectedTag{};
+			for(unsigned i = 0; i < 4; ++i) {
+				Color color(db);
+				REQUIRE_EQ(color.getTag(), expectedTag);
+				Serial << color.getTag() << ": " << color << endl;
+				if(i == 3) {
+					break;
+				}
+				auto tag = Color::Tag(i);
+				if(auto updater = color.update()) {
 					updater.setTag(tag);
 					Serial << "color: " << color << endl;
 				}
-				updater.clearDirty();
+				expectedTag = tag;
 			}
-			switch(color.getTag()) {
-			case Color::Tag::RGB:
-				Serial << "rgb: " << color.getRGB() << endl;
-				break;
-			case Color::Tag::HSV:
-				Serial << "hsv: " << color.getHSV() << endl;
-				break;
-			case Color::Tag::RAW:
-				Serial << "raw: " << color.getRAW() << endl;
-				break;
-			}
-			Serial << "color: " << color << endl;
 		}
 	}
 };
