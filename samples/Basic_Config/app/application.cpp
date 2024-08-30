@@ -248,13 +248,12 @@ void init()
 
 	WifiEvents.onStationGotIP(gotIP);
 
-	createDirectory("test");
 	// ConfigDB::Json::format.setPretty(true);
 
 	readWriteValues();
 
-	// database.exportToFile(ConfigDB::Json::format, F("test/database.json"));
-	// database.importFromFile(ConfigDB::Json::format, F("test/database.json"));
+	// database.exportToFile(ConfigDB::Json::format, F("out/database.json"));
+	// database.importFromFile(ConfigDB::Json::format, F("out/database.json"));
 
 	// stream(database);
 

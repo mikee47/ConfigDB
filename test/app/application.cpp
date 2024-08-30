@@ -9,11 +9,10 @@
 #include <LittleFS.h>
 #include <modules.h>
 
-TestConfig database("test-config");
+TestConfig database("out/test-config");
 
 void resetDatabase()
 {
-	createDirectory(database.getPath());
 	auto store = database.openStore(0, true);
 	store->clear();
 	database.save(*store);

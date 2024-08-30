@@ -264,6 +264,8 @@ size_t Object::printTo(Print& p) const
 
 bool Object::exportToFile(const Format& format, const String& filename) const
 {
+	createDirectories(filename);
+
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
