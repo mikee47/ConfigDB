@@ -570,6 +570,31 @@ def generate_database(db: Database) -> CodeLines:
 
     lines.header += ['};']
 
+    def generate_global_functions(obj: Object):
+        if obj.is_union:
+            decl = f'String toString({obj.namespace}::{obj.typename_contained}::Tag tag)'
+            lines.header += [
+                '',
+                f'{decl};'
+            ]
+            lines.source += [
+                '',
+                decl,
+                '{',
+                [
+                    'switch(unsigned(tag)) {',
+                    [f'case {index}: return {strings[child.name]};' for index, child in enumerate(obj.children)],
+                    ['default: return nullptr;'],
+                    '}'
+                ],
+                '}'
+            ]
+        for child in obj.children:
+            generate_global_functions(child)
+    for obj in db.children:
+        generate_global_functions(obj)
+
+
     # Insert this at end once string table has been populated
     lines.source[:0] = [
         f'#include "{db.name}.h"',
