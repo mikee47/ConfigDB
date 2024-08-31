@@ -50,7 +50,6 @@ String PropertyConst::getJsonValue() const
 	if(info->type != PropertyType::String) {
 		return value;
 	}
-	::Format::json.escape(value);
 	::Format::json.quote(value);
 	return value;
 }

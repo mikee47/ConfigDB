@@ -60,7 +60,6 @@ size_t Printer::operator()()
 	bool isArray = object.isArray();
 
 	auto quote = [](String s) {
-		::Format::json.escape(s);
 		::Format::json.quote(s);
 		return s;
 	};
