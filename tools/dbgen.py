@@ -800,13 +800,25 @@ def generate_property_write_accessors(obj: Object) -> list:
         return 'const String&' if prop.ptype == 'string' else prop.ctype
 
     if obj.is_union:
-        return [[
-            '',
-            'void setTag(Tag tag)',
-            '{',
-            ['Union::setTag(unsigned(tag));'],
-            '}'
-        ]]
+        return [
+            [
+                '',
+                'void setTag(Tag tag)',
+                '{',
+                ['Union::setTag(unsigned(tag));'],
+                '}',
+            ],
+            *((
+                '',
+                f'{child.typename_updater} get{child.name}()',
+                '{',
+                [
+                    f'assert(getTag() == Tag::{child.name});',
+                    f'return {child.typename_updater}(*this, {UNION_TAG_SIZE});'
+                ],
+                '}',
+                ) for index, child in enumerate(obj.children))
+        ]
 
     return [*((
         '',
