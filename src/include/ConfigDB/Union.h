@@ -45,7 +45,11 @@ public:
 		auto& prop = typeinfo().propinfo[tag];
 		auto data = static_cast<uint8_t*>(getDataPtr());
 		data += sizeof(Tag);
-		memcpy_P(data, prop.object->defaultData, prop.object->structSize);
+		if(prop.object->defaultData) {
+			memcpy_P(data, prop.object->defaultData, prop.object->structSize);
+		} else {
+			memset(data, 0, prop.object->structSize);
+		}
 	}
 
 	Object getObject(unsigned index)

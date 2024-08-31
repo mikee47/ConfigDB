@@ -196,7 +196,7 @@ class Object:
 
     @property
     def typename_contained(self):
-        return self.typename if self.is_item else 'Contained' + self.typename
+        return 'Contained' + self.typename
 
     @property
     def typename_updater(self):
@@ -213,7 +213,7 @@ class Object:
 
     @property
     def namespace(self):
-        if self.ref:
+        if self.ref or (self.is_item and self.parent.ref):
             return self.store.parent.typename
         obj = self.parent
         ns = []
@@ -404,17 +404,17 @@ def resolve_ref(fields: dict, db: Database) -> tuple[str, dict]:
     '''If property contains a reference, deal with it'''
     ref = fields.get('$ref')
     if not ref:
-        return None, None
+        return None, fields
     if not db.definitions:
         raise ValueError('Schema missing definitions')
     prefix = '#/$defs/'
-    resolved_ref = None
+    resolved_fields = None
     if ref.startswith(prefix):
         ref = ref[len(prefix):]
-        resolved_ref = db.definitions.get(ref)
-    if not resolved_ref:
+        resolved_fields = db.definitions.get(ref)
+    if not resolved_fields:
         raise ValueError('Cannot resolve ' + ref)
-    return ref, resolved_ref
+    return ref, resolved_fields
 
 
 def resolve_prop_ref(prop: Property, db: Database) -> dict:
@@ -449,7 +449,7 @@ def load_config(filename: str) -> Database:
         for key, value in properties.items():
             # Filter out support property types
             prop = Property(key, value)
-            value = resolve_prop_ref(prop, database)
+            resolve_prop_ref(prop, database)
             if not prop.ctype:
                 print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
                 continue
@@ -466,46 +466,40 @@ def load_config(filename: str) -> Database:
             else:
                 obj = parent
 
-            if prop.ref:
-                assert prop.ref not in database.object_defs
-                # Placeholder
-                database.object_defs[prop.ref] = None
-
             child = parse_object(obj, key, value)
             if child:
                 obj.children.append(child)
-            if prop.ref:
-                database.object_defs[prop.ref] = child
-                child.ref = prop.ref
 
     def parse_object(parent: Object, key: str, fields: dict) -> Object:
+        ref, fields = resolve_ref(fields, database)
         prop_type = get_ptype(fields)
 
         if prop_type == 'object':
             obj = Object(parent, key)
+            if ref:
+                obj.ref = ref
+                database.object_defs[ref] = obj
             parse_properties(obj, fields['properties'])
             return obj
 
         if prop_type == 'array':
-            items = fields['items']
-            ref, fields = resolve_ref(items, database)
-            if ref:
-                print("ARRAY", ref, items)
-                items = fields
-                obj = database.object_defs.get(ref)
-                if obj:
-                    return obj
-
+            item_ref, items = resolve_ref(fields['items'], database)
             items_type = get_ptype(items)
             if items_type in ['object', 'union']:
                 arr = ObjectArray(parent, key)
                 if ref:
+                    arr.ref = ref
                     database.object_defs[ref] = arr
-                arr.items = Object(arr, f'{arr.typename}Item')
-                if items_type == 'union':
-                    parse_object(arr.items, ref, items)
-                else:
-                    parse_properties(arr.items, items['properties'])
+                arr.items = database.object_defs.get(item_ref)
+                if not arr.items:
+                    arr.items = Object(arr, item_ref or f'{arr.typename}Item')
+                    if item_ref:
+                        arr.items.ref = item_ref
+                        database.object_defs[item_ref] = arr.items
+                    if items_type == 'union':
+                        parse_object(arr.items, item_ref, items)
+                    else:
+                        parse_properties(arr.items, items['properties'])
                 return arr
 
             # Simple array
@@ -518,6 +512,9 @@ def load_config(filename: str) -> Database:
 
         if prop_type == 'union':
             union = Union(parent, key)
+            if ref:
+                union.ref = ref
+                database.object_defs[ref] = union
             for opt in fields['oneOf']:
                 ref, opt = resolve_ref(opt, database)
                 choice = database.object_defs.get(ref)
@@ -877,12 +874,12 @@ def generate_object(obj: Object) -> CodeLines:
     ]
 
     if isinstance(obj, ObjectArray):
-        item_lines = generate_object(obj.items)
+        item_lines = CodeLines([], []) if obj.items.ref else generate_object(obj.items)
         return CodeLines(
             [
                 *updater_fwd,
                 *item_lines.header,
-                *declare_templated_class(obj, [obj.items.typename]),
+                *declare_templated_class(obj, [obj.items.typename_contained]),
                 typeinfo.header,
                 constructors,
                 '};',
@@ -976,7 +973,7 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
         ]
 
     if obj.is_item:
-        typename = obj.typename_updater if is_updater else obj.typename
+        typename = obj.typename_updater if is_updater else obj.typename_contained
         const = '' if is_updater else 'const '
         return [
             '',

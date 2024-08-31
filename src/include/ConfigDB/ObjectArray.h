@@ -90,6 +90,11 @@ public:
 	{
 	}
 
+	ObjectArrayTemplate(const Object& parent, uint16_t dataRef)
+		: ObjectArray(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
+	{
+	}
+
 	const ItemType operator[](unsigned index) const
 	{
 		return ItemType(*this, index);

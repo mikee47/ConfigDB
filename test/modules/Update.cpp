@@ -93,15 +93,15 @@ public:
 				if(auto updater = color.update()) {
 					updater.setTag(tag);
 					switch(tag) {
-						case Color::Tag::RGB:
-							updater.getRGB().setBlue(123);
-							break;
-						case Color::Tag::HSV:
-							updater.getHSV().setSaturation(24);
-							break;
-						case Color::Tag::RAW:
-							updater.getRAW().setBlue(456);
-							break;
+					case Color::Tag::RGB:
+						updater.getRGB().setBlue(123);
+						break;
+					case Color::Tag::HSV:
+						updater.getHSV().setSaturation(24);
+						break;
+					case Color::Tag::RAW:
+						updater.getRAW().setBlue(456);
+						break;
 					}
 					Serial << "color: " << color << endl;
 				}
