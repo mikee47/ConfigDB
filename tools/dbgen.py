@@ -95,6 +95,11 @@ class IntRange:
         return (2 ** bits) - 1
 
 
+def get_ptype(fields: dict):
+    '''Identify a pseudo-type 'union' which makes script a bit clearer'''
+    return 'union' if 'oneOf' in fields else fields['type']
+
+
 @dataclass
 class Property:
     name: str
@@ -110,9 +115,7 @@ class Property:
 
     @property
     def ptype(self):
-        if 'oneOf' in self.fields:
-            return 'union'
-        return self.fields['type']
+        return get_ptype(self.fields)
 
     def get_intrange(self) -> IntRange | None:
         if self.ptype != 'integer':
@@ -397,8 +400,11 @@ def load_schema(filename: str) -> dict:
     return config
 
 
-def resolve_ref(ref: str, db: Database) -> tuple[str, dict]:
+def resolve_ref(fields: dict, db: Database) -> tuple[str, dict]:
     '''If property contains a reference, deal with it'''
+    ref = fields.get('$ref')
+    if not ref:
+        return None, None
     if not db.definitions:
         raise ValueError('Schema missing definitions')
     prefix = '#/$defs/'
@@ -413,17 +419,21 @@ def resolve_ref(ref: str, db: Database) -> tuple[str, dict]:
 
 def resolve_prop_ref(prop: Property, db: Database) -> dict:
     '''If property contains a reference, deal with it'''
-    ref = prop.fields.get('$ref')
-    if not ref:
+    prop.ref, fields = resolve_ref(prop.fields, db)
+    if prop.ref is None:
         return prop.fields
-    prop.ref, resolved_ref = resolve_ref(ref, db)
-    if 'oneOf' in resolved_ref or resolved_ref['type'] == 'object':
-        prop.fields = resolved_ref
-    else:
-        for key, value in resolved_ref.items():
-            if key not in prop.fields:
-                prop.fields[key] = value;
-    return resolved_ref
+
+    # Object definitions are used as-is
+    if get_ptype(fields) in ['object', 'union']:
+        prop.fields = fields
+        return fields
+
+    # For simple properties the definition is a template,
+    # so copy over any non-existent values
+    for key, value in fields.items():
+        if key not in prop.fields:
+            prop.fields[key] = value;
+    return fields
 
 
 def load_config(filename: str) -> Database:
@@ -435,7 +445,7 @@ def load_config(filename: str) -> Database:
     root = Object(database, '')
     database.children.append(root)
 
-    def parse(parent: Object, properties: dict):
+    def parse_properties(parent: Object, properties: dict):
         for key, value in properties.items():
             # Filter out support property types
             prop = Property(key, value)
@@ -455,46 +465,72 @@ def load_config(filename: str) -> Database:
                 obj = database
             else:
                 obj = parent
-            if prop.ptype == 'object':
-                ref = database.object_defs.get(prop.ref)
-                if ref:
-                    print("REF REF REF")
-                    child = ref
-                else:
-                    child = Object(obj, key)
-                    obj.children.append(child)
-                    parse(child, value['properties'])
-                    if prop.ref:
-                        database.object_defs[prop.ref] = child
-                        child.ref = prop.ref
-            elif prop.ptype == 'array':
-                items = value['items']
-                if items['type'] == 'object':
-                    arr = ObjectArray(obj, key)
-                    obj.children.append(arr)
-                    arr.items = Object(arr, f'{arr.typename}Item')
-                    parse(arr.items, items['properties'])
-                else:
-                    arr = Array(obj, key)
-                    obj.children.append(arr)
-                    parse(arr, {'items': items})
-                    assert len(arr.properties) == 1
-                    arr.items = arr.properties[0]
-                    arr.properties = []
-            elif prop.ptype == 'union':
-                union = Union(obj, key)
-                obj.children.append(union)
-                for opt in value['oneOf']:
-                    ref, opt = resolve_ref(opt['$ref'], database)
-                    choice = Object(union, ref)
-                    choice.ref = ref
-                    database.object_defs[choice.ref] = choice
-                    union.children.append(choice)
-                    parse(choice, opt['properties'])
-            else:
-                raise ValueError('Bad type ' + repr(prop))
 
-    parse(root, database.properties)
+            if prop.ref:
+                assert prop.ref not in database.object_defs
+                # Placeholder
+                database.object_defs[prop.ref] = None
+
+            child = parse_object(obj, key, value)
+            if child:
+                obj.children.append(child)
+            if prop.ref:
+                database.object_defs[prop.ref] = child
+                child.ref = prop.ref
+
+    def parse_object(parent: Object, key: str, fields: dict) -> Object:
+        prop_type = get_ptype(fields)
+
+        if prop_type == 'object':
+            obj = Object(parent, key)
+            parse_properties(obj, fields['properties'])
+            return obj
+
+        if prop_type == 'array':
+            items = fields['items']
+            ref, fields = resolve_ref(items, database)
+            if ref:
+                print("ARRAY", ref, items)
+                items = fields
+                obj = database.object_defs.get(ref)
+                if obj:
+                    return obj
+
+            items_type = get_ptype(items)
+            if items_type in ['object', 'union']:
+                arr = ObjectArray(parent, key)
+                if ref:
+                    database.object_defs[ref] = arr
+                arr.items = Object(arr, f'{arr.typename}Item')
+                if items_type == 'union':
+                    parse_object(arr.items, ref, items)
+                else:
+                    parse_properties(arr.items, items['properties'])
+                return arr
+
+            # Simple array
+            arr = Array(parent, key)
+            parse_properties(arr, {'items': items})
+            assert len(arr.properties) == 1
+            arr.items = arr.properties[0]
+            arr.properties = []
+            return arr
+
+        if prop_type == 'union':
+            union = Union(parent, key)
+            for opt in fields['oneOf']:
+                ref, opt = resolve_ref(opt, database)
+                choice = database.object_defs.get(ref)
+                if not choice:
+                    choice = parse_object(union, ref, opt)
+                    choice.ref = ref
+                    database.object_defs[ref] = choice
+                union.children.append(choice)
+            return union
+
+        raise ValueError('Bad type ' + prop_type)
+
+    parse_properties(root, database.properties)
     return database
 
 
@@ -535,7 +571,7 @@ def generate_database(db: Database) -> CodeLines:
             '};'
         ])
 
-    for obj in db.object_defs.values():
+    for obj in reversed(db.object_defs.values()):
         lines.append(generate_object(obj))
 
     for store in db.children:
