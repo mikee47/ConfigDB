@@ -3,6 +3,11 @@
   "type": "object",
   "properties": {
     "color": {
+      "$ref": "#/$defs/Color"
+    }
+  },
+  "$defs": {
+    "Color": {
       "oneOf": [
         {
           "$ref": "#/$defs/RGB"
@@ -14,9 +19,7 @@
           "$ref": "#/$defs/RAW"
         }
       ]
-    }
-  },
-  "$defs": {
+    },
     "RGB": {
       "type": "object",
       "properties": {

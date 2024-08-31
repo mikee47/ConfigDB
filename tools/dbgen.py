@@ -417,7 +417,7 @@ def resolve_prop_ref(prop: Property, db: Database) -> dict:
     if not ref:
         return prop.fields
     prop.ref, resolved_ref = resolve_ref(ref, db)
-    if resolved_ref['type'] == 'object':
+    if 'oneOf' in resolved_ref or resolved_ref['type'] == 'object':
         prop.fields = resolved_ref
     else:
         for key, value in resolved_ref.items():
