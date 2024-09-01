@@ -209,7 +209,7 @@ class Object:
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return sum(prop.data_size for prop in self.properties)
+        return sum(child.data_size for child in self.children) + sum(prop.data_size for prop in self.properties)
 
     @property
     def namespace(self):
@@ -305,6 +305,11 @@ class Union(Object):
     @property
     def is_union(self):
         return True
+
+    @property
+    def data_size(self):
+        '''Size of the corresponding C++ storage'''
+        return max(prop.data_size for prop in self.children)
 
 
 @dataclass
