@@ -82,6 +82,7 @@ SimpleTimer statTimer;
 				upd.setRed(values.red);
 				upd.setGreen(values.green);
 				upd.setBlue(values.blue);
+				Serial << upd << endl;
 			});
 		Serial << F("Async update ") << (async ? "completed" : "pending") << endl;
 	}

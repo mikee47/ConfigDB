@@ -80,10 +80,11 @@ public:
 		{
 			TestConfigUnion db(F("out/test-union"));
 			db.openStore(0, true)->clear();
-			using Color = TestConfigUnion::Root::Color;
+			Serial << TestConfigUnion::Root(db) << endl;
+			using Color = TestConfigUnion::ContainedColor;
 			Color::Tag expectedTag{};
 			for(unsigned i = 0; i < 4; ++i) {
-				Color color(db);
+				TestConfigUnion::Root::Color1 color(db);
 				REQUIRE_EQ(color.getTag(), expectedTag);
 				Serial << color.getTag() << ": " << color << endl;
 				if(i == 3) {

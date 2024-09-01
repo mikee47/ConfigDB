@@ -187,8 +187,12 @@ class Object:
     ref: Object | None = None
 
     @property
+    def is_store(self):
+        return isinstance(self.parent, Database)
+
+    @property
     def store(self):
-        return self if isinstance(self.parent, Database) else self.parent.store
+        return self if self.is_store else self.parent.store
 
     @property
     def typename(self):
@@ -200,7 +204,6 @@ class Object:
 
     @property
     def typename_outer(self):
-        # return make_typename(self.name) if self.name else 'Root'
         return make_typename(self.name) if self.name else 'Root'
 
     @property
@@ -211,10 +214,23 @@ class Object:
     def typename_struct(self):
         return self.typename_contained + '::Struct'
 
+    def get_offset(self, obj: Object):
+        '''Offset of a child object in the data structure'''
+        offset = 0
+        for c in self.children:
+            if c is obj:
+                return offset
+            offset += c.data_size
+        assert False, 'Not a child'
+
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
         return sum(child.data_size for child in self.children) + sum(prop.data_size for prop in self.properties)
+
+    @property
+    def index(self):
+        return self.parent.children.index(self)
 
     @property
     def namespace(self):
@@ -543,6 +559,9 @@ def generate_database(db: Database) -> CodeLines:
 
     lines = CodeLines(
         [
+            '/*',
+            generate_structure(db),
+            '*/',
             '#include <ConfigDB/Database.h>',
             *(f'#include <{file}>' for file in db.include),
             '',
@@ -575,7 +594,7 @@ def generate_database(db: Database) -> CodeLines:
                     strings[store.name],
                     0,
                     f'{{.object = &{store.typename}::typeinfo}}'
-                    ]) for store in db.children),
+                    ], ',') for store in db.children),
                 '}'
             ],
             '};'
@@ -598,22 +617,25 @@ def generate_database(db: Database) -> CodeLines:
             ' */'
         ]
     ]
-    def generate_outer_class(obj: Object) -> list:
+    def generate_outer_class(obj: Object, store_offset: int) -> list:
+        template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.index}, {obj.parent.typename_contained}, {obj.index}, {store_offset}>'
+        if not obj.is_store:
+            store_offset += obj.parent.get_offset(obj)
         return [
             '',
-            f'class {obj.typename_outer}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>',
+            f'class {obj.typename_outer}: public {template}',
             '{',
             'public:',
             [
                 'using OuterObjectTemplate::OuterObjectTemplate;',
             ],
-            *[generate_outer_class(child) for child in obj.children if not obj.is_item],
+            *[generate_outer_class(child, store_offset) for child in obj.children if not obj.is_item],
             '};'
         ] if obj.children and not obj.is_union else [
-            f'using {obj.typename_outer} = ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>;'
+            f'using {obj.typename_outer} = {template};'
         ]
     for store in db.children:
-        lines.header.append(generate_outer_class(store))
+        lines.header.append(generate_outer_class(store, 0))
 
     lines.header += ['};']
 
@@ -651,6 +673,22 @@ def generate_database(db: Database) -> CodeLines:
     ]
 
     return lines
+
+
+def generate_structure(db: Database) -> list[str]:
+    structure = []
+    def print_structure(obj: Object, indent: int, offset: int):
+        structure.append(f'{offset:4} {"".ljust(indent*3)} {obj.id}: {'Store' if obj.is_store else obj.base_class}')
+        for c in obj.children:
+            print_structure(c, indent+1, offset)
+            offset += c.data_size
+        for prop in obj.properties:
+            structure.append(f'{offset:4} {"".ljust((indent+1)*3)} {prop.id}: {prop.ctype}')
+            offset += prop.data_size
+    for store in db.children:
+        print_structure(store, 0, 0)
+        structure += ['']
+    return structure
 
 
 def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool = False) -> list[str]:
@@ -811,7 +849,7 @@ def generate_property_accessors(obj: Object) -> list:
                 '{',
                 [
                     f'assert(getTag() == Tag::{child.name});',
-                    f'return {child.typename_contained}(*this, {UNION_TAG_SIZE});'
+                    f'return {child.typename_contained}(*this, {index});'
                 ],
                 '}',
                 ) for index, child in enumerate(obj.children))
@@ -858,7 +896,7 @@ def generate_property_write_accessors(obj: Object) -> list:
                 '{',
                 [
                     f'assert(getTag() == Tag::{child.name});',
-                    f'return {child.typename_updater}(*this, {UNION_TAG_SIZE});'
+                    f'return {child.typename_updater}(*this, {index});'
                 ],
                 '}',
                 ) for index, child in enumerate(obj.children))
@@ -983,15 +1021,19 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
             f'using {obj.base_class}{template}::{obj.base_class}{template};'
         ]
 
+    children = [f'{child.id}(*this, {index})' for index, child in enumerate(obj.children)]
+
     if obj.is_item:
         typename = obj.typename_updater if is_updater else obj.typename_contained
         const = '' if is_updater else 'const '
         return [
             '',
-            f'{typename}({const}ConfigDB::{obj.parent.base_class}& {obj.parent.id}, uint16_t dataRef):',
+            f'{typename}() = default;',
+            '',
+            f'{typename}({const}ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned propIndex, uint16_t index):',
             [', '.join([
-                f'{obj.classname}{template}({obj.parent.id}, dataRef)',
-                *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
+                f'{obj.classname}{template}({obj.parent.id}, propIndex, index)',
+                *children
             ])],
             '{',
             '}',
@@ -1003,9 +1045,9 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
     if not obj.is_item_member:
         headers = [
             '',
-            f'{typename}(ConfigDB::Store& store): ' + ', '.join([
-                f'{obj.base_class}{template}(store)',
-                *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
+            f'{typename}(ConfigDB::Store& store, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
+                f'{obj.base_class}{template}(store, prop, offset)',
+                *children
             ]),
             '{',
             '}',
@@ -1014,9 +1056,9 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
     if not obj.is_root:
         headers += [
             '',
-            f'{typename}({parent_typename}& parent, uint16_t dataRef): ' + ', '.join([
-                f'{obj.base_class}{template}(parent, dataRef)',
-                *(f'{child.id}(*this, offsetof(Struct, {child.id}))' for child in obj.children)
+            f'{typename}({parent_typename}& parent, unsigned propIndex): ' + ', '.join([
+                f'{obj.base_class}{template}(parent, propIndex)',
+                *children
             ]),
             '{',
             '}',

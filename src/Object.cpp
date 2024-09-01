@@ -24,7 +24,8 @@
 
 namespace ConfigDB
 {
-Object::Object(const PropertyInfo& propinfo, Store& store) : Object(propinfo, store, 0)
+Object::Object(Store& store, const PropertyInfo& prop, uint16_t dataRef)
+	: propinfoPtr(&prop), parent(&store), dataRef(dataRef)
 {
 }
 
@@ -37,9 +38,9 @@ Object& Object::operator=(const Object& other)
 	return *this;
 }
 
-std::shared_ptr<Store> Object::openStore(Database& db, const PropertyInfo& propinfo, bool lockForWrite)
+std::shared_ptr<Store> Object::openStore(Database& db, unsigned storeIndex, bool lockForWrite)
 {
-	return db.openStore(propinfo, lockForWrite);
+	return db.openStore(storeIndex, lockForWrite);
 }
 
 bool Object::lockStore(std::shared_ptr<Store>& store)
@@ -98,9 +99,10 @@ void* Object::getDataPtr()
 		return static_cast<Store*>(this)->getRootData();
 	}
 	if(parent->isArray()) {
-		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
+		auto array = static_cast<ArrayBase*>(parent);
+		return static_cast<uint8_t*>(array->getItem(dataRef));
 	}
-	return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef;
+	return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef + propinfo().offset;
 }
 
 const void* Object::getDataPtr() const
@@ -110,10 +112,11 @@ const void* Object::getDataPtr() const
 		return static_cast<const Store*>(this)->getRootData();
 	}
 	if(parent->isArray()) {
-		return static_cast<const ArrayBase*>(parent)->getItem(dataRef);
+		auto array = static_cast<const ArrayBase*>(parent);
+		return array->getItem(dataRef);
 	}
-	auto data = static_cast<const Object*>(parent)->getDataPtr();
-	return static_cast<const uint8_t*>(data) + dataRef;
+	auto constParent = static_cast<const Object*>(parent);
+	return static_cast<const uint8_t*>(constParent->getDataPtr()) + dataRef + propinfo().offset;
 }
 
 unsigned Object::getObjectCount() const
@@ -135,9 +138,7 @@ Object Object::getObject(unsigned index)
 	if(typeIs(ObjectType::Union)) {
 		return static_cast<Union*>(this)->getObject(index);
 	}
-	auto& prop = typeinfo().getObject(index);
-	const volatile uint32_t offset = prop.offset; // Strict alignment
-	return Object(prop, *this, offset);
+	return Object(*this, index);
 }
 
 Object Object::findObject(const char* name, size_t length)
@@ -145,16 +146,14 @@ Object Object::findObject(const char* name, size_t length)
 	if(isArray()) {
 		return {};
 	}
-	int i = typeinfo().findObject(name, length);
-	if(i < 0) {
+	int index = typeinfo().findObject(name, length);
+	if(index < 0) {
 		return {};
 	}
 	if(typeIs(ObjectType::Union)) {
-		static_cast<Union*>(this)->setTag(i);
+		static_cast<Union*>(this)->setTag(index);
 	}
-	auto& prop = typeinfo().getObject(i);
-	const volatile uint32_t offset = prop.offset; // Strict alignment
-	return Object(prop, *this, offset);
+	return Object(*this, index);
 }
 
 Property Object::findProperty(const char* name, size_t length)
@@ -162,8 +161,8 @@ Property Object::findProperty(const char* name, size_t length)
 	if(isArray() || typeIs(ObjectType::Union)) {
 		return {};
 	}
-	int i = typeinfo().findProperty(name, length);
-	return i >= 0 ? getProperty(i) : Property();
+	int index = typeinfo().findProperty(name, length);
+	return index >= 0 ? getProperty(index) : Property();
 }
 
 void Object::queueUpdate(UpdateCallback callback)
@@ -195,7 +194,7 @@ String Object::getName() const
 		path += ']';
 		return path;
 	}
-	return typeinfo().name;
+	return propinfo().name;
 }
 
 String Object::getPath() const

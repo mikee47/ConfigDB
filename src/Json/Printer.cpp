@@ -33,7 +33,7 @@ Printer::Printer(Print& p, const Object& object, bool pretty, RootStyle style) :
 		rootName = &fstr_empty;
 		break;
 	case RootStyle::normal:
-		rootName = &object.typeinfo().name;
+		rootName = &object.propinfo().name;
 		break;
 	}
 }
@@ -47,7 +47,7 @@ size_t Printer::operator()()
 	size_t n{0};
 
 	auto& object = objects[nesting];
-	auto name = &object.typeinfo().name;
+	auto name = &object.propinfo().name;
 	auto indentLength = nesting;
 
 	if(nesting == 0) {

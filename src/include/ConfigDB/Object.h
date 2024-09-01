@@ -52,10 +52,20 @@ public:
 	{
 	}
 
-	Object(const PropertyInfo& propinfo, Store& store);
+	Object(Store& store, const PropertyInfo& prop, uint16_t dataRef);
 
-	Object(const PropertyInfo& propinfo, Object& parent, uint16_t dataRef)
-		: propinfoPtr(&propinfo), parent(&parent), dataRef(dataRef)
+	Object(const Store& store, const PropertyInfo& prop, uint16_t dataRef)
+		: Object(const_cast<Store&>(store), prop, dataRef)
+	{
+	}
+
+	Object(Object& parent, unsigned propIndex, uint16_t dataRef = 0)
+		: propinfoPtr(&parent.typeinfo().getObject(propIndex)), parent(&parent), dataRef(dataRef)
+	{
+	}
+
+	Object(const Object& parent, unsigned propIndex, uint16_t dataRef = 0)
+		: Object(const_cast<Object&>(parent), propIndex, dataRef)
 	{
 	}
 
@@ -194,7 +204,7 @@ public:
 	void queueUpdate(UpdateCallback callback);
 
 protected:
-	std::shared_ptr<Store> openStore(Database& db, const PropertyInfo& propinfo, bool lockForWrite = false);
+	std::shared_ptr<Store> openStore(Database& db, unsigned storeIndex, bool lockForWrite = false);
 
 	bool isLocked() const;
 
@@ -250,22 +260,7 @@ public:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate() : Object(ClassType::typeinfo)
-	{
-	}
-
-	explicit ObjectTemplate(Store& store) : Object(ClassType::typeinfo, store)
-	{
-	}
-
-	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
-	{
-	}
-
-	ObjectTemplate(const Object& parent, uint16_t dataRef)
-		: Object(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
-	{
-	}
+	using Object::Object;
 };
 
 /**
@@ -287,17 +282,22 @@ public:
 /**
  * @brief Used by code generator
  * @tparam UpdaterType
- * @tparam StoreType
+ * @tparam storeIndex
+ * @tparam ParentClassType
+ * @tparam propIndex
+ * @tparam offset
  */
-template <class UpdaterType, class StoreType> class OuterObjectUpdaterTemplate : public UpdaterType
+template <class UpdaterType, unsigned storeIndex, class ParentClassType, unsigned propIndex, unsigned offset>
+class OuterObjectUpdaterTemplate : public UpdaterType
 {
 public:
-	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : UpdaterType(*store), store(store)
+	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store)
+		: UpdaterType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
 	explicit OuterObjectUpdaterTemplate(Database& db)
-		: OuterObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo, true))
+		: OuterObjectUpdaterTemplate(this->openStore(db, storeIndex, true))
 	{
 	}
 
@@ -318,18 +318,22 @@ private:
 /**
  * @brief Used by code generator
  * @tparam ContainedClassType
- * @tparam UpdaterType
- * @tparam StoreType
+ * @tparam storeIndex
+ * @tparam ParentClassType
+ * @tparam propIndex
+ * @tparam offset
  */
-template <class ContainedClassType, class UpdaterType, class StoreType>
+template <class ContainedClassType, class UpdaterType, unsigned storeIndex, class ParentClassType, unsigned propIndex,
+		  unsigned offset>
 class OuterObjectTemplate : public ContainedClassType
 {
 public:
-	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
+	OuterObjectTemplate(std::shared_ptr<Store> store)
+		: ContainedClassType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
-	explicit OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
+	OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, storeIndex))
 	{
 	}
 
@@ -338,7 +342,7 @@ public:
 		return format.createExportStream(store, *this);
 	}
 
-	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, StoreType>;
+	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, storeIndex, ParentClassType, propIndex, offset>;
 
 	/**
 	 * @brief Create an update object
@@ -369,7 +373,9 @@ public:
 			callback(upd);
 			return true;
 		}
-		Object::queueUpdate([this, callback](Store& store) { callback(UpdaterType(store)); });
+		Object::queueUpdate([this, callback](Store& store) {
+			callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
+		});
 		return false;
 	}
 

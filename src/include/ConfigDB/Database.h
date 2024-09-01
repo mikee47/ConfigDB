@@ -57,11 +57,6 @@ public:
 	 */
 	std::shared_ptr<Store> openStore(unsigned index, bool lockForWrite = false);
 
-	std::shared_ptr<Store> openStore(const PropertyInfo& store, bool lockForWrite = false)
-	{
-		return openStore(typeinfo.indexOf(store), lockForWrite);
-	}
-
 	void queueUpdate(Store& store, Object::UpdateCallback callback);
 	void checkUpdateQueue(Store& store);
 

@@ -33,7 +33,7 @@ public:
 
 	Object getObject(unsigned index)
 	{
-		return Object(getItemType(), *this, index);
+		return Object(*this, 0, index);
 	}
 
 	Object getItem(unsigned index)
@@ -48,24 +48,25 @@ public:
 
 	Object addItem()
 	{
-		auto& itemType = getItemType();
 		if(!this->writeCheck()) {
-			return Object(itemType, *this, 0);
+			return {};
 		}
 		auto& array = getArray();
-		auto ref = array.getCount();
+		auto index = array.getCount();
+		auto& itemType = getItemType();
 		array.add(itemType.object->defaultData);
-		return Object(itemType, *this, ref);
+		return Object(*this, 0, index);
 	}
 
 	Object insertItem(unsigned index)
 	{
-		auto& itemType = getItemType();
 		if(!this->writeCheck()) {
-			return Object(itemType, *this, 0);
+			return {};
 		}
-		getArray().insert(index, itemType.object->defaultData);
-		return Object(itemType, *this, index);
+		auto& itemType = getItemType();
+		auto& array = getArray();
+		array.insert(index, itemType.object->defaultData);
+		return Object(*this, 0, index);
 	}
 
 	const PropertyInfo& getItemType() const
@@ -82,18 +83,7 @@ public:
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
-	explicit ObjectArrayTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
-	{
-	}
-
-	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, parent, dataRef)
-	{
-	}
-
-	ObjectArrayTemplate(const Object& parent, uint16_t dataRef)
-		: ObjectArray(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
-	{
-	}
+	using ObjectArray::ObjectArray;
 
 	const ItemType operator[](unsigned index) const
 	{
@@ -114,27 +104,27 @@ public:
 
 	ItemType operator[](unsigned index)
 	{
-		return ItemType(*this, index);
+		return ItemType(*this, 0, index);
 	}
 
 	ItemType addItem()
 	{
 		if(!this->writeCheck()) {
-			return ItemType(*this, 0);
+			return {};
 		}
 		auto& array = this->getArray();
 		auto index = array.getCount();
 		array.add(ItemType::typeinfo.defaultData);
-		return ItemType(*this, index);
+		return ItemType(*this, 0, index);
 	}
 
 	ItemType insertItem(unsigned index)
 	{
 		if(!this->writeCheck()) {
-			return Item(*this, 0);
+			return {};
 		}
 		this->getArray().insert(index, ItemType::typeinfo.defaultData);
-		return ItemType(*this, index);
+		return ItemType(*this, 0, index);
 	}
 };
 

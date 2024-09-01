@@ -88,13 +88,7 @@ private:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
-	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
-	{
-	}
-
-	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
-	{
-	}
+	using Array::Array;
 
 	ItemType getItem(unsigned index) const
 	{

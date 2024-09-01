@@ -28,6 +28,11 @@ struct DatabaseInfo {
 	uint32_t storeCount;
 	const PropertyInfo stores[];
 
+	const PropertyInfo& getObject(unsigned index) const
+	{
+		return stores[index];
+	}
+
 	int findStore(const char* name, size_t nameLength) const;
 	int indexOf(const PropertyInfo& store) const;
 };

@@ -146,7 +146,7 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	int i = root.object->findObject(element.key, element.keyLength);
 	if(i >= 0) {
 		store.reset();
-		store = database->openStore(root, true);
+		store = database->openStore(0, true);
 		if(!store || !*store) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
 		}
@@ -164,9 +164,9 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	if(i < 0) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
-	auto& type = database->typeinfo.stores[i];
-	store = database->openStore(type, true);
+	store = database->openStore(i, true);
 	if(!store || !*store) {
+		auto& type = database->typeinfo.stores[i];
 		return handleError(FormatError::UpdateConflict, type.name);
 	}
 	obj = *store;

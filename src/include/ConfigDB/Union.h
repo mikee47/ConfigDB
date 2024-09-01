@@ -44,7 +44,7 @@ public:
 		getPropertyData(0)->uint8 = tag;
 		auto& prop = typeinfo().propinfo[tag];
 		auto data = static_cast<uint8_t*>(getDataPtr());
-		data += sizeof(Tag);
+		data += prop.offset;
 		if(prop.object->defaultData) {
 			memcpy_P(data, prop.object->defaultData, prop.object->structSize);
 		} else {
@@ -55,9 +55,7 @@ public:
 	Object getObject(unsigned index)
 	{
 		assert(index == 0);
-		auto tag = getTag();
-		auto& prop = typeinfo().getObject(tag);
-		return prop ? Object(prop, *this, sizeof(Tag)) : Object();
+		return Object(*this, getTag());
 	}
 };
 
@@ -68,22 +66,7 @@ public:
 template <class ClassType> class UnionTemplate : public Union
 {
 public:
-	UnionTemplate() : Union(ClassType::typeinfo)
-	{
-	}
-
-	explicit UnionTemplate(Store& store) : Union(ClassType::typeinfo, store)
-	{
-	}
-
-	UnionTemplate(Object& parent, uint16_t dataRef) : Union(ClassType::typeinfo, parent, dataRef)
-	{
-	}
-
-	UnionTemplate(const Object& parent, uint16_t dataRef)
-		: Union(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
-	{
-	}
+	using Union::Union;
 };
 
 /**
