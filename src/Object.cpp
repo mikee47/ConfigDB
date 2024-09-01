@@ -24,22 +24,22 @@
 
 namespace ConfigDB
 {
-Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store, 0)
+Object::Object(const PropertyInfo& propinfo, Store& store) : Object(propinfo, store, 0)
 {
 }
 
 Object& Object::operator=(const Object& other)
 {
-	typeinfoPtr = other.typeinfoPtr;
+	propinfoPtr = other.propinfoPtr;
 	parent = other.isStore() ? const_cast<Object*>(&other) : other.parent;
 	dataRef = other.dataRef;
 	streamPos = 0;
 	return *this;
 }
 
-std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite)
+std::shared_ptr<Store> Object::openStore(Database& db, const PropertyInfo& propinfo, bool lockForWrite)
 {
-	return db.openStore(typeinfo, lockForWrite);
+	return db.openStore(propinfo, lockForWrite);
 }
 
 bool Object::lockStore(std::shared_ptr<Store>& store)
@@ -137,7 +137,7 @@ Object Object::getObject(unsigned index)
 	}
 	auto& prop = typeinfo().getObject(index);
 	const volatile uint32_t offset = prop.offset; // Strict alignment
-	return Object(*prop.object, *this, offset);
+	return Object(prop, *this, offset);
 }
 
 Object Object::findObject(const char* name, size_t length)
@@ -154,7 +154,7 @@ Object Object::findObject(const char* name, size_t length)
 	}
 	auto& prop = typeinfo().getObject(i);
 	const volatile uint32_t offset = prop.offset; // Strict alignment
-	return Object(*prop.object, *this, offset);
+	return Object(prop, *this, offset);
 }
 
 Property Object::findProperty(const char* name, size_t length)

@@ -54,7 +54,7 @@ public:
 		}
 		auto& array = getArray();
 		auto ref = array.getCount();
-		array.add(itemType.defaultData);
+		array.add(itemType.object->defaultData);
 		return Object(itemType, *this, ref);
 	}
 
@@ -64,13 +64,13 @@ public:
 		if(!this->writeCheck()) {
 			return Object(itemType, *this, 0);
 		}
-		getArray().insert(index, itemType.defaultData);
+		getArray().insert(index, itemType.object->defaultData);
 		return Object(itemType, *this, index);
 	}
 
-	const ObjectInfo& getItemType() const
+	const PropertyInfo& getItemType() const
 	{
-		return *typeinfo().propinfo[0].object;
+		return typeinfo().propinfo[0];
 	}
 };
 

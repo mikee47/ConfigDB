@@ -24,8 +24,8 @@ namespace ConfigDB
 int DatabaseInfo::findStore(const char* name, size_t nameLength) const
 {
 	for(unsigned i = 0; i < storeCount; ++i) {
-		auto store = stores[i];
-		if(store->name.equals(name, nameLength)) {
+		auto& store = stores[i];
+		if(store.name.equals(name, nameLength)) {
 			return i;
 		}
 	}

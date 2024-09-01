@@ -79,9 +79,7 @@ union __attribute__((packed)) PropertyData {
 class PropertyConst
 {
 public:
-	PropertyConst() : info(&PropertyInfo::empty)
-	{
-	}
+	PropertyConst() = default;
 
 	/**
 	 * @brief Create a Property instance
@@ -90,7 +88,7 @@ public:
 	 */
 	PropertyConst(const Store& store, const PropertyInfo& info, const PropertyData* data,
 				  const PropertyData* defaultData)
-		: info(&info), store(&store), data(data), defaultData(defaultData)
+		: propinfo(&info), store(&store), data(data), defaultData(defaultData)
 	{
 	}
 
@@ -103,13 +101,13 @@ public:
 
 	String getJsonValue() const;
 
-	const PropertyInfo& typeinfo() const
+	const PropertyInfo& info() const
 	{
-		return *info;
+		return *propinfo;
 	}
 
 protected:
-	const PropertyInfo* info;
+	const PropertyInfo* propinfo{&PropertyInfo::empty};
 	const Store* store{};
 	const PropertyData* data{};
 	const PropertyData* defaultData{};

@@ -114,8 +114,8 @@ size_t Printer::operator()()
 			n += p->print(indent);
 			n += p->print("  ");
 		}
-		if(prop.typeinfo().name.length()) {
-			n += p->print(quote(prop.typeinfo().name));
+		if(prop.info().name.length()) {
+			n += p->print(quote(prop.info().name));
 			n += p->print(colon);
 		}
 		n += p->print(prop.getJsonValue());

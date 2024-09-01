@@ -35,7 +35,7 @@ class Store;
 class Object
 {
 public:
-	Object() : typeinfoPtr(&ObjectInfo::empty)
+	Object() : propinfoPtr(&PropertyInfo::empty)
 	{
 	}
 
@@ -48,20 +48,20 @@ public:
 
 	Object& operator=(const Object& other);
 
-	explicit Object(const ObjectInfo& typeinfo) : typeinfoPtr(&typeinfo)
+	explicit Object(const PropertyInfo& propinfo) : propinfoPtr(&propinfo)
 	{
 	}
 
-	Object(const ObjectInfo& typeinfo, Store& store);
+	Object(const PropertyInfo& propinfo, Store& store);
 
-	Object(const ObjectInfo& typeinfo, Object& parent, uint16_t dataRef)
-		: typeinfoPtr(&typeinfo), parent(&parent), dataRef(dataRef)
+	Object(const PropertyInfo& propinfo, Object& parent, uint16_t dataRef)
+		: propinfoPtr(&propinfo), parent(&parent), dataRef(dataRef)
 	{
 	}
 
 	explicit operator bool() const
 	{
-		return typeinfoPtr != &ObjectInfo::empty;
+		return propinfoPtr->type == PropertyType::Object;
 	}
 
 	bool typeIs(ObjectType type) const
@@ -79,7 +79,7 @@ public:
 	 */
 	bool isStore() const
 	{
-		return typeinfoPtr->type == ObjectType::Store && !parent;
+		return typeinfo().type == ObjectType::Store && !parent;
 	}
 
 	Store& getStore();
@@ -169,9 +169,14 @@ public:
 
 	Status importFromFile(const Format& format, const String& filename);
 
+	const PropertyInfo& propinfo() const
+	{
+		return *propinfoPtr;
+	}
+
 	const ObjectInfo& typeinfo() const
 	{
-		return *typeinfoPtr;
+		return *this ? *propinfoPtr->object : ObjectInfo::empty;
 	}
 
 	PropertyData* getPropertyData(unsigned index)
@@ -189,7 +194,7 @@ public:
 	void queueUpdate(UpdateCallback callback);
 
 protected:
-	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite = false);
+	std::shared_ptr<Store> openStore(Database& db, const PropertyInfo& propinfo, bool lockForWrite = false);
 
 	bool isLocked() const;
 
@@ -230,7 +235,7 @@ protected:
 	void setPropertyValue(unsigned index, const void* value);
 	void setPropertyValue(unsigned index, const String& value);
 
-	const ObjectInfo* typeinfoPtr;
+	const PropertyInfo* propinfoPtr;
 	Object* parent{};
 	uint16_t dataRef{}; //< Relative to parent
 

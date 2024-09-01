@@ -34,11 +34,11 @@ namespace ConfigDB
 {
 String PropertyConst::getValue() const
 {
-	assert(info && store);
+	assert(propinfo && store);
 	if(!store || !data) {
 		return nullptr;
 	}
-	return store->getValueString(*info, data);
+	return store->getValueString(*propinfo, data);
 }
 
 String PropertyConst::getJsonValue() const
@@ -47,7 +47,7 @@ String PropertyConst::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	if(info->type != PropertyType::String) {
+	if(propinfo->type != PropertyType::String) {
 		return value;
 	}
 	::Format::json.quote(value);
@@ -56,12 +56,12 @@ String PropertyConst::getJsonValue() const
 
 bool Property::setJsonValue(const char* value, size_t valueLength)
 {
-	assert(info && store);
+	assert(propinfo && store);
 	if(!store || !data) {
 		return false;
 	}
 	auto& dst = *const_cast<PropertyData*>(data);
-	return const_cast<Store*>(store)->parseString(*info, dst, defaultData, value, valueLength);
+	return const_cast<Store*>(store)->parseString(*propinfo, dst, defaultData, value, valueLength);
 }
 
 void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)

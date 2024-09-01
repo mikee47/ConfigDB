@@ -57,7 +57,7 @@ public:
 		assert(index == 0);
 		auto tag = getTag();
 		auto& prop = typeinfo().getObject(tag);
-		return prop ? Object(*prop.object, *this, sizeof(Tag)) : Object();
+		return prop ? Object(prop, *this, sizeof(Tag)) : Object();
 	}
 };
 
