@@ -2,11 +2,19 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "list": {
-      "$ref": "#/$defs/ColorList"
-    },
-    "color": {
+    "color1": {
       "$ref": "#/$defs/Color"
+    },
+    "color2": {
+      "$ref": "#/$defs/Color"
+    },
+    "misc": {
+      "type": "object",
+      "properties": {
+        "color3": {
+          "$ref": "#/$defs/Color"
+        }
+      }
     }
   },
   "$defs": {
