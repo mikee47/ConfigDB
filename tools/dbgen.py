@@ -199,6 +199,11 @@ class Object:
         return 'Contained' + self.typename
 
     @property
+    def typename_outer(self):
+        # return make_typename(self.name) if self.name else 'Root'
+        return make_typename(self.name) if self.name else 'Root'
+
+    @property
     def typename_updater(self):
         return f'{self.typename}Updater'
 
@@ -594,19 +599,18 @@ def generate_database(db: Database) -> CodeLines:
         ]
     ]
     def generate_outer_class(obj: Object) -> list:
-        children = dict((child.typename, child) for child in obj.children).values()
         return [
             '',
-            f'class {obj.typename}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>',
+            f'class {obj.typename_outer}: public ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>',
             '{',
             'public:',
             [
                 'using OuterObjectTemplate::OuterObjectTemplate;',
             ],
-            *[generate_outer_class(child) for child in children if not obj.is_item],
+            *[generate_outer_class(child) for child in obj.children if not obj.is_item],
             '};'
-        ] if children and not obj.is_union else [
-            f'using {obj.typename} = ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>;'
+        ] if obj.children and not obj.is_union else [
+            f'using {obj.typename_outer} = ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.typename_contained}>;'
         ]
     for store in db.children:
         lines.header.append(generate_outer_class(store))
