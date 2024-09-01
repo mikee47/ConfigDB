@@ -32,10 +32,10 @@ int DatabaseInfo::findStore(const char* name, size_t nameLength) const
 	return -1;
 }
 
-int DatabaseInfo::indexOf(const ObjectInfo& objinfo) const
+int DatabaseInfo::indexOf(const PropertyInfo& store) const
 {
 	for(unsigned i = 0; i < storeCount; ++i) {
-		if(&objinfo == stores[i]) {
+		if(&store == &stores[i]) {
 			return i;
 		}
 	}

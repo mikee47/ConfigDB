@@ -564,7 +564,13 @@ def generate_database(db: Database) -> CodeLines:
                 f'{strings[db.name]},',
                 f'{len(db.children)},',
                 '{',
-                [f'&{store.typename}::typeinfo,' for store in db.children],
+                *(make_static_initializer(
+                    [
+                    'PropertyType::Object',
+                    strings[store.name],
+                    0,
+                    f'{{.object = &{store.typename}::typeinfo}}'
+                    ]) for store in db.children),
                 '}'
             ],
             '};'
