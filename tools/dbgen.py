@@ -481,9 +481,8 @@ def load_config(filename: str) -> Database:
 
         if prop_type == 'object':
             obj = Object(parent, key)
-            if ref:
-                obj.ref = ref
-                database.object_defs[ref] = obj
+            obj.ref = ref
+            database.object_defs[obj.typename] = obj
             parse_properties(obj, fields['properties'])
             return obj
 
@@ -492,19 +491,18 @@ def load_config(filename: str) -> Database:
             items_type = get_ptype(items)
             if items_type in ['object', 'union']:
                 arr = ObjectArray(parent, key)
-                if ref:
-                    arr.ref = ref
-                    database.object_defs[ref] = arr
+                arr.ref = ref
+                database.object_defs[arr.typename] = arr
                 arr.items = database.object_defs.get(item_ref)
-                if not arr.items:
-                    arr.items = Object(arr, item_ref or f'{arr.typename}Item')
-                    if item_ref:
-                        arr.items.ref = item_ref
-                        database.object_defs[item_ref] = arr.items
-                    if items_type == 'union':
-                        parse_object(arr.items, item_ref, items)
-                    else:
-                        parse_properties(arr.items, items['properties'])
+                if arr.items and arr.items.ref:
+                    return arr
+                arr.items = Object(arr, item_ref or f'{arr.typename}Item')
+                arr.items.ref = item_ref
+                database.object_defs[arr.items.typename] = arr.items
+                if items_type == 'union':
+                    parse_object(arr.items, item_ref, items)
+                else:
+                    parse_properties(arr.items, items['properties'])
                 return arr
 
             # Simple array
@@ -517,16 +515,15 @@ def load_config(filename: str) -> Database:
 
         if prop_type == 'union':
             union = Union(parent, key)
-            if ref:
-                union.ref = ref
-                database.object_defs[ref] = union
+            union.ref = ref
+            database.object_defs[union.typename] = union
             for opt in fields['oneOf']:
                 ref, opt = resolve_ref(opt, database)
                 choice = database.object_defs.get(ref)
                 if not choice:
                     choice = parse_object(union, ref, opt)
                     choice.ref = ref
-                    database.object_defs[ref] = choice
+                    database.object_defs[choice.typename] = choice
                 union.children.append(choice)
             return union
 
@@ -574,7 +571,8 @@ def generate_database(db: Database) -> CodeLines:
         ])
 
     for obj in reversed(db.object_defs.values()):
-        lines.append(generate_object(obj))
+        if obj.ref:
+            lines.append(generate_object(obj))
 
     for store in db.children:
         lines.append(generate_object(store))
@@ -609,29 +607,26 @@ def generate_database(db: Database) -> CodeLines:
 
     lines.header += ['};']
 
-    def generate_global_functions(obj: Object):
-        if obj.is_union:
-            decl = f'String toString({obj.namespace}::{obj.typename_contained}::Tag tag)'
-            lines.header += [
-                '',
-                f'{decl};'
-            ]
-            lines.source += [
-                '',
-                decl,
-                '{',
-                [
-                    'switch(unsigned(tag)) {',
-                    [f'case {index}: return {strings[child.name]};' for index, child in enumerate(obj.children)],
-                    ['default: return nullptr;'],
-                    '}'
-                ],
+    for obj in db.object_defs.values():
+        if not obj.is_union:
+            continue
+        decl = f'String toString({obj.namespace}::{obj.typename_contained}::Tag tag)'
+        lines.header += [
+            '',
+            f'{decl};'
+        ]
+        lines.source += [
+            '',
+            decl,
+            '{',
+            [
+                'switch(unsigned(tag)) {',
+                [f'case {index}: return {strings[child.name]};' for index, child in enumerate(obj.children)],
+                ['default: return nullptr;'],
                 '}'
-            ]
-        for child in obj.children:
-            generate_global_functions(child)
-    for obj in db.children:
-        generate_global_functions(obj)
+            ],
+            '}'
+        ]
 
 
     # Insert this at end once string table has been populated
@@ -727,7 +722,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         '{',
         *([str(e) + ','] for e in [
             'ObjectType::' + ('Store' if obj.is_root else obj.classname),
-            'fstr_empty' if obj.is_item else strings[obj.name],
+            strings[obj.typename],
             'nullptr' if obj.is_array else '&defaultData',
             'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)',
             len(objinfo),
