@@ -33,7 +33,7 @@ String toString(ConfigDB::ObjectType type)
 
 namespace ConfigDB
 {
-const ObjectInfo PROGMEM ObjectInfo::empty{.name = fstr_empty};
+const ObjectInfo PROGMEM ObjectInfo::empty{};
 
 int ObjectInfo::findObject(const char* name, size_t length) const
 {

@@ -772,7 +772,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         '{',
         *([str(e) + ','] for e in [
             'ObjectType::' + ('Store' if obj.is_root else obj.classname),
-            strings[obj.typename],
             'nullptr' if obj.is_array else '&defaultData',
             'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)',
             len(objinfo),

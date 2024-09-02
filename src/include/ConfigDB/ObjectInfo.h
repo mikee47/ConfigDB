@@ -38,7 +38,6 @@ enum class ObjectType : uint32_t {
 
 struct ObjectInfo {
 	ObjectType type;
-	const FlashString& name;
 	PGM_VOID_P defaultData;
 	uint32_t structSize;
 	uint32_t objectCount;
