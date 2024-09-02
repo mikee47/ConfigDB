@@ -799,20 +799,18 @@ def generate_object_struct(obj: Object) -> CodeLines:
             return make_comment(prop.default) if prop.default else ''
         return prop.default_str
 
-    members = [
-        *(f'{child.typename_struct} {child.id};' for child in obj.children),
-        *(f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties)
-    ]
-
     if obj.is_union:
         body = [
             'uint8_t tag{0};' if obj.is_union else '',
             'union __attribute__((packed)) {',
-            members,
+            [f'{child.typename_struct} {child.id}{"{}" if index == 0 else ""};' for index, child in enumerate(obj.children)],
             '};'
         ]
     else:
-        body = members
+        body = [
+            [f'{child.typename_struct} {child.id}{{}};' for child in obj.children],
+            [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties]
+        ]
 
     return CodeLines([
         '',
