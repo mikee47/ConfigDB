@@ -66,7 +66,48 @@ See the **Basic_Config** sample schema.
 - Contains one or more stores. The root (un-named) object is the primary store, with the filename **_root.json**.
 - Immediate children of the root may have a **store** value attached to place them into a new store.
   This can have any value, typically **true**.
-- A custom type can be defined for Property accessors using the **ctype** annotation
+- A custom type can be defined for Property accessors using the **ctype** annotation. This means that with an IP address property, for example, you can use :cpp:class:`IpAddress` instead of :cpp:class:`String` because it can be constructed from a String. The database still stores the value internally as a regular String.
+
+Re-useable definitions
+  These can be defined using the `$ref <https://json-schema.org/understanding-json-schema/structuring#dollarref>`__ schema keyword.
+  This allows types to be defined within the **$defs** section of the schema and re-used.
+
+  This is leveraged to support **Union** types via the  `oneOf <https://json-schema.org/understanding-json-schema/reference/combining#oneOf>`__ schema keyword.
+  The *test* application contains an example of this in the *test-config-union.cfgdb* schema. It is used in the *Updates* test module.
+
+  Like a regular C++ `union`, a `ConfigDB::Union` object has one or more object types overlaid in the same storage space. The size of the object is therefore governed by the size of the largest type stored. A `uint8_t` property tag indicates which type is stored.
+
+  The code generator produces a `get` method for each type of object which can be stored. The application is responsible for checking which type is present via `getTag`; if the wrong method is called, a runtime assertion will be generated.
+
+  The corresponding Union Updater class has a `setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults.
+
+  Note that items in **$defs** can also be non-object property types. For these, a type is *not* defined but instead used as a base definition which can be modified. Take a general *Pin* definition, for example::
+
+    "Pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63
+    }
+
+  And in the main schema, use it like this::
+
+    "pin": {
+      "$ref": "#/$defs/Pin",
+      "default": 13
+    }
+
+  The code generator expands this property::
+
+    "pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63,
+      "default": 13
+    }
+
+  This can make the schema more readable, save duplication and simplify modification.
+
+  Note that no special type is defined in generated code. If a `ctype` annotation is present then that type must be defined elsewhere in the application.
 
 
 Store loading / saving
