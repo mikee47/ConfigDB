@@ -569,6 +569,8 @@ def generate_database(db: Database) -> CodeLines:
             '{',
             'public:',
             [
+                'class ContainedRoot;',
+                'class RootUpdater;',
                 'static const ConfigDB::DatabaseInfo typeinfo;',
                 '',
                 f'{db.typename}(const String& path): DatabaseTemplate(typeinfo, path)',
