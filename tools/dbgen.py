@@ -862,7 +862,7 @@ def generate_property_accessors(obj: Object) -> list:
             ],
             *((
                 '',
-                f'const {child.typename_contained} get{child.name}() const',
+                f'const {child.typename_contained} as{child.name}() const',
                 '{',
                 [
                     f'assert(getTag() == Tag::{child.name});',
@@ -909,10 +909,20 @@ def generate_property_write_accessors(obj: Object) -> list:
             ],
             *((
                 '',
-                f'{child.typename_updater} get{child.name}()',
+                f'{child.typename_updater} as{child.name}()',
                 '{',
                 [
                     f'assert(getTag() == Tag::{child.name});',
+                    f'return {child.typename_updater}(*this, {index});'
+                ],
+                '}',
+                '',
+                f'{child.typename_updater} to{child.name}()',
+                '{',
+                [
+                    f'if (Union::getTag() != {index}) {{',
+                    [f'Union::setTag({index});'],
+                    '}',
                     f'return {child.typename_updater}(*this, {index});'
                 ],
                 '}',
@@ -1024,7 +1034,7 @@ def generate_updater(obj: Object) -> list:
         *generate_property_write_accessors(obj),
         None if obj.is_union else [
             '',
-            (f'{child.typename_updater} {child.id};' for child in obj.children)
+            *(f'{child.typename_updater} {child.id};' for child in obj.children)
         ],
         '};'
     ]

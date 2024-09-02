@@ -75,11 +75,11 @@ Re-useable definitions
   This is leveraged to support **Union** types via the  `oneOf <https://json-schema.org/understanding-json-schema/reference/combining#oneOf>`__ schema keyword.
   The *test* application contains an example of this in the *test-config-union.cfgdb* schema. It is used in the *Updates* test module.
 
-  Like a regular C++ `union`, a `ConfigDB::Union` object has one or more object types overlaid in the same storage space. The size of the object is therefore governed by the size of the largest type stored. A `uint8_t` property tag indicates which type is stored.
+  Like a regular C++ *union*, a :cpp:class:`ConfigDB::Union` object has one or more object types overlaid in the same storage space. The size of the object is therefore governed by the size of the largest type stored. A `uint8_t` property tag indicates which type is stored.
 
-  The code generator produces a `get` method for each type of object which can be stored. The application is responsible for checking which type is present via `getTag`; if the wrong method is called, a runtime assertion will be generated.
+  The code generator produces an **asXXX** method for each type of object which can be stored. The application is responsible for checking which type is present via :cpp:func:`ConfigDB::Union::getTag`; if the wrong method is called, a runtime assertion will be generated.
 
-  The corresponding Union Updater class has a `setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults.
+  The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method for updaters which checks the tag but only changes it if necessary, and returns the appropriate object type.
 
   Note that items in **$defs** can also be non-object property types. For these, a type is *not* defined but instead used as a base definition which can be modified. Take a general *Pin* definition, for example::
 

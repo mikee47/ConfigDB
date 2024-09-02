@@ -74,6 +74,7 @@ public:
 				TEST_ASSERT(false);
 			}
 			db.exportToStream(ConfigDB::Json::format, Serial);
+			Serial << endl;
 		}
 
 		TEST_CASE("Union")
@@ -83,11 +84,11 @@ public:
 			Serial << TestConfigUnion::Root(db) << endl;
 			using Color = TestConfigUnion::ContainedColor;
 			Color::Tag expectedTag{};
-			for(unsigned i = 0; i < 4; ++i) {
+			for(unsigned i = 0; i < 5; ++i) {
 				TestConfigUnion::Root::Color1 color(db);
 				REQUIRE_EQ(color.getTag(), expectedTag);
 				Serial << color.getTag() << ": " << color << endl;
-				if(i == 3) {
+				if(i == 4) {
 					break;
 				}
 				auto tag = Color::Tag(i);
@@ -95,18 +96,47 @@ public:
 					updater.setTag(tag);
 					switch(tag) {
 					case Color::Tag::RGB:
-						updater.getRGB().setBlue(123);
+						updater.asRGB().setBlue(123);
 						break;
 					case Color::Tag::HSV:
-						updater.getHSV().setSaturation(24);
+						updater.asHSV().setSaturation(24);
 						break;
 					case Color::Tag::RAW:
-						updater.getRAW().setBlue(456);
+						updater.asRAW().setBlue(456);
+						break;
+					case Color::Tag::ColorList:
 						break;
 					}
 					Serial << "color: " << color << endl;
 				}
 				expectedTag = tag;
+			}
+
+			TEST_CASE("ObjectArray[Union]")
+			{
+				TestConfigUnion::Root::Colors colors(db);
+				if(auto update = colors.update()) {
+					auto item = update.addItem();
+					item.toRGB().setBlue(188);
+					item = update.addItem();
+					item.toHSV().setSaturation(55);
+					item = update.addItem();
+					auto raw = item.toRAW();
+					raw.setRed(5);
+					raw.setGreen(6);
+					raw.setBlue(7);
+					raw.setWarmWhite(77);
+					raw.setColdWhite(18);
+
+					item = update.addItem();
+					auto list = item.toColorList();
+
+					list.addItem().setTag(Color::Tag::HSV);
+					list.addItem().setTag(Color::Tag::ColorList);
+					list.addItem();
+					Serial << "list: " << list << endl;
+					Serial << "colors: " << colors << endl;
+				}
 			}
 		}
 	}

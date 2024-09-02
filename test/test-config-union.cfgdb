@@ -15,6 +15,12 @@
           "$ref": "#/$defs/Color"
         }
       }
+    },
+    "colors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Color"
+      }
     }
   },
   "$defs": {
@@ -28,6 +34,9 @@
         },
         {
           "$ref": "#/$defs/RAW"
+        },
+        {
+          "$ref": "#/$defs/ColorList"
         }
       ]
     },

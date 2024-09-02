@@ -5,6 +5,12 @@
     "color": {
       "$ref": "#/$defs/Color"
     },
+    "colors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Color"
+      }
+    },
     "nest1": {
       "type": "object",
       "properties": {
