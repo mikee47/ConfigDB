@@ -22,6 +22,7 @@ CPP_TYPENAMES = {
 STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
 UNION_TAG_SIZE = 1
+UNION_TAG_TYPE = 'uint8_t'
 
 CPP_TYPESIZES = {
 	'bool': 1,
@@ -330,7 +331,7 @@ class Union(Object):
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return max(prop.data_size for prop in self.children)
+        return max(child.data_size for child in self.children) + UNION_TAG_SIZE
 
 
 @dataclass
@@ -680,13 +681,22 @@ def generate_database(db: Database) -> CodeLines:
 def generate_structure(db: Database) -> list[str]:
     structure = []
     def print_structure(obj: Object, indent: int, offset: int):
-        structure.append(f'{offset:4} {"".ljust(indent*3)} {obj.id}: {'Store' if obj.is_store else obj.base_class}')
+        def add(offset: int, id: str, typename: str):
+            structure.append(f'{offset:4} {"".ljust(indent*3)} {id}: {typename}')
+        add(offset, obj.id, 'Store' if obj.is_store else obj.base_class)
         for c in obj.children:
             print_structure(c, indent+1, offset)
-            offset += c.data_size
+            if not obj.is_union:
+                offset += c.data_size
+        indent += 1
+        if obj.is_union:
+            offset = obj.data_size
+            add(offset, 'tag', 'uint8_t')
+            offset += UNION_TAG_SIZE
         for prop in obj.properties:
-            structure.append(f'{offset:4} {"".ljust((indent+1)*3)} {prop.id}: {prop.ctype}')
-            offset += prop.data_size
+            add(offset, prop.id, prop.ctype)
+            if not obj.is_union:
+                offset += prop.data_size
     for store in db.children:
         print_structure(store, 0, 0)
         structure += ['']
@@ -801,7 +811,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
 
     if obj.is_union:
         body = [
-            'uint8_t tag{0};' if obj.is_union else '',
+            f'{UNION_TAG_TYPE} tag{{0}};' if obj.is_union else '',
             'union __attribute__((packed)) {',
             [f'{child.typename_struct} {child.id}{"{}" if index == 0 else ""};' for index, child in enumerate(obj.children)],
             '};'
