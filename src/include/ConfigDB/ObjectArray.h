@@ -46,7 +46,7 @@ public:
 		return getItemCount();
 	}
 
-	Object addItem()
+	template <typename Item = Object> Item addItem()
 	{
 		if(!this->writeCheck()) {
 			return {};
@@ -55,10 +55,10 @@ public:
 		auto index = array.getCount();
 		auto& itemType = getItemType();
 		array.add(itemType.object->defaultData);
-		return Object(*this, 0, index);
+		return Item(*this, 0, index);
 	}
 
-	Object insertItem(unsigned index)
+	template <typename Item = Object> Item insertItem(unsigned index)
 	{
 		if(!this->writeCheck()) {
 			return {};
@@ -66,7 +66,7 @@ public:
 		auto& itemType = getItemType();
 		auto& array = getArray();
 		array.insert(index, itemType.object->defaultData);
-		return Object(*this, 0, index);
+		return Item(*this, 0, index);
 	}
 
 	const PropertyInfo& getItemType() const
@@ -109,22 +109,12 @@ public:
 
 	ItemType addItem()
 	{
-		if(!this->writeCheck()) {
-			return {};
-		}
-		auto& array = this->getArray();
-		auto index = array.getCount();
-		array.add(ItemType::typeinfo.defaultData);
-		return ItemType(*this, 0, index);
+		return ObjectArray::addItem<ItemType>();
 	}
 
 	ItemType insertItem(unsigned index)
 	{
-		if(!this->writeCheck()) {
-			return {};
-		}
-		this->getArray().insert(index, ItemType::typeinfo.defaultData);
-		return ItemType(*this, 0, index);
+		return ObjectArray::insertItem<ItemType>(index);
 	}
 };
 

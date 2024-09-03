@@ -52,20 +52,23 @@ public:
 	{
 	}
 
-	Object(Store& store, const PropertyInfo& prop, uint16_t dataRef);
+	Object(Object& parent, const PropertyInfo& prop, uint16_t dataRef)
+		: propinfoPtr(&prop), parent(&parent), dataRef(dataRef)
+	{
+	}
 
-	Object(const Store& store, const PropertyInfo& prop, uint16_t dataRef)
-		: Object(const_cast<Store&>(store), prop, dataRef)
+	Object(const Object& parent, const PropertyInfo& prop, uint16_t dataRef)
+		: Object(const_cast<Object&>(parent), prop, dataRef)
 	{
 	}
 
 	Object(Object& parent, unsigned propIndex, uint16_t dataRef = 0)
-		: propinfoPtr(&parent.typeinfo().getObject(propIndex)), parent(&parent), dataRef(dataRef)
+		: Object(parent, parent.typeinfo().getObject(propIndex), dataRef)
 	{
 	}
 
 	Object(const Object& parent, unsigned propIndex, uint16_t dataRef = 0)
-		: Object(const_cast<Object&>(parent), propIndex, dataRef)
+		: Object(parent, parent.typeinfo().getObject(propIndex), dataRef)
 	{
 	}
 

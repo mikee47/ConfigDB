@@ -79,7 +79,7 @@ Re-useable definitions
 
   The code generator produces an **asXXX** method for each type of object which can be stored. The application is responsible for checking which type is present via :cpp:func:`ConfigDB::Union::getTag`; if the wrong method is called, a runtime assertion will be generated.
 
-  The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method for updaters which checks the tag but only changes it if necessary, and returns the appropriate object type.
+  The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object type.
 
   Note that items in **$defs** can also be non-object property types. For these, a type is *not* defined but instead used as a base definition which can be modified. Take a general *Pin* definition, for example::
 

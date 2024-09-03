@@ -24,11 +24,6 @@
 
 namespace ConfigDB
 {
-Object::Object(Store& store, const PropertyInfo& prop, uint16_t dataRef)
-	: propinfoPtr(&prop), parent(&store), dataRef(dataRef)
-{
-}
-
 Object& Object::operator=(const Object& other)
 {
 	propinfoPtr = other.propinfoPtr;

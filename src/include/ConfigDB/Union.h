@@ -33,11 +33,17 @@ public:
 
 	using Object::Object;
 
+	/**
+	 * @brief Get the current tag which identifies the stored type
+	 */
 	Tag getTag() const
 	{
 		return getPropertyData(0)->uint8;
 	}
 
+	/**
+	 * @brief Set the current tag and reset content to object default
+	 */
 	void setTag(Tag tag)
 	{
 		assert(tag < typeinfo().objectCount);
@@ -56,6 +62,39 @@ public:
 	{
 		assert(index == 0);
 		return Object(*this, getTag());
+	}
+
+	/**
+	 * @brief Used by code generator to obtain a read-only reference to the contained object
+	 */
+	template <typename Item> const Item as(Tag tag) const
+	{
+		assert(getTag() == tag);
+		if(getTag() != tag) {
+			return {};
+		}
+		return Item(*parent, typeinfo().getObject(tag), dataRef);
+	}
+
+	/**
+	 * @brief Used by code generator to obtain a writeable reference to the contained object
+	 */
+	template <typename Item> Item as(Tag tag)
+	{
+		assert(getTag() == tag);
+		if(getTag() != tag) {
+			return {};
+		}
+		return Item(*parent, typeinfo().getObject(tag), dataRef);
+	}
+
+	/**
+	 * @brief Used by code generator to set the tag and return a direct reference to the contained object.
+	 */
+	template <typename Item> Item to(Tag tag)
+	{
+		setTag(tag);
+		return Item(*parent, typeinfo().getObject(tag), dataRef);
 	}
 };
 

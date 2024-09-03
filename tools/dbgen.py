@@ -862,10 +862,7 @@ def generate_property_accessors(obj: Object) -> list:
                 '',
                 f'const {child.typename_contained} as{child.name}() const',
                 '{',
-                [
-                    f'assert(getTag() == Tag::{child.name});',
-                    f'return {child.typename_contained}(*this, {index});'
-                ],
+                [f'return Union::as<{child.typename_contained}>({index});'],
                 '}',
                 ) for index, child in enumerate(obj.children))
             ]
@@ -909,20 +906,12 @@ def generate_property_write_accessors(obj: Object) -> list:
                 '',
                 f'{child.typename_updater} as{child.name}()',
                 '{',
-                [
-                    f'assert(getTag() == Tag::{child.name});',
-                    f'return {child.typename_updater}(*this, {index});'
-                ],
+                [f'return Union::as<{child.typename_updater}>({index});'],
                 '}',
                 '',
                 f'{child.typename_updater} to{child.name}()',
                 '{',
-                [
-                    f'if (Union::getTag() != {index}) {{',
-                    [f'Union::setTag({index});'],
-                    '}',
-                    f'return {child.typename_updater}(*this, {index});'
-                ],
+                [f'return Union::to<{child.typename_updater}>({index});'],
                 '}',
                 ) for index, child in enumerate(obj.children))
         ]
@@ -1013,9 +1002,24 @@ def generate_updater(obj: Object) -> list:
     constructors = generate_contained_constructors(obj, True)
 
     if isinstance(obj, ObjectArray):
+        union_array_methods = [
+            [
+                '',
+                f'{item.typename_updater} addItem{item.typename}()',
+                '{',
+                [f'return ObjectArray::addItem<ConfigDB::Union>().to<{item.typename_updater}>({tag});'],
+                '}',
+                '',
+                f'{item.typename_updater} insertItem{item.typename}(unsigned index)',
+                '{',
+                [f'return ObjectArray::insertItem<ConfigDB::Union>(index).to<{item.typename_updater}>({tag});'],
+                '}',
+            ] for tag, item in enumerate(obj.items.children)
+        ] if isinstance(obj.items, Union) else []
         return [
             *declare_templated_class(obj, [obj.items.typename_updater], True),
             constructors,
+            *union_array_methods,
             '};',
         ]
 

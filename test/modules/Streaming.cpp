@@ -3,8 +3,6 @@
  */
 
 #include <ConfigDBTest.h>
-#include <Data/Stream/MemoryDataStream.h>
-#include <ConfigDB/Json/Format.h>
 
 /*
  * Array selector test data is generated using a python script.
@@ -109,23 +107,6 @@ public:
 			mem.moveString(content);
 			REQUIRE_EQ(content, json::root1);
 		}
-	}
-
-	template <typename T> bool importObject(T& object, const String& data)
-	{
-		MemoryDataStream mem;
-		mem << data;
-		auto status = object.importFromStream(ConfigDB::Json::format, mem);
-		return bool(status);
-	}
-
-	template <typename T> String exportObject(T& object)
-	{
-		MemoryDataStream mem;
-		object.exportToStream(ConfigDB::Json::format, mem);
-		String s;
-		mem.moveString(s);
-		return s;
 	}
 
 	void arrays()
