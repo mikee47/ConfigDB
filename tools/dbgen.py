@@ -197,7 +197,7 @@ class Object:
 
     @property
     def typename(self):
-        return self.ref or (make_typename(self.name) if self.name else 'Root')
+        return make_typename(self.ref or self.name or 'Root')
 
     @property
     def typename_contained(self):
@@ -205,7 +205,7 @@ class Object:
 
     @property
     def typename_outer(self):
-        return make_typename(self.name) if self.name else 'Root'
+        return make_typename(self.name or 'Root')
 
     @property
     def typename_updater(self):
@@ -851,7 +851,7 @@ def generate_property_accessors(obj: Object) -> list:
             '',
             [
                 'enum class Tag {',
-                [f'{child.name},' for child in obj.children],
+                [f'{child.typename},' for child in obj.children],
                 '};',
                 '',
                 'Tag getTag() const',
@@ -861,7 +861,7 @@ def generate_property_accessors(obj: Object) -> list:
             ],
             *((
                 '',
-                f'const {child.typename_contained} as{child.name}() const',
+                f'const {child.typename_contained} as{child.typename}() const',
                 '{',
                 [f'return Union::as<{child.typename_contained}>({index});'],
                 '}',
@@ -905,12 +905,12 @@ def generate_property_write_accessors(obj: Object) -> list:
             ],
             *((
                 '',
-                f'{child.typename_updater} as{child.name}()',
+                f'{child.typename_updater} as{child.typename}()',
                 '{',
                 [f'return Union::as<{child.typename_updater}>({index});'],
                 '}',
                 '',
-                f'{child.typename_updater} to{child.name}()',
+                f'{child.typename_updater} to{child.typename}()',
                 '{',
                 [f'return Union::to<{child.typename_updater}>({index});'],
                 '}',
