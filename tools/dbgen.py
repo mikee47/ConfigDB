@@ -559,8 +559,8 @@ def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
 
     forward_decls = [
-        'ContainedRoot;',
-        'RootUpdater;'
+        'ContainedRoot',
+        'RootUpdater'
     ]
     for obj in db.object_defs.values():
         if obj.ref:
@@ -604,7 +604,7 @@ def generate_database(db: Database) -> CodeLines:
                     'PropertyType::Object',
                     strings[store.name],
                     0,
-                    f'{{.object = &{store.typename}::typeinfo}}'
+                    f'{{.object = &{store.typename_contained}::typeinfo}}'
                     ], ',') for store in db.children),
                 '}'
             ],
@@ -616,7 +616,8 @@ def generate_database(db: Database) -> CodeLines:
             lines.append(generate_object(obj))
 
     for store in db.children:
-        lines.append(generate_object(store))
+        if not store.ref:
+            lines.append(generate_object(store))
 
     lines.header += [
         '',
@@ -791,7 +792,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             'nullptr' if obj.is_array else '&defaultData',
             'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)',
             len(objinfo),
-            len(propinfo) + obj.is_union,
+            len(proplist) - len(objinfo),
         ]),
         [
             '{',
@@ -931,7 +932,7 @@ def generate_object(obj: Object) -> CodeLines:
     typeinfo = generate_typeinfo(obj)
     constructors = generate_contained_constructors(obj)
     updater = generate_updater(obj)
-    updater_fwd = [
+    forward_decls = [
         '',
         f'class {obj.typename_updater};'
     ]
@@ -940,7 +941,7 @@ def generate_object(obj: Object) -> CodeLines:
         item_lines = CodeLines([], []) if obj.items.ref else generate_object(obj.items)
         return CodeLines(
             [
-                *updater_fwd,
+                *forward_decls,
                 *item_lines.header,
                 *declare_templated_class(obj, [obj.items.typename_contained]),
                 typeinfo.header,
@@ -953,7 +954,7 @@ def generate_object(obj: Object) -> CodeLines:
     if isinstance(obj, Array):
         return CodeLines(
             [
-                *updater_fwd,
+                *forward_decls,
                 *declare_templated_class(obj, [obj.items.ctype]),
                 typeinfo.header,
                 constructors,
@@ -964,7 +965,7 @@ def generate_object(obj: Object) -> CodeLines:
 
     lines = CodeLines(
         [
-            *updater_fwd,
+            *forward_decls,
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
