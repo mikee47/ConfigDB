@@ -443,7 +443,7 @@ def resolve_ref(fields: dict, db: Database) -> tuple[str, dict]:
     if ref.startswith(prefix):
         ref = ref[len(prefix):]
         resolved_fields = db.definitions.get(ref)
-    if not resolved_fields:
+    if resolved_fields is None:
         raise ValueError('Cannot resolve ' + ref)
     return ref, resolved_fields
 
