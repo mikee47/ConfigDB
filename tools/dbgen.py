@@ -707,7 +707,7 @@ def generate_structure(db: Database) -> list[str]:
             if not obj.is_union:
                 offset += prop.data_size
         if obj.is_union:
-            add(obj.data_size - UNION_TAG_SIZE, 'tag', 'uint8_t')
+            add(offset + obj.data_size - UNION_TAG_SIZE, 'tag', 'uint8_t')
     for store in db.children:
         print_structure(store, 0, 0)
         structure += ['']
