@@ -93,7 +93,7 @@ public:
 		if(getTag() != tag) {
 			return {};
 		}
-		return Item(*parent, typeinfo().getObject(tag), dataRef);
+		return Item(*parent, typeinfo().getObject(tag), dataRef + propinfo().offset);
 	}
 
 	/**
@@ -105,7 +105,7 @@ public:
 		if(getTag() != tag) {
 			return {};
 		}
-		return Item(*parent, typeinfo().getObject(tag), dataRef);
+		return Item(*parent, typeinfo().getObject(tag), dataRef + propinfo().offset);
 	}
 
 	/**
@@ -114,7 +114,7 @@ public:
 	template <typename Item> Item to(Tag tag)
 	{
 		setTag(tag);
-		return Item(*parent, typeinfo().getObject(tag), dataRef);
+		return Item(*parent, typeinfo().getObject(tag), dataRef + propinfo().offset);
 	}
 };
 
