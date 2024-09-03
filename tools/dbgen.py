@@ -230,6 +230,10 @@ class Object:
         return sum(child.data_size for child in self.children) + sum(prop.data_size for prop in self.properties)
 
     @property
+    def has_struct(self):
+        return (self.children or self.properties) and not self.is_array
+
+    @property
     def index(self):
         return self.parent.children.index(self)
 
@@ -360,8 +364,8 @@ class Database(Object):
 class CodeLines:
     '''Code is generated as list, with nested lists indented
     '''
-    header: list[str | list]
-    source: list[str | list]
+    header: list[str | list] = field(default_factory=list)
+    source: list[str | list] = field(default_factory=list)
 
     def append(self, other: 'CodeLines'):
         self.header += [other.header]
@@ -505,7 +509,7 @@ def load_config(filename: str) -> Database:
             obj = Object(parent, key)
             obj.ref = ref
             database.object_defs[obj.typename] = obj
-            parse_properties(obj, fields['properties'])
+            parse_properties(obj, fields.get('properties', {}))
             return obj
 
         if prop_type == 'array':
@@ -729,11 +733,9 @@ def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool 
 def generate_typeinfo(obj: Object) -> CodeLines:
     '''Generate type information'''
 
-    lines = CodeLines([], [])
-
-    lines.header += [
-        'static const ConfigDB::ObjectInfo typeinfo;'
-    ]
+    lines = CodeLines(
+        ['static const ConfigDB::ObjectInfo typeinfo;']
+    )
 
     def getVariantInfo(prop: Property) -> list:
         if prop.ptype == 'string':
@@ -789,8 +791,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         '{',
         *([str(e) + ','] for e in [
             'ObjectType::' + ('Store' if obj.is_root else obj.classname),
-            'nullptr' if obj.is_array else '&defaultData',
-            'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)',
+            '&defaultData' if obj.has_struct else 'nullptr',
+            'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0',
             len(objinfo),
             len(proplist) - len(objinfo),
         ]),
@@ -808,6 +810,9 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 def generate_object_struct(obj: Object) -> CodeLines:
     '''Generate struct definition for this object'''
 
+    if obj.data_size == 0:
+        return CodeLines()
+
     def get_ctype(prop):
         return 'ConfigDB::StringId' if prop.ptype == 'string' else prop.ctype
 
@@ -816,16 +821,18 @@ def generate_object_struct(obj: Object) -> CodeLines:
             return make_comment(prop.default) if prop.default else ''
         return prop.default_str
 
+    children = [child for child in obj.children if child.data_size]
+
     if obj.is_union:
         body = [
             'union __attribute__((packed)) {',
-            [f'{child.typename_struct} {child.id}{"{}" if index == 0 else ""};' for index, child in enumerate(obj.children)],
+            [f'{child.typename_struct} {child.id}{"{}" if index == 0 else ""};' for index, child in enumerate(children)],
             '};',
             f'{UNION_TAG_TYPE} tag{{0}};',
         ]
     else:
         body = [
-            [f'{child.typename_struct} {child.id}{{}};' for child in obj.children],
+            [f'{child.typename_struct} {child.id}{{}};' for child in children] if children else None,
             [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties]
         ]
 
@@ -938,7 +945,7 @@ def generate_object(obj: Object) -> CodeLines:
     ]
 
     if isinstance(obj, ObjectArray):
-        item_lines = CodeLines([], []) if obj.items.ref else generate_object(obj.items)
+        item_lines = CodeLines() if obj.items.ref else generate_object(obj.items)
         return CodeLines(
             [
                 *forward_decls,
@@ -969,8 +976,7 @@ def generate_object(obj: Object) -> CodeLines:
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
-        ],
-        [])
+        ])
 
     # Append child object definitions
     for child in obj.children:

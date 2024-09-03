@@ -173,6 +173,16 @@ public:
 			}
 		}
 
+		TEST_CASE("Union with empty choice")
+		{
+			// e.g. used as placeholder
+			TestConfigUnion::Root::Color3::OuterUpdater color3(db);
+			using Tag = TestConfigUnion::Root::Color3::Tag;
+			REQUIRE_EQ(color3.getTag(), Tag::Last);
+			auto color = color3.toColor();
+			color.toRAW().setWarmWhite(234);
+		}
+
 		TestConfigUnion::Root root(db);
 		String json = exportObject(root);
 		CHECK_EQ(json, union_test_root_json);
