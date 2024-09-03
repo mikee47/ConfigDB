@@ -28,7 +28,7 @@ ArrayData& ArrayBase::getArray()
 	auto& id = getId();
 	if(id == 0) {
 		auto& prop = typeinfo().propinfo[0];
-		if(typeIs(ObjectType::ObjectArray)) {
+		if(typeinfo().type == ObjectType::ObjectArray) {
 			id = store.arrayPool.add(*prop.object);
 		} else {
 			id = store.arrayPool.add(prop);

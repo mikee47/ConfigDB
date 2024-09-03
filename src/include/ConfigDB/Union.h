@@ -58,10 +58,30 @@ public:
 		}
 	}
 
+	unsigned getObjectCount() const
+	{
+		return 1;
+	}
+
 	Object getObject(unsigned index)
 	{
 		assert(index == 0);
 		return Object(*this, getTag());
+	}
+
+	unsigned getPropertyCount() const
+	{
+		return 0;
+	}
+
+	PropertyConst getProperty(unsigned) const
+	{
+		return {};
+	}
+
+	Property getProperty(unsigned)
+	{
+		return {};
 	}
 
 	/**

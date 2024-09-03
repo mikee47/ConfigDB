@@ -116,24 +116,26 @@ const void* Object::getDataPtr() const
 
 unsigned Object::getObjectCount() const
 {
-	if(typeIs(ObjectType::ObjectArray)) {
+	switch(typeinfo().type) {
+	case ObjectType::ObjectArray:
 		return static_cast<const ObjectArray*>(this)->getObjectCount();
+	case ObjectType::Union:
+		return static_cast<const Union*>(this)->getObjectCount();
+	default:
+		return typeinfo().objectCount;
 	}
-	if(typeIs(ObjectType::Union)) {
-		return 1;
-	}
-	return typeinfo().objectCount;
 }
 
 Object Object::getObject(unsigned index)
 {
-	if(typeIs(ObjectType::ObjectArray)) {
+	switch(typeinfo().type) {
+	case ObjectType::ObjectArray:
 		return static_cast<ObjectArray*>(this)->getObject(index);
-	}
-	if(typeIs(ObjectType::Union)) {
+	case ObjectType::Union:
 		return static_cast<Union*>(this)->getObject(index);
+	default:
+		return Object(*this, index);
 	}
-	return Object(*this, index);
 }
 
 Object Object::findObject(const char* name, size_t length)
@@ -153,11 +155,15 @@ Object Object::findObject(const char* name, size_t length)
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	if(isArray() || typeIs(ObjectType::Union)) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+	case ObjectType::Union:
 		return {};
+	default:
+		int index = typeinfo().findProperty(name, length);
+		return index >= 0 ? getProperty(index) : Property();
 	}
-	int index = typeinfo().findProperty(name, length);
-	return index >= 0 ? getProperty(index) : Property();
 }
 
 void Object::queueUpdate(UpdateCallback callback)
@@ -259,41 +265,51 @@ void Object::setPropertyValue(unsigned index, const String& value)
 
 unsigned Object::getPropertyCount() const
 {
-	if(typeIs(ObjectType::Array)) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
 		return static_cast<const Array*>(this)->getPropertyCount();
+	case ObjectType::Union:
+		return static_cast<const Union*>(this)->getPropertyCount();
+	default:
+		return typeinfo().propertyCount;
 	}
-	if(typeIs(ObjectType::Union)) {
-		return 0;
-	}
-	return typeinfo().propertyCount;
 }
 
 Property Object::getProperty(unsigned index)
 {
-	if(typeIs(ObjectType::Array)) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
 		return static_cast<Array*>(this)->getProperty(index);
+	case ObjectType::Union:
+		return static_cast<Union*>(this)->getProperty(index);
+	default:
+		assert(index < typeinfo().propertyCount);
+		if(index >= typeinfo().propertyCount) {
+			return {};
+		}
+		auto& prop = typeinfo().getProperty(index);
+		auto propData = getPropertyData(index);
+		auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
+		return {getStore(), prop, propData, defaultData};
 	}
-
-	if(index >= typeinfo().propertyCount) {
-		return {};
-	}
-	auto& prop = typeinfo().getProperty(index);
-	auto propData = getPropertyData(index);
-	auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
-	return {getStore(), prop, propData, defaultData};
 }
 
 PropertyConst Object::getProperty(unsigned index) const
 {
-	if(typeIs(ObjectType::Array)) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
 		return static_cast<const Array*>(this)->getProperty(index);
+	case ObjectType::Union:
+		return static_cast<const Union*>(this)->getProperty(index);
+	default:
+		assert(index < typeinfo().propertyCount);
+		if(index >= typeinfo().propertyCount) {
+			return {};
+		}
+		auto& prop = typeinfo().getProperty(index);
+		auto propData = getPropertyData(index);
+		return {getStore(), prop, propData, nullptr};
 	}
-	if(index >= typeinfo().propertyCount) {
-		return {};
-	}
-	auto& prop = typeinfo().getProperty(index);
-	auto propData = getPropertyData(index);
-	return {getStore(), prop, propData, nullptr};
 }
 
 size_t Object::printTo(Print& p) const

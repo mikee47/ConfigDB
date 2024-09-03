@@ -68,7 +68,7 @@ public:
 	}
 
 	Object(const Object& parent, unsigned propIndex, uint16_t dataRef = 0)
-		: Object(parent, parent.typeinfo().getObject(propIndex), dataRef)
+		: Object(const_cast<Object&>(parent), propIndex, dataRef)
 	{
 	}
 
