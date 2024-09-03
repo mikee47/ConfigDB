@@ -1,5 +1,5 @@
 /**
- * ConfigDB/ArrayBase.h
+ * ConfigDB/Union.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -24,7 +24,7 @@
 namespace ConfigDB
 {
 /**
- * @brief Base class to provide array of properties
+ * @brief Variant object, can contain one of a selection of objects types
  */
 class Union : public Object
 {

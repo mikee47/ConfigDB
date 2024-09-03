@@ -697,14 +697,12 @@ def generate_structure(db: Database) -> list[str]:
             if not obj.is_union:
                 offset += c.data_size
         indent += 1
-        if obj.is_union:
-            offset = obj.data_size
-            add(offset, 'tag', 'uint8_t')
-            offset += UNION_TAG_SIZE
         for prop in obj.properties:
             add(offset, prop.id, prop.ctype)
             if not obj.is_union:
                 offset += prop.data_size
+        if obj.is_union:
+            add(obj.data_size - UNION_TAG_SIZE, 'tag', 'uint8_t')
     for store in db.children:
         print_structure(store, 0, 0)
         structure += ['']
@@ -750,7 +748,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
 
     proplist = []
-    offset = UNION_TAG_SIZE if obj.is_union else 0
+    offset = 0
 
     objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
     for child in objinfo:
@@ -767,7 +765,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         proplist += [[
             'PropertyType::UInt8',
             strings['tag'],
-            0,
+            obj.data_size - UNION_TAG_SIZE,
         ]]
 
     propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
@@ -819,10 +817,10 @@ def generate_object_struct(obj: Object) -> CodeLines:
 
     if obj.is_union:
         body = [
-            f'{UNION_TAG_TYPE} tag{{0}};' if obj.is_union else '',
             'union __attribute__((packed)) {',
             [f'{child.typename_struct} {child.id}{"{}" if index == 0 else ""};' for index, child in enumerate(obj.children)],
-            '};'
+            '};',
+            f'{UNION_TAG_TYPE} tag{{0}};',
         ]
     else:
         body = [
