@@ -6,4 +6,5 @@
 	XX(Streaming)                                                                                                      \
 	XX(Union)                                                                                                          \
 	XX(Number)                                                                                                         \
+	XX(Enum)                                                                                                           \
 	XX(Performance)

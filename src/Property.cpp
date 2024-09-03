@@ -38,10 +38,9 @@ String PropertyConst::getJsonValue() const
 	if(!value) {
 		return "null";
 	}
-	if(propinfo->type != PropertyType::String) {
-		return value;
+	if(propinfo->isStringType()) {
+		::Format::json.quote(value);
 	}
-	::Format::json.quote(value);
 	return value;
 }
 

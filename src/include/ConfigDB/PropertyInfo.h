@@ -22,6 +22,8 @@
 #include <WString.h>
 #include <Data/Range.h>
 #include "Number.h"
+#include <FlashString/Array.hpp>
+#include <FlashString/Vector.hpp>
 
 /**
  * @brief Property types with storage size
@@ -32,6 +34,7 @@
 	XX(Int16, 2)                                                                                                       \
 	XX(Int32, 4)                                                                                                       \
 	XX(Int64, 8)                                                                                                       \
+	XX(Enum, 1)                                                                                                        \
 	XX(UInt8, 1)                                                                                                       \
 	XX(UInt16, 2)                                                                                                      \
 	XX(UInt32, 4)                                                                                                      \
@@ -56,6 +59,29 @@ enum class PropertyType : uint32_t {
 using StringId = uint16_t;
 
 struct ObjectInfo;
+
+struct EnumInfo {
+	PropertyType type;		 ///< The actual store type for this enum (String, etc.)
+	FSTR::ObjectBase values; //< Possible values
+
+	String getString(uint8_t index) const;
+	int find(const char* value, unsigned length) const;
+
+	template <typename T> const FSTR::Array<T>& getArray() const
+	{
+		return values.as<FSTR::Array<T>>();
+	}
+
+	const FSTR::Vector<FSTR::String>& getStrings() const
+	{
+		return values.as<FSTR::Vector<FSTR::String>>();
+	}
+
+	template <typename T> T getValue(uint8_t index) const
+	{
+		return getArray<T>()[index];
+	}
+};
 
 /**
  * @brief Property metadata
@@ -86,6 +112,7 @@ struct PropertyInfo {
 	union Variant {
 		const FlashString* defaultString;
 		const ObjectInfo* object;
+		const EnumInfo* enuminfo;
 		RangeTemplate<int32_t> int32;
 		RangeTemplate<uint32_t> uint32;
 		RangeTemplate<const_number_t, number_t> number;
@@ -103,6 +130,17 @@ struct PropertyInfo {
 	explicit operator bool() const
 	{
 		return this != &empty;
+	}
+
+	bool isStringType() const
+	{
+		if(type == PropertyType::String) {
+			return true;
+		}
+		if(type == PropertyType::Enum && variant.enuminfo->type == PropertyType::String) {
+			return true;
+		}
+		return false;
 	}
 
 	/**

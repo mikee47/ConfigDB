@@ -143,6 +143,9 @@ class Property:
     ctype_override: str
     property_type: str
     default: str | int
+    enum: list
+    enum_type: str = None
+    enum_ctype: str = None
     intrange: IntRange = None
     numrange: Range = None
 
@@ -174,6 +177,30 @@ class Property:
 
         if not self.ctype:
             error(f'Invalid property type "{self.ptype}"')
+
+        self.enum = fields.get('enum')
+        if self.enum:
+            if 'minimum' in fields or 'maximum' in fields:
+                error('enum and minimum/maximum fields are mutually-exclusive')
+            self.enum_type = self.property_type
+            self.enum_ctype = self.ctype
+            if self.ptype == 'string':
+                pass
+            elif self.ptype == 'integer':
+                minval, maxval = min(self.enum), max(self.enum)
+                self.intrange = r = IntRange.deduce(minval, maxval)
+                r.check(self.enum)
+                self.enum_type = r.property_type
+                self.enum_ctype = r.ctype
+            elif self.ptype == 'number':
+                self.numrange = r = Range(NUMBER_MIN, NUMBER_MAX)
+                r.check(self.enum)
+                self.enum_ctype = 'const_number_t'
+            else:
+                error(f'Unsupported enum type "{self.ptype}"')
+            self.ptype = 'integer'
+            self.property_type = 'Enum'
+            self.ctype = 'uint8_t'
 
     @property
     def ctype_ret(self):
@@ -774,6 +801,48 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     )
 
     def getVariantInfo(prop: Property) -> list:
+        if prop.enum:
+            values = prop.enum
+            obj_type = f'{obj.namespace}::{obj.typename_contained}'
+            item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
+            lines.header += [
+                '',
+                'struct ItemType {',
+                [
+                    'ConfigDB::EnumInfo enuminfo;',
+                    f'{item_type} data[{len(values)}];',
+                    '',
+                    *([
+                        'const FSTR::Vector<FSTR::String>& values() const',
+                        '{',
+                        ['return enuminfo.getStrings();'],
+                        '}',
+                    ] if prop.enum_type == "String" else
+                    [
+                        f'const FSTR::Array<{prop.enum_ctype}>& values() const',
+                        '{',
+                        [f'return enuminfo.getArray<{prop.enum_ctype}>();'],
+                        '}',
+                    ])
+                ],
+                '};',
+                '',
+                'static const ItemType itemtype;',
+                '',
+            ]
+            lines.source += [
+                '',
+                f'constexpr const {obj_type}::ItemType {obj_type}::itemtype PROGMEM = {{',
+                [
+                    f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
+                    '{',
+                    [f'&{strings[x]},' for x in values] if prop.enum_type == 'String' else
+                    [f'{x},' for x in values],
+                    '}'
+                ],
+                '};'
+            ]
+            return '.enuminfo = &itemtype.enuminfo'
         if prop.ptype == 'string':
             fstr = strings[str(prop.default or '')]
             return f'.defaultString = &{fstr}'
