@@ -89,29 +89,34 @@ void* Object::getDataPtr()
 	if(!writeCheck()) {
 		return nullptr;
 	}
-	if(!parent) {
-		assert(typeIs(ObjectType::Store));
-		return static_cast<Store*>(this)->getRootData();
+	unsigned offset{0};
+	auto obj = this;
+	while(obj->parent) {
+		if(obj->parent->isArray()) {
+			auto array = static_cast<ArrayBase*>(obj->parent);
+			return static_cast<uint8_t*>(array->getItem(obj->dataRef)) + offset;
+		}
+		offset += obj->dataRef + obj->propinfo().offset;
+		obj = obj->parent;
 	}
-	if(parent->isArray()) {
-		auto array = static_cast<ArrayBase*>(parent);
-		return static_cast<uint8_t*>(array->getItem(dataRef));
-	}
-	return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef + propinfo().offset;
+	assert(obj->typeIs(ObjectType::Store));
+	return static_cast<Store*>(obj)->getRootData() + offset;
 }
 
 const void* Object::getDataPtr() const
 {
-	if(!parent) {
-		assert(typeIs(ObjectType::Store));
-		return static_cast<const Store*>(this)->getRootData();
+	unsigned offset{0};
+	auto obj = this;
+	while(obj->parent) {
+		if(obj->parent->isArray()) {
+			auto array = static_cast<const ArrayBase*>(obj->parent);
+			return static_cast<const uint8_t*>(array->getItem(obj->dataRef)) + offset;
+		}
+		offset += obj->dataRef + obj->propinfo().offset;
+		obj = obj->parent;
 	}
-	if(parent->isArray()) {
-		auto array = static_cast<const ArrayBase*>(parent);
-		return array->getItem(dataRef);
-	}
-	auto constParent = static_cast<const Object*>(parent);
-	return static_cast<const uint8_t*>(constParent->getDataPtr()) + dataRef + propinfo().offset;
+	assert(obj->typeIs(ObjectType::Store));
+	return static_cast<const Store*>(obj)->getRootData() + offset;
 }
 
 unsigned Object::getObjectCount() const
