@@ -83,15 +83,28 @@ class StringTable:
 strings = StringTable()
 
 @dataclass
-class IntRange:
+class Range:
+    minimum: int | float
+    maximum: int | float
+
+    def check(self, value: int | float | list):
+        if isinstance(value, list):
+            for v in value:
+                self.check(v)
+            return
+        if self.minimum <= value <= self.maximum:
+            return
+        raise ValueError(f'Value {value} outside range {self.minimum} <= value <= {self.maximum}')
+
+
+@dataclass
+class IntRange(Range):
     is_signed: bool
     bits: int
-    minimum: int
-    maximum: int
 
     @staticmethod
     def deduce(minval: int, maxval: int) -> IntRange:
-        r = IntRange(minval < 0, 8, minval, maxval)
+        r = IntRange(minval, maxval, minval < 0, 8)
         while minval < r.typemin or maxval > r.typemax:
             r.bits *= 2
         return r
@@ -131,7 +144,7 @@ class Property:
     property_type: str
     default: str | int
     intrange: IntRange = None
-    numrange: tuple[float, float] = None
+    numrange: Range = None
 
     def __init__(self, obj: Object, key: str, fields: dict):
         def error(msg: str):
@@ -146,21 +159,18 @@ class Property:
         self.property_type = self.ptype.capitalize()
 
         if self.ptype == 'integer':
-            int32 = IntRange(True, 32, 0, 0)
+            int32 = IntRange(0, 0, True, 32)
             minval = fields.get('minimum', int32.typemin)
             maxval = fields.get('maximum', int32.typemax)
             self.intrange = r = IntRange.deduce(minval, maxval)
-            if not (r.minimum <= (self.default or 0) <= r.maximum):
-                error(f'Bad default {self.default}: {r.minimum} <= value <= {r.maximum}')
+            r.check(self.default or 0)
             self.ctype = r.ctype
             self.property_type = r.property_type
         elif self.ptype == 'number':
             minval = fields.get('minimum', NUMBER_MIN)
             maxval = fields.get('maximum', NUMBER_MAX)
-            if not (minval <= (self.default or 0) <= maxval):
-                error(f'Bad default {self.default}: {minval} <= value <= {maxval}')
-            self.numrange = minval, maxval
-            self.ctype = 'float'
+            self.numrange = r = Range(minval, maxval)
+            r.check(self.default or 0)
 
         if not self.ctype:
             error(f'Invalid property type "{self.ptype}"')
@@ -756,8 +766,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             fstr = strings[str(prop.default or '')]
             return [f'{{.defaultString = &{fstr}}}']
         if prop.ptype == 'number':
-            minimum, maximum = prop.numrange
-            return [f'.number = {{{minimum}, {maximum}}}']
+            r = prop.numrange
+            return [f'.number = {{{r.minimum}, {r.maximum}}}']
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:
