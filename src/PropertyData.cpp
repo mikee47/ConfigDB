@@ -99,7 +99,6 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		number = prop.number.clip(src.number);
 		break;
 	case PropertyType::String:
-		assert(false);
 		string = src.string;
 		break;
 	case PropertyType::Object:

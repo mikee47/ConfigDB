@@ -68,6 +68,26 @@ protected:
 		return ArrayBase::getStringId(getItemType(), value);
 	}
 
+	void addItem(const void* value)
+	{
+		PropertyData dst{};
+		dst.setValue(getItemType(), *static_cast<const PropertyData*>(value));
+		this->getArray().add(&dst);
+	}
+
+	void insertItem(unsigned index, const void* value)
+	{
+		PropertyData dst{};
+		dst.setValue(getItemType(), *static_cast<const PropertyData*>(value));
+		this->getArray().insert(index, &dst);
+	}
+
+	void setItem(unsigned index, const void* value)
+	{
+		auto dst = static_cast<PropertyData*>(ArrayBase::getItem(index));
+		dst->setValue(getItemType(), *static_cast<const PropertyData*>(value));
+	}
+
 private:
 	Property makeProperty(void* data)
 	{
@@ -130,17 +150,17 @@ public:
 
 	void setItem(unsigned index, ItemType value)
 	{
-		*static_cast<ItemType*>(ArrayBase::getItem(index)) = value;
+		Array::setItem(index, &value);
 	}
 
 	void addItem(ItemType value)
 	{
-		this->getArray().add(&value);
+		Array::addItem(&value);
 	}
 
 	void insertItem(unsigned index, ItemType value)
 	{
-		this->getArray().insert(index, &value);
+		Array::insertItem(index, &value);
 	}
 
 	ItemRef operator[](unsigned index)
@@ -180,19 +200,20 @@ public:
 
 	void setItem(unsigned index, const ItemType& value)
 	{
-		*static_cast<StringId*>(ArrayBase::getItem(index)) = this->getStringId(value);
+		auto stringId = this->getStringId(value);
+		Array::setItem(index, &stringId);
 	}
 
 	void addItem(const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
-		this->getArray().add(&stringId);
+		Array::addItem(&stringId);
 	}
 
 	void insertItem(unsigned index, const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
-		this->getArray().insert(index, &stringId);
+		Array::insertItem(index, &stringId);
 	}
 };
 
