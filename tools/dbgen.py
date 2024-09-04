@@ -29,7 +29,7 @@ NUMBER_MIN = -4294967040.0
 NUMBER_MAX = 4294967040.0
 
 CPP_TYPESIZES = {
-	'bool': 1,
+    'bool': 1,
     'int8_t': 1,
     'int16_t': 2,
     'int32_t': 4,
@@ -89,6 +89,13 @@ class IntRange:
     minimum: int
     maximum: int
 
+    @staticmethod
+    def deduce(minval: int, maxval: int) -> IntRange:
+        r = IntRange(minval < 0, 8, minval, maxval)
+        while minval < r.typemin or maxval > r.typemax:
+            r.bits *= 2
+        return r
+
     @property
     def typemin(self):
         return -(2 ** (self.bits - 1)) if self.is_signed else 0
@@ -100,6 +107,14 @@ class IntRange:
             bits -= 1
         return (2 ** bits) - 1
 
+    @property
+    def ctype(self):
+        return f'int{self.bits}_t' if self.is_signed else f'uint{self.bits}_t'
+
+    @property
+    def property_type(self):
+        return f'Int{self.bits}' if self.is_signed else f'UInt{self.bits}'
+
 
 def get_ptype(fields: dict):
     '''Identify a pseudo-type 'union' which makes script a bit clearer'''
@@ -109,59 +124,51 @@ def get_ptype(fields: dict):
 @dataclass
 class Property:
     name: str
-    fields: dict
-    ref: dict | None = None
+    ref: dict
+    ptype: str
+    ctype: str
+    ctype_override: str
+    property_type: str
+    default: str | int
+    intrange: IntRange = None
+    numrange: tuple[float, float] = None
 
-    def validate(self):
+    def __init__(self, obj: Object, key: str, fields: dict):
+        def error(msg: str):
+            raise ValueError(f'"{obj.path}": {msg} for "{self.name}"')
+
+        self.name = key
+        self.ptype = get_ptype(fields)
+        self.ref = fields.get('ref')
+        self.ctype_override = fields.get('ctype')
+        self.default = fields.get('default')
+        self.ctype = CPP_TYPENAMES[self.ptype]
+        self.property_type = self.ptype.capitalize()
+
         if self.ptype == 'integer':
-            r = self.get_intrange()
-            minimum, maximum = r.minimum, r.maximum
+            int32 = IntRange(True, 32, 0, 0)
+            minval = fields.get('minimum', int32.typemin)
+            maxval = fields.get('maximum', int32.typemax)
+            self.intrange = r = IntRange.deduce(minval, maxval)
+            if not (r.minimum <= (self.default or 0) <= r.maximum):
+                error(f'Bad default {self.default}: {r.minimum} <= value <= {r.maximum}')
+            self.ctype = r.ctype
+            self.property_type = r.property_type
         elif self.ptype == 'number':
-            minimum, maximum = self.get_numrange()
-        else:
-            return
-        if minimum <= (self.default or 0) <= maximum:
-            return
-        raise ValueError(f'{self.name} bad default {self.default}: {minimum} <= value <= {maximum}')
+            minval = fields.get('minimum', NUMBER_MIN)
+            maxval = fields.get('maximum', NUMBER_MAX)
+            if not (minval <= (self.default or 0) <= maxval):
+                error(f'Bad default {self.default}: {minval} <= value <= {maxval}')
+            self.numrange = minval, maxval
+            self.ctype = 'float'
 
-    @property
-    def ptype(self):
-        return get_ptype(self.fields)
-
-    def get_intrange(self) -> IntRange | None:
-        assert self.ptype == 'integer'
-        int32 = IntRange(True, 32, 0, 0)
-        minval = self.fields.get('minimum', int32.typemin)
-        maxval = self.fields.get('maximum', int32.typemax)
-        r = IntRange(minval < 0, 8, minval, maxval)
-        while minval < r.typemin or maxval > r.typemax:
-            r.bits *= 2
-        return r
-
-    def get_numrange(self) -> tuple[float, float]:
-        assert self.ptype == 'number'
-        minval = self.fields.get('minimum', NUMBER_MIN)
-        maxval = self.fields.get('maximum', NUMBER_MAX)
-        return minval, maxval
-
-    @property
-    def ctype(self):
-        if self.ptype == 'integer':
-            r = self.get_intrange()
-            return f'int{r.bits}_t' if r.is_signed else f'uint{r.bits}_t'
-        return CPP_TYPENAMES[self.ptype]
+        if not self.ctype:
+            error(f'Invalid property type "{self.ptype}"')
 
     @property
     def ctype_ret(self):
         '''Type to use for accessor return value'''
-        return self.fields.get('ctype', self.ctype)
-
-    @property
-    def property_type(self):
-        if self.ptype == 'integer':
-            r = self.get_intrange()
-            return f'Int{r.bits}' if r.is_signed else f'UInt{r.bits}'
-        return self.ptype.capitalize()
+        return self.ctype_override or self.ctype
 
     @property
     def propdata_id(self):
@@ -179,10 +186,6 @@ class Property:
     @property
     def typename(self):
         return make_typename(self.name)
-
-    @property
-    def default(self):
-        return self.fields.get('default')
 
     @property
     def default_str(self):
@@ -463,23 +466,24 @@ def resolve_ref(fields: dict, db: Database) -> tuple[str, dict]:
     return ref, resolved_fields
 
 
-def resolve_prop_ref(prop: Property, db: Database) -> dict:
-    '''If property contains a reference, deal with it'''
-    prop.ref, fields = resolve_ref(prop.fields, db)
-    if prop.ref is None:
-        return prop.fields
+def resolve_prop_ref(fields: dict, db: Database) -> None:
+    '''Resolve reference and update fields'''
+    ref, resolved_fields = resolve_ref(fields, db)
+    if ref is None:
+        return
+
+    fields['ref'] = ref
 
     # Object definitions are used as-is
-    if get_ptype(fields) in ['object', 'union']:
-        prop.fields = fields
-        return fields
+    if get_ptype(resolved_fields) in ['object', 'union']:
+        fields.update(resolved_fields)
+        return
 
     # For simple properties the definition is a template,
     # so copy over any non-existent values
-    for key, value in fields.items():
-        if key not in prop.fields:
-            prop.fields[key] = value;
-    return fields
+    for key, value in resolved_fields.items():
+        if key not in fields:
+            fields[key] = value;
 
 
 def load_config(filename: str) -> Database:
@@ -492,27 +496,22 @@ def load_config(filename: str) -> Database:
     database.children.append(root)
 
     def parse_properties(parent: Object, properties: dict):
-        for key, value in properties.items():
-            # Filter out support property types
-            prop = Property(key, value)
-            resolve_prop_ref(prop, database)
-            if not prop.ctype:
-                print(f'*** "{parent.path}": {prop.ptype} type not yet implemented.')
-                continue
-            prop.validate()
+        for key, fields in properties.items():
+            resolve_prop_ref(fields, database)
+            prop = Property(parent, key, fields)
             if prop.ctype != '-': # object or array
                 parent.properties.append(prop)
                 continue
 
             # Objects with 'store' annoation are managed by database, otherwise they live in root object
-            if 'store' in value:
+            if 'store' in fields:
                 if parent is not root:
                     raise ValueError(f'{key} cannot have "store", not a root object')
                 obj = database
             else:
                 obj = parent
 
-            child = parse_object(obj, key, value)
+            child = parse_object(obj, key, fields)
             if child:
                 obj.children.append(child)
 
@@ -757,11 +756,13 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             fstr = strings[str(prop.default or '')]
             return [f'{{.defaultString = &{fstr}}}']
         if prop.ptype == 'number':
-            minimum, maximum = prop.get_numrange()
+            minimum, maximum = prop.numrange
             return [f'.number = {{{minimum}, {maximum}}}']
         if prop.ptype == 'integer':
-            r = prop.get_intrange()
+            r = prop.intrange
             if r.bits > 32:
+                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
+                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
                 tag = 'int64' if r.is_signed else 'uint64'
                 return [f'.{tag} = {{&{prop.name}_minimum, &{prop.name}_maximum}}']
             tag = 'int32' if r.is_signed else 'uint32'
@@ -791,11 +792,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 
     propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     for prop in propinfo:
-        if prop.ptype == 'integer':
-            r = prop.get_intrange()
-            if r and r.bits > 32:
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
         proplist += [[
             f'PropertyType::{prop.property_type}',
             'fstr_empty' if obj.is_array else strings[prop.name],
@@ -915,9 +911,8 @@ def generate_property_write_accessors(obj: Object) -> list:
         return '&value'
 
     def get_ctype(prop):
-        ctype = prop.fields.get('ctype')
-        if ctype:
-            return f'const {ctype}&'
+        if prop.ctype_override:
+            return f'const {prop.ctype_override}&'
         return 'const String&' if prop.ptype == 'string' else prop.ctype
 
     if obj.is_union:
