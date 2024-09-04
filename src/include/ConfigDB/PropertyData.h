@@ -55,10 +55,15 @@ union __attribute__((packed)) PropertyData {
 	ArrayId array;
 	StringId string;
 
+	String getString(const PropertyInfo& info) const;
+
 	/**
 	 * @brief Range-check raw binary value. Do not use with Strings.
 	 */
 	void setValue(const PropertyInfo& prop, const PropertyData& src);
+
+	bool setValue(PropertyType type, const char* value, unsigned valueLength);
+	bool setValue(const PropertyInfo& prop, const char* value, unsigned valueLength);
 
 	static PropertyData* fromStruct(const PropertyInfo& prop, void* data)
 	{

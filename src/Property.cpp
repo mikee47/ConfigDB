@@ -21,15 +21,6 @@
 #include "include/ConfigDB/Store.h"
 #include <Data/Format/Json.h>
 
-namespace
-{
-template <typename T> T getPtrValue(const T* value)
-{
-	return value ? *value : 0;
-}
-
-} // namespace
-
 namespace ConfigDB
 {
 String PropertyConst::getValue() const

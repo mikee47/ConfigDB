@@ -44,26 +44,7 @@ String Store::getFilePath() const
 String Store::getValueString(const PropertyInfo& info, const void* data) const
 {
 	auto& propData = *static_cast<const PropertyData*>(data);
-	switch(info.type) {
-	case PropertyType::Boolean:
-		return propData.boolean ? "true" : "false";
-	case PropertyType::Int8:
-		return String(propData.int8);
-	case PropertyType::Int16:
-		return String(propData.int16);
-	case PropertyType::Int32:
-		return String(propData.int32);
-	case PropertyType::Int64:
-		return String(propData.int64);
-	case PropertyType::UInt8:
-		return String(propData.uint8);
-	case PropertyType::UInt16:
-		return String(propData.uint16);
-	case PropertyType::UInt32:
-		return String(propData.uint32);
-	case PropertyType::UInt64:
-		return String(propData.uint64);
-	case PropertyType::String:
+	if(info.type == PropertyType::String) {
 		if(propData.string) {
 			return String(stringPool[propData.string]);
 		}
@@ -71,11 +52,9 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 			return *info.defaultString;
 		}
 		return nullptr;
-	case PropertyType::Object:
-		assert(false);
-		return nullptr;
 	}
-	return nullptr;
+
+	return propData.getString(info);
 }
 
 bool Store::parseString(const PropertyInfo& prop, PropertyData& dst, const PropertyData* defaultData, const char* value,
@@ -101,35 +80,7 @@ bool Store::parseString(const PropertyInfo& prop, PropertyData& dst, const Prope
 		return true;
 	}
 
-	PropertyData src{};
-
-	switch(prop.type) {
-	case PropertyType::Boolean:
-		dst.boolean = (valueLength == 4) && memicmp(value, "true", 4) == 0;
-		return true;
-	case PropertyType::Int8:
-	case PropertyType::Int16:
-	case PropertyType::Int32:
-		src.int32 = strtol(value, nullptr, 0);
-		break;
-	case PropertyType::Int64:
-		src.int64 = strtoll(value, nullptr, 0);
-		break;
-	case PropertyType::UInt8:
-	case PropertyType::UInt16:
-	case PropertyType::UInt32:
-		src.uint32 = strtoul(value, nullptr, 0);
-		break;
-	case PropertyType::UInt64:
-		src.uint64 = strtoull(value, nullptr, 0);
-		break;
-	case PropertyType::String:
-	case PropertyType::Object:
-		break;
-	}
-
-	dst.setValue(prop, src);
-	return true;
+	return dst.setValue(prop, value, valueLength);
 }
 
 bool Store::writeCheck() const
