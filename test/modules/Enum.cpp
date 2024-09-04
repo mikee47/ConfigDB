@@ -17,10 +17,12 @@ public:
 		TestConfigEnum db(F("out/test-enum"));
 		db.openStoreForUpdate(0)->clear();
 
-		auto& colorType = TestConfigEnum::Root::Colors::itemtype;
-		auto& quotientType = TestConfigEnum::Root::Quotients::itemtype;
-		auto& smallMapType = TestConfigEnum::Root::SmallMap::itemtype;
-		auto& numberMapType = TestConfigEnum::Root::NumberMap::itemtype;
+		using Root = TestConfigEnum::Root;
+
+		auto& colorType = Root::Colors::itemtype;
+		auto& quotientType = Root::Quotients::itemtype;
+		auto& smallMapType = Root::SmallMap::itemtype;
+		auto& numberMapType = Root::NumberMap::itemtype;
 
 		Serial << "colors[" << colorType.values().length() << "]: " << colorType.values() << endl;
 		Serial << "quotients[" << quotientType.values().length() << "]: " << quotientType.values() << endl;
@@ -29,20 +31,24 @@ public:
 
 		TestConfigEnum::Root root(db);
 		if(auto update = root.update()) {
-			update.colors.addItem(TestConfigEnum::Root::Colors::Item::blue);
+			update.colors.addItem(Root::Colors::Item::blue);
 			for(unsigned i = 0; i < 10; ++i) {
-				update.colors.addItem(os_random() % colorType.values().length());
+				update.colors.addItem(Root::ColorsItem(os_random() % colorType.values().length()));
 			}
 			for(unsigned i = 0; i < 20; ++i) {
-				update.quotients.addItem(os_random() % quotientType.values().length());
+				update.quotients.addItem(Root::QuotientsItem(os_random() % quotientType.values().length()));
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.smallMap.addItem(os_random() % smallMapType.values().length());
+				update.smallMap.addItem(Root::SmallMapItem(os_random() % smallMapType.values().length()));
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.numberMap.addItem(os_random() % numberMapType.values().length());
+				update.numberMap.addItem(Root::NumberMapItem(os_random() % numberMapType.values().length()));
 			}
 		}
+		for(unsigned i = 0; i < 10; ++i) {
+			Serial << i << ": " << unsigned(root.numberMap[i]) << " " << String(numberMapType.values()[i], 8) << endl;
+		}
+
 		Serial << "root: " << root << endl;
 	}
 };

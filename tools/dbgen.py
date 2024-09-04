@@ -206,6 +206,7 @@ class Property:
             self.ptype = 'integer'
             self.property_type = 'Enum'
             self.ctype = 'uint8_t'
+            self.ctype_override = f'{obj.typename}Item'
 
     @property
     def ctype_ret(self):
@@ -810,8 +811,9 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             values = prop.enum
             obj_type = f'{obj.namespace}::{obj.typename_contained}'
             item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
-            tag_prefix = '' if prop.enum_type == 'String' else  'N'
             lines.header += [
+                '',
+                f'using Item = {prop.ctype_override};',
                 '',
                 'struct ItemType {',
                 [
@@ -834,10 +836,6 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 '};',
                 '',
                 'static const ItemType itemtype;',
-                '',
-                'enum class Item {',
-                [f'{tag_prefix}{make_identifier(str(x))},' for x in values],
-                '};'
             ]
             lines.source += [
                 '',
@@ -1073,10 +1071,22 @@ def generate_object(obj: Object) -> CodeLines:
             item_lines.source + typeinfo.source)
 
     if isinstance(obj, Array):
+        if obj.items.enum:
+            prop = obj.items
+            tag_prefix = '' if prop.enum_type == 'String' else  'N'
+            enum_item = [
+                '',
+                f'enum class {prop.ctype_override}: uint8_t {{',
+                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+                '};'
+            ]
+        else:
+            enum_item = []
         return CodeLines(
             [
                 *forward_decls,
-                *declare_templated_class(obj, [obj.items.ctype]),
+                *enum_item,
+                *declare_templated_class(obj, [obj.items.ctype_ret]),
                 typeinfo.header,
                 constructors,
                 '};',
@@ -1146,7 +1156,7 @@ def generate_updater(obj: Object) -> list:
 
     if isinstance(obj, Array):
         return [
-            *declare_templated_class(obj, [obj.items.ctype], True),
+            *declare_templated_class(obj, [obj.items.ctype_ret], True),
             constructors,
             '};',
         ]
