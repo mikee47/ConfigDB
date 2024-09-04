@@ -33,7 +33,7 @@ public:
 
 	Object getObject(unsigned index)
 	{
-		return Object(getItemType(), *this, index);
+		return Object(*this, 0, index);
 	}
 
 	Object getItem(unsigned index)
@@ -46,31 +46,32 @@ public:
 		return getItemCount();
 	}
 
-	Object addItem()
+	template <typename Item = Object> Item addItem()
 	{
-		auto& itemType = getItemType();
 		if(!this->writeCheck()) {
-			return Object(itemType, *this, 0);
+			return {};
 		}
 		auto& array = getArray();
-		auto ref = array.getCount();
-		array.add(itemType.defaultData);
-		return Object(itemType, *this, ref);
-	}
-
-	Object insertItem(unsigned index)
-	{
+		auto index = array.getCount();
 		auto& itemType = getItemType();
-		if(!this->writeCheck()) {
-			return Object(itemType, *this, 0);
-		}
-		getArray().insert(index, itemType.defaultData);
-		return Object(itemType, *this, index);
+		array.add(itemType.object->defaultData);
+		return Item(*this, 0, index);
 	}
 
-	const ObjectInfo& getItemType() const
+	template <typename Item = Object> Item insertItem(unsigned index)
 	{
-		return *typeinfo().objinfo[0];
+		if(!this->writeCheck()) {
+			return {};
+		}
+		auto& itemType = getItemType();
+		auto& array = getArray();
+		array.insert(index, itemType.object->defaultData);
+		return Item(*this, 0, index);
+	}
+
+	const PropertyInfo& getItemType() const
+	{
+		return typeinfo().propinfo[0];
 	}
 };
 
@@ -82,13 +83,7 @@ public:
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
-	explicit ObjectArrayTemplate(Store& store) : ObjectArray(ClassType::typeinfo, store)
-	{
-	}
-
-	ObjectArrayTemplate(Object& parent, uint16_t dataRef) : ObjectArray(ClassType::typeinfo, parent, dataRef)
-	{
-	}
+	using ObjectArray::ObjectArray;
 
 	const ItemType operator[](unsigned index) const
 	{
@@ -109,27 +104,17 @@ public:
 
 	ItemType operator[](unsigned index)
 	{
-		return ItemType(*this, index);
+		return ItemType(*this, 0, index);
 	}
 
 	ItemType addItem()
 	{
-		if(!this->writeCheck()) {
-			return ItemType(*this, 0);
-		}
-		auto& array = this->getArray();
-		auto index = array.getCount();
-		array.add(ItemType::typeinfo.defaultData);
-		return ItemType(*this, index);
+		return ObjectArray::addItem<ItemType>();
 	}
 
 	ItemType insertItem(unsigned index)
 	{
-		if(!this->writeCheck()) {
-			return Item(*this, 0);
-		}
-		this->getArray().insert(index, ItemType::typeinfo.defaultData);
-		return ItemType(*this, index);
+		return ObjectArray::insertItem<ItemType>(index);
 	}
 };
 

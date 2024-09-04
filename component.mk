@@ -24,6 +24,12 @@ CONFIGDB_FILES := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/%.h,$(CONFIGDB_SCHEMA))
 CONFIGDB_FILES := $(CONFIGDB_FILES) $(CONFIGDB_FILES:.h=.cpp)
 COMPONENT_PREREQUISITES := $(CONFIGDB_FILES)
 
+.PHONY: configdb-build
+configdb-build: $(CONFIGDB_FILES)
+
+.PHONY: configdb-rebuild
+configdb-rebuild: configdb-clean configdb-build
+
 .PHONY: configdb-clean
 configdb-clean:
 	$(Q) rm -f $(CONFIGDB_FILES)

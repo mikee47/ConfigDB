@@ -19,17 +19,22 @@
 
 #pragma once
 
-#include "ObjectInfo.h"
+#include "PropertyInfo.h"
 
 namespace ConfigDB
 {
 struct DatabaseInfo {
 	const FlashString& name;
 	uint32_t storeCount;
-	const ObjectInfo* stores[];
+	const PropertyInfo stores[];
+
+	const PropertyInfo& getObject(unsigned index) const
+	{
+		return stores[index];
+	}
 
 	int findStore(const char* name, size_t nameLength) const;
-	int indexOf(const ObjectInfo& objinfo) const;
+	int indexOf(const PropertyInfo& store) const;
 };
 
 } // namespace ConfigDB

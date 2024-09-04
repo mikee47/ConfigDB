@@ -7,24 +7,52 @@
     "IpAddress.h",
     "IFS/FileSystem.h"
   ],
+  "$defs": {
+    "Pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63
+    },
+    "Milliseconds": {
+      "type": "integer",
+      "default": 0,
+      "minimum": 0
+    },
+    "FileSystemType": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32,
+      "ctype": "IFS::FileSystem::Type"
+    },
+    "IpAddress": {
+      "type": "string",
+      "ctype": "IpAddress",
+      "default": "0.0.0.0"
+    },
+    "Url": {
+      "type": "string",
+      "ctype": "Url"
+    },
+    "Port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    }
+  },
   "properties": {
     "general": {
       "type": "object",
       "store": true,
       "properties": {
         "filesystem": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255,
-          "ctype": "IFS::FileSystem::Type"
+          "$ref": "#/$defs/FileSystemType"
         },
         "device_name": {
           "type": "string",
           "default": ""
         },
         "pin_config_url": {
-          "type": "string",
-          "ctype": "Url",
+          "$ref": "#/$defs/Url",
           "default": "https://raw.githubusercontent.com/pljakobs/esp_rgb_webapp2/devel/public/config/pinconfig.json"
         },
         "channels": {
@@ -33,10 +61,8 @@
             "type": "object",
             "properties": {
               "pin": {
-                "type": "integer",
-                "default": 13,
-                "minimum": 0,
-                "maximum": 100
+                "$ref": "#/$defs/Pin",
+                "default": 13
               },
               "name": {
                 "type": "string",
@@ -82,9 +108,8 @@
           "default": "mrpj"
         },
         "buttons_debounce_ms": {
-          "type": "integer",
+          "$ref": "#/$defs/Milliseconds",
           "default": 50,
-          "minimum": 0,
           "maximum": 1000
         },
         "supported_color_models": {
@@ -230,8 +255,7 @@
       "type": "object",
       "properties": {
         "url": {
-          "type": "string",
-          "ctype": "Url",
+          "$ref": "#/$defs/Url",
           "default": "https://lightinator.de/version.json"
         }
       }
@@ -240,34 +264,27 @@
       "type": "object",
       "properties": {
         "cmd_master_enabled": {
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "color_slave_enabled": {
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "color_slave_topic": {
           "type": "string",
           "default": "home/led1/color"
         },
         "clock_master_enabled": {
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "color_master_interval_ms": {
-          "type": "integer",
-          "default": 0,
-          "minimum": 0,
+          "$ref": "#/$defs/Milliseconds",
           "maximum": 65535
         },
         "clock_slave_enabled": {
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "cmd_slave_enabled": {
-          "type": "boolean",
-          "default": false
+          "type": "boolean"
         },
         "clock_master_interval": {
           "type": "integer",
@@ -294,21 +311,18 @@
       "store": true,
       "properties": {
         "color_interval_ms": {
-          "type": "integer",
+          "$ref": "#/$defs/Milliseconds",
           "default": 500,
-          "minimum": 0,
           "maximum": 10000
         },
         "color_mininterval_ms": {
-          "type": "integer",
+          "$ref": "#/$defs/Milliseconds",
           "default": 500,
-          "minimum": 0,
           "maximum": 30000
         },
         "transfin_interval_ms": {
-          "type": "integer",
+          "$ref": "#/$defs/Milliseconds",
           "default": 1000,
-          "minimum": 0,
           "maximum": 30000
         },
         "server_enabled": {
@@ -324,8 +338,7 @@
           "type": "object",
           "properties": {
             "server": {
-              "type": "string",
-              "ctype": "Url",
+              "$ref": "#/$defs/Url",
               "default": "mqtt.local"
             },
             "password": {
@@ -333,10 +346,8 @@
               "default": ""
             },
             "port": {
-              "type": "integer",
-              "default": 1883,
-              "minimum": 0,
-              "maximum": 65535
+              "$ref": "#/$defs/Port",
+              "default": 1883
             },
             "topic_base": {
               "type": "string",
@@ -356,23 +367,17 @@
           "type": "object",
           "properties": {
             "netmask": {
-              "type": "string",
-              "ctype": "IpAddress",
-              "default": "0.0.0.0"
+              "$ref": "#/$defs/IpAddress"
             },
             "ip": {
-              "type": "string",
-              "ctype": "IpAddress",
-              "default": "0.0.0.0"
+              "$ref": "#/$defs/IpAddress"
             },
             "dhcp": {
               "type": "boolean",
               "default": true
             },
             "gateway": {
-              "type": "string",
-              "ctype": "IpAddress",
-              "default": "0.0.0.0"
+              "$ref": "#/$defs/IpAddress"
             }
           }
         },

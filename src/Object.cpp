@@ -24,22 +24,18 @@
 
 namespace ConfigDB
 {
-Object::Object(const ObjectInfo& typeinfo, Store& store) : Object(typeinfo, store, store.getObjectDataRef(typeinfo))
-{
-}
-
 Object& Object::operator=(const Object& other)
 {
-	typeinfoPtr = other.typeinfoPtr;
+	propinfoPtr = other.propinfoPtr;
 	parent = other.isStore() ? const_cast<Object*>(&other) : other.parent;
 	dataRef = other.dataRef;
 	streamPos = 0;
 	return *this;
 }
 
-std::shared_ptr<Store> Object::openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite)
+std::shared_ptr<Store> Object::openStore(Database& db, unsigned storeIndex, bool lockForWrite)
 {
-	return db.openStore(typeinfo, lockForWrite);
+	return db.openStore(storeIndex, lockForWrite);
 }
 
 bool Object::lockStore(std::shared_ptr<Store>& store)
@@ -93,49 +89,58 @@ void* Object::getDataPtr()
 	if(!writeCheck()) {
 		return nullptr;
 	}
-	if(!parent) {
-		assert(typeIs(ObjectType::Store));
-		return static_cast<Store*>(this)->getRootData();
+	unsigned offset{0};
+	auto obj = this;
+	while(obj->parent) {
+		if(obj->parent->isArray()) {
+			auto array = static_cast<ArrayBase*>(obj->parent);
+			return static_cast<uint8_t*>(array->getItem(obj->dataRef)) + offset;
+		}
+		offset += obj->dataRef + obj->propinfo().offset;
+		obj = obj->parent;
 	}
-	if(parent->isArray()) {
-		return static_cast<ArrayBase*>(parent)->getItem(dataRef);
-	}
-	return static_cast<uint8_t*>(parent->getDataPtr()) + dataRef;
+	assert(obj->typeIs(ObjectType::Store));
+	return static_cast<Store*>(obj)->getRootData() + offset;
 }
 
 const void* Object::getDataPtr() const
 {
-	if(!parent) {
-		assert(typeIs(ObjectType::Store));
-		return static_cast<const Store*>(this)->getRootData();
+	unsigned offset{0};
+	auto obj = this;
+	while(obj->parent) {
+		if(obj->parent->isArray()) {
+			auto array = static_cast<const ArrayBase*>(obj->parent);
+			return static_cast<const uint8_t*>(array->getItem(obj->dataRef)) + offset;
+		}
+		offset += obj->dataRef + obj->propinfo().offset;
+		obj = obj->parent;
 	}
-	if(parent->isArray()) {
-		return static_cast<const ArrayBase*>(parent)->getItem(dataRef);
-	}
-	auto data = static_cast<const Object*>(parent)->getDataPtr();
-	return static_cast<const uint8_t*>(data) + dataRef;
+	assert(obj->typeIs(ObjectType::Store));
+	return static_cast<const Store*>(obj)->getRootData() + offset;
 }
 
 unsigned Object::getObjectCount() const
 {
-	if(typeIs(ObjectType::ObjectArray)) {
+	switch(typeinfo().type) {
+	case ObjectType::ObjectArray:
 		return static_cast<const ObjectArray*>(this)->getObjectCount();
+	case ObjectType::Union:
+		return static_cast<const Union*>(this)->getObjectCount();
+	default:
+		return typeinfo().objectCount;
 	}
-	return typeinfo().objectCount;
 }
 
 Object Object::getObject(unsigned index)
 {
-	if(typeIs(ObjectType::ObjectArray)) {
+	switch(typeinfo().type) {
+	case ObjectType::ObjectArray:
 		return static_cast<ObjectArray*>(this)->getObject(index);
+	case ObjectType::Union:
+		return static_cast<Union*>(this)->getObject(index);
+	default:
+		return Object(*this, index);
 	}
-
-	if(index >= typeinfo().objectCount) {
-		return {};
-	}
-
-	auto typ = typeinfo().objinfo[index];
-	return Object(*typ, *this, typ->getOffset());
 }
 
 Object Object::findObject(const char* name, size_t length)
@@ -143,17 +148,27 @@ Object Object::findObject(const char* name, size_t length)
 	if(isArray()) {
 		return {};
 	}
-	int i = typeinfo().findObject(name, length);
-	return i >= 0 ? getObject(i) : Object();
+	int index = typeinfo().findObject(name, length);
+	if(index < 0) {
+		return {};
+	}
+	if(typeIs(ObjectType::Union)) {
+		static_cast<Union*>(this)->setTag(index);
+	}
+	return Object(*this, index);
 }
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	if(isArray()) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+	case ObjectType::Union:
 		return {};
+	default:
+		int index = typeinfo().findProperty(name, length);
+		return index >= 0 ? getProperty(index) : Property();
 	}
-	int i = typeinfo().findProperty(name, length);
-	return i >= 0 ? getProperty(i) : Property();
 }
 
 void Object::queueUpdate(UpdateCallback callback)
@@ -185,7 +200,7 @@ String Object::getName() const
 		path += ']';
 		return path;
 	}
-	return typeinfo().name;
+	return propinfo().name;
 }
 
 String Object::getPath() const
@@ -202,95 +217,104 @@ String Object::getPath() const
 	return path;
 }
 
-String Object::getString(const PropertyInfo& prop, StringId id) const
+String Object::getPropertyString(unsigned index, StringId id) const
 {
 	if(id) {
 		return String(getStore().stringPool[id]);
 	}
-	if(prop.type == PropertyType::String) {
-		assert(prop.defaultString);
+	auto& prop = typeinfo().getProperty(index);
+	if(prop.type == PropertyType::String && prop.defaultString) {
 		return *prop.defaultString;
 	}
 	return nullptr;
 }
 
-StringId Object::getStringId(const char* value, uint16_t valueLength)
+String Object::getPropertyString(unsigned index) const
 {
-	return value ? getStore().stringPool.findOrAdd({value, valueLength}) : 0;
+	auto data = getPropertyData(index);
+	return data ? getPropertyString(index, data->string) : nullptr;
 }
 
-void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const void* value)
+StringId Object::getStringId(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
-	auto data = getData<uint8_t>();
+	PropertyData dst{};
+	auto defaultData = PropertyData::fromStruct(prop, getDataPtr());
+	getStore().parseString(prop, dst, defaultData, value, valueLength);
+	return dst.string;
+}
+
+void Object::setPropertyValue(unsigned index, const void* value)
+{
+	auto& prop = typeinfo().getProperty(index);
+	auto data = PropertyData::fromStruct(prop, getDataPtr());
 	if(!data) {
 		return;
 	}
-	data += offset;
-	auto dst = reinterpret_cast<PropertyData*>(data);
 	if(value) {
 		auto src = static_cast<const PropertyData*>(value);
-		dst->setValue(prop, *src);
+		data->setValue(prop, *src);
 	} else {
-		auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
-		defaultData += offset;
-		memcpy_P(dst, defaultData, prop.getSize());
+		auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
+		memcpy_P(data, defaultData, prop.getSize());
 	}
 }
 
-void Object::setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value)
+void Object::setPropertyValue(unsigned index, const String& value)
 {
-	assert(prop.type == PropertyType::String);
-	auto data = getData<uint8_t>();
-	if(!data) {
-		return;
+	auto& prop = typeinfo().getProperty(index);
+	auto data = PropertyData::fromStruct(prop, getDataPtr());
+	if(data) {
+		data->string = getStringId(prop, value);
 	}
-	auto id = getStringId(value);
-	data += offset;
-	memcpy(data, &id, sizeof(id));
 }
 
 unsigned Object::getPropertyCount() const
 {
-	if(typeIs(ObjectType::Array)) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
 		return static_cast<const Array*>(this)->getPropertyCount();
+	case ObjectType::Union:
+		return static_cast<const Union*>(this)->getPropertyCount();
+	default:
+		return typeinfo().propertyCount;
 	}
-	return typeinfo().propertyCount;
 }
 
 Property Object::getProperty(unsigned index)
 {
-	if(typeIs(ObjectType::Array)) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
 		return static_cast<Array*>(this)->getProperty(index);
+	case ObjectType::Union:
+		return static_cast<Union*>(this)->getProperty(index);
+	default:
+		assert(index < typeinfo().propertyCount);
+		if(index >= typeinfo().propertyCount) {
+			return {};
+		}
+		auto& prop = typeinfo().getProperty(index);
+		auto propData = getPropertyData(index);
+		auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
+		return {getStore(), prop, propData, defaultData};
 	}
-
-	if(index >= typeinfo().propertyCount) {
-		return {};
-	}
-	auto offset = typeinfo().getPropertyOffset(index);
-	auto propData = getData<uint8_t>();
-	if(propData) {
-		propData += offset;
-	}
-	auto defaultData = static_cast<const uint8_t*>(typeinfo().defaultData);
-	if(defaultData) {
-		defaultData += offset;
-	}
-	return {getStore(), typeinfo().propinfo[index], propData, defaultData};
 }
 
 PropertyConst Object::getProperty(unsigned index) const
 {
-	if(typeIs(ObjectType::Array)) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
 		return static_cast<const Array*>(this)->getProperty(index);
+	case ObjectType::Union:
+		return static_cast<const Union*>(this)->getProperty(index);
+	default:
+		assert(index < typeinfo().propertyCount);
+		if(index >= typeinfo().propertyCount) {
+			return {};
+		}
+		auto& prop = typeinfo().getProperty(index);
+		auto propData = getPropertyData(index);
+		return {getStore(), prop, propData, nullptr};
 	}
-	if(index >= typeinfo().propertyCount) {
-		return {};
-	}
-	auto propData = getData<const uint8_t>();
-	if(propData) {
-		propData += typeinfo().getPropertyOffset(index);
-	}
-	return {getStore(), typeinfo().propinfo[index], propData, nullptr};
 }
 
 size_t Object::printTo(Print& p) const

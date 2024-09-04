@@ -24,18 +24,18 @@ namespace ConfigDB
 int DatabaseInfo::findStore(const char* name, size_t nameLength) const
 {
 	for(unsigned i = 0; i < storeCount; ++i) {
-		auto store = stores[i];
-		if(store->name.equals(name, nameLength)) {
+		auto& store = stores[i];
+		if(store.name.equals(name, nameLength)) {
 			return i;
 		}
 	}
 	return -1;
 }
 
-int DatabaseInfo::indexOf(const ObjectInfo& objinfo) const
+int DatabaseInfo::indexOf(const PropertyInfo& store) const
 {
 	for(unsigned i = 0; i < storeCount; ++i) {
-		if(&objinfo == stores[i]) {
+		if(&store == &stores[i]) {
 			return i;
 		}
 	}

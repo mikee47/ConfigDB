@@ -33,7 +33,7 @@ Printer::Printer(Print& p, const Object& object, bool pretty, RootStyle style) :
 		rootName = &fstr_empty;
 		break;
 	case RootStyle::normal:
-		rootName = &object.typeinfo().name;
+		rootName = &object.propinfo().name;
 		break;
 	}
 }
@@ -47,7 +47,7 @@ size_t Printer::operator()()
 	size_t n{0};
 
 	auto& object = objects[nesting];
-	auto name = &object.typeinfo().name;
+	auto name = &object.propinfo().name;
 	auto indentLength = nesting;
 
 	if(nesting == 0) {
@@ -60,7 +60,6 @@ size_t Printer::operator()()
 	bool isArray = object.isArray();
 
 	auto quote = [](String s) {
-		::Format::json.escape(s);
 		::Format::json.quote(s);
 		return s;
 	};
@@ -115,8 +114,8 @@ size_t Printer::operator()()
 			n += p->print(indent);
 			n += p->print("  ");
 		}
-		if(prop.typeinfo().name.length()) {
-			n += p->print(quote(prop.typeinfo().name));
+		if(prop.info().name.length()) {
+			n += p->print(quote(prop.info().name));
 			n += p->print(colon);
 		}
 		n += p->print(prop.getJsonValue());

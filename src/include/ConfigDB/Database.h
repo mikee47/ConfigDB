@@ -57,11 +57,6 @@ public:
 	 */
 	std::shared_ptr<Store> openStore(unsigned index, bool lockForWrite = false);
 
-	std::shared_ptr<Store> openStore(const ObjectInfo& objinfo, bool lockForWrite = false)
-	{
-		return openStore(typeinfo.indexOf(objinfo), lockForWrite);
-	}
-
 	void queueUpdate(Store& store, Object::UpdateCallback callback);
 	void checkUpdateQueue(Store& store);
 
@@ -128,9 +123,9 @@ private:
 		}
 	};
 
-	std::shared_ptr<Store> loadStore(const ObjectInfo& storeInfo);
+	std::shared_ptr<Store> loadStore(const PropertyInfo& storeInfo);
 
-	bool isCached(const ObjectInfo& store) const;
+	bool isCached(const PropertyInfo& storeInfo) const;
 
 	CString path;
 

@@ -28,10 +28,10 @@ void printObject(Print& output, const String& tag, unsigned indent, const Config
 	for(unsigned i = 0; i < n; ++i) {
 		auto prop = obj.getProperty(i);
 		String value;
-		value += toString(prop.typeinfo().type);
+		value += toString(prop.info().type);
 		value += " = ";
 		value += prop.getJsonValue();
-		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.typeinfo().name, value);
+		printItem(output, tag + '.' + i, indent + 1, F("Property"), prop.info().name, value);
 	}
 	n = obj.getObjectCount();
 	for(unsigned i = 0; i < n; ++i) {

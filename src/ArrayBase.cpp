@@ -27,10 +27,11 @@ ArrayData& ArrayBase::getArray()
 	auto& store = getStore();
 	auto& id = getId();
 	if(id == 0) {
-		if(typeIs(ObjectType::ObjectArray)) {
-			id = store.arrayPool.add(*typeinfo().objinfo[0]);
+		auto& prop = typeinfo().propinfo[0];
+		if(typeinfo().type == ObjectType::ObjectArray) {
+			id = store.arrayPool.add(*prop.object);
 		} else {
-			id = store.arrayPool.add(typeinfo().propinfo[0]);
+			id = store.arrayPool.add(prop);
 		}
 	}
 	return store.arrayPool[id];

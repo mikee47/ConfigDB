@@ -25,6 +25,24 @@ namespace ConfigDB
 {
 class Store;
 
+/**
+ * @brief Identifies array storage within array pool
+ * @note Can't just use uint16_t as it may be unaligned.
+ * Using `alignas` doesn't help.
+ */
+struct __attribute__((packed)) ArrayId {
+	uint8_t value_[2];
+
+	constexpr ArrayId(uint16_t value = 0) : value_{uint8_t(value), uint8_t(value >> 8)}
+	{
+	}
+
+	constexpr operator uint16_t() const
+	{
+		return value_[0] | (value_[1] << 8);
+	}
+};
+
 union __attribute__((packed)) PropertyData {
 	uint8_t uint8;
 	uint16_t uint16;
@@ -36,12 +54,23 @@ union __attribute__((packed)) PropertyData {
 	int64_t int64;
 	bool boolean;
 	float f;
+	ArrayId array;
 	StringId string;
 
 	/**
 	 * @brief Range-check raw binary value. Do not use with Strings.
 	 */
 	void setValue(const PropertyInfo& prop, const PropertyData& src);
+
+	static PropertyData* fromStruct(const PropertyInfo& prop, void* data)
+	{
+		return data ? reinterpret_cast<PropertyData*>(static_cast<uint8_t*>(data) + prop.offset) : nullptr;
+	}
+
+	static const PropertyData* fromStruct(const PropertyInfo& prop, const void* data)
+	{
+		return fromStruct(prop, const_cast<void*>(data));
+	}
 };
 
 /**
@@ -50,17 +79,16 @@ union __attribute__((packed)) PropertyData {
 class PropertyConst
 {
 public:
-	PropertyConst() : info(&PropertyInfo::empty)
-	{
-	}
+	PropertyConst() = default;
 
 	/**
 	 * @brief Create a Property instance
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	PropertyConst(const Store& store, const PropertyInfo& info, const void* data, const void* defaultData)
-		: info(&info), store(&store), data(data), defaultData(defaultData)
+	PropertyConst(const Store& store, const PropertyInfo& info, const PropertyData* data,
+				  const PropertyData* defaultData)
+		: propinfo(&info), store(&store), data(data), defaultData(defaultData)
 	{
 	}
 
@@ -73,16 +101,16 @@ public:
 
 	String getJsonValue() const;
 
-	const PropertyInfo& typeinfo() const
+	const PropertyInfo& info() const
 	{
-		return *info;
+		return *propinfo;
 	}
 
 protected:
-	const PropertyInfo* info;
+	const PropertyInfo* propinfo{&PropertyInfo::empty};
 	const Store* store{};
-	const void* data{};
-	const void* defaultData{};
+	const PropertyData* data{};
+	const PropertyData* defaultData{};
 };
 
 class Property : public PropertyConst

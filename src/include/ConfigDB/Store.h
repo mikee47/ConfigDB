@@ -22,6 +22,7 @@
 #include "Object.h"
 #include "Array.h"
 #include "ObjectArray.h"
+#include "Union.h"
 #include "Pool.h"
 #include <WString.h>
 #include <memory>
@@ -57,10 +58,10 @@ public:
 	 * @param db Database which manages this store
 	 * @param typeinfo Store type information
 	 */
-	Store(Database& db, const ObjectInfo& typeinfo)
-		: Object(typeinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo.structSize))
+	Store(Database& db, const PropertyInfo& propinfo)
+		: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(propinfo.object->structSize))
 	{
-		memcpy_P(rootData.get(), typeinfo.defaultData, typeinfo.structSize);
+		memcpy_P(rootData.get(), propinfo.object->defaultData, propinfo.object->structSize);
 		++instanceCount;
 		CFGDB_DEBUG(" %u", instanceCount)
 	}
@@ -69,7 +70,7 @@ public:
 	 * @brief Copy constructor
 	 */
 	explicit Store(const Store& store)
-		: Object(store.typeinfo()), arrayPool(store.arrayPool), stringPool(store.stringPool), db(store.db),
+		: Object(store.propinfo()), arrayPool(store.arrayPool), stringPool(store.stringPool), db(store.db),
 		  rootData(std::make_unique<uint8_t[]>(store.typeinfo().structSize))
 	{
 		++instanceCount;
@@ -101,15 +102,6 @@ public:
 		return db;
 	}
 
-	uint16_t getObjectDataRef(const ObjectInfo& object)
-	{
-		size_t offset{0};
-		for(auto obj = &object; obj; obj = obj->parent) {
-			offset += obj->getOffset();
-		}
-		return offset;
-	}
-
 	uint8_t* getRootData()
 	{
 		if(!writeCheck()) {
@@ -131,7 +123,8 @@ public:
 	void clear();
 
 	String getValueString(const PropertyInfo& info, const void* data) const;
-	PropertyData parseString(const PropertyInfo& prop, const char* value, uint16_t valueLength);
+	bool parseString(const PropertyInfo& prop, PropertyData& dst, const PropertyData* defaultData, const char* value,
+					 uint16_t valueLength);
 
 	const StringPool& getStringPool() const
 	{

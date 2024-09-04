@@ -38,28 +38,45 @@ public:
 
 	Property getProperty(unsigned index)
 	{
-		return {getStore(), getItemType(), getArray()[index], nullptr};
+		return makeProperty(getArray()[index]);
 	}
 
 	Property addItem()
 	{
-		return {getStore(), getItemType(), getArray().add(), nullptr};
+		return makeProperty(getArray().add());
 	}
 
 	Property insertItem(unsigned index)
 	{
-		return {getStore(), getItemType(), getArray().insert(index), nullptr};
+		return makeProperty(getArray().insert(index));
 	}
 
 	PropertyConst getProperty(unsigned index) const
 	{
-		return {getStore(), getItemType(), getArray()[index], nullptr};
+		return makeProperty(getArray()[index]);
 	}
 
 	const PropertyInfo& getItemType() const
 	{
 		assert(typeinfo().propertyCount == 1);
 		return typeinfo().propinfo[0];
+	}
+
+protected:
+	StringId getStringId(const String& value)
+	{
+		return ArrayBase::getStringId(getItemType(), value);
+	}
+
+private:
+	Property makeProperty(void* data)
+	{
+		return {getStore(), getItemType(), static_cast<PropertyData*>(data), nullptr};
+	}
+
+	PropertyConst makeProperty(const void* data) const
+	{
+		return {getStore(), getItemType(), static_cast<const PropertyData*>(data), nullptr};
 	}
 };
 
@@ -71,13 +88,7 @@ public:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
-	explicit ArrayTemplate(Store& store) : Array(ClassType::typeinfo, store)
-	{
-	}
-
-	ArrayTemplate(Object& parent, uint16_t dataRef) : Array(ClassType::typeinfo, parent, dataRef)
-	{
-	}
+	using Array::Array;
 
 	ItemType getItem(unsigned index) const
 	{
@@ -151,7 +162,7 @@ public:
 	String getItem(unsigned index) const
 	{
 		auto id = *static_cast<const StringId*>(this->getArray()[index]);
-		return this->getString(this->getItemType(), id);
+		return this->getPropertyString(0, id);
 	}
 };
 

@@ -35,7 +35,7 @@ class Store;
 class Object
 {
 public:
-	Object() : typeinfoPtr(&ObjectInfo::empty)
+	Object() : propinfoPtr(&PropertyInfo::empty)
 	{
 	}
 
@@ -48,20 +48,33 @@ public:
 
 	Object& operator=(const Object& other);
 
-	explicit Object(const ObjectInfo& typeinfo) : typeinfoPtr(&typeinfo)
+	explicit Object(const PropertyInfo& propinfo) : propinfoPtr(&propinfo)
 	{
 	}
 
-	Object(const ObjectInfo& typeinfo, Store& store);
+	Object(Object& parent, const PropertyInfo& prop, uint16_t dataRef)
+		: propinfoPtr(&prop), parent(&parent), dataRef(dataRef)
+	{
+	}
 
-	Object(const ObjectInfo& typeinfo, Object& parent, uint16_t dataRef)
-		: typeinfoPtr(&typeinfo), parent(&parent), dataRef(dataRef)
+	Object(const Object& parent, const PropertyInfo& prop, uint16_t dataRef)
+		: Object(const_cast<Object&>(parent), prop, dataRef)
+	{
+	}
+
+	Object(Object& parent, unsigned propIndex, uint16_t dataRef = 0)
+		: Object(parent, parent.typeinfo().getObject(propIndex), dataRef)
+	{
+	}
+
+	Object(const Object& parent, unsigned propIndex, uint16_t dataRef = 0)
+		: Object(const_cast<Object&>(parent), propIndex, dataRef)
 	{
 	}
 
 	explicit operator bool() const
 	{
-		return typeinfoPtr != &ObjectInfo::empty;
+		return propinfoPtr->type == PropertyType::Object;
 	}
 
 	bool typeIs(ObjectType type) const
@@ -79,7 +92,7 @@ public:
 	 */
 	bool isStore() const
 	{
-		return typeinfoPtr->type == ObjectType::Store && !parent;
+		return typeinfo().type == ObjectType::Store && !parent;
 	}
 
 	Store& getStore();
@@ -114,6 +127,8 @@ public:
 
 	/**
 	 * @brief Find child object by name
+	 * @note For Union objects this also sets the tag on successful match,
+	 * which clears the Object to its default value.
 	 */
 	Object findObject(const char* name, size_t length);
 
@@ -167,19 +182,24 @@ public:
 
 	Status importFromFile(const Format& format, const String& filename);
 
+	const PropertyInfo& propinfo() const
+	{
+		return *propinfoPtr;
+	}
+
 	const ObjectInfo& typeinfo() const
 	{
-		return *typeinfoPtr;
+		return *this ? *propinfoPtr->object : ObjectInfo::empty;
 	}
 
-	template <typename T> T* getData()
+	PropertyData* getPropertyData(unsigned index)
 	{
-		return static_cast<T*>(getDataPtr());
+		return PropertyData::fromStruct(typeinfo().getProperty(index), getDataPtr());
 	}
 
-	template <typename T> const T* getData() const
+	const PropertyData* getPropertyData(unsigned index) const
 	{
-		return static_cast<const T*>(getDataPtr());
+		return PropertyData::fromStruct(typeinfo().getProperty(index), getDataPtr());
 	}
 
 	using UpdateCallback = Delegate<void(Store& store)>;
@@ -187,7 +207,7 @@ public:
 	void queueUpdate(UpdateCallback callback);
 
 protected:
-	std::shared_ptr<Store> openStore(Database& db, const ObjectInfo& typeinfo, bool lockForWrite = false);
+	std::shared_ptr<Store> openStore(Database& db, unsigned storeIndex, bool lockForWrite = false);
 
 	bool isLocked() const;
 
@@ -209,24 +229,26 @@ protected:
 
 	const void* getDataPtr() const;
 
-	String getString(const PropertyInfo& prop, StringId id) const;
+	String getPropertyString(unsigned index, StringId id) const;
 
-	StringId getStringId(const char* value, uint16_t valueLength);
+	String getPropertyString(unsigned index) const;
 
-	StringId getStringId(const String& value)
+	StringId getStringId(const PropertyInfo& prop, const char* value, uint16_t valueLength);
+
+	StringId getStringId(const PropertyInfo& prop, const String& value)
 	{
-		return value ? getStringId(value.c_str(), value.length()) : 0;
+		return value ? getStringId(prop, value.c_str(), value.length()) : 0;
 	}
 
-	template <typename T> StringId getStringId(const T& value)
+	template <typename T> StringId getStringId(const PropertyInfo& prop, const T& value)
 	{
-		return getStringId(toString(value));
+		return getStringId(prop, toString(value));
 	}
 
-	void setPropertyValue(const PropertyInfo& prop, uint16_t offset, const void* value);
-	void setPropertyValue(const PropertyInfo& prop, uint16_t offset, const String& value);
+	void setPropertyValue(unsigned index, const void* value);
+	void setPropertyValue(unsigned index, const String& value);
 
-	const ObjectInfo* typeinfoPtr;
+	const PropertyInfo* propinfoPtr;
 	Object* parent{};
 	uint16_t dataRef{}; //< Relative to parent
 
@@ -241,22 +263,7 @@ public:
 template <class ClassType> class ObjectTemplate : public Object
 {
 public:
-	ObjectTemplate() : Object(ClassType::typeinfo)
-	{
-	}
-
-	explicit ObjectTemplate(Store& store) : Object(ClassType::typeinfo, store)
-	{
-	}
-
-	ObjectTemplate(Object& parent, uint16_t dataRef) : Object(ClassType::typeinfo, parent, dataRef)
-	{
-	}
-
-	ObjectTemplate(const Object& parent, uint16_t dataRef)
-		: Object(ClassType::typeinfo, const_cast<Object&>(parent), dataRef)
-	{
-	}
+	using Object::Object;
 };
 
 /**
@@ -278,17 +285,22 @@ public:
 /**
  * @brief Used by code generator
  * @tparam UpdaterType
- * @tparam StoreType
+ * @tparam storeIndex
+ * @tparam ParentClassType
+ * @tparam propIndex
+ * @tparam offset
  */
-template <class UpdaterType, class StoreType> class OuterObjectUpdaterTemplate : public UpdaterType
+template <class UpdaterType, unsigned storeIndex, class ParentClassType, unsigned propIndex, unsigned offset>
+class OuterObjectUpdaterTemplate : public UpdaterType
 {
 public:
-	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store) : UpdaterType(*store), store(store)
+	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store)
+		: UpdaterType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
 	explicit OuterObjectUpdaterTemplate(Database& db)
-		: OuterObjectUpdaterTemplate(this->openStore(db, StoreType::typeinfo, true))
+		: OuterObjectUpdaterTemplate(this->openStore(db, storeIndex, true))
 	{
 	}
 
@@ -309,18 +321,22 @@ private:
 /**
  * @brief Used by code generator
  * @tparam ContainedClassType
- * @tparam UpdaterType
- * @tparam StoreType
+ * @tparam storeIndex
+ * @tparam ParentClassType
+ * @tparam propIndex
+ * @tparam offset
  */
-template <class ContainedClassType, class UpdaterType, class StoreType>
+template <class ContainedClassType, class UpdaterType, unsigned storeIndex, class ParentClassType, unsigned propIndex,
+		  unsigned offset>
 class OuterObjectTemplate : public ContainedClassType
 {
 public:
-	OuterObjectTemplate(std::shared_ptr<Store> store) : ContainedClassType(*store), store(store)
+	OuterObjectTemplate(std::shared_ptr<Store> store)
+		: ContainedClassType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
-	explicit OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, StoreType::typeinfo))
+	OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, storeIndex))
 	{
 	}
 
@@ -329,7 +345,7 @@ public:
 		return format.createExportStream(store, *this);
 	}
 
-	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, StoreType>;
+	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, storeIndex, ParentClassType, propIndex, offset>;
 
 	/**
 	 * @brief Create an update object
@@ -360,7 +376,9 @@ public:
 			callback(upd);
 			return true;
 		}
-		Object::queueUpdate([this, callback](Store& store) { callback(UpdaterType(store)); });
+		Object::queueUpdate([this, callback](Store& store) {
+			callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
+		});
 		return false;
 	}
 

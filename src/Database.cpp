@@ -34,16 +34,16 @@ Database::~Database()
 		return;
 	}
 	for(unsigned i = 0; i < typeinfo.storeCount; ++i) {
-		if(isCached(*typeinfo.stores[i])) {
+		if(isCached(typeinfo.stores[i])) {
 			cache.reset();
 			break;
 		}
 	}
 }
 
-bool Database::isCached(const ObjectInfo& store) const
+bool Database::isCached(const PropertyInfo& storeInfo) const
 {
-	return cache && cache->typeinfoPtr == &store;
+	return cache && cache->propinfoPtr == &storeInfo;
 }
 
 const Format& Database::getFormat(const Store&) const
@@ -77,7 +77,7 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 		return nullptr;
 	}
 
-	auto& storeInfo = *typeinfo.stores[index];
+	auto& storeInfo = typeinfo.stores[index];
 
 	if(!lockForWrite && isCached(storeInfo)) {
 		return cache;
@@ -129,7 +129,7 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 		return true;
 	}
 
-	auto& storeInfo = store->typeinfo();
+	auto& storeInfo = store->propinfo();
 	auto storeIndex = typeinfo.indexOf(storeInfo);
 	assert(storeIndex >= 0);
 	auto& updateRef = updateRefs[storeIndex];
@@ -167,7 +167,7 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 	return true;
 }
 
-std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
+std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 {
 	debug_d("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
 
@@ -184,14 +184,14 @@ std::shared_ptr<Store> Database::loadStore(const ObjectInfo& storeInfo)
 
 void Database::queueUpdate(Store& store, Object::UpdateCallback callback)
 {
-	int storeIndex = typeinfo.indexOf(store.typeinfo());
+	int storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
 	updateQueue.add({uint8_t(storeIndex), callback});
 }
 
 void Database::checkUpdateQueue(Store& store)
 {
-	int storeIndex = typeinfo.indexOf(store.typeinfo());
+	int storeIndex = typeinfo.indexOf(store.propinfo());
 	int i = updateQueue.indexOf(storeIndex);
 	if(i < 0) {
 		return;
@@ -214,7 +214,7 @@ bool Database::save(Store& store) const
 	bool result = store.exportToFile(format);
 
 	// Invalidate cached stores: Some data may have changed even on failure
-	if(isCached(store.typeinfo())) {
+	if(isCached(store.propinfo())) {
 		cache.reset();
 	}
 
