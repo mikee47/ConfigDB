@@ -143,7 +143,9 @@ private:
 template <class ClassType> class DatabaseTemplate : public Database
 {
 public:
-	using Database::Database;
+	DatabaseTemplate(const String& path) : Database(ClassType::typeinfo, path)
+	{
+	}
 };
 
 } // namespace ConfigDB
