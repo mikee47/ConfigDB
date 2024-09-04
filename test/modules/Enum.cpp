@@ -31,7 +31,8 @@ public:
 
 		TestConfigEnum::Root root(db);
 		if(auto update = root.update()) {
-			update.colors.addItem(Root::Colors::Item::blue);
+			update.colors.addItem(Root::ColorsItem(100));
+			REQUIRE(update.colors[0] == Root::ColorsItem::blue);
 			for(unsigned i = 0; i < 10; ++i) {
 				update.colors.addItem(Root::ColorsItem(os_random() % colorType.values().length()));
 			}
@@ -44,9 +45,6 @@ public:
 			for(unsigned i = 0; i < 10; ++i) {
 				update.numberMap.addItem(Root::NumberMapItem(os_random() % numberMapType.values().length()));
 			}
-		}
-		for(unsigned i = 0; i < 10; ++i) {
-			Serial << i << ": " << unsigned(root.numberMap[i]) << " " << String(numberMapType.values()[i], 8) << endl;
 		}
 
 		Serial << "root: " << root << endl;

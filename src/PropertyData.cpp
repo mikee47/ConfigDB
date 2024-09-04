@@ -62,7 +62,7 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		boolean = src.boolean;
 		break;
 	case PropertyType::Enum:
-		uint8 = src.uint8;
+		uint8 = std::min(unsigned(src.uint8), prop.variant.enuminfo->length() - 1);
 		break;
 	case PropertyType::Int8:
 		int8 = prop.variant.int32.clip(src.int8);

@@ -60,9 +60,31 @@ using StringId = uint16_t;
 
 struct ObjectInfo;
 
+inline uint8_t getPropertySize(PropertyType type)
+{
+	switch(type) {
+#define XX(tag, size)                                                                                                  \
+	case PropertyType::tag:                                                                                            \
+		return size;
+		CONFIGDB_PROPERTY_TYPE_MAP(XX)
+#undef XX
+	}
+	return 0;
+}
+
 struct EnumInfo {
 	PropertyType type;		 ///< The actual store type for this enum (String, etc.)
 	FSTR::ObjectBase values; //< Possible values
+
+	uint8_t getItemSize() const
+	{
+		return (type == PropertyType::String) ? sizeof(FSTR::String*) : getPropertySize(type);
+	}
+
+	unsigned length() const
+	{
+		return values.length() / getItemSize();
+	}
 
 	String getString(uint8_t index) const;
 	int find(const char* value, unsigned length) const;
@@ -148,14 +170,7 @@ struct PropertyInfo {
 	 */
 	uint8_t getSize() const
 	{
-		switch(type) {
-#define XX(tag, size)                                                                                                  \
-	case PropertyType::tag:                                                                                            \
-		return size;
-			CONFIGDB_PROPERTY_TYPE_MAP(XX)
-#undef XX
-		}
-		return 0;
+		return getPropertySize(type);
 	}
 };
 
