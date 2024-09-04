@@ -3,4 +3,5 @@
 #define TEST_MAP(XX)                                                                                                   \
 	XX(Update)                                                                                                         \
 	XX(Sharing)                                                                                                        \
-	XX(Streaming)
+	XX(Streaming)                                                                                                      \
+	XX(Union)
