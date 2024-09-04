@@ -114,7 +114,10 @@ public:
 			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
+			REQUIRE(root.stringArray.contains(myString));
+			REQUIRE_EQ(root.stringArray.indexOf(myString), 0);
 			update.stringArray[0] = nullptr;
+			REQUIRE(!root.stringArray.contains(myString));
 			REQUIRE_EQ(root.stringArray[0], "abc");
 			update.stringArray[0] = myString;
 			Serial << root.stringArray << endl;

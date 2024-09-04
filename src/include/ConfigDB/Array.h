@@ -88,6 +88,18 @@ protected:
 		dst->setValue(getItemType(), *static_cast<const PropertyData*>(value));
 	}
 
+	int indexOf(const void* value) const
+	{
+		auto itemSize = getItemType().getSize();
+		auto& array = getArray();
+		for(unsigned i = 0; i < array.getCount(); ++i) {
+			if(memcmp(array[i], value, itemSize) == 0) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
 private:
 	Property makeProperty(void* data)
 	{
@@ -118,6 +130,16 @@ public:
 	const ItemType operator[](unsigned index) const
 	{
 		return static_cast<const ClassType*>(this)->getItem(index);
+	}
+
+	int indexOf(ItemType item) const
+	{
+		return Array::indexOf(&item);
+	}
+
+	bool contains(ItemType item) const
+	{
+		return indexOf(item) >= 0;
 	}
 };
 
@@ -183,6 +205,17 @@ public:
 	{
 		auto id = *static_cast<const StringId*>(this->getArray()[index]);
 		return this->getPropertyString(0, id);
+	}
+
+	int indexOf(const String& item) const
+	{
+		int stringId = this->findStringId(item.c_str(), item.length());
+		return Array::indexOf(&stringId);
+	}
+
+	bool contains(const String& item) const
+	{
+		return indexOf(item) >= 0;
 	}
 };
 

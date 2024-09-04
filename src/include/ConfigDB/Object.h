@@ -245,6 +245,8 @@ protected:
 		return getStringId(prop, toString(value));
 	}
 
+	int findStringId(const char* value, uint16_t valueLength) const;
+
 	void setPropertyValue(unsigned index, const void* value);
 	void setPropertyValue(unsigned index, const String& value);
 

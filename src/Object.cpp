@@ -243,6 +243,11 @@ StringId Object::getStringId(const PropertyInfo& prop, const char* value, uint16
 	return dst.string;
 }
 
+int Object::findStringId(const char* value, uint16_t valueLength) const
+{
+	return getStore().stringPool.find({value, valueLength});
+}
+
 void Object::setPropertyValue(unsigned index, const void* value)
 {
 	auto& prop = typeinfo().getProperty(index);
