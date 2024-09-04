@@ -150,6 +150,10 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 bool PropertyData::setValue(const PropertyInfo& prop, const char* value, unsigned valueLength)
 {
 	if(prop.type == PropertyType::Enum) {
+		if(!value) {
+			uint8 = 0;
+			return true;
+		}
 		int i = prop.variant.enuminfo->find(value, valueLength);
 		if(i < 0) {
 			return false;

@@ -96,12 +96,8 @@ bool Store::parseString(const PropertyInfo& prop, PropertyData& dst, const Prope
 		return true;
 	}
 
-	if(!value) {
-		if(defaultData) {
-			memcpy_P(&dst.int8, defaultData, prop.getSize());
-		} else {
-			memset(&dst.int8, 0, prop.getSize());
-		}
+	if(!value && defaultData) {
+		memcpy_P(&dst.int8, defaultData, prop.getSize());
 		return true;
 	}
 

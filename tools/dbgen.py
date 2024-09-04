@@ -198,6 +198,11 @@ class Property:
                 self.enum_ctype = 'const_number_t'
             else:
                 error(f'Unsupported enum type "{self.ptype}"')
+            if self.default:
+                if self.default not in self.enum:
+                    error(f'default "{self.default}" not in enum')
+            else:
+                self.default = self.enum[0]
             self.ptype = 'integer'
             self.property_type = 'Enum'
             self.ctype = 'uint8_t'
