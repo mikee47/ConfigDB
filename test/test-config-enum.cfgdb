@@ -12,6 +12,7 @@
       "type": "array",
       "items": {
         "type": "integer",
+        "ctype": "Quotient",
         "enum": [
           15,
           37,
@@ -57,6 +58,7 @@
   "$defs": {
     "Color": {
       "type": "string",
+      "ctype": "Color",
       "enum": [
         "red",
         "green",

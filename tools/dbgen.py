@@ -206,7 +206,6 @@ class Property:
             self.ptype = 'integer'
             self.property_type = 'Enum'
             self.ctype = 'uint8_t'
-            self.ctype_override = f'{obj.typename}Item'
 
     @property
     def ctype_ret(self):
@@ -811,9 +810,12 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             values = prop.enum
             obj_type = f'{obj.namespace}::{obj.typename_contained}'
             item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
+            if prop.ctype_override:
+                lines.header += [
+                    '',
+                    f'using Item = {prop.ctype_override};'
+                ]
             lines.header += [
-                '',
-                f'using Item = {prop.ctype_override};',
                 '',
                 'struct ItemType {',
                 [
@@ -1071,7 +1073,7 @@ def generate_object(obj: Object) -> CodeLines:
             item_lines.source + typeinfo.source)
 
     if isinstance(obj, Array):
-        if obj.items.enum:
+        if obj.items.enum and obj.items.ctype_override:
             prop = obj.items
             tag_prefix = '' if prop.enum_type == 'String' else  'N'
             enum_item = [
