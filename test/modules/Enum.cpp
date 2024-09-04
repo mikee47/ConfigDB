@@ -29,6 +29,7 @@ public:
 
 		TestConfigEnum::Root root(db);
 		if(auto update = root.update()) {
+			update.colors.addItem(TestConfigEnum::Root::Colors::Item::blue);
 			for(unsigned i = 0; i < 10; ++i) {
 				update.colors.addItem(os_random() % colorType.values().length());
 			}

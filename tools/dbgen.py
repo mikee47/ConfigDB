@@ -810,6 +810,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             values = prop.enum
             obj_type = f'{obj.namespace}::{obj.typename_contained}'
             item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
+            tag_prefix = '' if prop.enum_type == 'String' else  'N'
             lines.header += [
                 '',
                 'struct ItemType {',
@@ -834,6 +835,9 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 '',
                 'static const ItemType itemtype;',
                 '',
+                'enum class Item {',
+                [f'{tag_prefix}{make_identifier(str(x))},' for x in values],
+                '};'
             ]
             lines.source += [
                 '',
