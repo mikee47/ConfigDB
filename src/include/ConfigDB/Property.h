@@ -19,59 +19,11 @@
 
 #pragma once
 
-#include "PropertyInfo.h"
+#include "PropertyData.h"
 
 namespace ConfigDB
 {
 class Store;
-
-/**
- * @brief Identifies array storage within array pool
- * @note Can't just use uint16_t as it may be unaligned.
- * Using `alignas` doesn't help.
- */
-struct __attribute__((packed)) ArrayId {
-	uint8_t value_[2];
-
-	constexpr ArrayId(uint16_t value = 0) : value_{uint8_t(value), uint8_t(value >> 8)}
-	{
-	}
-
-	constexpr operator uint16_t() const
-	{
-		return value_[0] | (value_[1] << 8);
-	}
-};
-
-union __attribute__((packed)) PropertyData {
-	uint8_t uint8;
-	uint16_t uint16;
-	uint32_t uint32;
-	uint64_t uint64;
-	int8_t int8;
-	int16_t int16;
-	int32_t int32;
-	int64_t int64;
-	bool boolean;
-	float f;
-	ArrayId array;
-	StringId string;
-
-	/**
-	 * @brief Range-check raw binary value. Do not use with Strings.
-	 */
-	void setValue(const PropertyInfo& prop, const PropertyData& src);
-
-	static PropertyData* fromStruct(const PropertyInfo& prop, void* data)
-	{
-		return data ? reinterpret_cast<PropertyData*>(static_cast<uint8_t*>(data) + prop.offset) : nullptr;
-	}
-
-	static const PropertyData* fromStruct(const PropertyInfo& prop, const void* data)
-	{
-		return fromStruct(prop, const_cast<void*>(data));
-	}
-};
 
 /**
  * @brief Manages a key/value pair stored in an object, or a simple array value

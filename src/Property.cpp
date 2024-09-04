@@ -64,44 +64,4 @@ bool Property::setJsonValue(const char* value, size_t valueLength)
 	return const_cast<Store*>(store)->parseString(*propinfo, dst, defaultData, value, valueLength);
 }
 
-void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
-{
-	switch(prop.type) {
-	case PropertyType::Boolean:
-		boolean = src.boolean;
-		break;
-	case PropertyType::Int8:
-		int8 = prop.int32.clip(src.int8);
-		break;
-	case PropertyType::Int16:
-		int16 = prop.int32.clip(src.int16);
-		break;
-	case PropertyType::Int32:
-		int32 = prop.int32.clip(src.int32);
-		break;
-	case PropertyType::Int64:
-		int64 = prop.int64.clip(src.int64);
-		break;
-	case PropertyType::UInt8:
-		uint8 = prop.uint32.clip(src.uint8);
-		break;
-	case PropertyType::UInt16:
-		uint16 = prop.uint32.clip(src.uint16);
-		break;
-	case PropertyType::UInt32:
-		uint32 = prop.uint32.clip(src.uint32);
-		break;
-	case PropertyType::UInt64:
-		uint64 = prop.uint64.clip(src.uint64);
-		break;
-	case PropertyType::String:
-		assert(false);
-		string = src.string;
-		break;
-	case PropertyType::Object:
-		assert(false);
-		break;
-	}
-}
-
 } // namespace ConfigDB
