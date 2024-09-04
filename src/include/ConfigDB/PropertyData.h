@@ -55,6 +55,8 @@ union __attribute__((packed)) PropertyData {
 	ArrayId array;
 	StringId string;
 
+	static String numberToString(float number);
+
 	String getString(const PropertyInfo& info) const;
 
 	/**
