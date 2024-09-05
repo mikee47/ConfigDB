@@ -5,4 +5,5 @@
 	XX(Sharing)                                                                                                        \
 	XX(Streaming)                                                                                                      \
 	XX(Union)                                                                                                          \
+	XX(Number)                                                                                                         \
 	XX(Performance)

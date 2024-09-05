@@ -22,18 +22,6 @@
 
 namespace ConfigDB
 {
-String PropertyData::numberToString(float value)
-{
-	char buf[33];
-	dtostrf(value, 0, 8, buf);
-	auto len = strlen(buf);
-	unsigned i = len;
-	while(i && buf[--i] == '0') {
-	}
-	len = i + 1 + (buf[i] == '.');
-	return String(buf, len);
-}
-
 String PropertyData::getString(const PropertyInfo& info) const
 {
 	switch(info.type) {
@@ -56,7 +44,7 @@ String PropertyData::getString(const PropertyInfo& info) const
 	case PropertyType::UInt64:
 		return String(uint64);
 	case PropertyType::Number:
-		return numberToString(number);
+		return String(number);
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;
@@ -138,7 +126,7 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 		uint64 = strtoull(value, nullptr, 0);
 		return true;
 	case PropertyType::Number:
-		number = strtof(value, nullptr);
+		number = Number(value, valueLength);
 		return true;
 	case PropertyType::String:
 	case PropertyType::Object:

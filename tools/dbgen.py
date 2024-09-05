@@ -17,7 +17,7 @@ CPP_TYPENAMES = {
     'string': 'String',
     'integer': 'int',
     'boolean': 'bool',
-    'number': 'float',
+    'number': 'number_t',
 }
 
 STRING_ID_SIZE = 2
@@ -38,7 +38,7 @@ CPP_TYPESIZES = {
     'uint16_t': 2,
     'uint32_t': 4,
     'uint64_t': 8,
-    'float': 4,
+    'number_t': 4,
     'String': STRING_ID_SIZE,
 }
 
@@ -129,6 +129,18 @@ class IntRange(Range):
         return f'Int{self.bits}' if self.is_signed else f'UInt{self.bits}'
 
 
+def get_number(value: float) -> str:
+    '''Return number_t value (mantissa, exponent)'''
+    s = f'{value:.6e}'
+    m, _, e = s.partition('e')
+    exponent = int(e)
+    real, _, frac = m.partition('.')
+    frac = frac.rstrip('0')
+    exponent -= len(frac)
+    mantissa = int(real + frac)
+    return f'{mantissa}, {exponent}'
+
+
 def get_ptype(fields: dict):
     '''Identify a pseudo-type 'union' which makes script a bit clearer'''
     return 'union' if 'oneOf' in fields else fields['type']
@@ -204,6 +216,8 @@ class Property:
             return strings[default]
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
+        if self.ptype == 'number':
+            return get_number(self.default)
         return str(default) if default else 0
 
 
@@ -777,7 +791,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             return [f'{{.defaultString = &{fstr}}}']
         if prop.ptype == 'number':
             r = prop.numrange
-            return [f'.number = {{{r.minimum}, {r.maximum}}}']
+            return [f'.number = {{{{{get_number(r.minimum)}}}, {{{get_number(r.maximum)}}}}}']
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:

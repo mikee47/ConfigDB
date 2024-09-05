@@ -76,16 +76,14 @@ public:
 		TEST_CASE("Number")
 		{
 			auto f = root.getSimpleFloat();
-			auto diff = f - 3.141592654;
-			Serial << String(f, 8) << ", " << String(diff, 8) << endl;
-			REQUIRE(abs(diff) < 0.000001);
+			REQUIRE_EQ(String(f), "3.141593");
 
 			// Change value
 			if(auto updater = root.update()) {
 				const auto newFloat = 12e6;
 				Serial << newFloat << endl;
-				updater.setSimpleFloat(newFloat);
-				REQUIRE_EQ(root.getSimpleFloat(), newFloat);
+				updater.setSimpleFloat(number_t(newFloat));
+				REQUIRE_EQ(newFloat, root.getSimpleFloat().asFloat());
 			} else {
 				TEST_ASSERT(false);
 			}
