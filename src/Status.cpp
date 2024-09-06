@@ -56,7 +56,10 @@ String Status::toString() const
 	case Error::FileError:
 		s += "::";
 		s += IFS::Error::toString(code.fileError ?: IFS::Error::WriteFailure);
-	default:;
+		break;
+	case Error::OK:
+	case Error::UpdateConflict:
+		break;
 	}
 
 	return s;

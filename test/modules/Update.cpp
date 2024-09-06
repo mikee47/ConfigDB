@@ -7,11 +7,6 @@
 #include <test-config-ref.h>
 #include <ConfigDB/Json/Format.h>
 
-namespace
-{
-IMPORT_FSTR_LOCAL(union_test_root_json, PROJECT_DIR "/resource/union-test-root.json")
-}
-
 class UpdateTest : public TestGroup
 {
 public:

@@ -378,7 +378,7 @@ public:
 			callback(upd);
 			return true;
 		}
-		Object::queueUpdate([this, callback](Store& store) {
+		Object::queueUpdate([callback](Store& store) {
 			callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
 		});
 		return false;

@@ -586,13 +586,13 @@ def load_config(filename: str) -> Database:
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
 
-    forward_decls = [
+    forward_decls = {
         'ContainedRoot',
         'RootUpdater'
-    ]
+    }
     for obj in db.object_defs.values():
         if obj.ref:
-            forward_decls += [obj.typename_contained, obj.typename_updater]
+            forward_decls |= {obj.typename_contained, obj.typename_updater}
 
     lines = CodeLines(
         [
