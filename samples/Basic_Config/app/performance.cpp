@@ -5,52 +5,19 @@
 
 namespace
 {
-void __noinline testSetValue(BasicConfig& db, int value)
-{
-	BasicConfig::Color::Brightness::OuterUpdater bri(db);
-	bri.setRed(value);
-	bri.setGreen(value);
-	bri.setBlue(value);
-	bri.setWw(value);
-	bri.setCw(value);
-}
+using Callback = Delegate<void(BasicConfig& db, unsigned round)>;
 
-void __noinline testGetValueSimple(BasicConfig& db)
+void __noinline profile(BasicConfig& db, const String& title, Callback callback)
 {
-	BasicConfig::Color::Brightness bri(db);
-	bri.getRed();
-	bri.getGreen();
-	bri.getBlue();
-	bri.getCw();
-	bri.getWw();
-}
+	const int rounds = 64;
 
-String __noinline testGetValueBuildString(BasicConfig& db, int value)
-{
-	BasicConfig::Color::Brightness bri(db);
-	String s;
-	s.reserve(128);
-	s += _F("read:");
-	s += value;
-	s += _F("{r:");
-	s += bri.getRed();
-	s += _F(",g:");
-	s += bri.getGreen();
-	s += _F(",b:");
-	s += bri.getBlue();
-	s += _F(",cw:");
-	s += bri.getCw();
-	s += _F(",ww:");
-	s += bri.getWw();
-	s += _F("}");
-	return s;
-}
-
-void __noinline testGetValuePrint(BasicConfig& db, int value, Print& p)
-{
-	BasicConfig::Color::Brightness bri(db);
-	p << _F("read:") << value << _F("{r:") << bri.getRed() << _F(",g:") << bri.getGreen() << _F(",b:") << bri.getBlue()
-	  << _F(",cw:") << bri.getCw() << _F(",ww:") << bri.getWw() << _F("}") << endl;
+	Profiling::MicroTimes times(title);
+	for(int i = 0; i < rounds; i++) {
+		times.start();
+		callback(db, i);
+		times.update();
+	}
+	Serial << times << endl;
 }
 
 } // namespace
@@ -62,27 +29,13 @@ void checkPerformance(BasicConfig& db)
 	const int rounds = 64;
 
 	Serial << _F("Evaluating load times ...") << endl;
-	{
-		// Load same cache multiple times
-		Profiling::MicroTimes times(F("Verify load caching"));
-		for(int i = 0; i < rounds; i++) {
-			times.start();
-			db.openStore(1);
-			times.update();
-		}
-		Serial << times << endl;
-	}
 
-	{
-		// Load different stores in sequence to bypass caching
-		Profiling::MicroTimes times(F("Load all stores"));
-		for(int i = 0; i < rounds; i++) {
-			times.start();
-			auto store = db.openStore(i % db.typeinfo.storeCount);
-			times.update();
-		}
-		Serial << times << endl;
-	}
+	// Load same cache multiple times
+	profile(db, F("Verify load caching"), [](BasicConfig& db, unsigned) { db.openStore(1); });
+
+	// Load different stores in sequence to bypass caching
+	profile(db, F("Load all stores"),
+			[](BasicConfig& db, unsigned i) { auto store = db.openStore(i % db.typeinfo.storeCount); });
 
 	/*
 	 * Open Color store
@@ -94,47 +47,51 @@ void checkPerformance(BasicConfig& db)
 	BasicConfig::Color color(db);
 
 	Serial << _F("Evaluating setValue / commit ...") << endl;
-	{
-		Profiling::MicroTimes times(F("Set Value + commit"));
-		for(int i = 0; i < rounds; i++) {
-			times.start();
-			testSetValue(db, i);
-			times.update();
-		}
-		Serial << times << endl;
-	}
+
+	profile(db, F("Set Value + commit"), [](BasicConfig& db, unsigned value) {
+		BasicConfig::Color::Brightness::OuterUpdater bri(db);
+		bri.setRed(value);
+		bri.setGreen(value);
+		bri.setBlue(value);
+		bri.setWw(value);
+		bri.setCw(value);
+	});
 
 	Serial << _F("Evaluating getValue ...") << endl;
 
-	{
-		Profiling::MicroTimes times(F("getValue [simple]"));
-		for(int i = 0; i < rounds; i++) {
-			times.start();
-			testGetValueSimple(db);
-			times.update();
-		}
-		Serial << times << endl;
-	}
+	profile(db, F("getValue [simple]"), [](BasicConfig& db, unsigned) {
+		BasicConfig::Color::Brightness bri(db);
+		bri.getRed();
+		bri.getGreen();
+		bri.getBlue();
+		bri.getCw();
+		bri.getWw();
+	});
 
-	{
-		Profiling::MicroTimes times(F("getValue [build string]"));
-		for(int i = 0; i < rounds; i++) {
-			times.start();
-			String s = testGetValueBuildString(db, i);
-			times.update();
-		}
-		Serial << times << endl;
-	}
+	profile(db, F("getValue [build string]"), [](BasicConfig& db, unsigned value) {
+		BasicConfig::Color::Brightness bri(db);
+		String s;
+		s.reserve(128);
+		s += _F("read:");
+		s += value;
+		s += _F("{r:");
+		s += bri.getRed();
+		s += _F(",g:");
+		s += bri.getGreen();
+		s += _F(",b:");
+		s += bri.getBlue();
+		s += _F(",cw:");
+		s += bri.getCw();
+		s += _F(",ww:");
+		s += bri.getWw();
+		s += _F("}");
+		return s;
+	});
 
-	{
+	profile(db, F("getValue [Print]"), [](BasicConfig& db, unsigned value) {
 		MemoryDataStream stream;
-		Profiling::MicroTimes times(F("getValue [Print]"));
-		for(int i = 0; i < rounds; i++) {
-			stream.clear();
-			times.start();
-			testGetValuePrint(db, i, stream);
-			times.update();
-		}
-		Serial << times << endl;
-	}
+		BasicConfig::Color::Brightness bri(db);
+		stream << _F("read:") << value << _F("{r:") << bri.getRed() << _F(",g:") << bri.getGreen() << _F(",b:")
+			   << bri.getBlue() << _F(",cw:") << bri.getCw() << _F(",ww:") << bri.getWw() << _F("}") << endl;
+	});
 }
