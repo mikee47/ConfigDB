@@ -126,7 +126,7 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 		uint64 = strtoull(value, nullptr, 0);
 		return true;
 	case PropertyType::Number:
-		number = Number(value, valueLength);
+		number = Number::parse(value, valueLength);
 		return true;
 	case PropertyType::String:
 	case PropertyType::Object:

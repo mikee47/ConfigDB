@@ -108,7 +108,7 @@ public:
 
 				ConfigDB::Number floatNumber(test.value);
 
-				number_t num = number;
+				number_t num = number.number;
 
 				Serial << "Number " << test.input << ", " << output << ", " << floatNumber << " [" << num.mantissa
 					   << ", " << num.exponent << "]" << endl;

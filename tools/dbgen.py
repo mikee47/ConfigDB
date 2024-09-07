@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import re
+import struct
 from dataclasses import dataclass, field
 
 MAX_STRINGID_LEN = 32
@@ -17,7 +18,7 @@ CPP_TYPENAMES = {
     'string': 'String',
     'integer': 'int',
     'boolean': 'bool',
-    'number': 'number_t',
+    'number': 'ConfigDB::Number',
 }
 
 STRING_ID_SIZE = 2
@@ -37,7 +38,7 @@ CPP_TYPESIZES = {
     'uint16_t': 2,
     'uint32_t': 4,
     'uint64_t': 8,
-    'number_t': 4,
+    'ConfigDB::Number': 4,
     'String': STRING_ID_SIZE,
 }
 
@@ -137,7 +138,9 @@ def get_number(value: float) -> str:
     frac = frac.rstrip('0')
     exponent -= len(frac)
     mantissa = int(real + frac)
-    return f'{mantissa}, {exponent}'
+    pack = struct.pack('<l', mantissa)[:3] + struct.pack('<b', exponent)
+    num = struct.unpack('<L', pack)[0]
+    return f'number_t{{0x{num:x}}}'
 
 
 def get_ptype(fields: dict):
@@ -790,7 +793,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             return [f'{{.defaultString = &{fstr}}}']
         if prop.ptype == 'number':
             r = prop.numrange
-            return [f'.number = {{{{{get_number(r.minimum)}}}, {{{get_number(r.maximum)}}}}}']
+            return [f'.number = {{{get_number(r.minimum)}, {get_number(r.maximum)}}}']
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:

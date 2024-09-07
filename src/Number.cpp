@@ -22,6 +22,80 @@
 
 #include <debug_progmem.h>
 
+int number_t::adjustedExponent() const
+{
+	int exp = exponent;
+	unsigned absMantissa = abs(mantissa);
+	unsigned m{10};
+	while(m < absMantissa) {
+		++exp;
+		m *= 10;
+	}
+	return exp;
+}
+
+int number_t::compare(const number_t& num1, const number_t& num2)
+{
+	/*
+	 * Thanks to cpython `Decimal._cmp` for this implementation.
+	 *
+	 * https://github.com/python/cpython/blob/033510e11dff742d9626b9fd895925ac77f566f1/Lib/_pydecimal.py#L730
+	 */
+
+	if(num1 == num2) {
+		return 0;
+	}
+
+	// Check for zeroes
+	if(num1.mantissa == 0) {
+		if(num2.mantissa == 0) {
+			return 0;
+		}
+		return num2.sign() ? 1 : -1;
+	}
+	if(num2.mantissa == 0) {
+		return num1.sign() ? -1 : 1;
+	}
+
+	// Compare signs
+	if(num1.sign() < num2.sign()) {
+		return 1;
+	}
+	if(num1.sign() > num2.sign()) {
+		return -1;
+	}
+
+	// OK, both numbers have same sign
+	auto exp1 = num1.adjustedExponent();
+	auto exp2 = num2.adjustedExponent();
+	if(exp1 < exp2) {
+		return num1.sign() ? 1 : -1;
+	}
+	if(exp1 > exp2) {
+		return num1.sign() ? -1 : 1;
+	}
+
+	// Compare mantissa. Watch for e.g. 10e9 vs 12e9
+	int m1 = num1.mantissa;
+	int m2 = num2.mantissa;
+	int diff = num1.exponent - num2.exponent;
+	while(diff > 0) {
+		m1 *= 10;
+		--diff;
+	}
+	while(diff < 0) {
+		m2 *= 10;
+		++diff;
+	}
+	if(m1 < m2) {
+		return -1;
+	}
+	if(m1 > m2) {
+		return 1;
+	}
+	return 0;
+}
+
 namespace ConfigDB
 {
 number_t Number::parse(double value)
@@ -50,7 +124,6 @@ number_t Number::parse(double value)
 	}
 	int mantissa = atoi(buf);
 	free(buf);
-	return {mantissa, exponent};
 #else
 	int decpt;
 	int sign;
@@ -70,8 +143,13 @@ number_t Number::parse(double value)
 	if(sign) {
 		mantissa = -mantissa;
 	}
-	return {mantissa, decpt - len};
+	int exponent = decpt - len;
 #endif
+
+	number_t num;
+	num.mantissa = mantissa;
+	num.exponent = exponent;
+	return num;
 }
 
 number_t Number::parse(const char* value, unsigned length)
@@ -111,7 +189,7 @@ number_t Number::parse(const char* value, unsigned length)
 				state = State::mant;
 				break;
 			}
-			return numberInvalid;
+			return invalid;
 
 		case State::mant:
 			if(c == '.') {
@@ -132,9 +210,9 @@ number_t Number::parse(const char* value, unsigned length)
 					mantissa = newMantissa;
 					break;
 				}
-				return numberOverflow;
+				return overflow;
 			}
-			return numberInvalid;
+			return invalid;
 
 		case State::frac:
 			if(c == 'e') {
@@ -153,7 +231,7 @@ number_t Number::parse(const char* value, unsigned length)
 				state = State::rounded;
 				break;
 			}
-			return numberInvalid;
+			return invalid;
 
 		case State::rounded:
 			// Discard digit
@@ -174,7 +252,7 @@ number_t Number::parse(const char* value, unsigned length)
 				exponent = (exponent * 10) + c - '0';
 				break;
 			}
-			return numberInvalid;
+			return invalid;
 		}
 	}
 
@@ -198,21 +276,24 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 	}
 
 	if(abs(exponent) > number_t::maxExponent) {
-		return numberOverflow;
+		return overflow;
 	}
 
-	return {isNeg ? -int(mantissa) : int(mantissa), exponent};
+	number_t num;
+	num.mantissa = isNeg ? -mantissa : mantissa;
+	num.exponent = exponent;
+	return num;
 }
 
 Number::operator String() const
 {
 	char buf[32];
-	return formatNumber(buf, *this);
+	return formatNumber(buf, number);
 }
 
 const char* Number::formatNumber(char* buf, number_t number)
 {
-	if(number == numberOverflow) {
+	if(number == overflow) {
 		strcpy(buf, "OVF");
 		return buf;
 	}
@@ -274,89 +355,15 @@ const char* Number::formatNumber(char* buf, number_t number)
 size_t Number::printTo(Print& p) const
 {
 	char buf[32];
-	auto str = formatNumber(buf, *this);
+	auto str = formatNumber(buf, number);
 	return p.print(str);
 }
 
 double Number::asFloat() const
 {
 	char buf[32];
-	auto str = formatNumber(buf, *this);
+	auto str = formatNumber(buf, number);
 	return strtod(str, nullptr);
-}
-
-int Number::compare(const Number& other) const
-{
-	/*
-	 * Thanks to cpython `Decimal._cmp` for this implementation.
-	 *
-	 * https://github.com/python/cpython/blob/033510e11dff742d9626b9fd895925ac77f566f1/Lib/_pydecimal.py#L730
-	 */
-
-	if(*this == other) {
-		return 0;
-	}
-
-	// Check for zeroes
-	if(mantissa == 0) {
-		if(other.mantissa == 0) {
-			return 0;
-		}
-		return other.sign() ? 1 : -1;
-	}
-	if(other.mantissa == 0) {
-		return sign() ? -1 : 1;
-	}
-
-	// Compare signs
-	if(sign() < other.sign()) {
-		return 1;
-	}
-	if(sign() > other.sign()) {
-		return -1;
-	}
-
-	// OK, both numbers have same sign
-	auto exp = adjustedExponent();
-	auto otherExp = other.adjustedExponent();
-	if(exp < otherExp) {
-		return sign() ? 1 : -1;
-	}
-	if(exp > otherExp) {
-		return sign() ? -1 : 1;
-	}
-
-	// Compare mantissa. Watch for e.g. 10e9 vs 12e9
-	int m = mantissa;
-	int mo = other.mantissa;
-	int diff = exponent - other.exponent;
-	while(diff > 0) {
-		m *= 10;
-		--diff;
-	}
-	while(diff < 0) {
-		mo *= 10;
-		++diff;
-	}
-	if(m < mo) {
-		return -1;
-	}
-	if(m > mo) {
-		return 1;
-	}
-	return 0;
-}
-
-int Number::adjustedExponent() const
-{
-	int exp = exponent;
-	unsigned absMantissa = abs(mantissa);
-	unsigned m{10};
-	while(m < absMantissa) {
-		++exp;
-		m *= 10;
-	}
-	return exp;
 }
 
 } // namespace ConfigDB
