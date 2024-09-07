@@ -59,6 +59,27 @@ struct TestValue {
 DEFINE_FSTR_ARRAY_LOCAL(testValues, TestValue, TEST_VALUE_MAP(XX))
 #undef XX
 
+struct CompareValue {
+	char a[8];
+	char b[8];
+	int compare;
+};
+
+#define COMPARE_VALUE_MAP(XX)                                                                                          \
+	XX(1e-100, 0, 1)                                                                                                   \
+	XX(1e-10, 10e-10, -1)                                                                                              \
+	XX(0, 1, -1)                                                                                                       \
+	XX(0, 0, 0)                                                                                                        \
+	XX(1, 1, 0)                                                                                                        \
+	XX(10, 1, 1)                                                                                                       \
+	XX(1e-10, 10e-10, -1)                                                                                              \
+	XX(1e1, 1e-1, 1)                                                                                                   \
+	XX(1e-100, 0, 1)
+
+#define XX(a, b, c) {STR(a), STR(b), c},
+DEFINE_FSTR_ARRAY_LOCAL(compareValues, CompareValue, COMPARE_VALUE_MAP(XX))
+#undef XX
+
 } // namespace
 
 class NumberTest : public TestGroup
@@ -70,19 +91,30 @@ public:
 
 	void execute() override
 	{
-		for(auto test : testValues) {
-			ConfigDB::Number number(test.input);
-			String output(number);
+		TEST_CASE("Parsing and printing")
+		{
+			for(auto test : testValues) {
+				ConfigDB::Number number(test.input);
+				String output(number);
 
-			ConfigDB::Number floatNumber(test.value);
+				ConfigDB::Number floatNumber(test.value);
 
-			number_t num = number;
+				number_t num = number;
 
-			Serial << "Number " << test.input << ", " << output << ", " << floatNumber << " [" << num.mantissa << ", "
-				   << num.exponent << "]" << endl;
+				Serial << "Number " << test.input << ", " << output << ", " << floatNumber << " [" << num.mantissa
+					   << ", " << num.exponent << "]" << endl;
 
-			CHECK(number == floatNumber);
-			CHECK_EQ(output, test.expected);
+				CHECK(number == floatNumber);
+				CHECK_EQ(output, test.expected);
+			}
+		}
+
+		TEST_CASE("Compare")
+		{
+			for(auto test : compareValues) {
+				Serial << "compare(" << test.a << ", " << test.b << ")" << endl;
+				CHECK_EQ(ConfigDB::Number(test.a).compare(test.b), test.compare);
+			}
 		}
 	}
 };

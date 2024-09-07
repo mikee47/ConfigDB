@@ -68,19 +68,19 @@ struct __attribute__((packed)) Number {
 	{
 	}
 
-	bool operator<(const Number& other)
+	bool operator<(const Number& other) const
 	{
 		return compare(other) < 0;
 	}
 
-	bool operator>(const Number& other)
+	bool operator>(const Number& other) const
 	{
 		return compare(other) > 0;
 	}
 
-	bool operator==(const Number& other)
+	bool operator==(const Number& other) const
 	{
-		return compare(other) == 0;
+		return uint32_t(*this) == uint32_t(other);
 	}
 
 	int compare(const Number& other) const;
@@ -88,6 +88,11 @@ struct __attribute__((packed)) Number {
 	explicit operator uint32_t() const
 	{
 		return *reinterpret_cast<const uint32_t*>(this);
+	}
+
+	bool sign() const
+	{
+		return mantissa < 0;
 	}
 
 	/**

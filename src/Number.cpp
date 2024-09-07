@@ -287,15 +287,32 @@ double Number::asFloat() const
 
 int Number::compare(const Number& other) const
 {
-	if(mantissa == other.mantissa && exponent == other.exponent) {
+	/*
+	 * Thanks to cpython `Decimal._cmp` for this implementation.
+	 *
+	 * https://github.com/python/cpython/blob/033510e11dff742d9626b9fd895925ac77f566f1/Lib/_pydecimal.py#L730
+	 */
+
+	if(*this == other) {
 		return 0;
 	}
-	// Compare signs
-	if(mantissa < 0) {
-		if(other.mantissa >= 0) {
-			return -1;
+
+	// Check for zeroes
+	if(mantissa == 0) {
+		if(other.mantissa == 0) {
+			return 0;
 		}
-	} else if(other.mantissa < 0) {
+		return other.sign() ? 1 : -1;
+	}
+	if(other.mantissa == 0) {
+		return sign() ? -1 : 1;
+	}
+
+	// Compare signs
+	if(sign() < other.sign()) {
+		return -1;
+	}
+	if(sign() > other.sign()) {
 		return 1;
 	}
 
@@ -304,9 +321,33 @@ int Number::compare(const Number& other) const
 	auto exp = adjustedExponent();
 	auto otherExp = other.adjustedExponent();
 	if(exp < otherExp) {
-		return -1;
+		/*
+		1e-100	1e-100
+		0		0e+0
+
+		1e-10	1e-10
+		10e-10	1e-9
+		*/
+		return sign() ? 1 : -1;
 	}
 	if(exp > otherExp) {
+		return sign() ? -1 : 1;
+	}
+	int m = mantissa;
+	int mo = other.mantissa;
+	int diff = exp - otherExp;
+	while(diff > 0) {
+		m *= 10;
+		--diff;
+	}
+	while(diff < 0) {
+		mo *= 10;
+		++diff;
+	}
+	if(m < mo) {
+		return -1;
+	}
+	if(m > mo) {
 		return 1;
 	}
 	return 0;
