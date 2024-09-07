@@ -80,9 +80,9 @@ public:
 
 			// Change value
 			if(auto updater = root.update()) {
-				const auto newFloat = 12e6;
+				const auto newFloat = 12.0e20;
 				Serial << newFloat << endl;
-				updater.setSimpleFloat(number_t(newFloat));
+				updater.setSimpleFloat(newFloat);
 				REQUIRE_EQ(newFloat, root.getSimpleFloat().asFloat());
 			} else {
 				TEST_ASSERT(false);

@@ -47,7 +47,7 @@ struct __attribute__((packed)) Number {
 	{
 	}
 
-	explicit Number(double value)
+	Number(double value)
 	{
 		*this = parse(value);
 	}
@@ -55,12 +55,16 @@ struct __attribute__((packed)) Number {
 	/**
 	 * @brief Parse a number from a string
 	 */
-	explicit Number(const char* value, unsigned length)
+	Number(const char* value, unsigned length)
 	{
 		*this = parse(value, length);
 	}
 
-	explicit Number(const String& str) : Number(str.c_str(), str.length())
+	Number(const char* value) : Number(value, value ? strlen(value) : 0)
+	{
+	}
+
+	Number(const String& str) : Number(str.c_str(), str.length())
 	{
 	}
 
@@ -100,7 +104,7 @@ struct __attribute__((packed)) Number {
 
 	double asFloat() const;
 
-	explicit operator String() const;
+	operator String() const;
 
 	static const char* formatNumber(char* buf, Number number);
 
