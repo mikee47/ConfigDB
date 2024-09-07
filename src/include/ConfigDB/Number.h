@@ -22,6 +22,8 @@
 #include <WString.h>
 #include <Print.h>
 
+namespace ConfigDB
+{
 /**
  * @brief Basic definition of base-10 floating point value
  * Avoids problems with rounding errors.
@@ -39,12 +41,18 @@ union number_t {
 		int32_t exponent : 8;
 	};
 
-	static constexpr uint32_t maxMantissa{0x7fffff};
-	static constexpr uint32_t maxExponent{0x7e};
+	static constexpr unsigned maxMantissa{0x7fffff};
+	static constexpr unsigned maxExponent{0x7e};
+	static constexpr unsigned minBufferSize{16};
 
 	bool operator==(const number_t& other) const
 	{
 		return value == other.value;
+	}
+
+	bool operator!=(const number_t& other) const
+	{
+		return value != other.value;
 	}
 
 	bool sign() const
@@ -75,8 +83,6 @@ union number_t {
 	static int compare(const number_t& num1, const number_t& num2);
 };
 
-namespace ConfigDB
-{
 /**
  * @brief Base-10 floating-point storage format
  * @note Structure is packed to accommodate use in generated class structures
@@ -129,6 +135,11 @@ struct __attribute__((packed)) Number {
 		return number == other.number;
 	}
 
+	bool operator!=(const Number& other) const
+	{
+		return number != other.number;
+	}
+
 	int compare(const Number& other) const
 	{
 		return number_t::compare(number, other.number);
@@ -138,13 +149,36 @@ struct __attribute__((packed)) Number {
 
 	double asFloat() const;
 
-	operator String() const;
+	String toString() const;
+
+	explicit operator String() const
+	{
+		return toString();
+	}
 
 	operator number_t() const
 	{
 		return number;
 	}
 
+	bool isNan() const
+	{
+		return number == invalid;
+	}
+
+	bool isInf() const
+	{
+		return number == overflow;
+	}
+
+	/**
+	 * @brief Convert number to string
+	 * @param buf Buffer of at least number_t::minBufferSize
+	 * @param number
+	 * @retval char* Points to string, may not be start of *buf*
+	 * @note Always use return value to give implementation flexible use of buffer
+	 * @note Maybe need some options to indicate how to output NaN, Inf values as JSON doesn't support them
+	 */
 	static const char* formatNumber(char* buf, number_t number);
 
 	static number_t parse(double value);
@@ -153,3 +187,10 @@ struct __attribute__((packed)) Number {
 };
 
 } // namespace ConfigDB
+
+using number_t = ConfigDB::number_t;
+
+inline String toString(const ConfigDB::Number& number)
+{
+	return number.toString();
+}

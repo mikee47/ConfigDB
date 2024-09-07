@@ -19,9 +19,11 @@
 
 #include "include/ConfigDB/Number.h"
 #include <stringconversion.h>
-
 #include <debug_progmem.h>
+#include <cmath>
 
+namespace ConfigDB
+{
 int number_t::adjustedExponent() const
 {
 	int exp = exponent;
@@ -96,21 +98,23 @@ int number_t::compare(const number_t& num1, const number_t& num2)
 	return 0;
 }
 
-namespace ConfigDB
-{
 number_t Number::parse(double value)
 {
 	if(value == 0) {
 		return {};
 	}
 
+	unsigned mantissa{0};
+	int sign{0};
+	int exponent{0};
+
 #ifdef ARCH_HOST
-	char* buf;
-	asprintf(&buf, "%.6e", value);
+	char buf[number_t::minBufferSize];
+	sprintf(buf, "%.6e", value);
 
 	auto exp = strchr(buf, 'e');
 	*exp++ = '\0';
-	int exponent = atoi(exp) + 1;
+	exponent = atoi(exp) + 1;
 	int mlen = strlen(buf);
 	while(buf[mlen - 1] == '0') {
 		--mlen;
@@ -122,34 +126,22 @@ number_t Number::parse(double value)
 		++dp;
 		--exponent;
 	}
-	int mantissa = atoi(buf);
-	free(buf);
+	int m = atoi(buf);
+	if(m < 0) {
+		sign = 1;
+		mantissa = -m;
+	} else {
+		mantissa = m;
+	}
 #else
 	int decpt;
-	int sign;
 	char* rve;
 	auto buf = _dtoa_r(_REENT, value, 2, 7, &decpt, &sign, &rve);
-	int len = strlen(buf);
-	char c{};
-	if(len > 7) {
-		c = buf[7];
-		buf[7] = '\0';
-		len = 7;
-	}
-	int mantissa = atoi(buf);
-	if(c > '5') {
-		++mantissa;
-	}
-	if(sign) {
-		mantissa = -mantissa;
-	}
-	int exponent = decpt - len;
+	mantissa = atoi(buf);
+	exponent = decpt - strlen(buf);
 #endif
 
-	number_t num;
-	num.mantissa = mantissa;
-	num.exponent = exponent;
-	return num;
+	return normalise(mantissa, exponent, sign);
 }
 
 number_t Number::parse(const char* value, unsigned length)
@@ -159,7 +151,6 @@ number_t Number::parse(const char* value, unsigned length)
 		mant,
 		frac,
 		exp,
-		rounded,
 	};
 	State state{};
 
@@ -201,13 +192,8 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(isdigit(c)) {
-				if(mantissa == 0) {
-					mantissa = c - '0';
-					break;
-				}
-				auto newMantissa = (mantissa * 10) + c - '0';
-				if(newMantissa <= number_t::maxMantissa) {
-					mantissa = newMantissa;
+				if(mantissa <= 0x7fffffff / 10) {
+					mantissa = (mantissa * 10) + c - '0';
 					break;
 				}
 				return overflow;
@@ -220,25 +206,13 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(isdigit(c)) {
-				unsigned newMantissa = (mantissa * 10) + c - '0';
-				if(newMantissa <= number_t::maxMantissa) {
-					mantissa = newMantissa;
+				if(mantissa <= 0x7fffffff / 10) {
+					mantissa = (mantissa * 10) + c - '0';
 					--shift;
-					break;
 				}
-				// Use digit to round value up
-				mantissa = (newMantissa + 5) / 10;
-				state = State::rounded;
 				break;
 			}
 			return invalid;
-
-		case State::rounded:
-			// Discard digit
-			if(c == 'e') {
-				state = State::exp;
-			}
-			break;
 
 		case State::exp:
 			if(c == '+') {
@@ -269,25 +243,53 @@ number_t Number::parse(const char* value, unsigned length)
 
 number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 {
-	// Normalise
+	// Round mantissa down if it exceeds maximum precision
+	// mlim is used to detect when mantissa gains a digit when rounded up (e.g. 995 to 1000)
+	// TODO: There *is* a much more efficient way to do this. Find it.
+	if(mantissa > number_t::maxMantissa) {
+		uint64_t mlim = 1;
+		while(mlim < mantissa) {
+			mlim *= 10;
+		}
+		do {
+			mantissa = (mantissa + 5) / 10;
+			if(mantissa < mlim) {
+				++exponent;
+				mlim /= 10;
+			}
+		} while(mantissa > number_t::maxMantissa);
+	}
+
+	// Drop any trailing 0's from mantissa
 	while(mantissa >= 10 && mantissa % 10 == 0) {
 		mantissa /= 10;
 		++exponent;
 	}
 
+	// Adjust exponent to keep it in range (without losing precision)
+	while(exponent > int(number_t::maxExponent)) {
+		mantissa *= 10;
+		--exponent;
+	}
+
+	// Check for overflow conditions
+	if(mantissa > number_t::maxMantissa) {
+		return overflow;
+	}
 	if(abs(exponent) > number_t::maxExponent) {
 		return overflow;
 	}
 
+	// Success
 	number_t num;
 	num.mantissa = isNeg ? -mantissa : mantissa;
 	num.exponent = exponent;
 	return num;
 }
 
-Number::operator String() const
+String Number::toString() const
 {
-	char buf[32];
+	char buf[number_t::minBufferSize];
 	return formatNumber(buf, number);
 }
 
@@ -298,23 +300,33 @@ const char* Number::formatNumber(char* buf, number_t number)
 		return buf;
 	}
 
-	auto& v = number;
+	if(number == invalid) {
+		strcpy(buf, "NaN");
+		return buf;
+	}
+
+	int mantissa = number.mantissa;
+	int exponent = number.exponent;
+	while(mantissa % 10 == 0 && mantissa >= 10) {
+		mantissa /= 10;
+		++exponent;
+	}
 
 	// Output mantissa
 	auto numptr = buf;
-	if(v.mantissa < 0) {
+	if(mantissa < 0) {
 		*numptr++ = '-';
 	}
-	ultoa(abs(v.mantissa), numptr, 10);
+	ultoa(abs(mantissa), numptr, 10);
 	int mlen = strlen(numptr);
 
 	// Case 1: exponent == 0 (e.g. 0, 1, 2, 3)
-	if(v.exponent == 0) {
+	if(exponent == 0) {
 		return buf;
 	}
 
 	// Determine what exponent would be for 'e' form
-	int exp = v.exponent + mlen - 1;
+	int exp = exponent + mlen - 1;
 	if(exp <= -4 || exp >= 6) {
 		if(numptr[1]) {
 			memmove(numptr + 2, numptr + 1, mlen - 1);
@@ -328,15 +340,15 @@ const char* Number::formatNumber(char* buf, number_t number)
 	}
 
 	// Case 1: exponent > 0, append 0's
-	if(v.exponent > 0) {
+	if(exponent > 0) {
 		numptr += mlen;
-		memset(numptr, '0', v.exponent);
-		numptr[v.exponent] = '\0';
+		memset(numptr, '0', exponent);
+		numptr[exponent] = '\0';
 		return buf;
 	}
 
 	// Case 2: exponent < 0, insert 0's
-	int insertLen = -(mlen + v.exponent);
+	int insertLen = -(mlen + exponent);
 	if(insertLen >= 0) {
 		memmove(numptr + insertLen + 2, numptr, mlen + 1);
 		*numptr++ = '0';
@@ -346,22 +358,29 @@ const char* Number::formatNumber(char* buf, number_t number)
 	}
 
 	// Case 3: insert dp
-	numptr += mlen + v.exponent;
-	memmove(numptr + 1, numptr, 1 - v.exponent);
+	numptr += mlen + exponent;
+	memmove(numptr + 1, numptr, 1 - exponent);
 	*numptr = '.';
 	return buf;
 }
 
 size_t Number::printTo(Print& p) const
 {
-	char buf[32];
+	char buf[number_t::minBufferSize];
 	auto str = formatNumber(buf, number);
 	return p.print(str);
 }
 
 double Number::asFloat() const
 {
-	char buf[32];
+	if(number == invalid) {
+		return NAN;
+	}
+	if(number == overflow) {
+		return HUGE_VALF;
+	}
+
+	char buf[number_t::minBufferSize];
 	auto str = formatNumber(buf, number);
 	return strtod(str, nullptr);
 }

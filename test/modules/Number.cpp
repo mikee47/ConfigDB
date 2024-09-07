@@ -2,9 +2,9 @@
  * Update.cpp
  */
 
-#include <SmingTest.h>
 #include <ConfigDB/Number.h>
 #include <FlashString/Array.hpp>
+#include <SmingTest.h>
 
 namespace
 {
@@ -15,12 +15,17 @@ struct TestValue {
 };
 
 #define TEST_VALUE_MAP(XX)                                                                                             \
+	XX(101.0000001e9, "1.01e11")                                                                                       \
+	XX(1000e124, "1e127")                                                                                              \
 	XX(1.00000e10, "1e10")                                                                                             \
 	XX(1.00001e10, "1.00001e10")                                                                                       \
 	XX(1.0000000000e10, "1e10")                                                                                        \
 	XX(1000e123, "1e126")                                                                                              \
 	XX(1000e-123, "1e-120")                                                                                            \
-	XX(1000e124, "OVF")                                                                                                \
+	XX(1000e124, "1e127")                                                                                              \
+	XX(3.141592654e126, "3.141593e126")                                                                                \
+	XX(3.141592654e132, "3.141593e132")                                                                                \
+	XX(3.141592654e133, "OVF")                                                                                         \
 	XX(-3.141592654e+4, "-31415.93")                                                                                   \
 	XX(-3.141592654e+5, "-314159.3")                                                                                   \
 	XX(-3.141592654e-5, "-3.141593e-5")                                                                                \
@@ -89,6 +94,14 @@ struct CompareValue {
 DEFINE_FSTR_ARRAY_LOCAL(compareValues, CompareValue, COMPARE_VALUE_MAP(XX))
 #undef XX
 
+// Use library function to print number (may not be available in newlib builds)
+String floatToStr(double value)
+{
+	char buf[64];
+	sprintf(buf, "%.7lg", value);
+	return buf;
+}
+
 } // namespace
 
 class NumberTest : public TestGroup
@@ -108,12 +121,12 @@ public:
 
 				ConfigDB::Number floatNumber(test.value);
 
-				number_t num = number.number;
+				auto num = number.number;
 
 				Serial << "Number " << test.input << ", " << output << ", " << floatNumber << " [" << num.mantissa
 					   << ", " << num.exponent << "]" << endl;
 
-				CHECK(number == floatNumber);
+				CHECK_EQ(number, floatNumber);
 				CHECK_EQ(output, test.expected);
 			}
 		}
@@ -125,6 +138,35 @@ public:
 				CHECK_EQ(ConfigDB::Number(test.a).compare(test.b), test.compare);
 				CHECK_EQ(ConfigDB::Number(test.b).compare(test.a), (~test.compare) + 1);
 			}
+		}
+
+		TEST_CASE("String length")
+		{
+			size_t maxLength{0};
+
+			auto check = [&](unsigned exponent, double value) {
+				ConfigDB::Number number(value);
+				int error = (1e7 * (1 - value / number.asFloat())) + 0.5;
+				Serial << exponent << ": " << floatToStr(value) << ", " << number << ", "
+					   << floatToStr(number.asFloat()) << ", " << floatToStr(error) << endl;
+				maxLength = std::max(maxLength, String(number).length());
+			};
+
+			// const double initval{1.1111111};
+			const double initval{6.666666};
+
+			double value = initval;
+			for(unsigned i = 0; i <= ConfigDB::number_t::maxExponent; ++i) {
+				check(i, value);
+				value /= 10.0;
+			}
+			value = initval;
+			for(unsigned i = 0; i <= ConfigDB::number_t::maxExponent; ++i) {
+				check(i, value);
+				value *= 10.0;
+			}
+
+			Serial << "Max length = " << maxLength << endl;
 		}
 	}
 };
