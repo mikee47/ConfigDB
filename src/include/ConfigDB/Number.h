@@ -36,7 +36,7 @@ struct __attribute__((packed)) Number {
 	int32_t mantissa : 24;
 	int32_t exponent : 8;
 
-	static constexpr uint32_t maxMantissa{0xffffff};
+	static constexpr uint32_t maxMantissa{0x7fffff};
 	static constexpr uint32_t maxExponent{0x7e};
 
 	Number() = default;

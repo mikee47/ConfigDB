@@ -60,12 +60,21 @@ DEFINE_FSTR_ARRAY_LOCAL(testValues, TestValue, TEST_VALUE_MAP(XX))
 #undef XX
 
 struct CompareValue {
-	char a[8];
-	char b[8];
+	char a[16];
+	char b[16];
 	int compare;
 };
 
 #define COMPARE_VALUE_MAP(XX)                                                                                          \
+	XX(1000000e9, 1000001e9, -1)                                                                                       \
+	XX(10000000e9, 10000001e9, 0)                                                                                      \
+	XX(-2, -1, -1)                                                                                                     \
+	XX(-1, -0.9, -1)                                                                                                   \
+	XX(-0.9, 0, -1)                                                                                                    \
+	XX(0, 0.9, -1)                                                                                                     \
+	XX(0.9, 1, -1)                                                                                                     \
+	XX(1, 2, -1)                                                                                                       \
+	XX(0.9, -0.9, 1)                                                                                                   \
 	XX(1e-100, 0, 1)                                                                                                   \
 	XX(1e-10, 10e-10, -1)                                                                                              \
 	XX(0, 1, -1)                                                                                                       \
@@ -114,6 +123,7 @@ public:
 			for(auto test : compareValues) {
 				Serial << "compare(" << test.a << ", " << test.b << ")" << endl;
 				CHECK_EQ(ConfigDB::Number(test.a).compare(test.b), test.compare);
+				CHECK_EQ(ConfigDB::Number(test.b).compare(test.a), (~test.compare) + 1);
 			}
 		}
 	}

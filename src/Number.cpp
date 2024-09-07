@@ -56,7 +56,7 @@ number_t Number::parse(double value)
 	int sign;
 	char* rve;
 	auto buf = _dtoa_r(_REENT, value, 2, 7, &decpt, &sign, &rve);
-	auto len = strlen(buf);
+	int len = strlen(buf);
 	char c{};
 	if(len > 7) {
 		c = buf[7];
@@ -310,32 +310,26 @@ int Number::compare(const Number& other) const
 
 	// Compare signs
 	if(sign() < other.sign()) {
-		return -1;
+		return 1;
 	}
 	if(sign() > other.sign()) {
-		return 1;
+		return -1;
 	}
 
 	// OK, both numbers have same sign
-	// Find number of digits in mantissa
 	auto exp = adjustedExponent();
 	auto otherExp = other.adjustedExponent();
 	if(exp < otherExp) {
-		/*
-		1e-100	1e-100
-		0		0e+0
-
-		1e-10	1e-10
-		10e-10	1e-9
-		*/
 		return sign() ? 1 : -1;
 	}
 	if(exp > otherExp) {
 		return sign() ? -1 : 1;
 	}
+
+	// Compare mantissa. Watch for e.g. 10e9 vs 12e9
 	int m = mantissa;
 	int mo = other.mantissa;
-	int diff = exp - otherExp;
+	int diff = exponent - other.exponent;
 	while(diff > 0) {
 		m *= 10;
 		--diff;
