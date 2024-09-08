@@ -83,10 +83,19 @@ public:
 				const auto newFloat = 12.0e20;
 				Serial << newFloat << endl;
 				updater.setSimpleFloat(newFloat);
-				REQUIRE_EQ(newFloat, root.getSimpleFloat().asFloat());
+				REQUIRE_EQ(String(root.getSimpleFloat()), F("1.2e21"));
 			} else {
 				TEST_ASSERT(false);
 			}
+
+			TestConfigRange db(F("out/test-range"));
+			TestConfigRange::Root::OuterUpdater root(db);
+			root.setNumval(0);
+			CHECK_EQ(root.getNumval().asFloat(), 0);
+			root.setNumval(-2);
+			CHECK_EQ(root.getNumval().asFloat(), -1);
+			root.setNumval(10.1);
+			CHECK_EQ(root.getNumval().asFloat(), 10);
 		}
 	}
 };

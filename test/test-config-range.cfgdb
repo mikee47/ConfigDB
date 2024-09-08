@@ -13,6 +13,12 @@
       "minimum": -100000000000,
       "maximum": 100000000000,
       "default": -1
+    },
+    "numval": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 10,
+      "default": 3.1415
     }
   }
 }
