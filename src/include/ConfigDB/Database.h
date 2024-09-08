@@ -113,6 +113,25 @@ public:
 private:
 	using UpdateRef = std::weak_ptr<Store>;
 
+	struct StoreCache {
+		std::shared_ptr<Store> store;
+
+		explicit operator bool() const
+		{
+			return bool(store);
+		}
+
+		void reset()
+		{
+			store.reset();
+		}
+
+		bool typeIs(const PropertyInfo& storeInfo) const
+		{
+			return store && store->propinfoPtr == &storeInfo;
+		}
+	};
+
 	struct UpdateQueueItem {
 		uint8_t storeIndex;
 		Object::UpdateCallback callback;
@@ -125,12 +144,11 @@ private:
 
 	std::shared_ptr<Store> loadStore(const PropertyInfo& storeInfo);
 
-	bool isCached(const PropertyInfo& storeInfo) const;
-
 	CString path;
 
 	// Hold store open for a brief period to avoid thrashing
-	static std::shared_ptr<Store> cache;
+	static StoreCache readCache;
+	static StoreCache writeCache;
 	std::unique_ptr<UpdateRef[]> updateRefs;
 	Vector<UpdateQueueItem> updateQueue;
 	static bool callbackQueued;

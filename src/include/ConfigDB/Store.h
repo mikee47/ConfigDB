@@ -159,13 +159,7 @@ public:
 		return exportToFile(format, filename);
 	}
 
-	Status importFromFile(const Format& format, const String& filename)
-	{
-		incUpdate();
-		auto result = Object::importFromFile(format, filename);
-		decUpdate();
-		return result;
-	}
+	using Object::importFromFile;
 
 	Status importFromFile(const Format& format)
 	{
@@ -187,11 +181,7 @@ protected:
 		dirty = false;
 	}
 
-	void incUpdate()
-	{
-		++updaterCount;
-		CFGDB_DEBUG(" %u", updaterCount)
-	}
+	void incUpdate();
 
 	void decUpdate();
 

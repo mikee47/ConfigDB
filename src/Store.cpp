@@ -97,6 +97,12 @@ void Store::queueUpdate(Object::UpdateCallback callback)
 	return db.queueUpdate(*this, callback);
 }
 
+void Store::incUpdate()
+{
+	++updaterCount;
+	CFGDB_DEBUG(" %u", updaterCount)
+}
+
 void Store::decUpdate()
 {
 	if(updaterCount == 0) {

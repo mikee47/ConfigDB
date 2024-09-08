@@ -25,25 +25,21 @@
 
 namespace ConfigDB
 {
-std::shared_ptr<Store> Database::cache;
+Database::StoreCache Database::readCache;
+Database::StoreCache Database::writeCache;
 bool Database::callbackQueued;
 
 Database::~Database()
 {
-	if(!cache) {
+	if(!readCache) {
 		return;
 	}
 	for(unsigned i = 0; i < typeinfo.storeCount; ++i) {
-		if(isCached(typeinfo.stores[i])) {
-			cache.reset();
+		if(readCache.typeIs(typeinfo.stores[i])) {
+			readCache.reset();
 			break;
 		}
 	}
-}
-
-bool Database::isCached(const PropertyInfo& storeInfo) const
-{
-	return cache && cache->propinfoPtr == &storeInfo;
 }
 
 const Format& Database::getFormat(const Store&) const
@@ -77,44 +73,55 @@ std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
 		return nullptr;
 	}
 
-	auto& storeInfo = typeinfo.stores[index];
-
-	if(!lockForWrite && isCached(storeInfo)) {
-		return cache;
-	}
-
 	auto& updateRef = updateRefs[index];
 	auto store = updateRef.lock();
 
+	auto& storeInfo = typeinfo.stores[index];
+	if(!lockForWrite && readCache.typeIs(storeInfo) && store != readCache.store) {
+		return readCache.store;
+	}
+
 	if(lockForWrite) {
-		if(store && store->isLocked()) {
-			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
-			return std::make_shared<Store>(*this);
+		if(store) {
+			if(store->isLocked()) {
+				debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
+				return std::make_shared<Store>(*this);
+			}
+
+			store->incUpdate();
+			return store;
 		}
-		store = loadStore(storeInfo);
+
+		if(readCache.typeIs(storeInfo) && readCache.store.use_count() == 1) {
+			store = readCache.store;
+			readCache.reset();
+		} else {
+			store = loadStore(storeInfo);
+		}
 		store->incUpdate();
 		updateRef = store;
+		writeCache.store = store;
 		return store;
 	}
 
 	if(store && !store->isLocked()) {
 		// Not locked, we can use it
-		cache = store;
+		readCache.store = store;
 		return store;
 	}
 
-	cache.reset();
+	readCache.reset();
 
 	store = loadStore(storeInfo);
 	if(!store) {
 		return nullptr;
 	}
 
-	cache = store;
+	readCache.store = store;
 
 	if(!callbackQueued) {
 		System.queueCallback(InterruptCallback([]() {
-			cache.reset();
+			readCache.reset();
 			callbackQueued = false;
 		}));
 		callbackQueued = true;
@@ -148,10 +155,10 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 
 	// If no-one else is using this store instance we can safely update it
 	auto use_count = store.use_count();
-	if(isCached(storeInfo)) {
+	if(readCache.typeIs(storeInfo)) {
 		--use_count;
 		if(use_count == 1) {
-			cache.reset();
+			readCache.reset();
 		}
 	}
 	if(use_count == 1) {
@@ -169,7 +176,7 @@ bool Database::lockStore(std::shared_ptr<Store>& store)
 
 std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 {
-	debug_d("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
+	debug_i("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
 
 	auto store = std::make_shared<Store>(*this, storeInfo);
 	if(!store) {
@@ -177,8 +184,10 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 	}
 
 	auto& format = getFormat(*store);
+	store->incUpdate();
 	store->importFromFile(format);
-	store->dirty = false;
+	store->clearDirty();
+	store->decUpdate();
 	return store;
 }
 
@@ -208,16 +217,15 @@ void Database::checkUpdateQueue(Store& store)
 
 bool Database::save(Store& store) const
 {
-	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
+	debug_i("[CFGDB] Save '%s'", store.getName().c_str());
 
 	auto& format = getFormat(store);
 	bool result = store.exportToFile(format);
 
-	// Invalidate cached stores: Some data may have changed even on failure
-	if(isCached(store.propinfo())) {
-		cache.reset();
+	// Invalidate readCache: Some data may have changed even on failure
+	if(readCache.typeIs(store.propinfo())) {
+		readCache.reset();
 	}
-
 	return result;
 }
 
