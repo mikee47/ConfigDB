@@ -86,10 +86,24 @@ union number_t {
 /**
  * @brief Base-10 floating-point storage format
  * @note Structure is packed to accommodate use in generated class structures
+ *
+ * Floating-point values are parsed from JSON as strings, which this class then converts
+ * into a base-10 representation which has no weird rounding issues.
+ * If values are too precise then rounding occurs, but using standard mod-10 arithmetic
+ * so is more intuitive.
+ *
+ * Conversion to internal floating-point format is only done when required by the application.
+ * This can be avoided completely by using strings instead of floats to set values.
+ *
+ * Integer values can also be specified, however they will also be subject to rounding.
+ * Large values can be stored, such as 1.5e25.
+ * This would actually be stored as 15e24 and applications are free to inspect
+ *
+ * Applications can 
  */
-struct __attribute__((packed)) Number {
-	number_t number;
-
+class __attribute__((packed)) Number
+{
+public:
 	static constexpr number_t invalid{0x7f000000};
 	static constexpr number_t overflow{0x7f000001};
 
@@ -102,6 +116,18 @@ struct __attribute__((packed)) Number {
 	constexpr Number(const Number& number) = default;
 
 	Number(double value) : number(parse(value))
+	{
+	}
+
+	Number(int value) : Number(int64_t(value))
+	{
+	}
+
+	Number(int64_t value) : number(parse(value))
+	{
+	}
+
+	Number(unsigned int value) : Number(int64_t(value))
 	{
 	}
 
@@ -148,6 +174,7 @@ struct __attribute__((packed)) Number {
 	size_t printTo(Print& p) const;
 
 	double asFloat() const;
+	int64_t asInt64() const;
 
 	String toString() const;
 
@@ -179,11 +206,15 @@ struct __attribute__((packed)) Number {
 	 * @note Always use return value to give implementation flexible use of buffer
 	 * @note Maybe need some options to indicate how to output NaN, Inf values as JSON doesn't support them
 	 */
-	static const char* formatNumber(char* buf, number_t number);
+	static const char* format(char* buf, number_t number);
 
 	static number_t parse(double value);
+	static number_t parse(int64_t value);
 	static number_t parse(const char* value, unsigned length);
 	static number_t normalise(unsigned mantissa, int exponent, bool isNeg);
+
+private:
+	number_t number;
 };
 
 } // namespace ConfigDB

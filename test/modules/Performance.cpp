@@ -50,6 +50,8 @@ public:
 			constexpr const double testFloat = PI;
 			profile(F("setValue [number float]"), [&](unsigned) { root.setSimpleFloat(testFloat); });
 
+			profile(F("setValue [number int]"), [&](unsigned value) { root.setSimpleFloat(value * 100); });
+
 			profile(F("setValue [number string]"), [&](unsigned) { root.setSimpleFloat("3.141592654"); });
 
 			profile(F("Set Value + commit"), [&](unsigned value) {
@@ -63,7 +65,6 @@ public:
 		{
 			TestConfig::Root root(database);
 
-			// Cache store so it doesn't skew results
 			Serial << "INT:" << root.getSimpleInt() << endl;
 			profile(F("getValue [int]"), [&](unsigned) { root.getSimpleInt(); });
 

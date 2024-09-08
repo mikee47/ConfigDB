@@ -98,6 +98,21 @@ int number_t::compare(const number_t& num1, const number_t& num2)
 	return 0;
 }
 
+number_t Number::parse(int64_t value)
+{
+	int exponent = 0;
+	bool isNeg{false};
+	if(value < 0) {
+		isNeg = true;
+		value = -value;
+	}
+	while(value > 0x7fffffff) {
+		value /= 10;
+		++exponent;
+	}
+	return normalise(value, exponent, isNeg);
+}
+
 number_t Number::parse(double value)
 {
 	if(value == 0) {
@@ -290,10 +305,10 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 String Number::toString() const
 {
 	char buf[number_t::minBufferSize];
-	return formatNumber(buf, number);
+	return format(buf, number);
 }
 
-const char* Number::formatNumber(char* buf, number_t number)
+const char* Number::format(char* buf, number_t number)
 {
 	if(number == overflow) {
 		strcpy(buf, "OVF");
@@ -367,7 +382,7 @@ const char* Number::formatNumber(char* buf, number_t number)
 size_t Number::printTo(Print& p) const
 {
 	char buf[number_t::minBufferSize];
-	auto str = formatNumber(buf, number);
+	auto str = format(buf, number);
 	return p.print(str);
 }
 
@@ -381,8 +396,32 @@ double Number::asFloat() const
 	}
 
 	char buf[number_t::minBufferSize];
-	auto str = formatNumber(buf, number);
+	auto str = format(buf, number);
 	return strtod(str, nullptr);
+}
+
+int64_t Number::asInt64() const
+{
+	if(number == invalid) {
+		return 0;
+	}
+	if(number == overflow) {
+		return 0;
+	}
+	int64_t value = number.mantissa;
+	int exponent = number.exponent;
+	while(value && exponent < 0) {
+		value = (value + 5) / 10;
+		++exponent;
+	}
+	while(exponent > 0) {
+		if(value > std::numeric_limits<int64_t>::max() / 10) {
+			return 0;
+		}
+		value *= 10;
+		--exponent;
+	}
+	return value;
 }
 
 } // namespace ConfigDB

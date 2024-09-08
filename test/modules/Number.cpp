@@ -94,6 +94,33 @@ struct CompareValue {
 DEFINE_FSTR_ARRAY_LOCAL(compareValues, CompareValue, COMPARE_VALUE_MAP(XX))
 #undef XX
 
+template <typename T> struct IntValue {
+	T value;
+	char input[20];
+	char expected[20];
+};
+
+#define INT_VALUE_MAP(XX)                                                                                              \
+	XX(0x7fffffff, "2.147484e9")                                                                                       \
+	XX(2000000000, "2e9")
+
+#define UINT_VALUE_MAP(XX)                                                                                             \
+	XX(0x7fffffff, "2.147484e9")                                                                                       \
+	XX(0xffffffff, "4.294967e9")                                                                                       \
+	XX(4000000000, "4e9")
+
+#define INT64_VALUE_MAP(XX)                                                                                            \
+	XX(0xffffffff, "4.294967e9")                                                                                       \
+	XX(0xffffffffffffull, "2.81475e14")                                                                                \
+	XX(400000000000, "4e11")                                                                                           \
+	XX(200000000000, "2e11")
+
+#define XX(a, b) {a, STR(a), b},
+DEFINE_FSTR_ARRAY_LOCAL(intValues, IntValue<int>, INT_VALUE_MAP(XX))
+DEFINE_FSTR_ARRAY_LOCAL(uintValues, IntValue<unsigned>, UINT_VALUE_MAP(XX))
+DEFINE_FSTR_ARRAY_LOCAL(int64Values, IntValue<int64_t>, INT64_VALUE_MAP(XX))
+#undef XX
+
 // Use library function to print number (may not be available in newlib builds)
 String floatToStr(double value)
 {
@@ -121,7 +148,7 @@ public:
 
 				ConfigDB::Number floatNumber(test.value);
 
-				auto num = number.number;
+				number_t num = number;
 
 				Serial << "Number " << test.input << ", " << output << ", " << floatNumber << " [" << num.mantissa
 					   << ", " << num.exponent << "]" << endl;
@@ -130,6 +157,34 @@ public:
 				CHECK_EQ(output, test.expected);
 			}
 		}
+
+		TEST_CASE("Integers")
+		{
+			for(auto test : intValues) {
+				ConfigDB::Number number(test.value);
+				auto input = strtol(test.input, nullptr, 0);
+				int64_t output = strtod(test.expected, nullptr);
+				Serial << "INT " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
+					   << String(number.asInt64(), HEX) << ", " << output << ", " << String(output, HEX) << endl;
+			}
+			for(auto test : uintValues) {
+				ConfigDB::Number number(test.value);
+				auto input = strtoul(test.input, nullptr, 0);
+				Serial << "UINT " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
+					   << String(number.asInt64(), HEX) << endl;
+			}
+			for(auto test : int64Values) {
+				ConfigDB::Number number(test.value);
+				auto input = strtoll(test.input, nullptr, 0);
+				Serial << "INT64 " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
+					   << String(number.asInt64(), HEX) << endl;
+			}
+		}
+
+		double v = 1/14.0;
+		Serial << floatToStr(v) << ", " << ConfigDB::Number(v) << endl;
+
+		// return;
 
 		TEST_CASE("Compare")
 		{
