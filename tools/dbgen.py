@@ -6,7 +6,6 @@ import os
 import sys
 import json
 import re
-import struct
 from dataclasses import dataclass, field
 
 MAX_STRINGID_LEN = 32
@@ -138,9 +137,7 @@ def get_number(value: float) -> str:
     frac = frac.rstrip('0')
     exponent -= len(frac)
     mantissa = int(real + frac)
-    pack = struct.pack('<l', mantissa)[:3] + struct.pack('<b', exponent)
-    num = struct.unpack('<L', pack)[0]
-    return f'number_t{{0x{num:x}}}'
+    return f'number_t{{{mantissa}, {exponent}}}'
 
 
 def get_ptype(fields: dict):

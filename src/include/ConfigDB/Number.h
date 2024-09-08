@@ -35,11 +35,11 @@ namespace ConfigDB
  * @note This structure is *not* packed to ensure values stored in flash behave correctly.
  */
 union number_t {
-	uint32_t value;
 	struct {
 		int32_t mantissa : 24;
 		int32_t exponent : 8;
 	};
+	uint32_t value;
 
 	static constexpr unsigned maxMantissa{0x7fffff};
 	static constexpr unsigned maxExponent{0x7e};
@@ -104,8 +104,8 @@ union number_t {
 class __attribute__((packed)) Number
 {
 public:
-	static constexpr number_t invalid{0x7f000000};
-	static constexpr number_t overflow{0x7f000001};
+	static constexpr number_t invalid{0, 0x7f};
+	static constexpr number_t overflow{1, 0x7f};
 
 	Number() = default;
 
