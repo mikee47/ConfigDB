@@ -44,7 +44,7 @@ String PropertyData::getString(const PropertyInfo& info) const
 	case PropertyType::UInt64:
 		return String(uint64);
 	case PropertyType::Number:
-		return String(number);
+		return number.toString(Number::Option::json);
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;

@@ -388,21 +388,21 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 	return num;
 }
 
-String Number::toString() const
+String Number::toString(Options options) const
 {
 	char buf[number_t::minBufferSize];
-	return format(buf, number);
+	return format(buf, number, options);
 }
 
-const char* Number::format(char* buf, number_t number)
+const char* Number::format(char* buf, number_t number, Options options)
 {
-	if(number == number_t::overflow()) {
+	if(number == number_t::overflow() && !options[Option::json]) {
 		strcpy(buf, "OVF");
 		return buf;
 	}
 
 	if(number == number_t::invalid()) {
-		strcpy(buf, "NaN");
+		strcpy(buf, options[Option::json] ? "0" : "NaN");
 		return buf;
 	}
 

@@ -21,6 +21,7 @@
 
 #include <WString.h>
 #include <Print.h>
+#include <Data/BitSet.h>
 
 namespace ConfigDB
 {
@@ -67,6 +68,30 @@ union number_t {
 	static constexpr unsigned maxExponent{0x1e};
 	static constexpr unsigned maxSignificantDigits{8};
 	static constexpr unsigned minBufferSize{17};
+
+	/**
+	 * @brief Smallest positive value
+	 */
+	static constexpr const number_t min()
+	{
+		return {1, -int(maxExponent)};
+	}
+
+	/**
+	 * @brief Largest positive value
+	 */
+	static constexpr const number_t max()
+	{
+		return {maxMantissa, maxExponent};
+	}
+
+	/**
+	 * @brief Most negative value
+	 */
+	static constexpr const number_t lowest()
+	{
+		return {-int(maxMantissa), maxExponent};
+	}
 
 	static constexpr const number_t invalid()
 	{
@@ -137,6 +162,11 @@ union number_t {
 class __attribute__((packed)) Number
 {
 public:
+	enum class Option {
+		json,
+	};
+	using Options = BitSet<uint8_t, Option, 1>;
+
 	Number() = default;
 
 	constexpr Number(const number_t& number) : number(number)
@@ -206,7 +236,7 @@ public:
 	double asFloat() const;
 	int64_t asInt64() const;
 
-	String toString() const;
+	String toString(Options options = 0) const;
 
 	explicit operator String() const
 	{
@@ -236,7 +266,7 @@ public:
 	 * @note Always use return value to give implementation flexible use of buffer
 	 * @note Maybe need some options to indicate how to output NaN, Inf values as JSON doesn't support them
 	 */
-	static const char* format(char* buf, number_t number);
+	static const char* format(char* buf, number_t number, Options options = 0);
 
 	static number_t parse(double value);
 	static number_t parse(int64_t value);
