@@ -29,11 +29,11 @@ public:
 	DEFINE_FSTR_LOCAL(fileExtension, ".json")
 
 	std::unique_ptr<ExportStream> createExportStream(Database& db) const override;
-	std::unique_ptr<ExportStream> createExportStream(std::shared_ptr<Store> store, const Object& object) const override;
+	std::unique_ptr<ExportStream> createExportStream(StoreRef store, const Object& object) const override;
 	size_t exportToStream(const Object& object, Print& output) const override;
 	size_t exportToStream(Database& database, Print& output) const override;
 	std::unique_ptr<ImportStream> createImportStream(Database& db) const override;
-	std::unique_ptr<ImportStream> createImportStream(std::shared_ptr<Store> store, Object& object) const override;
+	std::unique_ptr<ImportStream> createImportStream(StoreUpdateRef& store, Object& object) const override;
 	Status importFromStream(Object& object, Stream& source) const override;
 	Status importFromStream(Database& database, Stream& source) const override;
 

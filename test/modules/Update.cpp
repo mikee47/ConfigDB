@@ -17,9 +17,6 @@ public:
 
 	void execute() override
 	{
-		// TestConfigRef db("test-ref");
-		// TestConfigRef::Root root(db);
-
 		// Verify initial value
 		TestConfig::Root root(database);
 		Serial << root << endl;
@@ -61,7 +58,7 @@ public:
 		TEST_CASE("Int64")
 		{
 			TestConfigRange db(F("out/test-range"));
-			db.openStore(0, true)->clear();
+			db.openStoreForUpdate(0)->clear();
 			TestConfigRange::Root root(db);
 			REQUIRE_EQ(root.getInt64val(), -1);
 			if(auto update = root.update()) {

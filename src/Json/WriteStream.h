@@ -38,7 +38,7 @@ public:
 	{
 	}
 
-	WriteStream(std::shared_ptr<Store> store, Object& object) : store(store), info{object}, parser(this)
+	WriteStream(StoreUpdateRef& store, Object& object) : store(store), info{object}, parser(this)
 	{
 	}
 
@@ -109,7 +109,7 @@ private:
 
 private:
 	Database* database{};
-	std::shared_ptr<Store> store;
+	StoreUpdateRef store;
 	Object info[JSON::StreamingParser::maxNesting]{};
 	ObjectArray arrayParent; ///< Temporary required when using selectors
 	JSON::StaticStreamingParser<1024> parser;

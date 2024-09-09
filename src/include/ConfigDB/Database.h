@@ -55,7 +55,9 @@ public:
 	/**
 	 * @brief Open a store instance, load it and return a shared pointer
 	 */
-	std::shared_ptr<Store> openStore(unsigned index, bool lockForWrite = false);
+	StoreRef openStore(unsigned index);
+
+	StoreUpdateRef openStoreForUpdate(unsigned index);
 
 	void queueUpdate(Store& store, Object::UpdateCallback callback);
 	void checkUpdateQueue(Store& store);
@@ -66,7 +68,7 @@ public:
 	 * @brief Lock a store for writing
 	 * @retval bool Fails if called more than once
 	 */
-	bool lockStore(std::shared_ptr<Store>& store);
+	StoreUpdateRef lockStore(StoreRef& store);
 
 	/**
 	 * @brief Get the storage format to use for a store
@@ -121,6 +123,11 @@ private:
 			return bool(store);
 		}
 
+		bool operator==(const StoreCache& other) const
+		{
+			return store == other.store;
+		}
+
 		void reset()
 		{
 			store.reset();
@@ -129,6 +136,11 @@ private:
 		bool typeIs(const PropertyInfo& storeInfo) const
 		{
 			return store && store->propinfoPtr == &storeInfo;
+		}
+
+		bool inUse() const
+		{
+			return store && store.use_count() > 1;
 		}
 	};
 

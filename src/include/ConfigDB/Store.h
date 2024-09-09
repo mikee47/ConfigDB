@@ -58,36 +58,16 @@ public:
 	 * @param db Database which manages this store
 	 * @param typeinfo Store type information
 	 */
-	Store(Database& db, const PropertyInfo& propinfo)
-		: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(propinfo.object->structSize))
-	{
-		memcpy_P(rootData.get(), propinfo.object->defaultData, propinfo.object->structSize);
-		++instanceCount;
-		CFGDB_DEBUG(" %u", instanceCount)
-	}
+	Store(Database& db, const PropertyInfo& propinfo);
 
 	/**
 	 * @brief Copy constructor
 	 */
-	explicit Store(const Store& store)
-		: Object(store.propinfo()), arrayPool(store.arrayPool), stringPool(store.stringPool), db(store.db),
-		  rootData(std::make_unique<uint8_t[]>(store.typeinfo().structSize))
-	{
-		++instanceCount;
-		CFGDB_DEBUG(" COPY %u", instanceCount)
-		memcpy(rootData.get(), store.rootData.get(), typeinfo().structSize);
-	}
+	explicit Store(const Store& store);
 
 	Store(Store&&) = delete;
 
-	~Store()
-	{
-		if(*this) {
-			commit();
-			--instanceCount;
-			CFGDB_DEBUG(" %u", instanceCount);
-		}
-	}
+	~Store();
 
 	String getFileName() const
 	{
@@ -167,12 +147,20 @@ public:
 		return importFromFile(format, filename);
 	}
 
+	bool isDirty() const
+	{
+		return dirty;
+	}
+
 	bool commit();
+
+	static StoreUpdateRef lock(StoreRef& store);
 
 protected:
 	friend class Object;
 	friend class ArrayBase;
 	friend class Database;
+	friend class StoreUpdateRef;
 
 	void queueUpdate(Object::UpdateCallback callback);
 

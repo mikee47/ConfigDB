@@ -21,6 +21,7 @@
 
 #include "Property.h"
 #include "ObjectInfo.h"
+#include "StoreRef.h"
 #include "Format.h"
 
 namespace ConfigDB
@@ -207,21 +208,12 @@ public:
 	void queueUpdate(UpdateCallback callback);
 
 protected:
-	std::shared_ptr<Store> openStore(Database& db, unsigned storeIndex, bool lockForWrite = false);
+	StoreRef openStore(Database& db, unsigned storeIndex);
+	StoreUpdateRef openStoreForUpdate(Database& db, unsigned storeIndex);
 
-	bool isLocked() const;
+	bool isWriteable() const;
 
-	bool isWriteable() const
-	{
-		if(isLocked()) {
-			assert(getDataPtr());
-		}
-		return isLocked() && getDataPtr();
-	}
-
-	bool lockStore(std::shared_ptr<Store>& store);
-
-	void unlockStore(Store& store);
+	StoreUpdateRef lockStore(StoreRef& store);
 
 	bool writeCheck() const;
 
@@ -296,19 +288,14 @@ template <class UpdaterType, unsigned storeIndex, class ParentClassType, unsigne
 class OuterObjectUpdaterTemplate : public UpdaterType
 {
 public:
-	OuterObjectUpdaterTemplate(std::shared_ptr<Store> store)
+	OuterObjectUpdaterTemplate(StoreUpdateRef store)
 		: UpdaterType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
 	explicit OuterObjectUpdaterTemplate(Database& db)
-		: OuterObjectUpdaterTemplate(this->openStore(db, storeIndex, true))
+		: OuterObjectUpdaterTemplate(this->openStoreForUpdate(db, storeIndex))
 	{
-	}
-
-	~OuterObjectUpdaterTemplate()
-	{
-		this->unlockStore(*store);
 	}
 
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
@@ -317,7 +304,7 @@ public:
 	}
 
 private:
-	std::shared_ptr<Store> store;
+	StoreUpdateRef store;
 };
 
 /**
@@ -333,7 +320,7 @@ template <class ContainedClassType, class UpdaterType, unsigned storeIndex, clas
 class OuterObjectTemplate : public ContainedClassType
 {
 public:
-	OuterObjectTemplate(std::shared_ptr<Store> store)
+	OuterObjectTemplate(StoreRef store)
 		: ContainedClassType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
@@ -363,8 +350,7 @@ public:
 	 */
 	OuterUpdater update()
 	{
-		this->lockStore(store);
-		return OuterUpdater(store);
+		return OuterUpdater(this->lockStore(store));
 	}
 
 	/**
@@ -385,7 +371,7 @@ public:
 	}
 
 private:
-	std::shared_ptr<Store> store;
+	StoreRef store;
 };
 
 } // namespace ConfigDB

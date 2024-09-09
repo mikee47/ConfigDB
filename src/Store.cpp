@@ -24,6 +24,31 @@ namespace ConfigDB
 {
 uint8_t Store::instanceCount;
 
+Store::Store(Database& db, const PropertyInfo& propinfo)
+	: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(propinfo.object->structSize))
+{
+	memcpy_P(rootData.get(), propinfo.object->defaultData, propinfo.object->structSize);
+	++instanceCount;
+	CFGDB_DEBUG(" %u", instanceCount)
+}
+
+Store::Store(const Store& store)
+	: Object(store.propinfo()), arrayPool(store.arrayPool), stringPool(store.stringPool), db(store.db),
+	  rootData(std::make_unique<uint8_t[]>(store.typeinfo().structSize))
+{
+	++instanceCount;
+	CFGDB_DEBUG(" COPY %u", instanceCount)
+	memcpy(rootData.get(), store.rootData.get(), typeinfo().structSize);
+}
+
+Store::~Store()
+{
+	if(*this) {
+		--instanceCount;
+		CFGDB_DEBUG(" %u", instanceCount);
+	}
+}
+
 void Store::clear()
 {
 	auto& root = typeinfo();

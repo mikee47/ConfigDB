@@ -35,7 +35,7 @@ public:
 	{
 	}
 
-	ReadStream(std::shared_ptr<Store> store, const Object& object, bool pretty)
+	ReadStream(StoreRef& store, const Object& object, bool pretty)
 		: store(store), printer(stream, object, pretty, Printer::RootStyle::braces), pretty(pretty)
 	{
 	}
@@ -75,7 +75,7 @@ private:
 	size_t fillStream(Print& p);
 
 	Database* db{};
-	std::shared_ptr<Store> store;
+	StoreRef store;
 	Printer printer;
 	MemoryDataStream stream;
 	bool pretty;
