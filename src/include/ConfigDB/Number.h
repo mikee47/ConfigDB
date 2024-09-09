@@ -25,35 +25,57 @@
 namespace ConfigDB
 {
 /**
- * @brief Basic definition of base-10 floating point value
- * Avoids problems with rounding errors.
+ * @brief Basic definition of base-10 floating point value.
  *
- * value = mantissa * 10^exponent
+ * 		value = mantissa * 10^exponent
  *
- * Similar in operation to python's Decimal class.
+ * Unlike IEEE754 base-2 floats this format is aimed to be a simple and transparent way
+ * to *store* floating-point numbers without the weird rounding issues of base-2 regular floats.
+ *
+ * It does not need to be computationally efficient, but does have advantages:
+ *
+ * 		- structure is transparent
+ *		- Base-10 operations can be performed efficiently without rounding errors
+ *		- Serialising (converting to strings) and de-serialising does not 
+ *
+ * Some similarity to python's Decimal class, but with restriction on significant digits and exponent.
+ *
+ * The initial version of this used 24 bits for the mantissa, but 8 bits for the exponent is overkill.
+ * Reducing exponent to 6 bits increases precision by 2 bits to give:
+ * 	smallest: 33554427e-30 (3.3554427e23)
+ *  largest: 33554427e30 (3.3554427e37)
+ *
+ * Unlike base-2 floats the mantissa/exponent fields are useful for manipulating values.
+ * For example, to convert terabytes to gigabytes we just subtract 3 from the exponent.
+ *
+ * Note: We *could* add a +7 offset to the exponent to balance things out:
+ * 		smallest: 33554427e-37 (3.3554427e30)
+ *  	largest: 33554427e23 (3.3554427e30)
+ *
+ * But we would then need to visualise the mantissa with an imaginary decimal point after the first digit.
  *
  * @note This structure is *not* packed to ensure values stored in flash behave correctly.
  */
 union number_t {
 	struct {
-		int32_t mantissa : 24;
-		int32_t exponent : 8;
+		int32_t mantissa : 26;
+		int32_t exponent : 6;
 	};
 	uint32_t value;
 
-	static constexpr unsigned maxMantissa{0x7fffff};
-	static constexpr unsigned maxExponent{0x7e};
-	static constexpr unsigned maxSignificantDigits{7};
-	static constexpr unsigned minBufferSize{16};
+	static constexpr unsigned maxMantissa{0x1ffffff - 2};
+	static constexpr unsigned maxExponent{0x1e};
+	static constexpr unsigned maxSignificantDigits{8};
+	static constexpr unsigned minBufferSize{17};
 
 	static constexpr const number_t invalid()
 	{
-		return {0, 0x7f};
+		return {0xfffffe, 0x1f};
 	}
 
 	static constexpr const number_t overflow()
 	{
-		return {1, 0x7f};
+		return {0xffffff, 0x1f};
 	}
 
 	bool operator==(const number_t& other) const

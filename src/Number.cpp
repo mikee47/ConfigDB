@@ -109,7 +109,7 @@ number_t Number::parse(int64_t value)
 		isNeg = true;
 		value = -value;
 	}
-	while(value > 0x7fffffff) {
+	while(value > 0xffffffffll) {
 		value /= 10;
 		++exponent;
 	}
@@ -136,7 +136,7 @@ number_t Number::parse(double value)
 
 #ifdef ARCH_HOST
 	char buf[number_t::minBufferSize];
-	sprintf(buf, "%.6e", value);
+	sprintf(buf, "%.*e", number_t::maxSignificantDigits - 1, value);
 
 	auto exp = strchr(buf, 'e');
 	*exp++ = '\0';
@@ -220,7 +220,7 @@ number_t Number::parse(const char* value, unsigned length)
 			if(!isdigit(c)) {
 				return number_t::invalid();
 			}
-			if(mantissa > 0x7fffffff / 10) {
+			if(mantissa > 0xfffffffful / 10) {
 				return number_t::overflow();
 			}
 			mantissa = (mantissa * 10) + c - '0';
@@ -234,7 +234,7 @@ number_t Number::parse(const char* value, unsigned length)
 			if(!isdigit(c)) {
 				return number_t::invalid();
 			}
-			if(mantissa <= 0x7fffffff / 10) {
+			if(mantissa <= 0xfffffffful / 10) {
 				mantissa = (mantissa * 10) + c - '0';
 				--shift;
 			}
@@ -293,22 +293,26 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 	}
 
 	// Drop any trailing 0's from mantissa
-	while(mantissa >= 10 && mantissa % 10 == 0) {
+	while(mantissa >= 10 && mantissa % 10 == 0 && exponent < int(number_t::maxExponent)) {
 		mantissa /= 10;
 		++exponent;
-	}
-
-	// Adjust exponent to keep it in range (without losing precision)
-	while(exponent > int(number_t::maxExponent)) {
-		mantissa *= 10;
-		--exponent;
 	}
 
 	// Check for overflow conditions
 	if(mantissa > number_t::maxMantissa) {
 		return number_t::overflow();
 	}
-	if(abs(exponent) > number_t::maxExponent) {
+
+	// Adjust exponent to keep it in range (without losing precision)
+	while(exponent > int(number_t::maxExponent)) {
+		mantissa *= 10;
+		if(mantissa > number_t::maxMantissa) {
+			return number_t::overflow();
+		}
+		--exponent;
+	}
+
+	if(exponent < -int(number_t::maxExponent)) {
 		return number_t::overflow();
 	}
 
