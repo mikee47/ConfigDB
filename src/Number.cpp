@@ -122,6 +122,14 @@ number_t Number::parse(double value)
 		return {};
 	}
 
+	if(std::isnan(value)) {
+		return invalid;
+	}
+
+	if(std::isinf(value)) {
+		return overflow;
+	}
+
 	unsigned mantissa{0};
 	int sign{0};
 	int exponent{0};
@@ -154,7 +162,6 @@ number_t Number::parse(double value)
 #else
 	int decpt;
 	char buf[number_t::maxSignificantDigits + 1];
-
 	ecvtbuf(value, number_t::maxSignificantDigits, &decpt, &sign, buf);
 	mantissa = atoi(buf);
 	exponent = decpt - number_t::maxSignificantDigits;
@@ -170,6 +177,7 @@ number_t Number::parse(const char* value, unsigned length)
 		mant,
 		frac,
 		exp,
+		expval,
 	};
 	State state{};
 
@@ -178,8 +186,7 @@ number_t Number::parse(const char* value, unsigned length)
 	int shift{0};
 	unsigned exponent{0};
 	bool expIsNeg{false};
-	auto valptr = value;
-	while(length--) {
+	for(auto valptr = value; length--;) {
 		char c = *valptr++;
 		switch(state) {
 		case State::sign:
@@ -194,12 +201,12 @@ number_t Number::parse(const char* value, unsigned length)
 				state = State::frac;
 				break;
 			}
-			if(isdigit(c)) {
-				mantissa = c - '0';
-				state = State::mant;
-				break;
+			if(!isdigit(c)) {
+				return invalid;
 			}
-			return invalid;
+			mantissa = c - '0';
+			state = State::mant;
+			break;
 
 		case State::mant:
 			if(c == '.') {
@@ -210,42 +217,48 @@ number_t Number::parse(const char* value, unsigned length)
 				state = State::exp;
 				break;
 			}
-			if(isdigit(c)) {
-				if(mantissa <= 0x7fffffff / 10) {
-					mantissa = (mantissa * 10) + c - '0';
-					break;
-				}
+			if(!isdigit(c)) {
+				return invalid;
+			}
+			if(mantissa > 0x7fffffff / 10) {
 				return overflow;
 			}
-			return invalid;
+			mantissa = (mantissa * 10) + c - '0';
+			break;
 
 		case State::frac:
 			if(c == 'e') {
 				state = State::exp;
 				break;
 			}
-			if(isdigit(c)) {
-				if(mantissa <= 0x7fffffff / 10) {
-					mantissa = (mantissa * 10) + c - '0';
-					--shift;
-				}
-				break;
+			if(!isdigit(c)) {
+				return invalid;
 			}
-			return invalid;
+			if(mantissa <= 0x7fffffff / 10) {
+				mantissa = (mantissa * 10) + c - '0';
+				--shift;
+			}
+			break;
 
 		case State::exp:
 			if(c == '+') {
+				state = State::expval;
 				break;
 			}
 			if(c == '-') {
 				expIsNeg = true;
+				state = State::expval;
 				break;
 			}
-			if(isdigit(c)) {
-				exponent = (exponent * 10) + c - '0';
-				break;
+			state = State::expval;
+			[[fallthrough]];
+
+		case State::expval:
+			if(!isdigit(c)) {
+				return invalid;
 			}
-			return invalid;
+			exponent = (exponent * 10) + c - '0';
+			break;
 		}
 	}
 
