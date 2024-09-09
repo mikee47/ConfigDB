@@ -25,6 +25,18 @@
 // Defined in newlib but not ANSI or GNU standard
 extern "C" char* ecvtbuf(double invalue, int ndigit, int* decpt, int* sign, char* fcvt_buf);
 
+namespace
+{
+/*
+ *	When adding a digit n to mantissa m:
+ *		m' = (m * 10) + n
+ *
+ *	This constant represents the maximum value for m without overflowing m'.
+ */
+constexpr uint32_t maxMantissaCalc{429496728ul};
+
+} // namespace
+
 namespace ConfigDB
 {
 int number_t::adjustedExponent() const
@@ -220,7 +232,7 @@ number_t Number::parse(const char* value, unsigned length)
 			if(!isdigit(c)) {
 				return number_t::invalid();
 			}
-			if(mantissa > 0xfffffffful / 10) {
+			if(mantissa > maxMantissaCalc) {
 				return number_t::overflow();
 			}
 			mantissa = (mantissa * 10) + c - '0';
@@ -234,7 +246,7 @@ number_t Number::parse(const char* value, unsigned length)
 			if(!isdigit(c)) {
 				return number_t::invalid();
 			}
-			if(mantissa <= 0xfffffffful / 10) {
+			if(mantissa <= maxMantissaCalc) {
 				mantissa = (mantissa * 10) + c - '0';
 				--shift;
 			}
@@ -275,17 +287,70 @@ number_t Number::parse(const char* value, unsigned length)
 
 number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 {
-	// Round mantissa down if it exceeds maximum precision
-	// mlim is used to detect when mantissa gains a digit when rounded up (e.g. 995 to 1000)
-	// TODO: There *is* a much more efficient way to do this. Find it.
+	/*
+		Round mantissa down if it exceeds maximum precision.
+
+		This is a simple 'divide by 10, increment exponent` operation:
+
+			mantissa               99999994
+			exponent                      0
+			(99999995 + 5) / 10     9999999
+			new exponent                  1
+
+		However, we can gain a digit when rounding up:
+
+			mantissa               99999995
+			exponent                      0
+			(99999995 + 5) / 10   100000000
+			new exponent                  0
+
+		So the exponent remains unchanged in this situation.
+
+		We can detect this using a 'mantissa limit' value:
+
+			Max. mantissa          33554427
+			Max. uint32_t        4294967295
+			Max. mlim            1000000000
+
+		'Max. mlim' is the largest number that the mantissa could be rounded *up* to.
+		So the worst case would be:
+
+			mantissa                4294967295
+			(4294967295 + 5) / 10   4294967210
+
+		i.e. cannot gain any digits.
+
+			mantissa                 999999999
+			(999999999 + 5) / 10    1000000000
+
+		A digit is gained. So, in the general case if:
+
+			( (m + 5) / 10 ) <= mlim
+
+		Then m is reduced, the exponent is incremented and mlim reduced also.
+	*/
 	if(mantissa > number_t::maxMantissa) {
-		uint64_t mlim = 1;
-		while(mlim < mantissa) {
-			mlim *= 10;
+		// Ensure numbers at upper limit can't overflow
+		if(mantissa > maxMantissaCalc * 10) {
+			mantissa /= 10;
+			++exponent;
+		}
+
+		// Mantissa values greater than this cannot extend due to rounding
+		constexpr const uint32_t maxLim{1000000000ul};
+
+		// Determine mantissa limit for rounding up
+		unsigned mlim = 1;
+		if(mantissa > maxLim / 10) {
+			mlim = maxLim;
+		} else {
+			while(mlim < mantissa) {
+				mlim *= 10;
+			}
 		}
 		do {
 			mantissa = (mantissa + 5) / 10;
-			if(mantissa < mlim) {
+			if(mantissa <= mlim) {
 				++exponent;
 				mlim /= 10;
 			}

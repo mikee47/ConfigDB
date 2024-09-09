@@ -15,6 +15,11 @@ struct TestValue {
 };
 
 #define TEST_VALUE_MAP(XX)                                                                                             \
+	XX(9999999, "9999999")                                                                                             \
+	XX(99999999, "1e8")                                                                                                \
+	XX(0.9999999, "0.9999999")                                                                                         \
+	XX(0.99999999, "1")                                                                                                \
+	XX(0.99999999e-20, "1e-20")                                                                                        \
 	XX(101.0000001e9, "1.01e11")                                                                                       \
 	XX(1000e34, "1e37")                                                                                                \
 	XX(33554427e30, "3.3554427e37")                                                                                    \
@@ -221,6 +226,47 @@ public:
 			}
 
 			Serial << "Max length = " << maxLength << endl;
+		}
+
+		TEST_CASE("Normalise")
+		{
+			// constexpr number_t expected{4294967, 3};
+			ConfigDB::Number num = ConfigDB::Number::normalise(0xffffffff, 0, 0);
+			REQUIRE_EQ(num.asInt64(), 4294967000ull);
+			num = ConfigDB::Number::normalise(429496729ul, 0, 0);
+			REQUIRE_EQ(num.asInt64(), 429496700ull);
+			num = ConfigDB::Number::normalise(429496699ul, 0, 0);
+			REQUIRE_EQ(num.asInt64(), 429496700ull);
+			num = ConfigDB::Number::normalise(429496644ul, 0, 0);
+			REQUIRE_EQ(num.asInt64(), 429496600ull);
+			num = ConfigDB::Number::normalise(199999999ul, 0, 0);
+			REQUIRE_EQ(num.asInt64(), 200000000ull);
+
+#ifdef ARCH_HOST
+			auto check = [&](uint64_t m) {
+				ConfigDB::Number num = ConfigDB::Number::normalise(m, 0, 0);
+				unsigned mult = 1;
+				int64_t expected = m;
+				while(expected > number_t::maxMantissa) {
+					expected = (expected + 5) / 10;
+					mult *= 10;
+				}
+				expected *= mult;
+				if(expected == num.asInt64()) {
+					return;
+				}
+				Serial << "Mantissa " << m << " expected " << expected << ", got " << num.asInt64() << endl;
+				TEST_ASSERT(false);
+			};
+
+			// Brute-force check values at extremes
+			for(uint64_t m = 0xffff0000ull; m <= 0xffffffffull; ++m) {
+				check(m);
+			}
+			for(unsigned m = 0; m <= number_t::maxMantissa * 2; ++m) {
+				check(m);
+			}
+#endif
 		}
 	}
 };

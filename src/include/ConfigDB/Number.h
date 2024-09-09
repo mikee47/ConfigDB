@@ -241,6 +241,24 @@ public:
 	static number_t parse(double value);
 	static number_t parse(int64_t value);
 	static number_t parse(const char* value, unsigned length);
+
+	/**
+	 * @brief Produce a normalised number_t from component values
+	 * @param mantissa Mantissa without sign, containing significant digits
+	 * @param exponent Exponent
+	 * @param isNeg true if mantissa is negative, false if positive
+	 * @retval number_t Normalised number value
+	 * For example, 1000e9 and 10e11 are normalised to 1e12.
+	 * This allows values to be directly compared for equality.
+	 *
+	 * Mantissa has trailing 0's removed, although may be required for large negative exponents.
+	 * For example, 100000e-30 exponent is at limit so cannot be reduced further.
+	 *
+	 * If necessary, the mantissa is rounded to the nearest whole value.
+	 * For example, 3141592654 is rounded up to 31415927.
+	 *
+	 * If the value is out of range, number_t::overflow is returned.
+	 */
 	static number_t normalise(unsigned mantissa, int exponent, bool isNeg);
 
 private:
