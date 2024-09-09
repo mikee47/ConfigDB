@@ -46,6 +46,16 @@ union number_t {
 	static constexpr unsigned maxSignificantDigits{7};
 	static constexpr unsigned minBufferSize{16};
 
+	static constexpr const number_t invalid()
+	{
+		return {0, 0x7f};
+	}
+
+	static constexpr const number_t overflow()
+	{
+		return {1, 0x7f};
+	}
+
 	bool operator==(const number_t& other) const
 	{
 		return value == other.value;
@@ -105,9 +115,6 @@ union number_t {
 class __attribute__((packed)) Number
 {
 public:
-	static constexpr number_t invalid{0, 0x7f};
-	static constexpr number_t overflow{1, 0x7f};
-
 	Number() = default;
 
 	constexpr Number(const number_t& number) : number(number)
@@ -191,12 +198,12 @@ public:
 
 	bool isNan() const
 	{
-		return number == invalid;
+		return number == number_t::invalid();
 	}
 
 	bool isInf() const
 	{
-		return number == overflow;
+		return number == number_t::overflow();
 	}
 
 	/**

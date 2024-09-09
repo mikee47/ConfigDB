@@ -123,11 +123,11 @@ number_t Number::parse(double value)
 	}
 
 	if(std::isnan(value)) {
-		return invalid;
+		return number_t::invalid();
 	}
 
 	if(std::isinf(value)) {
-		return overflow;
+		return number_t::overflow();
 	}
 
 	unsigned mantissa{0};
@@ -202,7 +202,7 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(!isdigit(c)) {
-				return invalid;
+				return number_t::invalid();
 			}
 			mantissa = c - '0';
 			state = State::mant;
@@ -218,10 +218,10 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(!isdigit(c)) {
-				return invalid;
+				return number_t::invalid();
 			}
 			if(mantissa > 0x7fffffff / 10) {
-				return overflow;
+				return number_t::overflow();
 			}
 			mantissa = (mantissa * 10) + c - '0';
 			break;
@@ -232,7 +232,7 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(!isdigit(c)) {
-				return invalid;
+				return number_t::invalid();
 			}
 			if(mantissa <= 0x7fffffff / 10) {
 				mantissa = (mantissa * 10) + c - '0';
@@ -255,7 +255,7 @@ number_t Number::parse(const char* value, unsigned length)
 
 		case State::expval:
 			if(!isdigit(c)) {
-				return invalid;
+				return number_t::invalid();
 			}
 			exponent = (exponent * 10) + c - '0';
 			break;
@@ -306,10 +306,10 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 
 	// Check for overflow conditions
 	if(mantissa > number_t::maxMantissa) {
-		return overflow;
+		return number_t::overflow();
 	}
 	if(abs(exponent) > number_t::maxExponent) {
-		return overflow;
+		return number_t::overflow();
 	}
 
 	// Success
@@ -327,12 +327,12 @@ String Number::toString() const
 
 const char* Number::format(char* buf, number_t number)
 {
-	if(number == overflow) {
+	if(number == number_t::overflow()) {
 		strcpy(buf, "OVF");
 		return buf;
 	}
 
-	if(number == invalid) {
+	if(number == number_t::invalid()) {
 		strcpy(buf, "NaN");
 		return buf;
 	}
@@ -405,10 +405,10 @@ size_t Number::printTo(Print& p) const
 
 double Number::asFloat() const
 {
-	if(number == invalid) {
+	if(number == number_t::invalid()) {
 		return NAN;
 	}
-	if(number == overflow) {
+	if(number == number_t::overflow()) {
 		return HUGE_VALF;
 	}
 
@@ -419,10 +419,10 @@ double Number::asFloat() const
 
 int64_t Number::asInt64() const
 {
-	if(number == invalid) {
+	if(number == number_t::invalid()) {
 		return 0;
 	}
-	if(number == overflow) {
+	if(number == number_t::overflow()) {
 		return 0;
 	}
 	int64_t value = number.mantissa;
