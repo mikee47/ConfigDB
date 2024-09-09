@@ -43,6 +43,7 @@ union number_t {
 
 	static constexpr unsigned maxMantissa{0x7fffff};
 	static constexpr unsigned maxExponent{0x7e};
+	static constexpr unsigned maxSignificantDigits{7};
 	static constexpr unsigned minBufferSize{16};
 
 	bool operator==(const number_t& other) const

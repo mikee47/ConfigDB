@@ -22,6 +22,9 @@
 #include <debug_progmem.h>
 #include <cmath>
 
+// Defined in newlib but not ANSI or GNU standard
+extern "C" char* ecvtbuf(double invalue, int ndigit, int* decpt, int* sign, char* fcvt_buf);
+
 namespace ConfigDB
 {
 int number_t::adjustedExponent() const
@@ -150,10 +153,11 @@ number_t Number::parse(double value)
 	}
 #else
 	int decpt;
-	char* rve;
-	auto buf = _dtoa_r(_REENT, value, 2, 7, &decpt, &sign, &rve);
+	char buf[number_t::maxSignificantDigits + 1];
+
+	ecvtbuf(value, number_t::maxSignificantDigits, &decpt, &sign, buf);
 	mantissa = atoi(buf);
-	exponent = decpt - strlen(buf);
+	exponent = decpt - number_t::maxSignificantDigits;
 #endif
 
 	return normalise(mantissa, exponent, sign);
