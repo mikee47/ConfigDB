@@ -4,4 +4,5 @@
 	XX(Update)                                                                                                         \
 	XX(Sharing)                                                                                                        \
 	XX(Streaming)                                                                                                      \
-	XX(Union)
+	XX(Union)                                                                                                          \
+	XX(Performance)
