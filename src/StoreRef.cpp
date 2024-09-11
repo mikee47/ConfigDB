@@ -24,8 +24,8 @@ namespace ConfigDB
 {
 StoreRef::~StoreRef()
 {
-	if(use_count() == 1) {
-		debug_i("%p %s", this, __FUNCTION__);
+	if(*this) {
+		get()->checkRef(*this);
 	}
 }
 

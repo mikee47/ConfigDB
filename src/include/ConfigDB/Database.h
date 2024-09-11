@@ -59,6 +59,8 @@ public:
 
 	StoreUpdateRef openStoreForUpdate(unsigned index);
 
+	void checkStoreRef(const StoreRef& ref);
+
 	void queueUpdate(Store& store, Object::UpdateCallback callback);
 	void checkUpdateQueue(Store& store);
 
@@ -138,9 +140,9 @@ private:
 			return store && store->propinfoPtr == &storeInfo;
 		}
 
-		bool inUse() const
+		bool isIdle()
 		{
-			return store && store.use_count() > 1;
+			return store && store.use_count() == 1;
 		}
 	};
 
@@ -163,7 +165,8 @@ private:
 	static StoreCache writeCache;
 	std::unique_ptr<WeakRef[]> updateRefs;
 	Vector<UpdateQueueItem> updateQueue;
-	static bool callbackQueued;
+	bool updateQueued{false};
+	static bool cacheCallbackQueued;
 };
 
 /**

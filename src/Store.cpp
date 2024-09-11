@@ -122,6 +122,11 @@ void Store::queueUpdate(Object::UpdateCallback callback)
 	return db.queueUpdate(*this, callback);
 }
 
+void Store::checkRef(const StoreRef& ref)
+{
+	db.checkStoreRef(ref);
+}
+
 void Store::incUpdate()
 {
 	++updaterCount;

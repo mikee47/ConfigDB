@@ -27,7 +27,7 @@ namespace ConfigDB
 {
 Database::StoreCache Database::readCache;
 Database::StoreCache Database::writeCache;
-bool Database::callbackQueued;
+bool Database::cacheCallbackQueued;
 
 Database::~Database()
 {
@@ -105,33 +105,6 @@ StoreRef Database::openStore(unsigned index)
 
 	readCache.store = store;
 
-	if(!callbackQueued) {
-		System.queueCallback(InterruptCallback([]() {
-			/*
-				TODO: Handle this reset via the updater queue
-
-				If a streaming operation is in progress then emptying the cache
-				now is pointless.
-
-				Generally, if the use_count on either cache is more than 1 then it's in use.
-
-				Is there some way we can hook into shared_ptr to do this when the ref count
-				drops to 1?
-
-				Maybe we use `StoreRef` as a base to manage this, with `StoreUpdateRef` handling updates.
-
-				We still need a brief delay before flushing the caches though, so maybe
-				a timer is better so we can cancel it or reschedule.
-
-			*/
-
-			readCache.reset();
-			writeCache.reset();
-			callbackQueued = false;
-		}));
-		callbackQueued = true;
-	}
-
 	return store;
 }
 
@@ -201,7 +174,7 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 
 std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 {
-	debug_d("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
+	debug_i("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
 
 	auto store = std::make_shared<Store>(*this, storeInfo);
 	if(!store) {
@@ -223,6 +196,52 @@ void Database::queueUpdate(Store& store, Object::UpdateCallback callback)
 	updateQueue.add({uint8_t(storeIndex), callback});
 }
 
+void Database::checkStoreRef(const StoreRef& ref)
+{
+	bool isCached = false;
+	auto useCount = ref.use_count();
+	if(readCache.store == ref) {
+		isCached = true;
+		--useCount;
+	}
+	if(writeCache.store == ref) {
+		isCached = true;
+		--useCount;
+	}
+
+	if(!isCached || useCount != 1) {
+		return;
+	}
+
+	// Schedule cache to be cleared
+
+	if(cacheCallbackQueued) {
+		return;
+	}
+
+	System.queueCallback(
+		[](void* param) {
+			auto db = static_cast<Database*>(param);
+
+			cacheCallbackQueued = false;
+
+			if(db->updateQueued || !db->updateQueue.isEmpty()) {
+				return;
+			}
+
+			if(readCache.isIdle()) {
+				debug_i("\r\n\r\n** Flush READ Cache **\r\n\r\n");
+				readCache.reset();
+			}
+			if(writeCache.isIdle()) {
+				debug_i("\r\n\r\n** Flush WRITE Cache **\r\n\r\n");
+				writeCache.reset();
+			}
+		},
+		this);
+	cacheCallbackQueued = true;
+}
+
 void Database::checkUpdateQueue(Store& store)
 {
 	/*
@@ -242,15 +261,17 @@ void Database::checkUpdateQueue(Store& store)
 	auto callback = std::move(updateQueue[i].callback);
 	updateQueue.remove(i);
 	System.queueCallback([this, storeIndex, callback]() {
+		updateQueued = false;
 		auto store = openStoreForUpdate(storeIndex);
 		assert(store);
 		callback(*store);
 	});
+	updateQueued = true;
 }
 
 bool Database::save(Store& store) const
 {
-	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
+	debug_i("[CFGDB] Save '%s'", store.getName().c_str());
 
 	auto& format = getFormat(store);
 	bool result = store.exportToFile(format);

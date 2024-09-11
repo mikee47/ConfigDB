@@ -160,7 +160,10 @@ protected:
 	friend class Object;
 	friend class ArrayBase;
 	friend class Database;
+	friend class StoreRef;
 	friend class StoreUpdateRef;
+
+	void checkRef(const StoreRef& ref);
 
 	void queueUpdate(Object::UpdateCallback callback);
 
