@@ -39,26 +39,9 @@ public:
 		*this = other;
 	}
 
-	PoolData(PoolData&& other)
-	{
-		std::swap(buffer, other.buffer);
-		std::swap(count, other.count);
-		std::swap(space, other.space);
-		itemSize = other.itemSize;
-	}
+	PoolData(PoolData&& other);
 
-	PoolData& operator=(const PoolData& other)
-	{
-		clear();
-		count = other.count;
-		space = other.space;
-		itemSize = other.itemSize;
-		if(getCapacity()) {
-			buffer = malloc(other.usage());
-			memcpy(buffer, other.buffer, count * itemSize);
-		}
-		return *this;
-	}
+	PoolData& operator=(const PoolData& other);
 
 	size_t getCount() const
 	{
