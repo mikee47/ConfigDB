@@ -31,12 +31,16 @@ PoolData::PoolData(PoolData&& other)
 
 PoolData& PoolData::operator=(const PoolData& other)
 {
+	if(this == &other) {
+		return *this;
+	}
+
 	clear();
 	count = other.count;
 	space = other.space;
 	itemSize = other.itemSize;
 	if(getCapacity()) {
-		buffer = malloc(other.usage());
+		buffer = malloc(usage());
 		memcpy(buffer, other.buffer, count * itemSize);
 	}
 	return *this;
@@ -149,6 +153,13 @@ void* ArrayData::insert(unsigned index, const void* data)
 
 ArrayPool::ArrayPool(const ArrayPool& other) : PoolData(other)
 {
+	if(!buffer) {
+		return;
+	}
+
+	// We've copied a bunch of pointers from 'other' - clear that
+	memset(buffer, 0, PoolData::usage());
+
 	auto src = static_cast<const ArrayData*>(other.buffer);
 	auto dst = static_cast<ArrayData*>(buffer);
 	for(unsigned i = 0; i < count; ++i) {
