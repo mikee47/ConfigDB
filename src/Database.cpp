@@ -273,9 +273,8 @@ bool Database::save(Store& store) const
 	// Update write cache so it contains most recent data
 	auto storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
-	auto& weakRef = updateRefs[storeIndex];
-	assert(!weakRef.expired());
-	writeCache.store = weakRef.lock();
+	writeCache.store = updateRefs[storeIndex].lock();
+	assert(&store == writeCache.store.get());
 
 	return result;
 }

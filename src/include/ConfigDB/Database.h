@@ -169,11 +169,6 @@ private:
 			return bool(store);
 		}
 
-		bool operator==(const StoreCache& other) const
-		{
-			return store == other.store;
-		}
-
 		void reset()
 		{
 			store.reset();
@@ -197,7 +192,7 @@ private:
 		/**
 		 * @brief Which store is to be updated
 		 */
-		uint8_t storeIndex; 
+		uint8_t storeIndex;
 
 		/**
 		 * @brief Application-provided callback invoked with updatable Store
