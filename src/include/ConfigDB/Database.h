@@ -34,7 +34,7 @@ public:
 	 * @param path Path to root directory where all data is stored
 	 */
 	Database(const DatabaseInfo& typeinfo, const String& path)
-		: typeinfo(typeinfo), path(path.c_str()), updateRefs(new UpdateRef[typeinfo.storeCount])
+		: typeinfo(typeinfo), path(path.c_str()), updateRefs(new WeakRef[typeinfo.storeCount])
 	{
 	}
 
@@ -113,7 +113,7 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
-	using UpdateRef = std::weak_ptr<Store>;
+	using WeakRef = std::weak_ptr<Store>;
 
 	struct StoreCache {
 		std::shared_ptr<Store> store;
@@ -161,7 +161,7 @@ private:
 	// Hold store open for a brief period to avoid thrashing
 	static StoreCache readCache;
 	static StoreCache writeCache;
-	std::unique_ptr<UpdateRef[]> updateRefs;
+	std::unique_ptr<WeakRef[]> updateRefs;
 	Vector<UpdateQueueItem> updateQueue;
 	static bool callbackQueued;
 };

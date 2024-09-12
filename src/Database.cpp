@@ -75,22 +75,27 @@ StoreRef Database::openStore(unsigned index)
 
 	auto& storeInfo = typeinfo.stores[index];
 
+	// Write cache contains the most recent store data, can use it provided it's been committed
 	if(writeCache.typeIs(storeInfo) && !writeCache.store->isDirty()) {
 		if(writeCache.store->isLocked()) {
+			// Store has active updaters, take a copy
 			readCache.reset();
 			readCache.store = std::make_shared<Store>(*writeCache.store);
 		} else {
+			// No updaters, use store directly
 			readCache.store = writeCache.store;
 			writeCache.reset();
 		}
 		return readCache.store;
 	}
 
+	// Second preference is read cache
 	if(readCache.typeIs(storeInfo)) {
 		assert(!readCache.store->isLocked());
 		return readCache.store;
 	}
 
+	// OK, need to load from storage
 	readCache.reset();
 
 	auto store = loadStore(storeInfo);
@@ -156,10 +161,10 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 	auto& storeInfo = store->propinfo();
 	auto storeIndex = typeinfo.indexOf(storeInfo);
 	assert(storeIndex >= 0);
-	auto& updateRef = updateRefs[storeIndex];
-	auto storeRef = updateRef.lock();
+	auto& weakRef = updateRefs[storeIndex];
+	auto updateRef = weakRef.lock();
 
-	if(storeRef && storeRef->isLocked()) {
+	if(updateRef && updateRef->isLocked()) {
 		debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
 		return {};
 	}
@@ -167,7 +172,7 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 	if(writeCache.typeIs(storeInfo)) {
 		assert(readCache.store != writeCache.store);
 		store = writeCache.store;
-		updateRef = store;
+		weakRef = store;
 		return store;
 	}
 
@@ -176,11 +181,11 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 	if(readCache.store == store) {
 		--use_count;
 	}
-	if(storeRef == store) {
+	if(updateRef == store) {
 		--use_count;
 	}
 	if(use_count <= 1) {
-		updateRef = store;
+		weakRef = store;
 		writeCache.store = store;
 		readCache.reset();
 		return store;
@@ -189,7 +194,7 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 	// Store is in use elsewhere, so load a copy from storage
 	readCache.reset();
 	store = std::make_shared<Store>(*store);
-	updateRef = store;
+	weakRef = store;
 	writeCache.store = store;
 	return store;
 }
@@ -253,9 +258,9 @@ bool Database::save(Store& store) const
 	// Update write cache so it contains most recent data
 	auto storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
-	auto& updateRef = updateRefs[storeIndex];
-	assert(!updateRef.expired());
-	writeCache.store = updateRef.lock();
+	auto& weakRef = updateRefs[storeIndex];
+	assert(!weakRef.expired());
+	writeCache.store = weakRef.lock();
 
 	return result;
 }
