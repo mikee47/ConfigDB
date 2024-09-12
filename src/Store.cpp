@@ -117,9 +117,9 @@ bool Store::writeCheck() const
 	return false;
 }
 
-void Store::queueUpdate(Object::UpdateCallback callback)
+void Store::queueUpdate(Object::UpdateCallback&& callback)
 {
-	return db.queueUpdate(*this, callback);
+	return db.queueUpdate(*this, std::move(callback));
 }
 
 void Store::checkRef(const StoreRef& ref)

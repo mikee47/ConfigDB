@@ -203,8 +203,17 @@ public:
 		return PropertyData::fromStruct(typeinfo().getProperty(index), getDataPtr());
 	}
 
+	/**
+	 * @brief Callback invoked by asynchronous updater
+	 * @param store Updatable store instance
+	 * @note The `OuterObjectTemplate::update` method template handles this callback
+	 * so that the caller receives the appropriate Updater object.
+	 */
 	using UpdateCallback = Delegate<void(Store& store)>;
 
+	/**
+	 * @brief Called from `OuterObjectTemplate::update` to queue an update
+	 */
 	void queueUpdate(UpdateCallback callback);
 
 protected:
@@ -364,7 +373,7 @@ public:
 			callback(upd);
 			return true;
 		}
-		Object::queueUpdate([callback](Store& store) {
+		this->queueUpdate([callback](Store& store) {
 			callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
 		});
 		return false;

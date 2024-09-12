@@ -189,11 +189,11 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 	return store;
 }
 
-void Database::queueUpdate(Store& store, Object::UpdateCallback callback)
+void Database::queueUpdate(Store& store, Object::UpdateCallback&& callback)
 {
 	int storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
-	updateQueue.add({uint8_t(storeIndex), callback});
+	updateQueue.add({uint8_t(storeIndex), std::move(callback)});
 }
 
 void Database::checkStoreRef(const StoreRef& ref)

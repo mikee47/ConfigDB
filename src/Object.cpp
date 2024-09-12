@@ -175,7 +175,7 @@ Property Object::findProperty(const char* name, size_t length)
 
 void Object::queueUpdate(UpdateCallback callback)
 {
-	return getStore().queueUpdate(callback);
+	return getStore().queueUpdate(std::move(callback));
 }
 
 bool Object::commit()

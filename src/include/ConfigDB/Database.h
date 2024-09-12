@@ -59,16 +59,35 @@ public:
 
 	StoreUpdateRef openStoreForUpdate(unsigned index);
 
+	/**
+	 * @brief Called from StoreRef destructor so database can manage caches
+	 * @param ref The store reference being destroyed
+	 */
 	void checkStoreRef(const StoreRef& ref);
 
-	void queueUpdate(Store& store, Object::UpdateCallback callback);
+	/**
+	 * @brief Queue an asynchronous update
+	 * @param store The store to update
+	 * @param callback Callback which will be invoked when store is available for updates
+	 */
+	void queueUpdate(Store& store, Object::UpdateCallback&& callback);
+
+	/**
+	 * @brief Called by Store on completion of update so any queued updates can be started
+	 * @param store The store which has just finished updating
+	 * @note The next queued update (if any) is popped from the queue and scheduled for handling via the task queue.
+	 */
 	void checkUpdateQueue(Store& store);
 
+	/**
+	 * @brief Called from Store::commit
+	 */
 	bool save(Store& store) const;
 
 	/**
-	 * @brief Lock a store for writing
-	 * @retval bool Fails if called more than once
+	 * @brief Lock a store for writing (called by Object)
+	 * @param store Store reference to be locked
+	 * @retval StoreUpdateRef Invalid if called more than once
 	 */
 	StoreUpdateRef lockStore(StoreRef& store);
 
@@ -88,25 +107,43 @@ public:
 	 */
 	virtual bool handleFormatError(FormatError err, const Object& object, const String& arg);
 
+	/**
+	 * @brief Create a read-only stream for serializing the database
+	 */
 	std::unique_ptr<ExportStream> createExportStream(const Format& format)
 	{
 		return format.createExportStream(*this);
 	}
 
+	/**
+	 * @brief Serialize the database to a stream
+	 */
 	size_t exportToStream(const Format& format, Print& output)
 	{
 		return format.exportToStream(*this, output);
 	}
 
+	/**
+	 * @brief Serialize the database to a single file
+	 */
 	bool exportToFile(const Format& format, const String& filename);
 
+	/**
+	 * @brief De-serialize the entire database from a stream
+	 */
 	Status importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
+	/**
+	 * @brief De-serialize the entire database from a file
+	 */
 	Status importFromFile(const Format& format, const String& filename);
 
+	/**
+	 * @brief Create a write-only stream for de-serializing the database
+	 */
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{
 		return format.createImportStream(*this);
@@ -115,8 +152,14 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
+	/**
+	 * @brief Hold a weak reference to each Store to keep track of update status
+	 */
 	using WeakRef = std::weak_ptr<Store>;
 
+	/**
+	 * @brief Manage a shared Store pointer to avoid un-necessary storage reading
+	 */
 	struct StoreCache {
 		std::shared_ptr<Store> store;
 
@@ -146,8 +189,18 @@ private:
 		}
 	};
 
+	/**
+	 * @brief Information stored in a queue for asynchronous updates
+	 */
 	struct UpdateQueueItem {
-		uint8_t storeIndex;
+		/**
+		 * @brief Which store is to be updated
+		 */
+		uint8_t storeIndex; 
+
+		/**
+		 * @brief Application-provided callback invoked with updatable Store
+		 */
 		Object::UpdateCallback callback;
 
 		bool operator==(int index) const
