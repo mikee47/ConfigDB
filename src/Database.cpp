@@ -171,7 +171,7 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 
 std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 {
-	debug_i("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
+	debug_d("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
 
 	StoreRef store = std::make_shared<Store>(*this, storeInfo);
 	if(!store) {
@@ -265,7 +265,7 @@ void Database::checkUpdateQueue(Store& store)
 
 bool Database::save(Store& store) const
 {
-	debug_i("[CFGDB] Save '%s'", store.getName().c_str());
+	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
 
 	auto& format = getFormat(store);
 	bool result = store.exportToFile(format);
