@@ -154,6 +154,9 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 	if(use_count <= 1) {
 		weakRef = store;
 		writeCache.store = store;
+		if(readCache.store == writeCache.store) {
+			readCache.reset();
+		}
 		return store;
 	}
 
