@@ -112,9 +112,14 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 {
 	CFGDB_DEBUG("");
 
+	auto invalid = [this]() -> StoreUpdateRef {
+		StoreRef invalid = std::make_shared<Store>(*this);
+		return invalid;
+	};
+
 	assert(store);
 	if(!store) {
-		return {};
+		return invalid();
 	}
 
 	if(store->isLocked()) {
@@ -126,12 +131,12 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 	auto storeIndex = typeinfo.indexOf(storeInfo);
 	assert(storeIndex >= 0);
 	auto& weakRef = updateRefs[storeIndex];
-	auto updateRef = weakRef.lock();
 
-	if(updateRef && updateRef->isLocked()) {
-		debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
-		StoreRef invalid = std::make_shared<Store>(*this);
-		return invalid;
+	if(auto ref = weakRef.lock()) {
+		if(ref->isLocked()) {
+			debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
+			return invalid();
+		}
 	}
 
 	if(writeCache.typeIs(storeInfo)) {
@@ -141,23 +146,23 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 		return store;
 	}
 
-	//  If no-one else is using the read cache store instance we can safely update it
+	//  If noone else is using the provided Store instance, we can update it directly
 	int use_count = store.use_count();
 	if(readCache.store == store) {
-		--use_count;
-	}
-	if(updateRef == store) {
 		--use_count;
 	}
 	if(use_count <= 1) {
 		weakRef = store;
 		writeCache.store = store;
-		readCache.reset();
 		return store;
 	}
 
+	// Before allocating more memory, see if we can dispose of some
+	if(readCache.isIdle()) {
+		readCache.reset();
+	}
+
 	// Store is in use elsewhere, so load a copy from storage
-	readCache.reset();
 	store = std::make_shared<Store>(*store);
 	weakRef = store;
 	writeCache.store = store;

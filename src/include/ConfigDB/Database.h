@@ -86,8 +86,9 @@ public:
 
 	/**
 	 * @brief Lock a store for writing (called by Object)
-	 * @param store Store reference to be locked
-	 * @retval StoreUpdateRef Invalid if called more than once
+	 * @param store Store reference to be locked. If possible, will be locked-in place
+	 * otherwise it will be copied and updated.
+	 * @retval StoreUpdateRef Invalid if locking fails
 	 */
 	StoreUpdateRef lockStore(StoreRef& store);
 
