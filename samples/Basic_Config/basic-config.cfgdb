@@ -44,6 +44,12 @@
       "type": "object",
       "store": true,
       "properties": {
+        "numbers": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
         "filesystem": {
           "$ref": "#/$defs/FileSystemType"
         },
