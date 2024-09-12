@@ -287,74 +287,20 @@ number_t Number::parse(const char* value, unsigned length)
 
 number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 {
-	/*
-		Round mantissa down if it exceeds maximum precision.
+	// Ensure numbers at upper limit can't overflow
+	if(mantissa > maxMantissaCalc * 10) {
+		mantissa /= 10;
+		++exponent;
+	}
 
-		This is a simple 'divide by 10, increment exponent` operation:
-
-			mantissa               99999994
-			exponent                      0
-			(99999995 + 5) / 10     9999999
-			new exponent                  1
-
-		However, we can gain a digit when rounding up:
-
-			mantissa               99999995
-			exponent                      0
-			(99999995 + 5) / 10   100000000
-			new exponent                  0
-
-		So the exponent remains unchanged in this situation.
-
-		We can detect this using a 'mantissa limit' value:
-
-			Max. mantissa          33554427
-			Max. uint32_t        4294967295
-			Max. mlim            1000000000
-
-		'Max. mlim' is the largest number that the mantissa could be rounded *up* to.
-		So the worst case would be:
-
-			mantissa                4294967295
-			(4294967295 + 5) / 10   4294967210
-
-		i.e. cannot gain any digits.
-
-			mantissa                 999999999
-			(999999999 + 5) / 10    1000000000
-
-		A digit is gained. So, in the general case if:
-
-			( (m + 5) / 10 ) <= mlim
-
-		Then m is reduced, the exponent is incremented and mlim reduced also.
-	*/
-	if(mantissa > number_t::maxMantissa) {
-		// Ensure numbers at upper limit can't overflow
-		if(mantissa > maxMantissaCalc * 10) {
-			mantissa /= 10;
+	while(mantissa > number_t::maxMantissa) {
+		auto newMantissa = (mantissa + 5) / 10;
+		if(newMantissa < mantissa) {
 			++exponent;
-		}
-
-		// Mantissa values greater than this cannot extend due to rounding
-		constexpr const uint32_t maxLim{1000000000ul};
-
-		// Determine mantissa limit for rounding up
-		unsigned mlim = 1;
-		if(mantissa > maxLim / 10) {
-			mlim = maxLim;
 		} else {
-			while(mlim < mantissa) {
-				mlim *= 10;
-			}
+			// Value was rounded up and gained a digit, exponent remains unchanged
 		}
-		do {
-			mantissa = (mantissa + 5) / 10;
-			if(mantissa <= mlim) {
-				++exponent;
-				mlim /= 10;
-			}
-		} while(mantissa > number_t::maxMantissa);
+		mantissa = newMantissa;
 	}
 
 	// Drop any trailing 0's from mantissa
