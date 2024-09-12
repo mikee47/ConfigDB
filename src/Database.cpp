@@ -25,25 +25,21 @@
 
 namespace ConfigDB
 {
-std::shared_ptr<Store> Database::cache;
-bool Database::callbackQueued;
+Database::StoreCache Database::readCache;
+Database::StoreCache Database::writeCache;
+bool Database::cacheCallbackQueued;
 
 Database::~Database()
 {
-	if(!cache) {
+	if(!readCache) {
 		return;
 	}
 	for(unsigned i = 0; i < typeinfo.storeCount; ++i) {
-		if(isCached(typeinfo.stores[i])) {
-			cache.reset();
+		if(readCache.typeIs(typeinfo.stores[i])) {
+			readCache.reset();
 			break;
 		}
 	}
-}
-
-bool Database::isCached(const PropertyInfo& storeInfo) const
-{
-	return cache && cache->propinfoPtr == &storeInfo;
 }
 
 const Format& Database::getFormat(const Store&) const
@@ -70,153 +66,215 @@ bool Database::handleFormatError(FormatError err, const Object& object, const St
 	return true;
 }
 
-std::shared_ptr<Store> Database::openStore(unsigned index, bool lockForWrite)
+StoreRef Database::openStore(unsigned index)
 {
 	if(index >= typeinfo.storeCount) {
 		assert(false);
-		return nullptr;
+		return std::make_shared<Store>(*this);
 	}
 
 	auto& storeInfo = typeinfo.stores[index];
 
-	if(!lockForWrite && isCached(storeInfo)) {
-		return cache;
-	}
-
-	auto& updateRef = updateRefs[index];
-	auto store = updateRef.lock();
-
-	if(lockForWrite) {
-		if(store && store->isLocked()) {
-			debug_w("[CFGDB] Store '%s' is locked, cannot write", String(storeInfo.name).c_str());
-			return std::make_shared<Store>(*this);
+	// Write cache contains the most recent store data, can use it provided it's been committed
+	if(writeCache.typeIs(storeInfo) && !writeCache.store->isDirty()) {
+		if(writeCache.store->isLocked()) {
+			// Store has active updaters, take a copy
+			readCache.reset();
+			readCache.store = std::make_shared<Store>(*writeCache.store);
+		} else {
+			// No updaters, use store directly
+			readCache.store = writeCache.store;
+			writeCache.reset();
 		}
-		store = loadStore(storeInfo);
-		store->incUpdate();
-		updateRef = store;
-		return store;
+		return readCache.store;
 	}
 
-	if(store && !store->isLocked()) {
-		// Not locked, we can use it
-		cache = store;
-		return store;
+	// Second preference is read cache
+	if(readCache.typeIs(storeInfo)) {
+		assert(!readCache.store->isLocked());
+		return readCache.store;
 	}
 
-	cache.reset();
+	// Need to load from storage
+	readCache.reset();
+	readCache.store = loadStore(storeInfo);
 
-	store = loadStore(storeInfo);
-	if(!store) {
-		return nullptr;
-	}
-
-	cache = store;
-
-	if(!callbackQueued) {
-		System.queueCallback(InterruptCallback([]() {
-			cache.reset();
-			callbackQueued = false;
-		}));
-		callbackQueued = true;
-	}
-
-	return store;
+	return readCache.store;
 }
 
-bool Database::lockStore(std::shared_ptr<Store>& store)
+StoreUpdateRef Database::openStoreForUpdate(unsigned index)
 {
+	auto store = openStore(index);
+	return lockStore(store);
+}
+
+StoreUpdateRef Database::lockStore(StoreRef& store)
+{
+	CFGDB_DEBUG("");
+
+	auto invalid = [this]() -> StoreUpdateRef {
+		StoreRef invalid = std::make_shared<Store>(*this);
+		return invalid;
+	};
+
+	assert(store);
+	if(!store) {
+		return invalid();
+	}
+
 	if(store->isLocked()) {
-		return true;
+		writeCache.store = store;
+		return store;
 	}
 
 	auto& storeInfo = store->propinfo();
 	auto storeIndex = typeinfo.indexOf(storeInfo);
 	assert(storeIndex >= 0);
-	auto& updateRef = updateRefs[storeIndex];
-	auto storeRef = updateRef.lock();
-	if(storeRef) {
-		if(storeRef->isLocked()) {
+	auto& weakRef = updateRefs[storeIndex];
+
+	if(auto ref = weakRef.lock()) {
+		if(ref->isLocked()) {
 			debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
-			return false;
+			return invalid();
 		}
-
-		// Already have most recent data so update that
-		store = storeRef;
-		store->incUpdate();
-		return true;
 	}
 
-	// If no-one else is using this store instance we can safely update it
-	auto use_count = store.use_count();
-	if(isCached(storeInfo)) {
+	if(writeCache.typeIs(storeInfo)) {
+		assert(readCache.store != writeCache.store);
+		store = writeCache.store;
+		weakRef = store;
+		return store;
+	}
+
+	//  If noone else is using the provided Store instance, we can update it directly
+	int use_count = store.use_count();
+	if(readCache.store == store) {
 		--use_count;
-		if(use_count == 1) {
-			cache.reset();
-		}
 	}
-	if(use_count == 1) {
-		updateRef = store;
-		store->incUpdate();
-		return true;
+	if(use_count <= 1) {
+		weakRef = store;
+		writeCache.store = store;
+		return store;
 	}
 
-	// Store is in use elsewhere, so take a copy for updating
-	store = std::make_unique<Store>(*store);
-	store->incUpdate();
-	updateRef = store;
-	return true;
+	// Before allocating more memory, see if we can dispose of some
+	if(readCache.isIdle()) {
+		readCache.reset();
+	}
+
+	// Store is in use elsewhere, so load a copy from storage
+	store = std::make_shared<Store>(*store);
+	weakRef = store;
+	writeCache.store = store;
+	return store;
 }
 
 std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 {
-	debug_d("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
+	debug_i("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
 
-	auto store = std::make_shared<Store>(*this, storeInfo);
+	StoreRef store = std::make_shared<Store>(*this, storeInfo);
 	if(!store) {
 		return nullptr;
 	}
 
 	auto& format = getFormat(*store);
-	store->importFromFile(format);
-	store->dirty = false;
+	StoreUpdateRef update = store;
+	update->importFromFile(format);
+	update->clearDirty();
 	return store;
 }
 
-void Database::queueUpdate(Store& store, Object::UpdateCallback callback)
+void Database::queueUpdate(Store& store, Object::UpdateCallback&& callback)
 {
 	int storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
-	updateQueue.add({uint8_t(storeIndex), callback});
+	updateQueue.add({uint8_t(storeIndex), std::move(callback)});
+}
+
+void Database::checkStoreRef(const StoreRef& ref)
+{
+	bool isCached = false;
+	auto useCount = ref.use_count();
+	if(readCache.store == ref) {
+		isCached = true;
+		--useCount;
+	}
+	if(writeCache.store == ref) {
+		isCached = true;
+		--useCount;
+	}
+
+	if(!isCached || useCount != 1) {
+		return;
+	}
+
+	// Schedule cache to be cleared
+
+	if(cacheCallbackQueued) {
+		return;
+	}
+
+	System.queueCallback(
+		[](void* param) {
+			auto db = static_cast<Database*>(param);
+
+			cacheCallbackQueued = false;
+
+			if(db->updateQueued || !db->updateQueue.isEmpty()) {
+				return;
+			}
+
+			if(readCache.isIdle()) {
+				readCache.reset();
+			}
+			if(writeCache.isIdle()) {
+				writeCache.reset();
+			}
+		},
+		this);
+	cacheCallbackQueued = true;
 }
 
 void Database::checkUpdateQueue(Store& store)
 {
-	int storeIndex = typeinfo.indexOf(store.propinfo());
+	/*
+	We get called when an updater is done, even if nothing was saved.
+	This is therefore a good location to retire stale read cache.
+	*/
+	auto& storeInfo = store.propinfo();
+	if(readCache.typeIs(storeInfo)) {
+		readCache.reset();
+	}
+
+	int storeIndex = typeinfo.indexOf(storeInfo);
 	int i = updateQueue.indexOf(storeIndex);
 	if(i < 0) {
 		return;
 	}
 	auto callback = std::move(updateQueue[i].callback);
 	updateQueue.remove(i);
-	auto storeRef = updateRefs[storeIndex].lock();
-	System.queueCallback([storeRef, callback]() {
-		storeRef->incUpdate();
-		callback(*storeRef);
-		storeRef->decUpdate();
+	System.queueCallback([this, storeIndex, callback]() {
+		updateQueued = false;
+		auto store = openStoreForUpdate(storeIndex);
+		assert(store);
+		callback(*store);
 	});
+	updateQueued = true;
 }
 
 bool Database::save(Store& store) const
 {
-	debug_d("[CFGDB] Save '%s'", store.getName().c_str());
+	debug_i("[CFGDB] Save '%s'", store.getName().c_str());
 
 	auto& format = getFormat(store);
 	bool result = store.exportToFile(format);
 
-	// Invalidate cached stores: Some data may have changed even on failure
-	if(isCached(store.propinfo())) {
-		cache.reset();
-	}
+	// Update write cache so it contains most recent data
+	auto storeIndex = typeinfo.indexOf(store.propinfo());
+	assert(storeIndex >= 0);
+	writeCache.store = updateRefs[storeIndex].lock();
+	assert(&store == writeCache.store.get());
 
 	return result;
 }

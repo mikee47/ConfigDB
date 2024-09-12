@@ -31,7 +31,7 @@ std::unique_ptr<ExportStream> Format::createExportStream(Database& db) const
 	return std::make_unique<ReadStream>(db, pretty);
 }
 
-std::unique_ptr<ExportStream> Format::createExportStream(std::shared_ptr<Store> store, const Object& object) const
+std::unique_ptr<ExportStream> Format::createExportStream(StoreRef store, const Object& object) const
 {
 	return std::make_unique<ReadStream>(store, object, pretty);
 }
@@ -56,7 +56,7 @@ std::unique_ptr<ImportStream> Format::createImportStream(Database& db) const
 	return std::make_unique<WriteStream>(db);
 }
 
-std::unique_ptr<ImportStream> Format::createImportStream(std::shared_ptr<Store> store, Object& object) const
+std::unique_ptr<ImportStream> Format::createImportStream(StoreUpdateRef& store, Object& object) const
 {
 	return std::make_unique<WriteStream>(store, object);
 }

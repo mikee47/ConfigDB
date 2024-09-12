@@ -13,7 +13,7 @@ TestConfig database("out/test-config");
 
 void resetDatabase()
 {
-	database.openStore(0, true)->clear();
+	database.openStoreForUpdate(0)->clear();
 }
 
 #define XX(t) extern void REGISTER_TEST(t);

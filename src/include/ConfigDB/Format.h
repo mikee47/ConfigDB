@@ -21,7 +21,7 @@
 
 #include <Data/Stream/ReadWriteStream.h>
 #include "Status.h"
-#include <memory>
+#include "StoreRef.h"
 
 namespace ConfigDB
 {
@@ -60,8 +60,7 @@ public:
 	 *
 	 * Used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<ExportStream> createExportStream(std::shared_ptr<Store> store,
-															 const Object& object) const = 0;
+	virtual std::unique_ptr<ExportStream> createExportStream(StoreRef store, const Object& object) const = 0;
 
 	/**
 	 * @brief Print object
@@ -88,7 +87,7 @@ public:
 	 *
 	 * Used when updating a store from a remote web client, for example via HttpRequest
 	 */
-	virtual std::unique_ptr<ImportStream> createImportStream(std::shared_ptr<Store> store, Object& object) const = 0;
+	virtual std::unique_ptr<ImportStream> createImportStream(StoreUpdateRef& store, Object& object) const = 0;
 
 	/**
 	 * @brief De-serialise content from stream into object (RAM)

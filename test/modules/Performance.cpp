@@ -42,44 +42,37 @@ public:
 
 		Serial << _F("Evaluating setValue / commit ...") << endl;
 
-		profile(F("setValue [int]"), [](unsigned value) {
+		{
 			TestConfig::Root::OuterUpdater root(database);
-			root.setSimpleInt(value);
-			root.clearDirty();
-		});
 
-		constexpr const double testFloat = PI;
-		profile(F("setValue [float]"), [](unsigned) {
-			TestConfig::Root::OuterUpdater root(database);
-			root.setSimpleFloat(testFloat);
-			root.clearDirty();
-		});
+			profile(F("setValue [int]"), [&](unsigned value) { root.setSimpleInt(value); });
 
-		profile(F("Set Value + commit"), [](unsigned value) {
-			TestConfig::Root::OuterUpdater root(database);
-			root.setSimpleInt(value);
-		});
+			constexpr const double testFloat = PI;
+			profile(F("setValue [float]"), [&](unsigned) { root.setSimpleFloat(testFloat); });
+
+			profile(F("Set Value + commit"), [&](unsigned value) {
+				root.setSimpleInt(value);
+				root.commit();
+			});
+		}
 
 		Serial << _F("Evaluating getValue ...") << endl;
 
-		// Cache store so it doesn't skew results
-		Serial << "INT:" << TestConfig::Root(database).getSimpleInt() << endl;
-		profile(F("getValue [int]"), [](unsigned) {
+		{
 			TestConfig::Root root(database);
-			root.getSimpleInt();
-		});
 
-		Serial << "FLOAT:" << TestConfig::Root(database).getSimpleFloat() << endl;
-		profile(F("getValue [float]"), [](unsigned) {
-			TestConfig::Root root(database);
-			root.getSimpleFloat();
-		});
+			// Cache store so it doesn't skew results
+			Serial << "INT:" << root.getSimpleInt() << endl;
+			profile(F("getValue [int]"), [&](unsigned) { root.getSimpleInt(); });
 
-		profile(F("getValue [Print]"), [](unsigned) {
-			MemoryDataStream stream;
-			TestConfig::Root root(database);
-			stream << root;
-		});
+			Serial << "FLOAT:" << root.getSimpleFloat() << endl;
+			profile(F("getValue [float]"), [&](unsigned) { root.getSimpleFloat(); });
+
+			profile(F("getValue [Print]"), [&](unsigned) {
+				MemoryDataStream stream;
+				stream << root;
+			});
+		}
 	}
 };
 

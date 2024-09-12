@@ -22,7 +22,7 @@ public:
 	void execute() override
 	{
 		TestConfigUnion db(F("out/test-union"));
-		db.openStore(0, true)->clear();
+		db.openStoreForUpdate(0)->clear();
 		using Color = TestConfigUnion::ContainedColor;
 
 		TEST_CASE("Union")

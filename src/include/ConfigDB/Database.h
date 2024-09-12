@@ -34,7 +34,7 @@ public:
 	 * @param path Path to root directory where all data is stored
 	 */
 	Database(const DatabaseInfo& typeinfo, const String& path)
-		: typeinfo(typeinfo), path(path.c_str()), updateRefs(new UpdateRef[typeinfo.storeCount])
+		: typeinfo(typeinfo), path(path.c_str()), updateRefs(new WeakRef[typeinfo.storeCount])
 	{
 	}
 
@@ -55,18 +55,42 @@ public:
 	/**
 	 * @brief Open a store instance, load it and return a shared pointer
 	 */
-	std::shared_ptr<Store> openStore(unsigned index, bool lockForWrite = false);
+	StoreRef openStore(unsigned index);
 
-	void queueUpdate(Store& store, Object::UpdateCallback callback);
+	StoreUpdateRef openStoreForUpdate(unsigned index);
+
+	/**
+	 * @brief Called from StoreRef destructor so database can manage caches
+	 * @param ref The store reference being destroyed
+	 */
+	void checkStoreRef(const StoreRef& ref);
+
+	/**
+	 * @brief Queue an asynchronous update
+	 * @param store The store to update
+	 * @param callback Callback which will be invoked when store is available for updates
+	 */
+	void queueUpdate(Store& store, Object::UpdateCallback&& callback);
+
+	/**
+	 * @brief Called by Store on completion of update so any queued updates can be started
+	 * @param store The store which has just finished updating
+	 * @note The next queued update (if any) is popped from the queue and scheduled for handling via the task queue.
+	 */
 	void checkUpdateQueue(Store& store);
 
+	/**
+	 * @brief Called from Store::commit
+	 */
 	bool save(Store& store) const;
 
 	/**
-	 * @brief Lock a store for writing
-	 * @retval bool Fails if called more than once
+	 * @brief Lock a store for writing (called by Object)
+	 * @param store Store reference to be locked. If possible, will be locked-in place
+	 * otherwise it will be copied and updated.
+	 * @retval StoreUpdateRef Invalid if locking fails
 	 */
-	bool lockStore(std::shared_ptr<Store>& store);
+	StoreUpdateRef lockStore(StoreRef& store);
 
 	/**
 	 * @brief Get the storage format to use for a store
@@ -84,25 +108,43 @@ public:
 	 */
 	virtual bool handleFormatError(FormatError err, const Object& object, const String& arg);
 
+	/**
+	 * @brief Create a read-only stream for serializing the database
+	 */
 	std::unique_ptr<ExportStream> createExportStream(const Format& format)
 	{
 		return format.createExportStream(*this);
 	}
 
+	/**
+	 * @brief Serialize the database to a stream
+	 */
 	size_t exportToStream(const Format& format, Print& output)
 	{
 		return format.exportToStream(*this, output);
 	}
 
+	/**
+	 * @brief Serialize the database to a single file
+	 */
 	bool exportToFile(const Format& format, const String& filename);
 
+	/**
+	 * @brief De-serialize the entire database from a stream
+	 */
 	Status importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
+	/**
+	 * @brief De-serialize the entire database from a file
+	 */
 	Status importFromFile(const Format& format, const String& filename);
 
+	/**
+	 * @brief Create a write-only stream for de-serializing the database
+	 */
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{
 		return format.createImportStream(*this);
@@ -111,10 +153,50 @@ public:
 	const DatabaseInfo& typeinfo;
 
 private:
-	using UpdateRef = std::weak_ptr<Store>;
+	/**
+	 * @brief Hold a weak reference to each Store to keep track of update status
+	 */
+	using WeakRef = std::weak_ptr<Store>;
 
+	/**
+	 * @brief Manage a shared Store pointer to avoid un-necessary storage reading
+	 */
+	struct StoreCache {
+		std::shared_ptr<Store> store;
+
+		explicit operator bool() const
+		{
+			return bool(store);
+		}
+
+		void reset()
+		{
+			store.reset();
+		}
+
+		bool typeIs(const PropertyInfo& storeInfo) const
+		{
+			return store && store->propinfoPtr == &storeInfo;
+		}
+
+		bool isIdle()
+		{
+			return store && store.use_count() == 1;
+		}
+	};
+
+	/**
+	 * @brief Information stored in a queue for asynchronous updates
+	 */
 	struct UpdateQueueItem {
+		/**
+		 * @brief Which store is to be updated
+		 */
 		uint8_t storeIndex;
+
+		/**
+		 * @brief Application-provided callback invoked with updatable Store
+		 */
 		Object::UpdateCallback callback;
 
 		bool operator==(int index) const
@@ -125,15 +207,15 @@ private:
 
 	std::shared_ptr<Store> loadStore(const PropertyInfo& storeInfo);
 
-	bool isCached(const PropertyInfo& storeInfo) const;
-
 	CString path;
 
 	// Hold store open for a brief period to avoid thrashing
-	static std::shared_ptr<Store> cache;
-	std::unique_ptr<UpdateRef[]> updateRefs;
+	static StoreCache readCache;
+	static StoreCache writeCache;
+	std::unique_ptr<WeakRef[]> updateRefs;
 	Vector<UpdateQueueItem> updateQueue;
-	static bool callbackQueued;
+	bool updateQueued{false};
+	static bool cacheCallbackQueued;
 };
 
 /**

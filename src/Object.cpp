@@ -33,34 +33,31 @@ Object& Object::operator=(const Object& other)
 	return *this;
 }
 
-std::shared_ptr<Store> Object::openStore(Database& db, unsigned storeIndex, bool lockForWrite)
+StoreRef Object::openStore(Database& db, unsigned storeIndex)
 {
-	return db.openStore(storeIndex, lockForWrite);
+	return db.openStore(storeIndex);
 }
 
-bool Object::lockStore(std::shared_ptr<Store>& store)
+StoreUpdateRef Object::openStoreForUpdate(Database& db, unsigned storeIndex)
 {
-	if(store->isLocked()) {
-		store->incUpdate();
-		return true;
-	}
+	return db.openStoreForUpdate(storeIndex);
+}
+
+StoreUpdateRef Object::lockStore(StoreRef& store)
+{
 	// Get root object which has pointer to Store: this may change
 	auto obj = this;
 	while(!obj->parent->typeIs(ObjectType::Store)) {
 		obj = obj->parent;
 	}
 	assert(obj->parent);
-	// Update store pointer
-	if(!store->getDatabase().lockStore(store)) {
-		return false;
-	}
-	obj->parent = store.get();
-	return true;
-}
 
-void Object::unlockStore(Store& store)
-{
-	store.decUpdate();
+	// Update store pointer
+	auto update = store->getDatabase().lockStore(store);
+	if(update) {
+		obj->parent = update.get();
+	}
+	return update;
 }
 
 Store& Object::getStore()
@@ -74,9 +71,13 @@ Store& Object::getStore()
 	return *store;
 }
 
-bool Object::isLocked() const
+bool Object::isWriteable() const
 {
-	return getStore().isLocked();
+	if(!getStore().isLocked()) {
+		return false;
+	}
+	auto ptr = getDataPtr();
+	return ptr != nullptr;
 }
 
 bool Object::writeCheck() const
@@ -173,7 +174,7 @@ Property Object::findProperty(const char* name, size_t length)
 
 void Object::queueUpdate(UpdateCallback callback)
 {
-	return getStore().queueUpdate(callback);
+	return getStore().queueUpdate(std::move(callback));
 }
 
 bool Object::commit()

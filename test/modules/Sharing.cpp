@@ -14,7 +14,8 @@ public:
 
 	void execute() override
 	{
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 0);
+		// One write reference held by database
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 
 		// Verify initial value
 		TestConfig::Root root(database);
@@ -51,7 +52,7 @@ public:
 			TEST_ASSERT(false);
 		}
 
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 3); // root (updated), root2 (original), read cached
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root (updated), root2 (original), read cache reset
 
 		// Verify value has changed in original store
 		REQUIRE_EQ(root.getSimpleBool(), true);
@@ -71,16 +72,16 @@ public:
 			Here, we're explicitly passing `root2` so that's fine, it's what we've asked for.
 		*/
 		REQUIRE(root2.update());
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2 (updated), read cached
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1); // root/root2 (updated)
 		REQUIRE_EQ(root2.getSimpleBool(), true);		  // root2 now up to date
 
 		// Get fresh copy which should have changed
 		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), true);
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // No change
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1); // root/root2/root3
 
 		// Now try direct
 		if(auto updater = TestConfig::Root::OuterUpdater(database)) {
-			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // No change
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2/root3, updater/write cache
 			updater.setSimpleBool(false);
 		} else {
 			TEST_ASSERT(false);
@@ -88,30 +89,30 @@ public:
 		// Updater commits changes, read cache evicted
 		REQUIRE_EQ(root.getSimpleBool(), true); // Stale
 
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1); // root/root2 (updated), no read cache
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2/root3, write cache
 
 		// Verify value has changed
 		REQUIRE_EQ(TestConfig::Root(database).getSimpleBool(), false);
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2 (updated), new read cache
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root/root2/root3, read cache
 
 		/* Array */
 
 		if(auto update = root.update()) {
-			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root updater, root2/root3
 			update.intArray.addItem(12);
 			REQUIRE_EQ(root.intArray[0], 12);
 			update.intArray[0] = 123;
 			REQUIRE_EQ(root.intArray[0], 123);
 			Serial << root.intArray << endl;
 		}
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root, root2/root3
 
 		/* String Array */
 
 		DEFINE_FSTR_LOCAL(myString, "My String");
 
 		if(auto update = root.update()) {
-			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root updater, root2/root3
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
 			REQUIRE(root.stringArray.contains(myString));
@@ -122,12 +123,12 @@ public:
 			update.stringArray[0] = myString;
 			Serial << root.stringArray << endl;
 		}
-		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2);
 
 		/* Object Array */
 
 		if(auto update = root.update()) {
-			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
+			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2);
 			auto item = update.objectArray.addItem();
 			item.setIntval(12);
 			REQUIRE_EQ(root.objectArray[0].getIntval(), 12);
@@ -135,6 +136,10 @@ public:
 			REQUIRE_EQ(root.objectArray[0].getStringval(), myString);
 			Serial << root.objectArray << endl;
 		}
+		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2);
+
+		// Bring root2 up to date, discard stale Store instance
+		root2.update();
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 1);
 
 		auto root3 = root;

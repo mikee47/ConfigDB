@@ -224,6 +224,10 @@ class Object:
         return self if self.is_store else self.parent.store
 
     @property
+    def database(self):
+        return self.parent.database
+
+    @property
     def typename(self):
         return make_typename(self.ref or self.name or 'Root')
 
@@ -370,6 +374,11 @@ class Union(Object):
 class Database(Object):
     definitions: dict = None
     object_defs: dict[Object] = field(default_factory=dict)
+    forward_decls: set[str] = None
+
+    @property
+    def database(self):
+        return self
 
     @property
     def is_item_member(self):
@@ -586,13 +595,13 @@ def load_config(filename: str) -> Database:
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
 
-    forward_decls = {
+    db.forward_decls = {
         'ContainedRoot',
         'RootUpdater'
     }
     for obj in db.object_defs.values():
         if obj.ref:
-            forward_decls |= {obj.typename_contained, obj.typename_updater}
+            db.forward_decls |= {obj.typename_contained, obj.typename_updater}
 
     lines = CodeLines(
         [
@@ -606,7 +615,7 @@ def generate_database(db: Database) -> CodeLines:
             '{',
             'public:',
             [
-                *(f'class {name};' for name in forward_decls),
+                *(f'class {name};' for name in db.forward_decls),
                 '',
                 'static const ConfigDB::DatabaseInfo typeinfo;',
                 '',
@@ -707,6 +716,10 @@ def generate_database(db: Database) -> CodeLines:
         '} // namespace',
         '',
         'using namespace ConfigDB;',
+        '',
+        '#ifdef __clang__',
+        '#pragma GCC diagnostic ignored "-Wc99-designator"',
+        '#endif'
     ]
 
     return lines
@@ -960,7 +973,7 @@ def generate_object(obj: Object) -> CodeLines:
     typeinfo = generate_typeinfo(obj)
     constructors = generate_contained_constructors(obj)
     updater = generate_updater(obj)
-    forward_decls = [
+    forward_decls = [] if obj.typename_updater in obj.database.forward_decls else [
         '',
         f'class {obj.typename_updater};'
     ]
