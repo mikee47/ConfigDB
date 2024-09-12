@@ -44,19 +44,23 @@ class StoreUpdateRef : public StoreRef
 public:
 	StoreUpdateRef() = default;
 
-	StoreUpdateRef(StoreRef& store)
+	StoreUpdateRef(const StoreRef& store)
 	{
 		*this = store;
 	}
 
-	StoreUpdateRef(StoreUpdateRef& store)
+	StoreUpdateRef(const StoreUpdateRef& store) : StoreUpdateRef(static_cast<const StoreRef&>(store))
 	{
-		*this = static_cast<StoreRef&>(store);
 	}
 
 	~StoreUpdateRef();
 
-	StoreUpdateRef& operator=(StoreRef& other);
+	StoreUpdateRef& operator=(const StoreRef& other);
+
+	StoreUpdateRef& operator=(const StoreUpdateRef& other)
+	{
+		return operator=(static_cast<const StoreRef&>(other));
+	}
 };
 
 } // namespace ConfigDB

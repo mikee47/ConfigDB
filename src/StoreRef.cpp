@@ -42,14 +42,15 @@ StoreUpdateRef::~StoreUpdateRef()
 	}
 }
 
-StoreUpdateRef& StoreUpdateRef::operator=(StoreRef& other)
+StoreUpdateRef& StoreUpdateRef::operator=(const StoreRef& other)
 {
-	if(*this) {
-		get()->decUpdate();
-	}
+	auto old = get();
 	StoreRef::operator=(other);
 	if(*this) {
 		get()->incUpdate();
+	}
+	if(old && *old) {
+		old->decUpdate();
 	}
 	return *this;
 }
