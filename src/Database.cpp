@@ -95,7 +95,7 @@ StoreRef Database::openStore(unsigned index)
 		return readCache.store;
 	}
 
-	// OK, need to load from storage
+	// Need to load from storage
 	readCache.reset();
 	readCache.store = loadStore(storeInfo);
 
@@ -226,11 +226,9 @@ void Database::checkStoreRef(const StoreRef& ref)
 			}
 
 			if(readCache.isIdle()) {
-				debug_i("\r\n\r\n** Flush READ Cache **\r\n\r\n");
 				readCache.reset();
 			}
 			if(writeCache.isIdle()) {
-				debug_i("\r\n\r\n** Flush WRITE Cache **\r\n\r\n");
 				writeCache.reset();
 			}
 		},
