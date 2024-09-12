@@ -111,10 +111,7 @@ StoreRef Database::openStore(unsigned index)
 StoreUpdateRef Database::openStoreForUpdate(unsigned index)
 {
 	auto store = openStore(index);
-	if(lockStore(store)) {
-		return store;
-	}
-	return {};
+	return lockStore(store);
 }
 
 StoreUpdateRef Database::lockStore(StoreRef& store)
