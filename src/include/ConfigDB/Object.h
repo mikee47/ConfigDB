@@ -312,6 +312,11 @@ public:
 		return format.createImportStream(store, *this);
 	}
 
+	explicit operator bool() const
+	{
+		return store && UpdaterType::operator bool();
+	}
+
 private:
 	StoreUpdateRef store;
 };
