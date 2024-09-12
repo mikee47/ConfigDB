@@ -48,7 +48,9 @@ public:
 			profile(F("setValue [int]"), [&](unsigned value) { root.setSimpleInt(value); });
 
 			constexpr const double testFloat = PI;
-			profile(F("setValue [float]"), [&](unsigned) { root.setSimpleFloat(testFloat); });
+			profile(F("setValue [number float]"), [&](unsigned) { root.setSimpleFloat(testFloat); });
+
+			profile(F("setValue [number string]"), [&](unsigned) { root.setSimpleFloat("3.141592654"); });
 
 			profile(F("Set Value + commit"), [&](unsigned value) {
 				root.setSimpleInt(value);
@@ -73,6 +75,10 @@ public:
 				stream << root;
 			});
 		}
+
+		profile(F("parse number [double]"), [](unsigned) { ConfigDB::Number num(3.141592654e-12); });
+		profile(F("parse number [integer]"), [](unsigned) { ConfigDB::Number num(3141593); });
+		profile(F("parse number [string]"), [](unsigned) { ConfigDB::Number num("3.141592654e-12"); });
 	}
 };
 
