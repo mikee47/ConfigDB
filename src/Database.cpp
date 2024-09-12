@@ -168,16 +168,15 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 {
 	debug_i("[CFGDB] LoadStore '%s'", String(storeInfo.name).c_str());
 
-	auto store = std::make_shared<Store>(*this, storeInfo);
+	StoreRef store = std::make_shared<Store>(*this, storeInfo);
 	if(!store) {
 		return nullptr;
 	}
 
 	auto& format = getFormat(*store);
-	store->incUpdate();
-	store->importFromFile(format);
-	store->clearDirty();
-	store->decUpdate();
+	StoreUpdateRef update = store;
+	update->importFromFile(format);
+	update->clearDirty();
 	return store;
 }
 
