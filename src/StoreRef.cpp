@@ -29,6 +29,12 @@ StoreRef::~StoreRef()
 	}
 }
 
+StoreRef::operator bool() const
+{
+	auto store = get();
+	return store && *store;
+}
+
 StoreUpdateRef::~StoreUpdateRef()
 {
 	if(*this) {

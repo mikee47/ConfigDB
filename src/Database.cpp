@@ -70,7 +70,7 @@ StoreRef Database::openStore(unsigned index)
 {
 	if(index >= typeinfo.storeCount) {
 		assert(false);
-		return {};
+		return std::make_shared<Store>(*this);
 	}
 
 	auto& storeInfo = typeinfo.stores[index];
@@ -97,15 +97,9 @@ StoreRef Database::openStore(unsigned index)
 
 	// OK, need to load from storage
 	readCache.reset();
+	readCache.store = loadStore(storeInfo);
 
-	auto store = loadStore(storeInfo);
-	if(!store) {
-		return {};
-	}
-
-	readCache.store = store;
-
-	return store;
+	return readCache.store;
 }
 
 StoreUpdateRef Database::openStoreForUpdate(unsigned index)
@@ -136,7 +130,8 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 
 	if(updateRef && updateRef->isLocked()) {
 		debug_w("[CFGDB] Store '%s' is locked, cannot write", store->getName().c_str());
-		return {};
+		StoreRef invalid = std::make_shared<Store>(*this);
+		return invalid;
 	}
 
 	if(writeCache.typeIs(storeInfo)) {

@@ -35,6 +35,8 @@ public:
 	}
 
 	~StoreRef();
+
+	explicit operator bool() const;
 };
 
 class StoreUpdateRef : public StoreRef

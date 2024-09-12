@@ -54,10 +54,9 @@ StoreUpdateRef Object::lockStore(StoreRef& store)
 
 	// Update store pointer
 	auto update = store->getDatabase().lockStore(store);
-	if(!update){
-		return {};
+	if(update) {
+		obj->parent = update.get();
 	}
-	obj->parent = update.get();
 	return update;
 }
 
