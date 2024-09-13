@@ -24,8 +24,9 @@ STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
 UNION_TAG_SIZE = 1
 UNION_TAG_TYPE = 'uint8_t'
-NUMBER_MIN = -33554427e30
-NUMBER_MAX = 33554427e30
+# These values get truncated by ConstNumber during C++ compilation
+NUMBER_MIN = -1e100
+NUMBER_MAX = 1e100
 
 CPP_TYPESIZES = {
     'bool': 1,
@@ -129,9 +130,8 @@ class IntRange(Range):
 
 
 def get_number(value: float) -> str:
-    '''Return number_t value (mantissa, exponent)'''
-    s = f'{value:.7g}'
-    return f'ConfigDB::ConstNumber({s})'
+    '''Return number_t value'''
+    return f'ConfigDB::ConstNumber({value})'
 
 
 def get_ptype(fields: dict):

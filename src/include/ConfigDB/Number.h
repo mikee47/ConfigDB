@@ -296,23 +296,24 @@ private:
 class ConstNumber : public Number
 {
 public:
-	using Number::Number;
+	ConstNumber() : Number()
+	{
+	}
 
 	constexpr ConstNumber(double value) : Number(normalise(value))
 	{
 	}
 
 private:
-	static constexpr number_t normalise(int mantissa, int exponent)
+	static constexpr number_t normalise(unsigned mantissa, int exponent, bool isNeg)
 	{
 		// Round mantissa
-		while(mantissa < -int(number_t::maxMantissa) || mantissa > int(number_t::maxMantissa)) {
+		while(mantissa > number_t::maxMantissa) {
 			exponent += ((mantissa + 5) / 10) < mantissa;
 			mantissa = (mantissa + 5) / 10;
 		}
 		// Remove trailing 0's, provided exponent doesn't get too big
-		while((mantissa <= -10 || mantissa >= 10) && mantissa % 10 == 0 &&
-			  (exponent + 1) < int(number_t::maxExponent)) {
+		while(mantissa >= 10 && mantissa % 10 == 0 && (exponent + 1) < number_t::maxExponent) {
 			mantissa /= 10;
 			++exponent;
 		}
@@ -321,30 +322,32 @@ private:
 			exponent = 0;
 		} else if(exponent > number_t::maxExponent) {
 			// Positive infinity
-			mantissa = (mantissa < 0) ? -int(number_t::maxMantissa) : number_t::maxMantissa;
+			mantissa = number_t::maxMantissa;
 			exponent = number_t::maxExponent;
 		} else if(exponent < -number_t::maxExponent) {
 			// Negative infinity
-			mantissa = (mantissa < 0) ? -1 : 1;
+			mantissa = 1;
 			exponent = -number_t::maxExponent;
 		}
-		return number_t{int32_t(mantissa), exponent};
+		return number_t{isNeg ? -int32_t(mantissa) : int32_t(mantissa), exponent};
 	}
 
 	static constexpr number_t normalise(double mantissa)
 	{
 		// Pull significant digits into integer part
 		int exponent = 0;
-		while(mantissa > -0x3fffffff && mantissa < 0x3fffffff && exponent > -number_t::maxExponent) {
-			mantissa *= 10;
+		while(mantissa > -double(number_t::maxMantissa) && mantissa < double(number_t::maxMantissa) &&
+			  exponent > -number_t::maxExponent) {
+			mantissa *= 10.0;
 			--exponent;
 		}
 		// Reduce integer part to int32 range
-		while(mantissa < -0x7fffffff || mantissa > 0x7fffffff) {
+		while(mantissa < -0x1fffffff || mantissa > 0x1fffffff) {
 			mantissa /= 10;
 			++exponent;
 		}
-		return normalise(int(mantissa), exponent);
+		return (mantissa < 0) ? normalise(unsigned(-mantissa), exponent, true)
+							  : normalise(unsigned(mantissa), exponent, false);
 	}
 };
 

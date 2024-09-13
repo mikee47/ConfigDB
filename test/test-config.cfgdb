@@ -17,7 +17,8 @@
     },
     "simple-float": {
       "type": "number",
-      "default": 3.141592654
+      "default": 3.141592654,
+      "maximum": 1.2e21
     },
     "int_array": {
       "type": "array",

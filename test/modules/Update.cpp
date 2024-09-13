@@ -76,7 +76,7 @@ public:
 		TEST_CASE("Number")
 		{
 			auto f = root.getSimpleFloat();
-			REQUIRE_EQ(String(f), "3.141593");
+			REQUIRE_EQ(String(f), "3.1415927");
 
 			// Change value
 			if(auto updater = root.update()) {
