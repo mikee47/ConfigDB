@@ -57,12 +57,9 @@ namespace ConfigDB
  *
  * @note This structure is *not* packed to ensure values stored in flash behave correctly.
  */
-union number_t {
-	struct {
-		int32_t mantissa : 26;
-		int32_t exponent : 6;
-	};
-	uint32_t value;
+struct number_t {
+	int32_t mantissa : 26;
+	int32_t exponent : 6;
 
 	static constexpr unsigned maxMantissa{0x1ffffff - 2};
 	static constexpr int maxExponent{0x1e};
@@ -74,7 +71,7 @@ union number_t {
 	 */
 	static constexpr const number_t min()
 	{
-		return {{1, -maxExponent}};
+		return {1, -maxExponent};
 	}
 
 	/**
@@ -82,7 +79,7 @@ union number_t {
 	 */
 	static constexpr const number_t max()
 	{
-		return {{maxMantissa, maxExponent}};
+		return {maxMantissa, maxExponent};
 	}
 
 	/**
@@ -90,27 +87,27 @@ union number_t {
 	 */
 	static constexpr const number_t lowest()
 	{
-		return {{-int(maxMantissa), maxExponent}};
+		return {-int(maxMantissa), maxExponent};
 	}
 
 	static constexpr const number_t invalid()
 	{
-		return {{0xfffffe, 0x1f}};
+		return {0xfffffe, 0x1f};
 	}
 
 	static constexpr const number_t overflow()
 	{
-		return {{0xffffff, 0x1f}};
+		return {0xffffff, 0x1f};
 	}
 
 	bool operator==(const number_t& other) const
 	{
-		return value == other.value;
+		return mantissa == other.mantissa && exponent == other.exponent;
 	}
 
 	bool operator!=(const number_t& other) const
 	{
-		return value != other.value;
+		return !operator==(other);
 	}
 
 	bool sign() const
@@ -331,7 +328,7 @@ private:
 			mantissa = (mantissa < 0) ? -1 : 1;
 			exponent = -number_t::maxExponent;
 		}
-		return number_t{{.mantissa = int32_t(mantissa), .exponent = exponent}};
+		return number_t{int32_t(mantissa), exponent};
 	}
 
 	static constexpr number_t normalise(double mantissa)
