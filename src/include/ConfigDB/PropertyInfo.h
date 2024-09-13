@@ -61,13 +61,13 @@ struct ObjectInfo;
  * @brief Property metadata
  */
 struct PropertyInfo {
-	template <typename T> struct RangeTemplate {
+	template <typename T, typename U = T> struct RangeTemplate {
 		T minimum;
 		T maximum;
 
-		T clip(T value) const
+		U clip(U value) const
 		{
-			return TRange(minimum, maximum).clip(value);
+			return TRange(U(minimum), U(maximum)).clip(value);
 		}
 	};
 	template <typename T> struct RangePtrTemplate {
@@ -91,7 +91,7 @@ struct PropertyInfo {
 		const ObjectInfo* object;
 		RangeTemplate<int32_t> int32;
 		RangeTemplate<uint32_t> uint32;
-		RangeTemplate<number_t> number;
+		RangeTemplate<const_number_t, number_t> number;
 		RangePtrTemplate<int64_t> int64;
 		RangePtrTemplate<uint64_t> uint64;
 	};

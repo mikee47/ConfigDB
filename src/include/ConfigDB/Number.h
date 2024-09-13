@@ -136,6 +136,68 @@ struct number_t {
 	int adjustedExponent() const;
 
 	static int compare(const number_t& num1, const number_t& num2);
+
+	size_t printTo(Print& p) const;
+};
+
+/**
+ * @brief Compile-time constant number
+ */
+struct const_number_t : public number_t {
+	const_number_t() = default;
+
+	/**
+	 * @brief Computer number from a compile-time constant value
+	 */
+	constexpr const_number_t(double value) : number_t(normalise(value))
+	{
+	}
+
+private:
+	static constexpr number_t normalise(unsigned mantissa, int exponent, bool isNeg)
+	{
+		// Round mantissa
+		while(mantissa > number_t::maxMantissa) {
+			exponent += ((mantissa + 5) / 10) < mantissa;
+			mantissa = (mantissa + 5) / 10;
+		}
+		// Remove trailing 0's, provided exponent doesn't get too big
+		while(mantissa >= 10 && mantissa % 10 == 0 && (exponent + 1) < number_t::maxExponent) {
+			mantissa /= 10;
+			++exponent;
+		}
+		// Mantissa in range, exponent may not be
+		if(mantissa == 0) {
+			exponent = 0;
+		} else if(exponent > number_t::maxExponent) {
+			// Positive infinity
+			mantissa = number_t::maxMantissa;
+			exponent = number_t::maxExponent;
+		} else if(exponent < -number_t::maxExponent) {
+			// Negative infinity
+			mantissa = 1;
+			exponent = -number_t::maxExponent;
+		}
+		return number_t{isNeg ? -int32_t(mantissa) : int32_t(mantissa), exponent};
+	}
+
+	static constexpr number_t normalise(double mantissa)
+	{
+		// Pull significant digits into integer part
+		int exponent = 0;
+		while(mantissa > -double(number_t::maxMantissa) && mantissa < double(number_t::maxMantissa) &&
+			  exponent > -number_t::maxExponent) {
+			mantissa *= 10.0;
+			--exponent;
+		}
+		// Reduce integer part to int32 range
+		while(mantissa < -0x1fffffff || mantissa > 0x1fffffff) {
+			mantissa /= 10;
+			++exponent;
+		}
+		return (mantissa < 0) ? normalise(unsigned(-mantissa), exponent, true)
+							  : normalise(unsigned(mantissa), exponent, false);
+	}
 };
 
 /**
@@ -167,6 +229,10 @@ public:
 	Number() = default;
 
 	constexpr Number(const number_t& number) : number(number)
+	{
+	}
+
+	constexpr Number(const const_number_t& number) : number(number)
 	{
 	}
 
@@ -293,69 +359,17 @@ private:
 	number_t number;
 };
 
-class ConstNumber : public Number
+inline size_t number_t::printTo(Print& p) const
 {
-public:
-	ConstNumber() : Number()
-	{
-	}
-
-	constexpr ConstNumber(double value) : Number(normalise(value))
-	{
-	}
-
-private:
-	static constexpr number_t normalise(unsigned mantissa, int exponent, bool isNeg)
-	{
-		// Round mantissa
-		while(mantissa > number_t::maxMantissa) {
-			exponent += ((mantissa + 5) / 10) < mantissa;
-			mantissa = (mantissa + 5) / 10;
-		}
-		// Remove trailing 0's, provided exponent doesn't get too big
-		while(mantissa >= 10 && mantissa % 10 == 0 && (exponent + 1) < number_t::maxExponent) {
-			mantissa /= 10;
-			++exponent;
-		}
-		// Mantissa in range, exponent may not be
-		if(mantissa == 0) {
-			exponent = 0;
-		} else if(exponent > number_t::maxExponent) {
-			// Positive infinity
-			mantissa = number_t::maxMantissa;
-			exponent = number_t::maxExponent;
-		} else if(exponent < -number_t::maxExponent) {
-			// Negative infinity
-			mantissa = 1;
-			exponent = -number_t::maxExponent;
-		}
-		return number_t{isNeg ? -int32_t(mantissa) : int32_t(mantissa), exponent};
-	}
-
-	static constexpr number_t normalise(double mantissa)
-	{
-		// Pull significant digits into integer part
-		int exponent = 0;
-		while(mantissa > -double(number_t::maxMantissa) && mantissa < double(number_t::maxMantissa) &&
-			  exponent > -number_t::maxExponent) {
-			mantissa *= 10.0;
-			--exponent;
-		}
-		// Reduce integer part to int32 range
-		while(mantissa < -0x1fffffff || mantissa > 0x1fffffff) {
-			mantissa /= 10;
-			++exponent;
-		}
-		return (mantissa < 0) ? normalise(unsigned(-mantissa), exponent, true)
-							  : normalise(unsigned(mantissa), exponent, false);
-	}
-};
+	return Number(*this).printTo(p);
+}
 
 } // namespace ConfigDB
 
 using number_t = ConfigDB::number_t;
+using const_number_t = ConfigDB::const_number_t;
 
-inline String toString(const ConfigDB::Number& number)
+inline String toString(number_t number)
 {
-	return number.toString();
+	return ConfigDB::Number(number).toString();
 }

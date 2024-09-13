@@ -129,11 +129,6 @@ class IntRange(Range):
         return f'Int{self.bits}' if self.is_signed else f'UInt{self.bits}'
 
 
-def get_number(value: float) -> str:
-    '''Return number_t value'''
-    return f'ConfigDB::ConstNumber({value})'
-
-
 def get_ptype(fields: dict):
     '''Identify a pseudo-type 'union' which makes script a bit clearer'''
     return 'union' if 'oneOf' in fields else fields['type']
@@ -210,7 +205,7 @@ class Property:
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
         if self.ptype == 'number':
-            return get_number(self.default)
+            return f'const_number_t({self.default})'
         return str(default) if default else 0
 
 
@@ -784,7 +779,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             return [f'{{.defaultString = &{fstr}}}']
         if prop.ptype == 'number':
             r = prop.numrange
-            return [f'.number = {{{get_number(r.minimum)}, {get_number(r.maximum)}}}']
+            return [f'.number = {{{r.minimum}, {r.maximum}}}']
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:
