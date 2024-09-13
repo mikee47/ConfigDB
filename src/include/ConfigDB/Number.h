@@ -171,6 +171,10 @@ struct const_number_t : public number_t {
 
 	static constexpr number_t normalise(unsigned mantissa, int exponent, bool isNeg)
 	{
+		if(mantissa == 0 && exponent != 0) {
+			return number_t{isNeg ? -1 : 1, -number_t::maxExponent};
+		}
+
 		// Discard non-significant digits
 		while(mantissa > number_t::maxMantissa * 10) {
 			mantissa /= 10;
@@ -198,10 +202,7 @@ struct const_number_t : public number_t {
 			--exponent;
 		}
 
-		// Mantissa in range, exponent may not be
-		if(mantissa == 0) {
-			exponent = 0;
-		} else if(exponent > number_t::maxExponent) {
+		if(exponent > number_t::maxExponent) {
 			mantissa = number_t::maxMantissa;
 			exponent = number_t::maxExponent;
 		} else if(exponent < -number_t::maxExponent) {
@@ -216,6 +217,10 @@ struct const_number_t : public number_t {
 
 	static constexpr number_t normalise(double mantissa)
 	{
+		if(mantissa == 0) {
+			return {};
+		}
+
 		// Pull significant digits into integer part
 		int exponent = 0;
 		while(mantissa > -double(number_t::maxMantissa) && mantissa < double(number_t::maxMantissa) &&
@@ -228,6 +233,7 @@ struct const_number_t : public number_t {
 			mantissa /= 10;
 			++exponent;
 		}
+
 		return (mantissa < 0) ? normalise(unsigned(-mantissa), exponent, true)
 							  : normalise(unsigned(mantissa), exponent, false);
 	}

@@ -131,48 +131,7 @@ number_t Number::normalise(int64_t value)
 
 number_t Number::normalise(double value)
 {
-	if(value == 0) {
-		return {};
-	}
-
-	unsigned mantissa{0};
-	int sign{0};
-	int exponent{0};
-
-#ifdef ARCH_HOST
-	char buf[number_t::minBufferSize];
-	sprintf(buf, "%.*e", number_t::maxSignificantDigits - 1, value);
-
-	auto exp = strchr(buf, 'e');
-	*exp++ = '\0';
-	exponent = atoi(exp) + 1;
-	int mlen = strlen(buf);
-	while(buf[mlen - 1] == '0') {
-		--mlen;
-	}
-	buf[mlen] = '\0';
-	auto dp = strchr(buf, '.');
-	while(*dp) {
-		dp[0] = dp[1];
-		++dp;
-		--exponent;
-	}
-	int m = atoi(buf);
-	if(m < 0) {
-		sign = 1;
-		mantissa = -m;
-	} else {
-		mantissa = m;
-	}
-#else
-	int decpt;
-	char buf[number_t::maxSignificantDigits + 1];
-	ecvtbuf(value, number_t::maxSignificantDigits, &decpt, &sign, buf);
-	mantissa = atoi(buf);
-	exponent = decpt - number_t::maxSignificantDigits;
-#endif
-
-	return normalise(mantissa, exponent, sign);
+	return const_number_t::normalise(value);
 }
 
 bool Number::parse(const char* value, unsigned length, number_t& number)
