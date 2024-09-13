@@ -268,6 +268,23 @@ public:
 			}
 #endif
 		}
+
+		TEST_CASE("constexpr")
+		{
+			using Number = ConfigDB::Number;
+
+			constexpr Number num1 = Number::normalise(-5000, -14);
+			REQUIRE_EQ(num1, -5e-11);
+
+			constexpr Number num2 = Number::normalise(1234567890123LL);
+			REQUIRE_EQ(num2, 12345679e5);
+
+			constexpr Number num3 = Number::normalise(9223372036854775807LL);
+			REQUIRE_EQ(num3, 9223372e12);
+
+			constexpr Number num4(int64_t(124e12));
+			Serial << "num4 = " << num4 << endl;
+		}
 	}
 };
 

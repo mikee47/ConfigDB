@@ -243,7 +243,7 @@ public:
 		return toString();
 	}
 
-	operator number_t() const
+	constexpr operator number_t() const
 	{
 		return number;
 	}
@@ -294,6 +294,61 @@ public:
 
 private:
 	number_t number;
+};
+
+class ConstNumber : public Number
+{
+public:
+	using Number::Number;
+
+	constexpr ConstNumber(double value) : Number(normalise(value))
+	{
+	}
+
+private:
+	static constexpr number_t normalise(int mantissa, int exponent)
+	{
+		// Round mantissa
+		while(mantissa < -int(number_t::maxMantissa) || mantissa > int(number_t::maxMantissa)) {
+			exponent += ((mantissa + 5) / 10) < mantissa;
+			mantissa = (mantissa + 5) / 10;
+		}
+		// Remove trailing 0's, provided exponent doesn't get too big
+		while((mantissa <= -10 || mantissa >= 10) && mantissa % 10 == 0 &&
+			  (exponent + 1) < int(number_t::maxExponent)) {
+			mantissa /= 10;
+			++exponent;
+		}
+		// Mantissa in range, exponent may not be
+		if(mantissa == 0) {
+			exponent = 0;
+		} else if(exponent > number_t::maxExponent) {
+			// Positive infinity
+			mantissa = (mantissa < 0) ? -int(number_t::maxMantissa) : number_t::maxMantissa;
+			exponent = number_t::maxExponent;
+		} else if(exponent < -number_t::maxExponent) {
+			// Negative infinity
+			mantissa = (mantissa < 0) ? -1 : 1;
+			exponent = -number_t::maxExponent;
+		}
+		return number_t{{.mantissa = int32_t(mantissa), .exponent = exponent}};
+	}
+
+	static constexpr number_t normalise(double mantissa)
+	{
+		// Pull significant digits into integer part
+		int exponent = 0;
+		while(mantissa > -0x3fffffff && mantissa < 0x3fffffff && exponent > -number_t::maxExponent) {
+			mantissa *= 10;
+			--exponent;
+		}
+		// Reduce integer part to int32 range
+		while(mantissa < -0x7fffffff || mantissa > 0x7fffffff) {
+			mantissa /= 10;
+			++exponent;
+		}
+		return normalise(int(mantissa), exponent);
+	}
 };
 
 } // namespace ConfigDB

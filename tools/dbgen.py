@@ -130,14 +130,8 @@ class IntRange(Range):
 
 def get_number(value: float) -> str:
     '''Return number_t value (mantissa, exponent)'''
-    s = f'{value:.6e}'
-    m, _, e = s.partition('e')
-    exponent = int(e)
-    real, _, frac = m.partition('.')
-    frac = frac.rstrip('0')
-    exponent -= len(frac)
-    mantissa = int(real + frac)
-    return f'number_t{{{{{mantissa}, {exponent}}}}}'
+    s = f'{value:.7g}'
+    return f'ConfigDB::ConstNumber({s})'
 
 
 def get_ptype(fields: dict):
