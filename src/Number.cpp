@@ -122,8 +122,9 @@ number_t Number::normalise(int64_t value)
 		value = -value;
 	}
 	while(value > 0xffffffffll) {
-		value /= 10;
-		++exponent;
+		auto newValue = (value + 5) / 10;
+		exponent += (newValue < value);
+		value = newValue;
 	}
 	return normalise(value, exponent, isNeg);
 }
@@ -132,14 +133,6 @@ number_t Number::normalise(double value)
 {
 	if(value == 0) {
 		return {};
-	}
-
-	if(std::isnan(value)) {
-		return number_t::invalid();
-	}
-
-	if(std::isinf(value)) {
-		return number_t::overflow();
 	}
 
 	unsigned mantissa{0};
@@ -182,7 +175,7 @@ number_t Number::normalise(double value)
 	return normalise(mantissa, exponent, sign);
 }
 
-number_t Number::parse(const char* value, unsigned length)
+bool Number::parse(const char* value, unsigned length, number_t& number)
 {
 	enum class State {
 		sign,
@@ -214,7 +207,7 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(!isdigit(c)) {
-				return number_t::invalid();
+				return false;
 			}
 			mantissa = c - '0';
 			state = State::mant;
@@ -230,10 +223,11 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(!isdigit(c)) {
-				return number_t::invalid();
+				return false;
 			}
 			if(mantissa > maxMantissaCalc) {
-				return number_t::overflow();
+				number = isNeg ? number_t::lowest() : number_t::max();
+				return true;
 			}
 			mantissa = (mantissa * 10) + c - '0';
 			break;
@@ -244,7 +238,7 @@ number_t Number::parse(const char* value, unsigned length)
 				break;
 			}
 			if(!isdigit(c)) {
-				return number_t::invalid();
+				return false;
 			}
 			if(mantissa <= maxMantissaCalc) {
 				mantissa = (mantissa * 10) + c - '0';
@@ -267,7 +261,7 @@ number_t Number::parse(const char* value, unsigned length)
 
 		case State::expval:
 			if(!isdigit(c)) {
-				return number_t::invalid();
+				return false;
 			}
 			exponent = (exponent * 10) + c - '0';
 			break;
@@ -282,7 +276,8 @@ number_t Number::parse(const char* value, unsigned length)
 		shift += exponent;
 	}
 
-	return normalise(mantissa, shift, isNeg);
+	number = normalise(mantissa, shift, isNeg);
+	return true;
 }
 
 number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
@@ -293,15 +288,31 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 		++exponent;
 	}
 
-	while(mantissa > number_t::maxMantissa) {
+	// Discard non-significant digits
+	while(mantissa > number_t::maxMantissa * 10) {
+		++exponent;
+		mantissa /= 10;
+	}
+
+	// Round down
+	while(mantissa > number_t::maxMantissa && exponent < number_t::maxExponent) {
 		auto newMantissa = (mantissa + 5) / 10;
 		if(newMantissa < mantissa) {
 			++exponent;
-		} else {
-			// Value was rounded up and gained a digit, exponent remains unchanged
 		}
 		mantissa = newMantissa;
 	}
+
+	// while(mantissa > number_t::maxMantissa && exponent < number_t::maxExponent) {
+	// 	++exponent;
+	// 	auto newMantissa = (mantissa + 5) / 10;
+	// 	if(newMantissa < number_t::maxMantissa) {
+	// 		mantissa = newMantissa;
+	// 		break;
+	// 	}
+	// 	// Digit not significant, discard
+	// 	mantissa /= 10;
+	// }
 
 	// Drop any trailing 0's from mantissa
 	while(mantissa >= 10 && mantissa % 10 == 0 && exponent < number_t::maxExponent) {
@@ -309,23 +320,20 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 		++exponent;
 	}
 
-	// Check for overflow conditions
-	if(mantissa > number_t::maxMantissa) {
-		return number_t::overflow();
-	}
-
 	// Adjust exponent to keep it in range (without losing precision)
 	while(exponent > number_t::maxExponent) {
 		mantissa *= 10;
 		if(mantissa > number_t::maxMantissa) {
-			return number_t::overflow();
+			break;
 		}
 		--exponent;
 	}
 
-	if(exponent < -number_t::maxExponent) {
-		return number_t::overflow();
+	// Check for overflow conditions
+	if(abs(exponent) > number_t::maxExponent) {
+		return (exponent < 0) ? number_t::min() : number_t::max();
 	}
+	mantissa = std::min(mantissa, number_t::maxMantissa);
 
 	// Success
 	number_t num;
@@ -334,24 +342,14 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 	return num;
 }
 
-String Number::toString(Options options) const
+String Number::toString() const
 {
 	char buf[number_t::minBufferSize];
-	return format(buf, number, options);
+	return format(buf, number);
 }
 
-const char* Number::format(char* buf, number_t number, Options options)
+const char* Number::format(char* buf, number_t number)
 {
-	if(number == number_t::overflow() && !options[Option::json]) {
-		strcpy(buf, "OVF");
-		return buf;
-	}
-
-	if(number == number_t::invalid()) {
-		strcpy(buf, options[Option::json] ? "0" : "NaN");
-		return buf;
-	}
-
 	int mantissa = number.mantissa;
 	int exponent = number.exponent;
 	while(mantissa % 10 == 0 && mantissa >= 10) {
@@ -420,13 +418,6 @@ size_t Number::printTo(Print& p) const
 
 double Number::asFloat() const
 {
-	if(number == number_t::invalid()) {
-		return NAN;
-	}
-	if(number == number_t::overflow()) {
-		return HUGE_VALF;
-	}
-
 	char buf[number_t::minBufferSize];
 	auto str = format(buf, number);
 	return strtod(str, nullptr);
@@ -434,12 +425,6 @@ double Number::asFloat() const
 
 int64_t Number::asInt64() const
 {
-	if(number == number_t::invalid()) {
-		return 0;
-	}
-	if(number == number_t::overflow()) {
-		return 0;
-	}
 	int64_t value = number.mantissa;
 	int exponent = number.exponent;
 	while(value && exponent < 0) {

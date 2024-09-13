@@ -43,17 +43,43 @@ namespace ConfigDB
  *
  * The initial version of this used 24 bits for the mantissa, but 8 bits for the exponent is overkill.
  * Reducing exponent to 6 bits increases precision by 2 bits to give:
- * 	smallest: 33554427e-30 (3.3554427e23)
- *  largest: 33554427e30 (3.3554427e37)
+ * 	smallest: 1e-31
+ *  largest: 33554431e31 (3.3554431e38)
  *
- * Unlike base-2 floats the mantissa/exponent fields are useful for manipulating values.
+ * During rounding, 0 is the only number which is rounded to 0.
+ * All other values are clipped to the above valid range.
+ * Applications can consider number_t::min() and number_t::max() as the 'overflow' values.
+ * This ensures numbers always have a valid representation for ease of use and JSON compatibility.
+ *
+ * The mantissa/exponent fields can be manipulated directly if required.
  * For example, to convert terabytes to gigabytes we just subtract 3 from the exponent.
  *
- * Note: We *could* add a +7 offset to the exponent to balance things out:
- * 		smallest: 33554427e-37 (3.3554427e30)
- *  	largest: 33554427e23 (3.3554427e30)
+ * An example of custom arithmetic:
  *
- * But we would then need to visualise the mantissa with an imaginary decimal point after the first digit.
+ * 			number_t multiplyBy2000(number_t value)
+ * 			{
+ * 				value.mantissa *= 2;
+ * 				value.exponent += 3;
+ * 				return value;
+ * 			}
+ *
+ * If there's a risk of over/under flowing in the calculation, do this:
+ * 
+ * 			number_t multiplyBy2000(number_t value)
+ * 			{
+ * 				int mantissa = value.mantissa * 2;
+ * 				int exponent = value.exponent + 3;
+ * 				return number_t::normalise(mantissa, exponent);
+ * 			}
+ *
+ * , avoiding overflow risk, multiplying a number by 2000
+ * 			int mantissa = number.mantissa;
+ * 			int exponent = number.exponent;
+ * 			mantissa *= 2;
+ * 			exponent += 3;
+ * 			number_t new_number = number_t::normalise(number);
+ *
+ * 
  *
  * @note This structure is *not* packed to ensure values stored in flash behave correctly.
  */
@@ -61,8 +87,8 @@ struct number_t {
 	int32_t mantissa : 26;
 	int32_t exponent : 6;
 
-	static constexpr unsigned maxMantissa{0x1ffffff - 2};
-	static constexpr int maxExponent{0x1e};
+	static constexpr unsigned maxMantissa{0x1ffffff}; // 33554431
+	static constexpr int maxExponent{0x1f};			  // 31
 	static constexpr unsigned maxSignificantDigits{8};
 	static constexpr unsigned minBufferSize{17};
 
@@ -88,16 +114,6 @@ struct number_t {
 	static constexpr const number_t lowest()
 	{
 		return {-int(maxMantissa), maxExponent};
-	}
-
-	static constexpr const number_t invalid()
-	{
-		return {0xfffffe, 0x1f};
-	}
-
-	static constexpr const number_t overflow()
-	{
-		return {0xffffff, 0x1f};
 	}
 
 	bool operator==(const number_t& other) const
@@ -156,16 +172,24 @@ struct const_number_t : public number_t {
 private:
 	static constexpr number_t normalise(unsigned mantissa, int exponent, bool isNeg)
 	{
-		// Round mantissa
+		// Discard non-significant digits
+		while(mantissa > number_t::maxMantissa * 10) {
+			++exponent;
+			mantissa /= 10;
+		}
+
+		// Round down
 		while(mantissa > number_t::maxMantissa) {
 			exponent += ((mantissa + 5) / 10) < mantissa;
 			mantissa = (mantissa + 5) / 10;
 		}
+
 		// Remove trailing 0's, provided exponent doesn't get too big
 		while(mantissa >= 10 && mantissa % 10 == 0 && (exponent + 1) < number_t::maxExponent) {
 			mantissa /= 10;
 			++exponent;
 		}
+
 		// Mantissa in range, exponent may not be
 		if(mantissa == 0) {
 			exponent = 0;
@@ -178,6 +202,7 @@ private:
 			mantissa = 1;
 			exponent = -number_t::maxExponent;
 		}
+
 		return number_t{isNeg ? -int32_t(mantissa) : int32_t(mantissa), exponent};
 	}
 
@@ -191,7 +216,7 @@ private:
 			--exponent;
 		}
 		// Reduce integer part to int32 range
-		while(mantissa < -0x1fffffff || mantissa > 0x1fffffff) {
+		while(mantissa < -0x7ffffffff || mantissa > 0x7fffffff) {
 			mantissa /= 10;
 			++exponent;
 		}
@@ -221,11 +246,6 @@ private:
 class __attribute__((packed)) Number
 {
 public:
-	enum class Option {
-		json,
-	};
-	using Options = BitSet<uint8_t, Option, 1>;
-
 	Number() = default;
 
 	constexpr Number(const number_t& number) : number(number)
@@ -299,7 +319,7 @@ public:
 	double asFloat() const;
 	int64_t asInt64() const;
 
-	String toString(Options options = 0) const;
+	String toString() const;
 
 	explicit operator String() const
 	{
@@ -311,27 +331,23 @@ public:
 		return number;
 	}
 
-	bool isNan() const
-	{
-		return number == number_t::invalid();
-	}
-
-	bool isInf() const
-	{
-		return number == number_t::overflow();
-	}
-
 	/**
 	 * @brief Convert number to string
 	 * @param buf Buffer of at least number_t::minBufferSize
 	 * @param number
 	 * @retval char* Points to string, may not be start of *buf*
 	 * @note Always use return value to give implementation flexible use of buffer
-	 * @note Maybe need some options to indicate how to output NaN, Inf values as JSON doesn't support them
 	 */
-	static const char* format(char* buf, number_t number, Options options = 0);
+	static const char* format(char* buf, number_t number);
 
-	static number_t parse(const char* value, unsigned length);
+	static bool parse(const char* value, unsigned length, number_t& number);
+
+	number_t parse(const char* value, unsigned length)
+	{
+		number_t num{};
+		parse(value, length, num);
+		return num;
+	}
 
 	/**
 	 * @brief Produce a normalised number_t from component values
@@ -351,6 +367,11 @@ public:
 	 * If the value is out of range, number_t::overflow is returned.
 	 */
 	static number_t normalise(unsigned mantissa, int exponent, bool isNeg);
+
+	static number_t normalise(int mantissa, int exponent)
+	{
+		return normalise(abs(mantissa), exponent, mantissa < 0);
+	}
 
 	static number_t normalise(double value);
 	static number_t normalise(int64_t value);

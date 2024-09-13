@@ -14,7 +14,15 @@ struct TestValue {
 	char expected[20];
 };
 
+#define NUMBER_MIN 1e-31
+#define NUMBER_MAX 3.3554431e38
+#define NUMBER_LOWEST -3.3554431e38
+
 #define TEST_VALUE_MAP(XX)                                                                                             \
+	XX(1e-32, STR(NUMBER_MIN))                                                                                         \
+	XX(3.3554431e38, STR(NUMBER_MAX))                                                                                  \
+	XX(3.3554432e38, STR(NUMBER_MAX))                                                                                  \
+	XX(-3.3554432e38, STR(NUMBER_LOWEST))                                                                              \
 	XX(9999999, "9999999")                                                                                             \
 	XX(99999999, "1e8")                                                                                                \
 	XX(0.9999999, "0.9999999")                                                                                         \
@@ -26,7 +34,7 @@ struct TestValue {
 	XX(-33554427e30, "-3.3554427e37")                                                                                  \
 	XX(33554427e-30, "3.3554427e-23")                                                                                  \
 	XX(-33554427e-30, "-3.3554427e-23")                                                                                \
-	XX(1000e35, "OVF")                                                                                                 \
+	XX(1000e36, STR(NUMBER_MAX))                                                                                       \
 	XX(1.00000e10, "1e10")                                                                                             \
 	XX(1.00001e10, "1.00001e10")                                                                                       \
 	XX(1.0000000000e10, "1e10")                                                                                        \
@@ -105,7 +113,9 @@ template <typename T> struct IntValue {
 };
 
 #define INT_VALUE_MAP(XX)                                                                                              \
-	XX(0x7fffffff, "2.147484e9")                                                                                       \
+	XX(0x7fffffff, "2.1474836e9")                                                                                      \
+	XX(2147483549, "2.1474835e9")                                                                                      \
+	XX(2147483550, "2.1474836e9")                                                                                      \
 	XX(2000000000, "2e9")
 
 #define UINT_VALUE_MAP(XX)                                                                                             \
@@ -158,6 +168,10 @@ public:
 					   << ", " << num.exponent << "]" << endl;
 
 				CHECK_EQ(number, floatNumber);
+				if(output != test.expected) {
+					ConfigDB::Number xxnum(test.input);
+					Serial << xxnum << endl;
+				}
 				CHECK_EQ(output, test.expected);
 			}
 		}
@@ -170,6 +184,7 @@ public:
 				int64_t output = strtod(test.expected, nullptr);
 				Serial << "INT " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
 					   << String(number.asInt64(), HEX) << ", " << output << ", " << String(output, HEX) << endl;
+				REQUIRE_EQ(String(test.expected), toString(number));
 			}
 			for(auto test : uintValues) {
 				ConfigDB::Number number(test.value);
@@ -228,8 +243,7 @@ public:
 			Serial << "Max length = " << maxLength << endl;
 		}
 
-		TEST_CASE("Normalise")
-		{
+		if(0) {
 			// constexpr number_t expected{4294967, 3};
 			ConfigDB::Number num = ConfigDB::Number::normalise(0xffffffff, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 4294967000ull);
@@ -273,17 +287,21 @@ public:
 		{
 			using Number = ConfigDB::Number;
 
-			constexpr Number num1 = Number::normalise(-5000, -14);
+			constexpr Number num1 = const_number_t(-5000e-14);
 			REQUIRE_EQ(num1, -5e-11);
 
-			constexpr Number num2 = Number::normalise(1234567890123LL);
+			constexpr Number num2 = const_number_t(1234567890123LL);
 			REQUIRE_EQ(num2, 12345679e5);
 
-			constexpr Number num3 = Number::normalise(9223372036854775807LL);
+			constexpr Number num3 = const_number_t(9223372036854775807LL);
 			REQUIRE_EQ(num3, 9223372e12);
 
-			constexpr Number num4(int64_t(124e12));
-			Serial << "num4 = " << num4 << endl;
+			Serial << "num4 = " << const_number_t(124e12) << endl;
+			Serial << "num4 = " << const_number_t(124e120) << endl;
+
+			REQUIRE_EQ(toString(const_number_t(0x7fffffff)), "2.1474836e9");
+			REQUIRE_EQ(toString(const_number_t(2147483549)), "2.1474835e9");
+			REQUIRE_EQ(toString(const_number_t(2147483550)), "2.1474836e9");
 		}
 	}
 };

@@ -44,7 +44,7 @@ String PropertyData::getString(const PropertyInfo& info) const
 	case PropertyType::UInt64:
 		return String(uint64);
 	case PropertyType::Number:
-		return number.toString(Number::Option::json);
+		return String(number);
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;
@@ -125,9 +125,14 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 	case PropertyType::UInt64:
 		uint64 = strtoull(value, nullptr, 0);
 		return true;
-	case PropertyType::Number:
-		number = Number::parse(value, valueLength);
-		return true;
+	case PropertyType::Number: {
+		number_t num{};
+		if(Number::parse(value, valueLength, num)) {
+			number = num;
+			return true;
+		}
+		return false;
+	}
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;
