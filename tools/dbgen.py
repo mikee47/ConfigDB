@@ -137,7 +137,7 @@ def get_number(value: float) -> str:
     frac = frac.rstrip('0')
     exponent -= len(frac)
     mantissa = int(real + frac)
-    return f'number_t{{{mantissa}, {exponent}}}'
+    return f'number_t{{{{{mantissa}, {exponent}}}}}'
 
 
 def get_ptype(fields: dict):

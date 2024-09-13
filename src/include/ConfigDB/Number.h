@@ -65,7 +65,7 @@ union number_t {
 	uint32_t value;
 
 	static constexpr unsigned maxMantissa{0x1ffffff - 2};
-	static constexpr unsigned maxExponent{0x1e};
+	static constexpr int maxExponent{0x1e};
 	static constexpr unsigned maxSignificantDigits{8};
 	static constexpr unsigned minBufferSize{17};
 
@@ -74,7 +74,7 @@ union number_t {
 	 */
 	static constexpr const number_t min()
 	{
-		return {1, -int(maxExponent)};
+		return {{1, -maxExponent}};
 	}
 
 	/**
@@ -82,7 +82,7 @@ union number_t {
 	 */
 	static constexpr const number_t max()
 	{
-		return {maxMantissa, maxExponent};
+		return {{maxMantissa, maxExponent}};
 	}
 
 	/**
@@ -90,17 +90,17 @@ union number_t {
 	 */
 	static constexpr const number_t lowest()
 	{
-		return {-int(maxMantissa), maxExponent};
+		return {{-int(maxMantissa), maxExponent}};
 	}
 
 	static constexpr const number_t invalid()
 	{
-		return {0xfffffe, 0x1f};
+		return {{0xfffffe, 0x1f}};
 	}
 
 	static constexpr const number_t overflow()
 	{
-		return {0xffffff, 0x1f};
+		return {{0xffffff, 0x1f}};
 	}
 
 	bool operator==(const number_t& other) const

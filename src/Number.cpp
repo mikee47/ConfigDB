@@ -304,7 +304,7 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 	}
 
 	// Drop any trailing 0's from mantissa
-	while(mantissa >= 10 && mantissa % 10 == 0 && exponent < int(number_t::maxExponent)) {
+	while(mantissa >= 10 && mantissa % 10 == 0 && exponent < number_t::maxExponent) {
 		mantissa /= 10;
 		++exponent;
 	}
@@ -315,7 +315,7 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 	}
 
 	// Adjust exponent to keep it in range (without losing precision)
-	while(exponent > int(number_t::maxExponent)) {
+	while(exponent > number_t::maxExponent) {
 		mantissa *= 10;
 		if(mantissa > number_t::maxMantissa) {
 			return number_t::overflow();
@@ -323,7 +323,7 @@ number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
 		--exponent;
 	}
 
-	if(exponent < -int(number_t::maxExponent)) {
+	if(exponent < -number_t::maxExponent) {
 		return number_t::overflow();
 	}
 
