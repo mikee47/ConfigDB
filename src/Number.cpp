@@ -113,7 +113,7 @@ int number_t::compare(const number_t& num1, const number_t& num2)
 	return 0;
 }
 
-number_t Number::parse(int64_t value)
+number_t Number::normalise(int64_t value)
 {
 	int exponent = 0;
 	bool isNeg{false};
@@ -128,7 +128,7 @@ number_t Number::parse(int64_t value)
 	return normalise(value, exponent, isNeg);
 }
 
-number_t Number::parse(double value)
+number_t Number::normalise(double value)
 {
 	if(value == 0) {
 		return {};

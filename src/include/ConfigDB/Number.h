@@ -175,15 +175,15 @@ public:
 
 	constexpr Number(const Number& number) = default;
 
-	Number(double value) : number(parse(value))
+	Number(double value) : number(normalise(value))
+	{
+	}
+
+	Number(int64_t value) : number(normalise(value))
 	{
 	}
 
 	Number(int value) : Number(int64_t(value))
-	{
-	}
-
-	Number(int64_t value) : number(parse(value))
 	{
 	}
 
@@ -268,8 +268,6 @@ public:
 	 */
 	static const char* format(char* buf, number_t number, Options options = 0);
 
-	static number_t parse(double value);
-	static number_t parse(int64_t value);
 	static number_t parse(const char* value, unsigned length);
 
 	/**
@@ -290,6 +288,9 @@ public:
 	 * If the value is out of range, number_t::overflow is returned.
 	 */
 	static number_t normalise(unsigned mantissa, int exponent, bool isNeg);
+
+	static number_t normalise(double value);
+	static number_t normalise(int64_t value);
 
 private:
 	number_t number;
