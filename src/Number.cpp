@@ -280,68 +280,6 @@ bool Number::parse(const char* value, unsigned length, number_t& number)
 	return true;
 }
 
-number_t Number::normalise(unsigned mantissa, int exponent, bool isNeg)
-{
-	// Ensure numbers at upper limit can't overflow
-	if(mantissa > maxMantissaCalc * 10) {
-		mantissa /= 10;
-		++exponent;
-	}
-
-	// Discard non-significant digits
-	while(mantissa > number_t::maxMantissa * 10) {
-		++exponent;
-		mantissa /= 10;
-	}
-
-	// Round down
-	while(mantissa > number_t::maxMantissa && exponent < number_t::maxExponent) {
-		auto newMantissa = (mantissa + 5) / 10;
-		if(newMantissa < mantissa) {
-			++exponent;
-		}
-		mantissa = newMantissa;
-	}
-
-	// while(mantissa > number_t::maxMantissa && exponent < number_t::maxExponent) {
-	// 	++exponent;
-	// 	auto newMantissa = (mantissa + 5) / 10;
-	// 	if(newMantissa < number_t::maxMantissa) {
-	// 		mantissa = newMantissa;
-	// 		break;
-	// 	}
-	// 	// Digit not significant, discard
-	// 	mantissa /= 10;
-	// }
-
-	// Drop any trailing 0's from mantissa
-	while(mantissa >= 10 && mantissa % 10 == 0 && exponent < number_t::maxExponent) {
-		mantissa /= 10;
-		++exponent;
-	}
-
-	// Adjust exponent to keep it in range (without losing precision)
-	while(exponent > number_t::maxExponent) {
-		mantissa *= 10;
-		if(mantissa > number_t::maxMantissa) {
-			break;
-		}
-		--exponent;
-	}
-
-	// Check for overflow conditions
-	if(abs(exponent) > number_t::maxExponent) {
-		return (exponent < 0) ? number_t::min() : number_t::max();
-	}
-	mantissa = std::min(mantissa, number_t::maxMantissa);
-
-	// Success
-	number_t num;
-	num.mantissa = isNeg ? -mantissa : mantissa;
-	num.exponent = exponent;
-	return num;
-}
-
 String Number::toString() const
 {
 	char buf[number_t::minBufferSize];

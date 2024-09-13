@@ -302,6 +302,9 @@ public:
 			REQUIRE_EQ(toString(const_number_t(0x7fffffff)), "2.1474836e9");
 			REQUIRE_EQ(toString(const_number_t(2147483549)), "2.1474835e9");
 			REQUIRE_EQ(toString(const_number_t(2147483550)), "2.1474836e9");
+
+			REQUIRE_EQ(toString(const_number_t(3.3554432e38)), STR(NUMBER_MAX));
+			REQUIRE_EQ(toString(const_number_t(-3.3554432e38)), STR(NUMBER_LOWEST));
 		}
 	}
 };

@@ -169,38 +169,46 @@ struct const_number_t : public number_t {
 	{
 	}
 
-private:
 	static constexpr number_t normalise(unsigned mantissa, int exponent, bool isNeg)
 	{
 		// Discard non-significant digits
 		while(mantissa > number_t::maxMantissa * 10) {
-			++exponent;
 			mantissa /= 10;
+			++exponent;
 		}
 
 		// Round down
-		while(mantissa > number_t::maxMantissa) {
+		while(mantissa > number_t::maxMantissa && exponent < number_t::maxExponent) {
 			exponent += ((mantissa + 5) / 10) < mantissa;
 			mantissa = (mantissa + 5) / 10;
 		}
 
-		// Remove trailing 0's, provided exponent doesn't get too big
-		while(mantissa >= 10 && mantissa % 10 == 0 && (exponent + 1) < number_t::maxExponent) {
+		// Drop any trailing 0's from mantissa
+		while(mantissa >= 10 && mantissa % 10 == 0 && exponent < number_t::maxExponent) {
 			mantissa /= 10;
 			++exponent;
+		}
+
+		// Adjust exponent to keep it in range (without losing precision)
+		while(exponent > number_t::maxExponent) {
+			mantissa *= 10;
+			if(mantissa > number_t::maxMantissa) {
+				break;
+			}
+			--exponent;
 		}
 
 		// Mantissa in range, exponent may not be
 		if(mantissa == 0) {
 			exponent = 0;
 		} else if(exponent > number_t::maxExponent) {
-			// Positive infinity
 			mantissa = number_t::maxMantissa;
 			exponent = number_t::maxExponent;
 		} else if(exponent < -number_t::maxExponent) {
-			// Negative infinity
 			mantissa = 1;
 			exponent = -number_t::maxExponent;
+		} else {
+			mantissa = std::min(mantissa, number_t::maxMantissa);
 		}
 
 		return number_t{isNeg ? -int32_t(mantissa) : int32_t(mantissa), exponent};
@@ -216,7 +224,7 @@ private:
 			--exponent;
 		}
 		// Reduce integer part to int32 range
-		while(mantissa < -0x7ffffffff || mantissa > 0x7fffffff) {
+		while(mantissa < -0x7fffffff || mantissa > 0x7fffffff) {
 			mantissa /= 10;
 			++exponent;
 		}
@@ -366,7 +374,10 @@ public:
 	 *
 	 * If the value is out of range, number_t::overflow is returned.
 	 */
-	static number_t normalise(unsigned mantissa, int exponent, bool isNeg);
+	static number_t normalise(unsigned mantissa, int exponent, bool isNeg)
+	{
+		return const_number_t::normalise(mantissa, exponent, isNeg);
+	}
 
 	static number_t normalise(int mantissa, int exponent)
 	{
