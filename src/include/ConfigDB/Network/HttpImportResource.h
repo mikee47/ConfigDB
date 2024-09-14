@@ -117,7 +117,7 @@ private:
 			return 0;
 		};
 
-		onBody = [this](HttpServerConnection&, HttpRequest& request, const char* at, int length) -> int {
+		onBody = [](HttpServerConnection&, HttpRequest& request, const char* at, int length) -> int {
 			auto stream = static_cast<ImportStream*>(request.args);
 			if(!stream) {
 				return 0;

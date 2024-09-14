@@ -18,12 +18,9 @@
 #endif
 
 extern void listProperties(ConfigDB::Database& db, Print& output);
-extern void checkPerformance(BasicConfig& db);
 
 namespace
 {
-IMPORT_FSTR(sampleConfig, PROJECT_DIR "/sample-config.json")
-
 BasicConfig database("test");
 HttpServer server;
 SimpleTimer statTimer;
@@ -225,7 +222,7 @@ void startWebServer()
 	Serial.println("==============================\r\n");
 }
 
-void gotIP(IpAddress ip, IpAddress netmask, IpAddress gateway)
+void gotIP(IpAddress, IpAddress, IpAddress)
 {
 	startWebServer();
 }
@@ -259,7 +256,6 @@ void init()
 	// stream(database);
 
 	// listProperties(database, Serial);
-	// checkPerformance(database);
 
 	Serial << endl << endl;
 
