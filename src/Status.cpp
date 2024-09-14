@@ -45,7 +45,6 @@ String Status::toString() const
 		break;
 		CONFIGDB_ERROR_MAP(XX)
 #undef XX
-	default:;
 	}
 
 	switch(error) {
