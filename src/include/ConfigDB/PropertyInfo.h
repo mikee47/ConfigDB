@@ -21,6 +21,7 @@
 
 #include <WString.h>
 #include <Data/Range.h>
+#include "Number.h"
 
 /**
  * @brief Property types with storage size
@@ -35,7 +36,7 @@
 	XX(UInt16, 2)                                                                                                      \
 	XX(UInt32, 4)                                                                                                      \
 	XX(UInt64, 8)                                                                                                      \
-	XX(Number, 4)                                                                                                       \
+	XX(Number, 4)                                                                                                      \
 	XX(String, sizeof(StringId))                                                                                       \
 	XX(Object, sizeof(ObjectInfo*))
 
@@ -60,13 +61,13 @@ struct ObjectInfo;
  * @brief Property metadata
  */
 struct PropertyInfo {
-	template <typename T> struct RangeTemplate {
+	template <typename T, typename U = T> struct RangeTemplate {
 		T minimum;
 		T maximum;
 
-		T clip(T value) const
+		U clip(U value) const
 		{
-			return TRange(minimum, maximum).clip(value);
+			return TRange(U(minimum), U(maximum)).clip(value);
 		}
 	};
 	template <typename T> struct RangePtrTemplate {
@@ -81,23 +82,23 @@ struct PropertyInfo {
 			return value;
 		}
 	};
-	PropertyType type;
-	const FlashString& name;
-	uint32_t offset; ///< Location of property data in parent object
 	// Variant property information depends on type
-	union {
+	union Variant {
 		const FlashString* defaultString;
 		const ObjectInfo* object;
 		RangeTemplate<int32_t> int32;
 		RangeTemplate<uint32_t> uint32;
-		RangeTemplate<float> number;
+		RangeTemplate<const_number_t, number_t> number;
 		RangePtrTemplate<int64_t> int64;
 		RangePtrTemplate<uint64_t> uint64;
 	};
 
-	static const PropertyInfo empty;
+	PropertyType type;
+	const FlashString& name;
+	uint32_t offset; ///< Location of property data in parent object
+	Variant variant;
 
-	PropertyInfo(const PropertyInfo&) = delete;
+	static const PropertyInfo empty;
 
 	explicit operator bool() const
 	{

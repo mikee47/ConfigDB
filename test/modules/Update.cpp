@@ -76,19 +76,26 @@ public:
 		TEST_CASE("Number")
 		{
 			auto f = root.getSimpleFloat();
-			auto diff = f - 3.141592654;
-			Serial << String(f, 8) << ", " << String(diff, 8) << endl;
-			REQUIRE(abs(diff) < 0.000001);
+			REQUIRE_EQ(String(f), "3.1415927");
 
 			// Change value
 			if(auto updater = root.update()) {
-				const auto newFloat = 12e6;
+				const auto newFloat = 12.0e20;
 				Serial << newFloat << endl;
 				updater.setSimpleFloat(newFloat);
-				REQUIRE_EQ(root.getSimpleFloat(), newFloat);
+				REQUIRE_EQ(String(root.getSimpleFloat()), F("1.2e21"));
 			} else {
 				TEST_ASSERT(false);
 			}
+
+			TestConfigRange db(F("out/test-range"));
+			TestConfigRange::Root::OuterUpdater root(db);
+			root.setNumval(0);
+			CHECK_EQ(root.getNumval().asFloat(), 0);
+			root.setNumval(-2);
+			CHECK_EQ(root.getNumval().asFloat(), -1);
+			root.setNumval(10.1);
+			CHECK_EQ(root.getNumval().asFloat(), 10);
 		}
 	}
 };

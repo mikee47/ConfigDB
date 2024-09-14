@@ -190,7 +190,7 @@ public:
 
 	const ObjectInfo& typeinfo() const
 	{
-		return *this ? *propinfoPtr->object : ObjectInfo::empty;
+		return *this ? *propinfoPtr->variant.object : ObjectInfo::empty;
 	}
 
 	PropertyData* getPropertyData(unsigned index)

@@ -51,10 +51,11 @@ public:
 		auto& prop = typeinfo().propinfo[tag];
 		auto data = static_cast<uint8_t*>(getDataPtr());
 		data += prop.offset;
-		if(prop.object->defaultData) {
-			memcpy_P(data, prop.object->defaultData, prop.object->structSize);
+		auto obj = prop.variant.object;
+		if(obj->defaultData) {
+			memcpy_P(data, obj->defaultData, obj->structSize);
 		} else {
-			memset(data, 0, prop.object->structSize);
+			memset(data, 0, obj->structSize);
 		}
 	}
 

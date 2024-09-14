@@ -143,7 +143,7 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 
 	// Look in root store for a matching object
 	auto& root = database->typeinfo.stores[0];
-	int i = root.object->findObject(element.key, element.keyLength);
+	int i = root.variant.object->findObject(element.key, element.keyLength);
 	if(i >= 0) {
 		store.reset();
 		store = database->openStoreForUpdate(0);
@@ -226,7 +226,7 @@ bool WriteStream::handleSelector(const Element& element, const char* sel)
 		auto value = sep + 1;
 		auto valuelen = keyEnd - value;
 		arrayParent = static_cast<ObjectArray&>(obj);
-		auto propIndex = arrayParent.getItemType().object->findProperty(name, namelen);
+		auto propIndex = arrayParent.getItemType().variant.object->findProperty(name, namelen);
 		if(propIndex < 0) {
 			return handleError(FormatError::NotInSchema, obj, String(name, namelen));
 		}

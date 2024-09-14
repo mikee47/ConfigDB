@@ -22,18 +22,6 @@
 
 namespace ConfigDB
 {
-String PropertyData::numberToString(float value)
-{
-	char buf[33];
-	dtostrf(value, 0, 8, buf);
-	auto len = strlen(buf);
-	unsigned i = len;
-	while(i && buf[--i] == '0') {
-	}
-	len = i + 1 + (buf[i] == '.');
-	return String(buf, len);
-}
-
 String PropertyData::getString(const PropertyInfo& info) const
 {
 	switch(info.type) {
@@ -56,7 +44,7 @@ String PropertyData::getString(const PropertyInfo& info) const
 	case PropertyType::UInt64:
 		return String(uint64);
 	case PropertyType::Number:
-		return numberToString(number);
+		return String(number);
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;
@@ -72,31 +60,31 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		boolean = src.boolean;
 		break;
 	case PropertyType::Int8:
-		int8 = prop.int32.clip(src.int8);
+		int8 = prop.variant.int32.clip(src.int8);
 		break;
 	case PropertyType::Int16:
-		int16 = prop.int32.clip(src.int16);
+		int16 = prop.variant.int32.clip(src.int16);
 		break;
 	case PropertyType::Int32:
-		int32 = prop.int32.clip(src.int32);
+		int32 = prop.variant.int32.clip(src.int32);
 		break;
 	case PropertyType::Int64:
-		int64 = prop.int64.clip(src.int64);
+		int64 = prop.variant.int64.clip(src.int64);
 		break;
 	case PropertyType::UInt8:
-		uint8 = prop.uint32.clip(src.uint8);
+		uint8 = prop.variant.uint32.clip(src.uint8);
 		break;
 	case PropertyType::UInt16:
-		uint16 = prop.uint32.clip(src.uint16);
+		uint16 = prop.variant.uint32.clip(src.uint16);
 		break;
 	case PropertyType::UInt32:
-		uint32 = prop.uint32.clip(src.uint32);
+		uint32 = prop.variant.uint32.clip(src.uint32);
 		break;
 	case PropertyType::UInt64:
-		uint64 = prop.uint64.clip(src.uint64);
+		uint64 = prop.variant.uint64.clip(src.uint64);
 		break;
 	case PropertyType::Number:
-		number = prop.number.clip(src.number);
+		number = prop.variant.number.clip(src.number);
 		break;
 	case PropertyType::String:
 		string = src.string;
@@ -137,9 +125,14 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 	case PropertyType::UInt64:
 		uint64 = strtoull(value, nullptr, 0);
 		return true;
-	case PropertyType::Number:
-		number = strtof(value, nullptr);
-		return true;
+	case PropertyType::Number: {
+		number_t num{};
+		if(number_t::parse(value, valueLength, num)) {
+			number = num;
+			return true;
+		}
+		return false;
+	}
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;

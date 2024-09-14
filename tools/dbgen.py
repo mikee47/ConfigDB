@@ -17,16 +17,16 @@ CPP_TYPENAMES = {
     'string': 'String',
     'integer': 'int',
     'boolean': 'bool',
-    'number': 'float',
+    'number': 'ConfigDB::Number',
 }
 
 STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
 UNION_TAG_SIZE = 1
 UNION_TAG_TYPE = 'uint8_t'
-# See dtostrf_p() in System/stringconversion.cpp
-NUMBER_MIN = -4294967040.0
-NUMBER_MAX = 4294967040.0
+# These values get truncated by ConstNumber during C++ compilation
+NUMBER_MIN = -1e100
+NUMBER_MAX = 1e100
 
 CPP_TYPESIZES = {
     'bool': 1,
@@ -38,7 +38,7 @@ CPP_TYPESIZES = {
     'uint16_t': 2,
     'uint32_t': 4,
     'uint64_t': 8,
-    'float': 4,
+    'ConfigDB::Number': 4,
     'String': STRING_ID_SIZE,
 }
 
@@ -204,6 +204,8 @@ class Property:
             return strings[default]
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
+        if self.ptype == 'number':
+            return f'const_number_t({self.default})'
         return str(default) if default else 0
 
 
@@ -635,10 +637,10 @@ def generate_database(db: Database) -> CodeLines:
                 '{',
                 *(make_static_initializer(
                     [
-                    'PropertyType::Object',
-                    strings[store.name],
-                    0,
-                    f'{{.object = &{store.typename_contained}::typeinfo}}'
+                    '.type = PropertyType::Object',
+                    f'.name = {strings[store.name]}',
+                    '.offset = 0',
+                    f'.variant = {{.object = &{store.typename_contained}::typeinfo}}'
                     ], ',') for store in db.children),
                 '}'
             ],
@@ -774,20 +776,20 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     def getVariantInfo(prop: Property) -> list:
         if prop.ptype == 'string':
             fstr = strings[str(prop.default or '')]
-            return [f'{{.defaultString = &{fstr}}}']
+            return f'.defaultString = &{fstr}'
         if prop.ptype == 'number':
             r = prop.numrange
-            return [f'.number = {{{r.minimum}, {r.maximum}}}']
+            return f'.number = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:
                 lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
                 lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
                 tag = 'int64' if r.is_signed else 'uint64'
-                return [f'.{tag} = {{&{prop.name}_minimum, &{prop.name}_maximum}}']
+                return f'.{tag} = {{.minimum = &{prop.name}_minimum, .maximum = &{prop.name}_maximum}}'
             tag = 'int32' if r.is_signed else 'uint32'
-            return [f'.{tag} = {{{r.minimum}, {r.maximum}}}']
-        return []
+            return f'.{tag} = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
+        return ''
 
     proplist = []
     offset = 0
@@ -795,28 +797,28 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
     for child in objinfo:
         proplist += [[
-            'PropertyType::Object',
-            'fstr_empty' if obj.is_array else strings[child.name],
-            offset,
-            f'{{.object = &{child.namespace}::{child.typename_contained}::typeinfo}}'
+            '.type = PropertyType::Object',
+            '.name = ' + ('fstr_empty' if obj.is_array else strings[child.name]),
+            f'.offset = {offset}',
+            f'.variant = {{.object = &{child.namespace}::{child.typename_contained}::typeinfo}}'
         ]]
         if not obj.is_union:
             offset += child.data_size
 
     if obj.is_union:
         proplist += [[
-            'PropertyType::UInt8',
-            strings['tag'],
-            obj.data_size - UNION_TAG_SIZE,
+            '.type = PropertyType::UInt8',
+            f'.name = {strings['tag']}',
+            f'.offset = {obj.data_size - UNION_TAG_SIZE}',
         ]]
 
     propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
     for prop in propinfo:
         proplist += [[
-            f'PropertyType::{prop.property_type}',
-            'fstr_empty' if obj.is_array else strings[prop.name],
-            offset,
-            *getVariantInfo(prop)
+            f'.type = PropertyType::{prop.property_type}',
+            '.name = ' + ('fstr_empty' if obj.is_array else strings[prop.name]),
+            f'.offset = {offset}',
+            '.variant = {' + getVariantInfo(prop) + '}'
         ]]
         offset += prop.data_size
 
@@ -825,14 +827,14 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            'ObjectType::' + ('Store' if obj.is_root else obj.classname),
-            '&defaultData' if obj.has_struct else 'nullptr',
-            'sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0',
-            len(objinfo),
-            len(proplist) - len(objinfo),
+            '.type = ObjectType::' + ('Store' if obj.is_root else obj.classname),
+            '.defaultData = ' + ('&defaultData' if obj.has_struct else 'nullptr'),
+            '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
+            f'.objectCount = {len(objinfo)}',
+            f'.propertyCount = {len(proplist) - len(objinfo)}',
         ]),
         [
-            '{',
+            '.propinfo = {',
             *(make_static_initializer(prop, ',') for prop in proplist),
             '}'
         ],
