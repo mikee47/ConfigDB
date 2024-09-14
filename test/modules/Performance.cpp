@@ -68,8 +68,13 @@ public:
 			Serial << "INT:" << root.getSimpleInt() << endl;
 			profile(F("getValue [int]"), [&](unsigned) { root.getSimpleInt(); });
 
-			Serial << "FLOAT:" << root.getSimpleFloat() << endl;
-			profile(F("getValue [float]"), [&](unsigned) { root.getSimpleFloat(); });
+			profileGetNumber();
+
+			root.update().setSimpleFloat(number_t::min());
+			profileGetNumber();
+
+			root.update().setSimpleFloat(number_t::max());
+			profileGetNumber();
 
 			profile(F("getValue [Print]"), [&](unsigned) {
 				MemoryDataStream stream;
@@ -77,10 +82,34 @@ public:
 			});
 		}
 
-		profile(F("parse number [double]"), [](unsigned) { ConfigDB::Number num(3.141592654e-12); });
-		profile(F("parse number [integer]"), [](unsigned) { ConfigDB::Number num(3141593); });
-		profile(F("parse number [string]"), [](unsigned) { ConfigDB::Number num("3.141592654e-12"); });
+		double floatval = os_random() * 1234.0;
+		profile(F("Number(double)"), [this, floatval](unsigned) { staticNumber = ConfigDB::Number(floatval); });
+		int64_t intval = os_random() * 1234LL;
+		profile(F("Number(integer)"), [this, intval](unsigned) { staticNumber = ConfigDB::Number(intval); });
+
+		profile(F("Number(constexpr double)"), [this](unsigned) {
+			constexpr const_number_t num(3.141592654e-12);
+			staticNumber = num;
+		});
+
+		profile(F("Number(constexpr integer)"), [this](unsigned) {
+			constexpr const_number_t num(3141593);
+			staticNumber = num;
+		});
+
+		profile(F("Number(String)"), [this](unsigned) { staticNumber = ConfigDB::Number("3.141592654e-12"); });
 	}
+
+	void profileGetNumber()
+	{
+		TestConfig::Root root(database);
+		Serial << "NUM:" << root.getSimpleFloat() << endl;
+		profile(F("getValue [number]"), [&](unsigned) { root.getSimpleFloat(); });
+		profile(F("getValue [number as int]"), [&](unsigned) { root.getSimpleFloat().asInt64(); });
+		profile(F("getValue [number as float]"), [&](unsigned) { root.getSimpleFloat().asFloat(); });
+	}
+
+	number_t staticNumber;
 };
 
 void REGISTER_TEST(Performance)

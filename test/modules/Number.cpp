@@ -141,7 +141,7 @@ DEFINE_FSTR_ARRAY_LOCAL(int64Values, IntValue<int64_t>, INT64_VALUE_MAP(XX))
 String floatToStr(double value)
 {
 	char buf[64];
-	sprintf(buf, "%.7lg", value);
+	sprintf(buf, "%.*lg", number_t::maxSignificantDigits + 1, value);
 	return buf;
 }
 
@@ -222,6 +222,7 @@ public:
 
 			auto check = [&](unsigned exponent, double value) {
 				ConfigDB::Number number(value);
+
 				int error = (1e7 * (1 - value / number.asFloat())) + 0.5;
 				Serial << exponent << ": " << floatToStr(value) << ", " << number << ", "
 					   << floatToStr(number.asFloat()) << ", " << floatToStr(error) << endl;
@@ -229,7 +230,7 @@ public:
 			};
 
 			// const double initval{1.1111111};
-			const double initval{6.666666};
+			const double initval{2.666666};
 
 			double value = initval;
 			for(unsigned i = 0; i <= ConfigDB::number_t::maxExponent; ++i) {
@@ -247,20 +248,20 @@ public:
 
 		if(0) {
 			// constexpr number_t expected{4294967, 3};
-			ConfigDB::Number num = ConfigDB::Number::normalise(0xffffffff, 0, 0);
+			ConfigDB::Number num = number_t::normalise(0xffffffff, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 4294967000ull);
-			num = ConfigDB::Number::normalise(429496729ul, 0, 0);
+			num = number_t::normalise(429496729ul, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 429496700ull);
-			num = ConfigDB::Number::normalise(429496699ul, 0, 0);
+			num = number_t::normalise(429496699ul, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 429496700ull);
-			num = ConfigDB::Number::normalise(429496644ul, 0, 0);
+			num = number_t::normalise(429496644ul, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 429496600ull);
-			num = ConfigDB::Number::normalise(199999999ul, 0, 0);
+			num = number_t::normalise(199999999ul, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 200000000ull);
 
 #ifdef ARCH_HOST
 			auto check = [&](uint64_t m) {
-				ConfigDB::Number num = ConfigDB::Number::normalise(m, 0, 0);
+				ConfigDB::Number num = number_t::normalise(m, 0, 0);
 				unsigned mult = 1;
 				int64_t expected = m;
 				while(expected > number_t::maxMantissa) {
@@ -307,8 +308,31 @@ public:
 
 			REQUIRE_EQ(toString(const_number_t(3.3554432e38)), STR(NUMBER_MAX));
 			REQUIRE_EQ(toString(const_number_t(-3.3554432e38)), STR(NUMBER_LOWEST));
+
+			constCheck1();
+			constCheck2();
+			constCheck3();
 		}
 	}
+
+	__noinline void constCheck1()
+	{
+		constexpr const_number_t num(3.141592654e-12);
+		staticNumber = num;
+	}
+
+	__noinline void constCheck2()
+	{
+		staticNumber = const_number_t(3.141592654e-12);
+	}
+
+	__noinline void constCheck3()
+	{
+		constexpr const double dbl = 3.141592654e-12;
+		staticNumber = const_number_t(dbl);
+	}
+
+	number_t staticNumber;
 };
 
 void REGISTER_TEST(Number)

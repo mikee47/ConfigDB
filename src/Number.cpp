@@ -27,10 +27,18 @@ extern "C" char* ecvtbuf(double invalue, int ndigit, int* decpt, int* sign, char
 
 namespace ConfigDB
 {
-int number_t::adjustedExponent() const
+/**
+ * @brief Return the adjusted exponent after shifting out the coefficient’s
+ * rightmost digits until only the lead digit remains.
+ *
+ * Number('321e+5').adjusted() returns 7.
+ * Used for determining the position of the most significant digit
+ * with respect to the decimal point.
+ */
+int adjustExponent(number_t num)
 {
-	int exp = exponent;
-	unsigned absMantissa = abs(mantissa);
+	int exp = num.exponent;
+	unsigned absMantissa = abs(num.mantissa);
 	unsigned m{10};
 	while(m < absMantissa) {
 		++exp;
@@ -39,7 +47,7 @@ int number_t::adjustedExponent() const
 	return exp;
 }
 
-int number_t::compare(const number_t& num1, const number_t& num2)
+int number_t::compare(number_t num1, number_t num2)
 {
 	/*
 	 * Thanks to cpython `Decimal._cmp` for this implementation.
@@ -71,8 +79,8 @@ int number_t::compare(const number_t& num1, const number_t& num2)
 	}
 
 	// OK, both numbers have same sign
-	auto exp1 = num1.adjustedExponent();
-	auto exp2 = num2.adjustedExponent();
+	auto exp1 = adjustExponent(num1);
+	auto exp2 = adjustExponent(num2);
 	if(exp1 < exp2) {
 		return num1.sign() ? 1 : -1;
 	}
@@ -101,27 +109,7 @@ int number_t::compare(const number_t& num1, const number_t& num2)
 	return 0;
 }
 
-number_t Number::normalise(int64_t value)
-{
-	int exponent = 0;
-	bool isNeg{false};
-	if(value < 0) {
-		isNeg = true;
-		value = -value;
-	}
-	while(value > 0xffffffffll) {
-		value /= 10;
-		++exponent;
-	}
-	return normalise(unsigned(value), exponent, isNeg);
-}
-
-number_t Number::normalise(double value)
-{
-	return const_number_t::normalise(value);
-}
-
-bool Number::parse(const char* value, unsigned length, number_t& number)
+bool number_t::parse(const char* value, unsigned length, number_t& number)
 {
 	enum class State {
 		sign,
@@ -226,13 +214,7 @@ bool Number::parse(const char* value, unsigned length, number_t& number)
 	return true;
 }
 
-String Number::toString() const
-{
-	char buf[number_t::minBufferSize];
-	return format(buf, number);
-}
-
-const char* Number::format(char* buf, number_t number)
+const char* number_t::format(char* buf, number_t number)
 {
 	int mantissa = number.mantissa;
 	int exponent = number.exponent;
@@ -293,31 +275,36 @@ const char* Number::format(char* buf, number_t number)
 	return buf;
 }
 
-size_t Number::printTo(Print& p) const
+double number_t::asFloat(number_t number)
 {
-	char buf[number_t::minBufferSize];
-	auto str = format(buf, number);
-	return p.print(str);
+	double value = number.mantissa;
+	for(int i = 0; i < number.exponent; ++i) {
+		value *= 10;
+	}
+	for(int i = 0; i > number.exponent; --i) {
+		value /= 10;
+	}
+	return value;
 }
 
-double Number::asFloat() const
-{
-	char buf[number_t::minBufferSize];
-	auto str = format(buf, number);
-	return strtod(str, nullptr);
-}
-
-int64_t Number::asInt64() const
+int64_t number_t::asInt64(number_t number)
 {
 	int64_t value = number.mantissa;
 	int exponent = number.exponent;
-	while(value && exponent < 0) {
-		value = (value + 5) / 10;
+	while(value && exponent < -1) {
+		value /= 10;
 		++exponent;
 	}
+	while(value && exponent < 0) {
+		auto newValue = (value + 5) / 10;
+		if(newValue < value) {
+			++exponent;
+		}
+	}
+	const auto maxval = std::numeric_limits<int64_t>::max();
 	while(exponent > 0) {
-		if(value > std::numeric_limits<int64_t>::max() / 10) {
-			return 0;
+		if(abs(value) > maxval / 10) {
+			return (value < 0) ? -maxval : maxval;
 		}
 		value *= 10;
 		--exponent;

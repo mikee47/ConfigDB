@@ -141,36 +141,56 @@ struct number_t {
 		return compare(*this, other) > 0;
 	}
 
-	/**
-	 * @brief Return the adjusted exponent after shifting out the coefficient’s
-	 * rightmost digits until only the lead digit remains
-	 *
-	 * Number('321e+5').adjusted() returns 7.
-	 * Used for determining the position of the most significant digit
-	 * with respect to the decimal point.
-	 */
-	int adjustedExponent() const;
+	static double asFloat(number_t number);
 
-	static int compare(const number_t& num1, const number_t& num2);
+	static int64_t asInt64(number_t number);
 
-	size_t printTo(Print& p) const;
-};
-
-/**
- * @brief Compile-time constant number
- */
-struct const_number_t : public number_t {
-	const_number_t() = default;
-
-	/**
-	 * @brief Computer number from a compile-time constant value
-	 */
-	constexpr const_number_t(double value) : number_t(normalise(value))
+	size_t printTo(Print& p) const
 	{
+		char buf[minBufferSize];
+		return p.print(format(buf, *this));
 	}
 
+	static int compare(number_t num1, number_t num2);
+
+	/**
+	 * @brief Convert number to string
+	 * @param buf Buffer of at least number_t::minBufferSize
+	 * @param number
+	 * @retval char* Points to string, may not be start of *buf*
+	 * @note Always use return value to give implementation flexible use of buffer
+	 */
+	static const char* format(char* buf, number_t number);
+
+	static bool parse(const char* value, unsigned length, number_t& number);
+
+	static number_t parse(const char* value, unsigned length)
+	{
+		number_t num{};
+		parse(value, length, num);
+		return num;
+	}
+
+	/**
+	 * @brief Produce a normalised number_t from component values
+	 * @param mantissa Mantissa without sign, containing significant digits
+	 * @param exponent Exponent
+	 * @param isNeg true if mantissa is negative, false if positive
+	 * @retval number_t Normalised number value
+	 * For example, 1000e9 and 10e11 are normalised to 1e12.
+	 * This allows values to be directly compared for equality.
+	 *
+	 * Mantissa has trailing 0's removed, although may be required for large negative exponents.
+	 * For example, 100000e-30 exponent is at limit so cannot be reduced further.
+	 *
+	 * If necessary, the mantissa is rounded to the nearest whole value.
+	 * For example, 3141592654 is rounded up to 31415927.
+	 *
+	 * If the value is out of range, number_t::overflow is returned.
+	 */
 	static constexpr number_t normalise(unsigned mantissa, int exponent, bool isNeg)
 	{
+		// A non-zero exponent indicates rounding occurred, so 0 isn't zero!
 		if(mantissa == 0 && exponent != 0) {
 			return number_t{isNeg ? -1 : 1, -number_t::maxExponent};
 		}
@@ -182,9 +202,14 @@ struct const_number_t : public number_t {
 		}
 
 		// Round down
-		while(mantissa > number_t::maxMantissa && exponent < number_t::maxExponent) {
-			exponent += ((mantissa + 5) / 10) < mantissa;
-			mantissa = (mantissa + 5) / 10;
+		if(mantissa > number_t::maxMantissa && exponent < number_t::maxExponent) {
+			auto newMantissa = (mantissa + 5) / 10;
+			if(newMantissa > mantissa) {
+				// Number was rounded up and gained a digit
+				newMantissa /= 10;
+			}
+			mantissa = newMantissa;
+			++exponent;
 		}
 
 		// Drop any trailing 0's from mantissa
@@ -237,6 +262,57 @@ struct const_number_t : public number_t {
 		return (mantissa < 0) ? normalise(unsigned(-mantissa), exponent, true)
 							  : normalise(unsigned(mantissa), exponent, false);
 	}
+
+	static constexpr number_t normalise(int mantissa, int exponent)
+	{
+		return normalise(abs(mantissa), exponent, mantissa < 0);
+	}
+
+	static constexpr number_t normalise(int64_t value)
+	{
+		bool isNeg{false};
+		if(value < 0) {
+			isNeg = true;
+			value = -value;
+		}
+		int exponent = 0;
+		while(value > 0xffffffffll) {
+			value /= 10;
+			++exponent;
+		}
+		return normalise(unsigned(value), exponent, isNeg);
+	}
+};
+
+static_assert(sizeof(number_t) == 4, "Bad number_t size");
+
+/**
+ * @brief Compile-time constant number
+ *
+ * Must be assigned to a constexpr variable to guarantee compile-time evaluation.
+ * For example:
+ *
+ * 		constexpr const_number_t constnum(3.14);
+ *
+ * This is typically used to generate numbers stored directly in flash memory,
+ * where the structure definition is itself declared constexpr.
+ *
+ * By inspection, compilers tend to generate runtime code when used normally:
+ *
+ * 		const_number_t constnum(3.14);
+ *
+ * This behaviour is because floating-point numbers are not exact representations
+ * (integral) so the compiler is erring on the safe side.
+ */
+struct const_number_t : public number_t {
+	const_number_t() = default;
+
+	/**
+	 * @brief Computer number from a compile-time constant value
+	 */
+	constexpr const_number_t(double value) : number_t(normalise(value))
+	{
+	}
 };
 
 /**
@@ -272,26 +348,26 @@ public:
 
 	constexpr Number(const Number& number) = default;
 
-	Number(double value) : number(normalise(value))
+	constexpr Number(double value) : number(number_t::normalise(value))
 	{
 	}
 
-	Number(int64_t value) : number(normalise(value))
+	constexpr Number(int64_t value) : number(number_t::normalise(value))
 	{
 	}
 
-	Number(int value) : Number(int64_t(value))
+	constexpr Number(int value) : Number(int64_t(value))
 	{
 	}
 
-	Number(unsigned int value) : Number(int64_t(value))
+	constexpr Number(unsigned int value) : Number(int64_t(value))
 	{
 	}
 
 	/**
 	 * @brief Parse a number from a string
 	 */
-	Number(const char* value, unsigned length) : number(parse(value, length))
+	Number(const char* value, unsigned length) : number(number_t::parse(value, length))
 	{
 	}
 
@@ -313,14 +389,14 @@ public:
 		return number > other.number;
 	}
 
-	bool operator==(const Number& other) const
+	bool operator==(const number_t& other) const
 	{
-		return number == other.number;
+		return number == other;
 	}
 
-	bool operator!=(const Number& other) const
+	bool operator!=(const number_t& other) const
 	{
-		return number != other.number;
+		return number != other;
 	}
 
 	int compare(const Number& other) const
@@ -328,12 +404,27 @@ public:
 		return number_t::compare(number, other.number);
 	}
 
-	size_t printTo(Print& p) const;
+	size_t printTo(Print& p) const
+	{
+		char buf[number_t::minBufferSize];
+		return p.print(number_t::format(buf, number));
+	}
 
-	double asFloat() const;
-	int64_t asInt64() const;
+	double asFloat() const
+	{
+		return number_t::asFloat(number);
+	}
 
-	String toString() const;
+	int64_t asInt64() const
+	{
+		return number_t::asInt64(number);
+	}
+
+	String toString() const
+	{
+		char buf[number_t::minBufferSize];
+		return number_t::format(buf, number);
+	}
 
 	explicit operator String() const
 	{
@@ -345,62 +436,9 @@ public:
 		return number;
 	}
 
-	/**
-	 * @brief Convert number to string
-	 * @param buf Buffer of at least number_t::minBufferSize
-	 * @param number
-	 * @retval char* Points to string, may not be start of *buf*
-	 * @note Always use return value to give implementation flexible use of buffer
-	 */
-	static const char* format(char* buf, number_t number);
-
-	static bool parse(const char* value, unsigned length, number_t& number);
-
-	number_t parse(const char* value, unsigned length)
-	{
-		number_t num{};
-		parse(value, length, num);
-		return num;
-	}
-
-	/**
-	 * @brief Produce a normalised number_t from component values
-	 * @param mantissa Mantissa without sign, containing significant digits
-	 * @param exponent Exponent
-	 * @param isNeg true if mantissa is negative, false if positive
-	 * @retval number_t Normalised number value
-	 * For example, 1000e9 and 10e11 are normalised to 1e12.
-	 * This allows values to be directly compared for equality.
-	 *
-	 * Mantissa has trailing 0's removed, although may be required for large negative exponents.
-	 * For example, 100000e-30 exponent is at limit so cannot be reduced further.
-	 *
-	 * If necessary, the mantissa is rounded to the nearest whole value.
-	 * For example, 3141592654 is rounded up to 31415927.
-	 *
-	 * If the value is out of range, number_t::overflow is returned.
-	 */
-	static number_t normalise(unsigned mantissa, int exponent, bool isNeg)
-	{
-		return const_number_t::normalise(mantissa, exponent, isNeg);
-	}
-
-	static number_t normalise(int mantissa, int exponent)
-	{
-		return normalise(abs(mantissa), exponent, mantissa < 0);
-	}
-
-	static number_t normalise(double value);
-	static number_t normalise(int64_t value);
-
 private:
 	number_t number;
 };
-
-inline size_t number_t::printTo(Print& p) const
-{
-	return Number(*this).printTo(p);
-}
 
 } // namespace ConfigDB
 
