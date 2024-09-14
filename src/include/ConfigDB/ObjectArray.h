@@ -87,7 +87,7 @@ public:
 
 	const ItemType operator[](unsigned index) const
 	{
-		return ItemType(*this, index);
+		return ItemType(*this, 0, index);
 	}
 };
 
