@@ -97,6 +97,34 @@ public:
 			root.setNumval(10.1);
 			CHECK_EQ(root.getNumval().asFloat(), 10);
 		}
+
+		TEST_CASE("Array")
+		{
+			if(auto update = root.update()) {
+				for(unsigned i = 0; i < 10; ++i) {
+					update.intArray.addItem(i);
+					update.stringArray.addItem(String(i * 10));
+					auto item = update.objectArray.addItem();
+					item.setIntval(i * 100);
+					item.setStringval(String(i * 1000));
+				}
+			}
+
+			Serial << F("root.intArray[]");
+			for(auto item : root.intArray) {
+				Serial << "  " << item << endl;
+			}
+
+			Serial << F("root.stringArray[]");
+			for(auto item : root.stringArray) {
+				Serial << "  " << item << endl;
+			}
+
+			Serial << F("root.objectArray[]");
+			for(auto item : root.objectArray) {
+				Serial << "  " << item << endl;
+			}
+		}
 	}
 };
 
