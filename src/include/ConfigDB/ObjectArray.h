@@ -84,7 +84,7 @@ public:
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
-	using Iterator = ArrayIterator<ObjectArrayTemplate, ItemType>;
+	using Iterator = const ArrayIterator<const ObjectArrayTemplate, const ItemType>;
 
 	using ObjectArray::ObjectArray;
 
@@ -113,6 +113,8 @@ public:
 template <class UpdaterType, class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ClassType
 {
 public:
+	using Iterator = ArrayIterator<ObjectArrayUpdaterTemplate, ItemType>;
+
 	using ClassType::ClassType;
 
 	ItemType operator[](unsigned index)
@@ -128,6 +130,16 @@ public:
 	ItemType insertItem(unsigned index)
 	{
 		return ObjectArray::insertItem<ItemType>(index);
+	}
+
+	Iterator begin()
+	{
+		return Iterator(*this, 0);
+	}
+
+	Iterator end()
+	{
+		return Iterator(*this, this->getItemCount());
 	}
 };
 

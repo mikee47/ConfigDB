@@ -32,7 +32,7 @@ public:
 	ArrayIterator() = default;
 	ArrayIterator(const ArrayIterator&) = default;
 
-	ArrayIterator(const ArrayType& array, unsigned index) : array(&array), mIndex(index), mCount(array.getItemCount())
+	ArrayIterator(ArrayType& array, unsigned index) : array(&array), mIndex(index), mCount(array.getItemCount())
 	{
 	}
 
@@ -59,6 +59,14 @@ public:
 		return (*array)[mIndex];
 	}
 
+	ItemType operator*()
+	{
+		if(!array) {
+			abort();
+		}
+		return (*array)[mIndex];
+	}
+
 	unsigned index() const
 	{
 		return mIndex;
@@ -78,7 +86,7 @@ public:
 	}
 
 private:
-	const ArrayType* array{};
+	ArrayType* array{};
 	unsigned mIndex{0};
 	const unsigned mCount{0};
 };

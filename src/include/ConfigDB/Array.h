@@ -121,7 +121,7 @@ private:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
-	using Iterator = ArrayIterator<ArrayTemplate, ItemType>;
+	using Iterator = const ArrayIterator<const ArrayTemplate, const ItemType>;
 
 	using Array::Array;
 
@@ -181,6 +181,8 @@ public:
 		}
 	};
 
+	using Iterator = ArrayIterator<ArrayUpdaterTemplate, ItemRef>;
+
 	using ClassType::ClassType;
 
 	void setItem(unsigned index, ItemType value)
@@ -201,6 +203,16 @@ public:
 	ItemRef operator[](unsigned index)
 	{
 		return {*this, index};
+	}
+
+	Iterator begin()
+	{
+		return Iterator(*this, 0);
+	}
+
+	Iterator end()
+	{
+		return Iterator(*this, this->getItemCount());
 	}
 };
 
