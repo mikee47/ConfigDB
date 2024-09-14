@@ -164,7 +164,7 @@ bool Number::parse(const char* value, unsigned length, number_t& number)
 				state = State::frac;
 				break;
 			}
-			if(c == 'e') {
+			if(c == 'e' || c == 'E') {
 				state = State::exp;
 				break;
 			}
@@ -179,7 +179,7 @@ bool Number::parse(const char* value, unsigned length, number_t& number)
 			break;
 
 		case State::frac:
-			if(c == 'e') {
+			if(c == 'e' || c == 'E') {
 				state = State::exp;
 				break;
 			}
