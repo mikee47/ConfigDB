@@ -25,9 +25,9 @@ namespace ConfigDB
 uint8_t Store::instanceCount;
 
 Store::Store(Database& db, const PropertyInfo& propinfo)
-	: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(propinfo.object->structSize))
+	: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(propinfo.variant.object->structSize))
 {
-	memcpy_P(rootData.get(), propinfo.object->defaultData, propinfo.object->structSize);
+	memcpy_P(rootData.get(), propinfo.variant.object->defaultData, propinfo.variant.object->structSize);
 	++instanceCount;
 	CFGDB_DEBUG(" %u", instanceCount)
 }
@@ -73,8 +73,8 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 		if(propData.string) {
 			return String(stringPool[propData.string]);
 		}
-		if(info.defaultString) {
-			return *info.defaultString;
+		if(info.variant.defaultString) {
+			return *info.variant.defaultString;
 		}
 		return nullptr;
 	}
@@ -88,7 +88,7 @@ bool Store::parseString(const PropertyInfo& prop, PropertyData& dst, const Prope
 	if(prop.type == PropertyType::String) {
 		if(!value) {
 			dst.string = 0;
-		} else if(prop.defaultString && *prop.defaultString == value) {
+		} else if(prop.variant.defaultString && *prop.variant.defaultString == value) {
 			dst.string = 0;
 		} else {
 			dst.string = stringPool.findOrAdd({value, valueLength});

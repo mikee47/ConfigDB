@@ -82,11 +82,8 @@ struct PropertyInfo {
 			return value;
 		}
 	};
-	PropertyType type;
-	const FlashString& name;
-	uint32_t offset; ///< Location of property data in parent object
 	// Variant property information depends on type
-	union {
+	union Variant {
 		const FlashString* defaultString;
 		const ObjectInfo* object;
 		RangeTemplate<int32_t> int32;
@@ -96,9 +93,12 @@ struct PropertyInfo {
 		RangePtrTemplate<uint64_t> uint64;
 	};
 
-	static const PropertyInfo empty;
+	PropertyType type;
+	const FlashString& name;
+	uint32_t offset; ///< Location of property data in parent object
+	Variant variant;
 
-	PropertyInfo(const PropertyInfo&) = delete;
+	static const PropertyInfo empty;
 
 	explicit operator bool() const
 	{

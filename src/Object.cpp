@@ -224,8 +224,8 @@ String Object::getPropertyString(unsigned index, StringId id) const
 		return String(getStore().stringPool[id]);
 	}
 	auto& prop = typeinfo().getProperty(index);
-	if(prop.type == PropertyType::String && prop.defaultString) {
-		return *prop.defaultString;
+	if(prop.type == PropertyType::String && prop.variant.defaultString) {
+		return *prop.variant.defaultString;
 	}
 	return nullptr;
 }

@@ -54,7 +54,7 @@ public:
 		auto& array = getArray();
 		auto index = array.getCount();
 		auto& itemType = getItemType();
-		array.add(itemType.object->defaultData);
+		array.add(itemType.variant.object->defaultData);
 		return Item(*this, 0, index);
 	}
 
@@ -65,7 +65,7 @@ public:
 		}
 		auto& itemType = getItemType();
 		auto& array = getArray();
-		array.insert(index, itemType.object->defaultData);
+		array.insert(index, itemType.variant.object->defaultData);
 		return Item(*this, 0, index);
 	}
 

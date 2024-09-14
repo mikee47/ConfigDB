@@ -29,7 +29,7 @@ ArrayData& ArrayBase::getArray()
 	if(id == 0) {
 		auto& prop = typeinfo().propinfo[0];
 		if(typeinfo().type == ObjectType::ObjectArray) {
-			id = store.arrayPool.add(*prop.object);
+			id = store.arrayPool.add(*prop.variant.object);
 		} else {
 			id = store.arrayPool.add(prop);
 		}
