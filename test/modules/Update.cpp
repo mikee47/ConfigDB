@@ -97,6 +97,51 @@ public:
 			root.setNumval(10.1);
 			CHECK_EQ(root.getNumval().asFloat(), 10);
 		}
+
+		TEST_CASE("Array iterators")
+		{
+			if(auto update = root.update()) {
+				for(unsigned i = 0; i < 5; ++i) {
+					update.intArray.addItem(i);
+					update.stringArray.addItem(String(i * 10));
+					auto item = update.objectArray.addItem();
+					item.setIntval(i * 100);
+					item.setStringval(String(i * 1000));
+				}
+			}
+
+			Serial << F("root.intArray[]");
+			for(auto item : root.intArray) {
+				Serial << ", " << item;
+			}
+			Serial << endl;
+			for(auto item : root.update().intArray) {
+				item = item + 10;
+			}
+			Serial << root.intArray << endl;
+
+			Serial << F("root.stringArray[]");
+			for(auto item : root.stringArray) {
+				Serial << ", " << item;
+			}
+			Serial << endl;
+			for(auto item : root.update().stringArray) {
+				item = String(item) + F(" updated...");
+			}
+			Serial << root.stringArray << endl;
+
+			Serial << F("root.objectArray[]");
+			for(auto item : root.objectArray) {
+				Serial << ", " << item;
+			}
+			Serial << endl;
+			for(auto item : root.update().objectArray) {
+				item.setIntval(item.getIntval() * 2);
+				String s = item.getStringval() + F(" updated...");
+				item.setStringval(s);
+			}
+			Serial << root.objectArray << endl;
+		}
 	}
 };
 

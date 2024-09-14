@@ -20,6 +20,7 @@
 #pragma once
 
 #include "ArrayBase.h"
+#include "ArrayIterator.h"
 
 namespace ConfigDB
 {
@@ -120,6 +121,8 @@ private:
 template <class ClassType, typename ItemType> class ArrayTemplate : public Array
 {
 public:
+	using Iterator = const ArrayIterator<const ArrayTemplate, const ItemType>;
+
 	using Array::Array;
 
 	ItemType getItem(unsigned index) const
@@ -140,6 +143,16 @@ public:
 	bool contains(ItemType item) const
 	{
 		return indexOf(item) >= 0;
+	}
+
+	Iterator begin() const
+	{
+		return Iterator(*this, 0);
+	}
+
+	Iterator end() const
+	{
+		return Iterator(*this, this->getItemCount());
 	}
 };
 
@@ -168,6 +181,8 @@ public:
 		}
 	};
 
+	using Iterator = ArrayIterator<ArrayUpdaterTemplate, ItemRef>;
+
 	using ClassType::ClassType;
 
 	void setItem(unsigned index, ItemType value)
@@ -188,6 +203,16 @@ public:
 	ItemRef operator[](unsigned index)
 	{
 		return {*this, index};
+	}
+
+	Iterator begin()
+	{
+		return Iterator(*this, 0);
+	}
+
+	Iterator end()
+	{
+		return Iterator(*this, this->getItemCount());
 	}
 };
 

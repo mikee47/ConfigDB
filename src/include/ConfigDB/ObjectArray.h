@@ -20,6 +20,7 @@
 #pragma once
 
 #include "ArrayBase.h"
+#include "ArrayIterator.h"
 
 namespace ConfigDB
 {
@@ -83,11 +84,23 @@ public:
 template <class ClassType, class ItemType> class ObjectArrayTemplate : public ObjectArray
 {
 public:
+	using Iterator = const ArrayIterator<const ObjectArrayTemplate, const ItemType>;
+
 	using ObjectArray::ObjectArray;
 
 	const ItemType operator[](unsigned index) const
 	{
 		return ItemType(*this, 0, index);
+	}
+
+	Iterator begin() const
+	{
+		return Iterator(*this, 0);
+	}
+
+	Iterator end() const
+	{
+		return Iterator(*this, this->getItemCount());
 	}
 };
 
@@ -100,6 +113,8 @@ public:
 template <class UpdaterType, class ClassType, class ItemType> class ObjectArrayUpdaterTemplate : public ClassType
 {
 public:
+	using Iterator = ArrayIterator<ObjectArrayUpdaterTemplate, ItemType>;
+
 	using ClassType::ClassType;
 
 	ItemType operator[](unsigned index)
@@ -115,6 +130,16 @@ public:
 	ItemType insertItem(unsigned index)
 	{
 		return ObjectArray::insertItem<ItemType>(index);
+	}
+
+	Iterator begin()
+	{
+		return Iterator(*this, 0);
+	}
+
+	Iterator end()
+	{
+		return Iterator(*this, this->getItemCount());
 	}
 };
 
