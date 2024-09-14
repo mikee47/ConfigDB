@@ -23,6 +23,9 @@
 
 namespace ConfigDB::Json
 {
+/**
+ * @brief Import/Export support for JSON
+ */
 class Format : public ConfigDB::Format
 {
 public:

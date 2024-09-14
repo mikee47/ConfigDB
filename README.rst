@@ -121,7 +121,7 @@ This can be overridden to customise loading/saving behaviour.
 The :cpp:func:`ConfigDB::Database::getFormat` method is called to get the storage format for a given Store.
 A :cpp:class:`ConfigDB::Format` implementation provides various methods for serializing and de-serializing database and object content.
 
-Currently only **json** is implemented - see :cpp:class:`ConfigDB::Json::Format`.
+Currently only **json** is implemented - see :cpp:class:`ConfigDB::Json::format`.
 Each store is contained in a separate file.
 The name of the store forms the JSONPath prefix for any contained objects and values.
 
@@ -133,10 +133,10 @@ The :sample:`BasicConfig` sample demonstrates using the stream classes to read a
   This behaviour can be changed by implementing a custom :cpp:func:`ConfigDB::Database::handleFormatError` method.
 
 
-Update mechanism
-~~~~~~~~~~~~~~~~
+JSON Update mechanism
+---------------------
 
-.. highlight: JSON
+.. highlight: json
 
 The default streaming update (writing) behaviour is to **overwrite** only those values received.
 This allows selective updating of properties. For example::
@@ -318,7 +318,7 @@ For example:
 - This file contains defines the **BasicConfig** class which contains all accessible objects and array items
 - Each object defined in the schema, such as *network*, gets a corresponding *contained* class such as **ContainedNetwork**, and an *outer* class such as **Network**.
 - Both of these classes provide *read-only* access to the data via `getXXX` methods.
-- Outer classes contain a :cpp:class:`shared_ptr<ConfigDB::Store>`, whereas contained classes do not (they obtain the store from their parent object).
+- Outer classes contain a :cpp:class:`ConfigDB::StoreRef`, whereas contained classes do not (they obtain the store from their parent object).
 - Application code can instantiate the *outer* class directly **BasicConfig::Network network(database);**
 - Child objects within classes are defined as member variables, such as **network.mqtt**, which is a **ContainedMqtt** class instance.
 - A third *updater* class type is also generated which adds *setXXX* methods for changing values.
@@ -341,11 +341,18 @@ Code can update database entries in several ways.
 
     The `update` value is a `BasicConfig::Root::Security::Updater` instance.
 
+    Any changes made via the *update* are immediately reflected in *sec* as they share the same Store instance.
+    The *update()* method can be called multiple times when used in this way.
+    Changes are committed automatically when the last updater loses scope.
+
 2.  Directly instantiate updater class::
 
-      if(auto update = BasicConfig::Root::Security::Updater(database)) {
+      BasicConfig::Root::Security::Updater update(database);
+      if(update) {
         update.setApiSecured(true);
       }
+
+    Only *one* updater instance is permitted.
 
 3.  Asynchronous update::
 
@@ -356,6 +363,10 @@ Code can update database entries in several ways.
 
     If there are no other updates in progress then the update happens immediately and *completed* is *true*.
     Otherwise the update is queued and *false* is returned. The update will be executed when the store is released.
+
+During an update, applications can optionally call :cpp:func:`Updater::commit` to save changes at any time.
+Changes are only saved if the Store *dirty* flag is set.
+Calling :cpp:func:`Updater::clearDirty` will prevent auto-commit, provided further changes are not made.
 
 
 Floating-point numbers
@@ -384,10 +395,10 @@ API Reference
 .. doxygenclass:: ConfigDB::Object
    :members:
 
-.. doxygenclass:: ConfigDB::Array
+.. doxygenclass:: ConfigDB::Union
    :members:
 
-.. doxygenclass:: ConfigDB::StringArray
+.. doxygenclass:: ConfigDB::Array
    :members:
 
 .. doxygenclass:: ConfigDB::ObjectArray
@@ -395,6 +406,8 @@ API Reference
 
 .. doxygenclass:: ConfigDB::Format
    :members:
+
+.. doxygenvariable:: ConfigDB::Json::format
 
 .. doxygenclass:: ConfigDB::Number
    :members:
