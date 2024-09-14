@@ -2,6 +2,15 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "color": {
+      "type": "string",
+      "ctype": "Color",
+      "enum": [
+        "red",
+        "green",
+        "blue"
+      ]
+    },
     "simple-bool": {
       "type": "boolean"
     },

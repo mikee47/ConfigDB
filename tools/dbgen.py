@@ -201,8 +201,9 @@ class Property:
             if self.default:
                 if self.default not in self.enum:
                     error(f'default "{self.default}" not in enum')
+                self.default = self.enum.index(self.default)
             else:
-                self.default = self.enum[0]
+                self.default = 0
             self.ptype = 'integer'
             self.property_type = 'Enum'
             self.ctype = 'uint8_t'
@@ -214,7 +215,7 @@ class Property:
 
     @property
     def propdata_id(self):
-        return self.property_type.lower()
+        return 'uint8' if self.enum else self.property_type.lower()
 
     @property
     def data_size(self):
@@ -810,7 +811,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             values = prop.enum
             obj_type = f'{obj.namespace}::{obj.typename_contained}'
             item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
-            if prop.ctype_override:
+            if obj.is_array and prop.ctype_override:
                 lines.header += [
                     '',
                     f'using Item = {prop.ctype_override};'
@@ -1012,7 +1013,7 @@ def generate_property_write_accessors(obj: Object) -> list:
 
     def get_ctype(prop):
         if prop.ctype_override:
-            return f'const {prop.ctype_override}&'
+            return prop.ctype_override if prop.enum else f'const {prop.ctype_override}&'
         return 'const String&' if prop.ptype == 'string' else prop.ctype
 
     if obj.is_union:
@@ -1058,6 +1059,18 @@ def generate_object(obj: Object) -> CodeLines:
         f'class {obj.typename_updater};'
     ]
 
+    def generate_enum_class(prop: Property):
+        if prop.enum and prop.ctype_override:
+            tag_prefix = '' if prop.enum_type == 'String' else  'N'
+            return [
+                '',
+                f'enum class {prop.ctype_override}: uint8_t {{',
+                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+                '};'
+            ]
+        else:
+            return []
+
     if isinstance(obj, ObjectArray):
         item_lines = CodeLines() if obj.items.ref else generate_object(obj.items)
         return CodeLines(
@@ -1073,21 +1086,10 @@ def generate_object(obj: Object) -> CodeLines:
             item_lines.source + typeinfo.source)
 
     if isinstance(obj, Array):
-        if obj.items.enum and obj.items.ctype_override:
-            prop = obj.items
-            tag_prefix = '' if prop.enum_type == 'String' else  'N'
-            enum_item = [
-                '',
-                f'enum class {prop.ctype_override}: uint8_t {{',
-                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
-                '};'
-            ]
-        else:
-            enum_item = []
         return CodeLines(
             [
                 *forward_decls,
-                *enum_item,
+                *generate_enum_class(obj.items),
                 *declare_templated_class(obj, [obj.items.ctype_ret]),
                 typeinfo.header,
                 constructors,
@@ -1099,6 +1101,7 @@ def generate_object(obj: Object) -> CodeLines:
     lines = CodeLines(
         [
             *forward_decls,
+            *(generate_enum_class(prop) for prop in obj.properties),
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
