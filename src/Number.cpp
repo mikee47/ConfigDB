@@ -25,18 +25,6 @@
 // Defined in newlib but not ANSI or GNU standard
 extern "C" char* ecvtbuf(double invalue, int ndigit, int* decpt, int* sign, char* fcvt_buf);
 
-namespace
-{
-/*
- *	When adding a digit n to mantissa m:
- *		m' = (m * 10) + n
- *
- *	This constant represents the maximum value for m without overflowing m'.
- */
-constexpr uint32_t maxMantissaCalc{429496728ul};
-
-} // namespace
-
 namespace ConfigDB
 {
 int number_t::adjustedExponent() const
@@ -122,11 +110,10 @@ number_t Number::normalise(int64_t value)
 		value = -value;
 	}
 	while(value > 0xffffffffll) {
-		auto newValue = (value + 5) / 10;
-		exponent += (newValue < value);
-		value = newValue;
+		value /= 10;
+		++exponent;
 	}
-	return normalise(value, exponent, isNeg);
+	return normalise(unsigned(value), exponent, isNeg);
 }
 
 number_t Number::normalise(double value)
@@ -184,11 +171,11 @@ bool Number::parse(const char* value, unsigned length, number_t& number)
 			if(!isdigit(c)) {
 				return false;
 			}
-			if(mantissa > maxMantissaCalc) {
-				number = isNeg ? number_t::lowest() : number_t::max();
-				return true;
+			if(mantissa < 0xfffffffful / 10) {
+				mantissa = (mantissa * 10) + c - '0';
+			} else {
+				++shift;
 			}
-			mantissa = (mantissa * 10) + c - '0';
 			break;
 
 		case State::frac:
@@ -199,7 +186,7 @@ bool Number::parse(const char* value, unsigned length, number_t& number)
 			if(!isdigit(c)) {
 				return false;
 			}
-			if(mantissa <= maxMantissaCalc) {
+			if(mantissa <= 0xfffffffful / 10) {
 				mantissa = (mantissa * 10) + c - '0';
 				--shift;
 			}
