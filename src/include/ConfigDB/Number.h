@@ -30,14 +30,24 @@ namespace ConfigDB
  *
  * 		value = mantissa * 10^exponent
  *
- * Unlike IEEE754 base-2 floats this format is aimed to be a simple and transparent way
- * to *store* floating-point numbers without the weird rounding issues of base-2 regular floats.
+ * This format is aimed to be a simple and transparent way to *store* floating-point numbers
+ * without the weird rounding issues of IEEE754 base-2 float / double.
+ *
+ * Conversion to floating-point format is only done when required by the application.
+ * This can be avoided completely by using strings instead of floats to set values.
+ *
+ * Constant values can also be specified which are converted at compile-time.
+ * See `const_number_t`.
+ *
+ * Integer values can also be specified, but may be subject to rounding if too precise.
+ * Very large (or small) values can be used, such as 1.5e25.
+ * This would actually be stored as 15e4 `{15, 24}`.
  *
  * It does not need to be computationally efficient, but does have advantages:
  *
  * 		- structure is transparent
  *		- Base-10 operations can be performed efficiently without rounding errors
- *		- Serialising (converting to strings) and de-serialising does not 
+ *		- Serialising (converting to strings) and de-serialising is consistent and JSON-compatible
  *
  * Some similarity to python's Decimal class, but with restriction on significant digits and exponent.
  *
@@ -46,10 +56,12 @@ namespace ConfigDB
  * 	smallest: 1e-31
  *  largest: 33554431e31 (3.3554431e38)
  *
- * During rounding, 0 is the only number which is rounded to 0.
- * All other values are clipped to the above valid range.
+ * Numbers always have a valid representation for ease of use and JSON compatibility.
+ * There is no definition for 'NaN' (not a number) or 'infinity.
+ * Values are never rounded down to 0, but clipped to the above valid range.
+ * Thus convering any number smaller than 1e-31 (but > 0) is stored as 1e-31.
  * Applications can consider number_t::min() and number_t::max() as the 'overflow' values.
- * This ensures numbers always have a valid representation for ease of use and JSON compatibility.
+ * As with the C++ STL, `lowest()` indicates the most negative value which is equivalent to -max().
  *
  * The mantissa/exponent fields can be manipulated directly if required.
  * For example, to convert terabytes to gigabytes we just subtract 3 from the exponent.
@@ -317,21 +329,11 @@ struct const_number_t : public number_t {
 
 /**
  * @brief Base-10 floating-point storage format
+ *
+ * The base number_t type cannot have constructors so this class includes those
+ * for ease of application use.
+ *
  * @note Structure is packed to accommodate use in generated class structures
- *
- * Floating-point values are parsed from JSON as strings, which this class then converts
- * into a base-10 representation which has no weird rounding issues.
- * If values are too precise then rounding occurs, but using standard mod-10 arithmetic
- * so is more intuitive.
- *
- * Conversion to internal floating-point format is only done when required by the application.
- * This can be avoided completely by using strings instead of floats to set values.
- *
- * Integer values can also be specified, however they will also be subject to rounding.
- * Large values can be stored, such as 1.5e25.
- * This would actually be stored as 15e24 and applications are free to inspect
- *
- * Applications can 
  */
 class __attribute__((packed)) Number
 {

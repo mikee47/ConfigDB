@@ -358,6 +358,20 @@ Code can update database entries in several ways.
     Otherwise the update is queued and *false* is returned. The update will be executed when the store is released.
 
 
+Floating-point numbers
+----------------------
+
+Items with **number** type are considered floating-point values.
+They are not stored internally as *float* or *double* but instead use a base-10 representation.
+
+This provides more flexibility in how these values are used and allows applications to work
+with very large or small numbers without requiring any floating-point arithmetic.
+
+See :cpp:class:`ConfigDB::number_t` and :cpp:class:`ConfigDB::Number` for details.
+There is also :cpp:class:`ConfigDB::const_number_t` to ease support for format conversion
+at compile time.
+
+
 API Reference
 -------------
 
@@ -381,3 +395,11 @@ API Reference
 
 .. doxygenclass:: ConfigDB::Format
    :members:
+
+.. doxygenclass:: ConfigDB::Number
+   :members:
+
+.. doxygenstruct:: ConfigDB::number_t
+   :members:
+
+.. doxygenstruct:: ConfigDB::const_number_t
