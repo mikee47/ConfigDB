@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "color": {
+      "$ref": "#/$defs/Color"
+    },
+    "colors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Color"
+      }
+    },
+    "quotients": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "ctype": "Quotient",
+        "enum": [
+          15,
+          37,
+          1445,
+          889,
+          2500,
+          45000,
+          180000,
+          650000,
+          25000000,
+          12000000000
+        ]
+      }
+    },
+    "small-map": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "enum": [
+          5,
+          1,
+          6,
+          8,
+          -12
+        ]
+      }
+    },
+    "number-map": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "enum": [
+          3.5,
+          -12e8,
+          5.4,
+          0.1,
+          0.000001,
+          1
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "Color": {
+      "type": "string",
+      "ctype": "Color",
+      "enum": [
+        "red",
+        "green",
+        "blue"
+      ]
+    }
+  }
+}

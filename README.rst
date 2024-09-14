@@ -383,6 +383,37 @@ There is also :cpp:class:`ConfigDB::const_number_t` to ease support for format c
 at compile time.
 
 
+Enumerated properties
+---------------------
+
+.. highlight: json
+
+JsonSchema offers the `enum <https://json-schema.org/understanding-json-schema/reference/enum>`__ keyword to restrict values to a set of known values. For example::
+
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "color": {
+        "type": "string",
+        "enum": [
+          "red",
+          "green",
+          "blue"
+        ]
+      }
+    }
+  }
+
+ConfigDB treats these as an *indexed map*, so *red* has the index 0, *green* is 1 and *blue* 2. Indices are of type *uint8_t*. The example has an intrinsic *minimum* of 0 and *maximum* of 2. As with other numeric properties, attempting to set values outside this range are clipped.
+
+The default is 0 (the first string in the list). If a default value is given in the schema, it must match an item in the *enum* array.
+
+The corresponding `setColor`, `getColor` methods set or retrieve the value as a number. Adding *"ctype": "Color"* to the property will generate an *enum class* definition instead. This is the preferred approach.
+
+The *color* value itself will be stored as a *string* with one of the given values. The *integer* and *number* types are also supported, which can be useful for generating constant lookup tables.
+
+
 API Reference
 -------------
 

@@ -27,6 +27,8 @@ String PropertyData::getString(const PropertyInfo& info) const
 	switch(info.type) {
 	case PropertyType::Boolean:
 		return boolean ? "true" : "false";
+	case PropertyType::Enum:
+		return info.variant.enuminfo->getString(uint8);
 	case PropertyType::Int8:
 		return String(int8);
 	case PropertyType::Int16:
@@ -58,6 +60,9 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 	switch(prop.type) {
 	case PropertyType::Boolean:
 		boolean = src.boolean;
+		break;
+	case PropertyType::Enum:
+		uint8 = std::min(unsigned(src.uint8), prop.variant.enuminfo->length() - 1);
 		break;
 	case PropertyType::Int8:
 		int8 = prop.variant.int32.clip(src.int8);
@@ -133,6 +138,7 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 		}
 		return false;
 	}
+	case PropertyType::Enum:
 	case PropertyType::String:
 	case PropertyType::Object:
 		break;
@@ -143,6 +149,19 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 
 bool PropertyData::setValue(const PropertyInfo& prop, const char* value, unsigned valueLength)
 {
+	if(prop.type == PropertyType::Enum) {
+		if(!value) {
+			uint8 = 0;
+			return true;
+		}
+		int i = prop.variant.enuminfo->find(value, valueLength);
+		if(i < 0) {
+			return false;
+		}
+		uint8 = uint8_t(i);
+		return true;
+	}
+
 	PropertyData src{};
 	if(!src.setValue(prop.type, value, valueLength)) {
 		return false;

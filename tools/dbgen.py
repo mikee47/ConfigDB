@@ -143,6 +143,9 @@ class Property:
     ctype_override: str
     property_type: str
     default: str | int
+    enum: list
+    enum_type: str = None
+    enum_ctype: str = None
     intrange: IntRange = None
     numrange: Range = None
 
@@ -175,6 +178,36 @@ class Property:
         if not self.ctype:
             error(f'Invalid property type "{self.ptype}"')
 
+        self.enum = fields.get('enum')
+        if self.enum:
+            if 'minimum' in fields or 'maximum' in fields:
+                error('enum and minimum/maximum fields are mutually-exclusive')
+            self.enum_type = self.property_type
+            self.enum_ctype = self.ctype
+            if self.ptype == 'string':
+                pass
+            elif self.ptype == 'integer':
+                minval, maxval = min(self.enum), max(self.enum)
+                self.intrange = r = IntRange.deduce(minval, maxval)
+                r.check(self.enum)
+                self.enum_type = r.property_type
+                self.enum_ctype = r.ctype
+            elif self.ptype == 'number':
+                self.numrange = r = Range(NUMBER_MIN, NUMBER_MAX)
+                r.check(self.enum)
+                self.enum_ctype = 'const_number_t'
+            else:
+                error(f'Unsupported enum type "{self.ptype}"')
+            if self.default:
+                if self.default not in self.enum:
+                    error(f'default "{self.default}" not in enum')
+                self.default = self.enum.index(self.default)
+            else:
+                self.default = 0
+            self.ptype = 'integer'
+            self.property_type = 'Enum'
+            self.ctype = 'uint8_t'
+
     @property
     def ctype_ret(self):
         '''Type to use for accessor return value'''
@@ -182,7 +215,7 @@ class Property:
 
     @property
     def propdata_id(self):
-        return self.property_type.lower()
+        return 'uint8' if self.enum else self.property_type.lower()
 
     @property
     def data_size(self):
@@ -774,6 +807,52 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     )
 
     def getVariantInfo(prop: Property) -> list:
+        if prop.enum:
+            values = prop.enum
+            obj_type = f'{obj.namespace}::{obj.typename_contained}'
+            item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
+            if obj.is_array and prop.ctype_override:
+                lines.header += [
+                    '',
+                    f'using Item = {prop.ctype_override};'
+                ]
+            lines.header += [
+                '',
+                'struct ItemType {',
+                [
+                    'ConfigDB::EnumInfo enuminfo;',
+                    f'{item_type} data[{len(values)}];',
+                    '',
+                    *([
+                        'const FSTR::Vector<FSTR::String>& values() const',
+                        '{',
+                        ['return enuminfo.getStrings();'],
+                        '}',
+                    ] if prop.enum_type == "String" else
+                    [
+                        f'const FSTR::Array<{prop.enum_ctype}>& values() const',
+                        '{',
+                        [f'return enuminfo.getArray<{prop.enum_ctype}>();'],
+                        '}',
+                    ])
+                ],
+                '};',
+                '',
+                'static const ItemType itemtype;',
+            ]
+            lines.source += [
+                '',
+                f'constexpr const {obj_type}::ItemType {obj_type}::itemtype PROGMEM = {{',
+                [
+                    f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
+                    '{',
+                    [f'&{strings[x]},' for x in values] if prop.enum_type == 'String' else
+                    [f'{x},' for x in values],
+                    '}'
+                ],
+                '};'
+            ]
+            return '.enuminfo = &itemtype.enuminfo'
         if prop.ptype == 'string':
             fstr = strings[str(prop.default or '')]
             return f'.defaultString = &{fstr}'
@@ -934,7 +1013,7 @@ def generate_property_write_accessors(obj: Object) -> list:
 
     def get_ctype(prop):
         if prop.ctype_override:
-            return f'const {prop.ctype_override}&'
+            return prop.ctype_override if prop.enum else f'const {prop.ctype_override}&'
         return 'const String&' if prop.ptype == 'string' else prop.ctype
 
     if obj.is_union:
@@ -980,6 +1059,18 @@ def generate_object(obj: Object) -> CodeLines:
         f'class {obj.typename_updater};'
     ]
 
+    def generate_enum_class(prop: Property):
+        if prop.enum and prop.ctype_override:
+            tag_prefix = '' if prop.enum_type == 'String' else  'N'
+            return [
+                '',
+                f'enum class {prop.ctype_override}: uint8_t {{',
+                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+                '};'
+            ]
+        else:
+            return []
+
     if isinstance(obj, ObjectArray):
         item_lines = CodeLines() if obj.items.ref else generate_object(obj.items)
         return CodeLines(
@@ -998,7 +1089,8 @@ def generate_object(obj: Object) -> CodeLines:
         return CodeLines(
             [
                 *forward_decls,
-                *declare_templated_class(obj, [obj.items.ctype]),
+                *generate_enum_class(obj.items),
+                *declare_templated_class(obj, [obj.items.ctype_ret]),
                 typeinfo.header,
                 constructors,
                 '};',
@@ -1009,6 +1101,7 @@ def generate_object(obj: Object) -> CodeLines:
     lines = CodeLines(
         [
             *forward_decls,
+            *(generate_enum_class(prop) for prop in obj.properties),
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
@@ -1068,7 +1161,7 @@ def generate_updater(obj: Object) -> list:
 
     if isinstance(obj, Array):
         return [
-            *declare_templated_class(obj, [obj.items.ctype], True),
+            *declare_templated_class(obj, [obj.items.ctype_ret], True),
             constructors,
             '};',
         ]
