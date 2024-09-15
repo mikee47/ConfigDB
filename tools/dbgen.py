@@ -910,13 +910,21 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         ]]
         offset += prop.data_size
 
+    # Generate array default data
     defaultData = 'nullptr'
     if isinstance(obj, Array):
         arr: Array = obj
         if arr.default:
             id = f'{obj.typename_contained}_defaultData'
             defaultData = f'&{id}'
-            if arr.items.ptype == 'string':
+            if arr.items.enum:
+                lines.source += [
+                    '',
+                    f'DEFINE_FSTR_ARRAY_LOCAL({id}, uint8_t,',
+                    [f'{arr.items.enum.index(v)},' for v in arr.default],
+                    ')'
+                ]
+            elif arr.items.ptype == 'string':
                 lines.source += [
                     '',
                     f'DEFINE_FSTR_VECTOR_LOCAL({id}, FSTR::String,',

@@ -30,6 +30,13 @@ public:
 		Serial << "numberMap[" << numberMapType.values().length() << "]: " << numberMapType.values() << endl;
 
 		TestConfigEnum::Root root(db);
+
+		DEFINE_FSTR_LOCAL(quotientsDefault, "[37,15,2500]")
+		REQUIRE_EQ(exportObject(root.quotients), quotientsDefault);
+
+		DEFINE_FSTR_LOCAL(colorsDefault, "[\"blue\",\"blue\",\"green\"]")
+		REQUIRE_EQ(exportObject(root.colors), colorsDefault);
+
 		if(auto update = root.update()) {
 			update.colors.addItem(Root::Color(100));
 			REQUIRE(update.colors[0] == Root::Color::blue);
