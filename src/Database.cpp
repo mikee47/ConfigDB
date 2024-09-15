@@ -22,6 +22,7 @@
 #include <Platform/System.h>
 #include <Data/Stream/FileStream.h>
 #include <Data/Buffer/PrintBuffer.h>
+#include <Data/CStringArray.h>
 
 namespace ConfigDB
 {
@@ -280,6 +281,46 @@ bool Database::save(Store& store) const
 	assert(&store == writeCache.store.get());
 
 	return result;
+}
+
+std::unique_ptr<ExportStream> Database::createExportStream(const Format& format, const String& path)
+{
+	CStringArray csa;
+	{
+		String tmp = path;
+		tmp.replace('.', '\0');
+		csa = std::move(tmp);
+	}
+	auto it = csa.begin();
+	if(!it) {
+		return format.createExportStream(*this);
+	}
+
+	int storeIndex = typeinfo.findStore(*it, strlen(*it));
+	if(storeIndex >= 0) {
+		++it;
+	} else {
+		storeIndex = 0;
+	}
+
+	unsigned offset{0};
+	auto prop = &typeinfo.stores[storeIndex];
+	for(; it; ++it) {
+		int i = prop->findObject(*it, strlen(*it));
+		if(i < 0) {
+			return nullptr;
+		}
+		offset += prop->offset;
+		prop = &prop->getObject(i);
+	}
+
+	auto store = openStore(storeIndex);
+	if(!store) {
+		return nullptr;
+	}
+
+	Object obj(*store, *prop, offset);
+	return format.createExportStream(store, obj);
 }
 
 bool Database::exportToFile(const Format& format, const String& filename)

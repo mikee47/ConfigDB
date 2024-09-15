@@ -110,11 +110,10 @@ public:
 
 	/**
 	 * @brief Create a read-only stream for serializing the database
+	 * @param format
+	 * @param path JSONPath-like expression to restrict output to specific store or object
 	 */
-	std::unique_ptr<ExportStream> createExportStream(const Format& format)
-	{
-		return format.createExportStream(*this);
-	}
+	std::unique_ptr<ExportStream> createExportStream(const Format& format, const String& path = nullptr);
 
 	/**
 	 * @brief Serialize the database to a stream
