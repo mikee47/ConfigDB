@@ -288,12 +288,14 @@ public:
 /**
  * @brief Used by code generator
  * @tparam UpdaterType
+ * @tparam DatabaseClassType
  * @tparam storeIndex
  * @tparam ParentClassType
  * @tparam propIndex
  * @tparam offset
  */
-template <class UpdaterType, unsigned storeIndex, class ParentClassType, unsigned propIndex, unsigned offset>
+template <class UpdaterType, class DatabaseClassType, unsigned storeIndex, class ParentClassType, unsigned propIndex,
+		  unsigned offset>
 class OuterObjectUpdaterTemplate : public UpdaterType
 {
 public:
@@ -302,7 +304,7 @@ public:
 	{
 	}
 
-	explicit OuterObjectUpdaterTemplate(Database& db)
+	explicit OuterObjectUpdaterTemplate(DatabaseClassType& db)
 		: OuterObjectUpdaterTemplate(this->openStoreForUpdate(db, storeIndex))
 	{
 	}
@@ -324,13 +326,15 @@ private:
 /**
  * @brief Used by code generator
  * @tparam ContainedClassType
+ * @tparam UpdaterType
+ * @tparam DatabaseClassType
  * @tparam storeIndex
  * @tparam ParentClassType
  * @tparam propIndex
  * @tparam offset
  */
-template <class ContainedClassType, class UpdaterType, unsigned storeIndex, class ParentClassType, unsigned propIndex,
-		  unsigned offset>
+template <class ContainedClassType, class UpdaterType, class DatabaseClassType, unsigned storeIndex,
+		  class ParentClassType, unsigned propIndex, unsigned offset>
 class OuterObjectTemplate : public ContainedClassType
 {
 public:
@@ -339,7 +343,7 @@ public:
 	{
 	}
 
-	OuterObjectTemplate(Database& db) : OuterObjectTemplate(this->openStore(db, storeIndex))
+	OuterObjectTemplate(DatabaseClassType& db) : OuterObjectTemplate(this->openStore(db, storeIndex))
 	{
 	}
 
@@ -348,7 +352,8 @@ public:
 		return format.createExportStream(store, *this);
 	}
 
-	using OuterUpdater = OuterObjectUpdaterTemplate<UpdaterType, storeIndex, ParentClassType, propIndex, offset>;
+	using OuterUpdater =
+		OuterObjectUpdaterTemplate<UpdaterType, DatabaseClassType, storeIndex, ParentClassType, propIndex, offset>;
 
 	/**
 	 * @brief Create an update object

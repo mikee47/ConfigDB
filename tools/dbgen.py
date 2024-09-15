@@ -699,7 +699,7 @@ def generate_database(db: Database) -> CodeLines:
         ]
     ]
     def generate_outer_class(obj: Object, store_offset: int) -> list:
-        template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.store.index}, {obj.parent.typename_contained}, {obj.index}, {store_offset}>'
+        template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.database.typename}, {obj.store.index}, {obj.parent.typename_contained}, {obj.index}, {store_offset}>'
         if not obj.is_store:
             store_offset += obj.parent.get_offset(obj)
         return [
