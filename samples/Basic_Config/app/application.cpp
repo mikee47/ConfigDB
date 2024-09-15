@@ -4,7 +4,6 @@
 #include <basic-config.h>
 #include <ConfigDB/Json/Format.h>
 #include <ConfigDB/Network/HttpImportResource.h>
-#include <Data/CStringArray.h>
 #include <Data/Format/Json.h>
 
 #ifdef ENABLE_MALLOC_COUNT
@@ -200,14 +199,14 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 
 void onFile(HttpRequest& request, HttpResponse& response)
 {
-	Serial << toString(request.method) << " REQ" << endl;
+	Serial << toString(request.method) << " \"" << request.uri.getRelativePath() << '"' << endl;
 
 	if(request.method != HTTP_GET) {
 		response.code = HTTP_STATUS_BAD_REQUEST;
 		return;
 	}
 
-	auto stream = database.createExportStream(ConfigDB::Json::format);
+	auto stream = database.createExportStream(ConfigDB::Json::format, request.uri.getRelativePath());
 	response.sendDataStream(stream.release(), MIME_JSON);
 }
 

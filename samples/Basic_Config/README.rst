@@ -26,6 +26,8 @@ Web client
 ----------
 
 The sample starts a basic HTTP server which can be visited to view the database content in JSON format.
+On the linux host emulator, for example, enter *http://192.168.13.10* to view the entire database.
+To view a specific object use JSONPath notation, for example *http://192.168.13.10/color.brightness*.
 
 An HTTP POST request can also be used to update the database contents.
 This must have `Content-Type: application/json` encoding.
