@@ -854,8 +854,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             ]
             return '.enuminfo = &itemtype.enuminfo'
         if prop.ptype == 'string':
-            fstr = strings[str(prop.default or '')]
-            return f'.defaultString = &{fstr}'
+            return f'.defaultString = &{strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype == 'number':
             r = prop.numrange
             return f'.number = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
