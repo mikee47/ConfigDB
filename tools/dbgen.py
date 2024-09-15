@@ -238,7 +238,7 @@ class Property:
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
         if self.ptype == 'number':
-            return f'const_number_t({self.default})'
+            return f'const_number_t({self.default})' if self.default else '0'
         return str(default) if default else 0
 
 
