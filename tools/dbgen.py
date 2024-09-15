@@ -862,10 +862,11 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_minimum = {r.minimum};']
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {prop.name}_maximum = {r.maximum};']
+                id = prop.id
+                lines.source += [f'constexpr const {prop.ctype} PROGMEM {id}_minimum = {r.minimum};']
+                lines.source += [f'constexpr const {prop.ctype} PROGMEM {id}_maximum = {r.maximum};']
                 tag = 'int64' if r.is_signed else 'uint64'
-                return f'.{tag} = {{.minimum = &{prop.name}_minimum, .maximum = &{prop.name}_maximum}}'
+                return f'.{tag} = {{.minimum = &{id}_minimum, .maximum = &{id}_maximum}}'
             tag = 'int32' if r.is_signed else 'uint32'
             return f'.{tag} = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
         return ''
