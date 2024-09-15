@@ -48,6 +48,10 @@ public:
 		}
 
 		Serial << "root: " << root << endl;
+
+		TestConfigEnum::Root::OuterUpdater lock(db);
+		auto asyncUpdated = TestConfigEnum::Root(db).update([](auto upd) { Serial << "ASYNC UPDATE" << endl; });
+		REQUIRE(!asyncUpdated);
 	}
 };
 

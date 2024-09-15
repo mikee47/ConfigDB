@@ -28,18 +28,22 @@ namespace ConfigDB
 {
 Database::StoreCache Database::readCache;
 Database::StoreCache Database::writeCache;
+Vector<Database::UpdateQueueItem> Database::updateQueue;
 bool Database::cacheCallbackQueued;
 
 Database::~Database()
 {
-	if(!readCache) {
-		return;
-	}
-	for(unsigned i = 0; i < typeinfo.storeCount; ++i) {
-		if(readCache.typeIs(typeinfo.stores[i])) {
-			readCache.reset();
-			break;
+	readCache.resetIf(typeinfo);
+	writeCache.resetIf(typeinfo);
+
+	// Clear any queued updates
+	for(unsigned i = 0; i < updateQueue.count();) {
+		if(updateQueue[i].database == this) {
+			debug_d("%s() updateQueue.remove(%u)", __FUNCTION__, i);
+			updateQueue.remove(i);
+			continue;
 		}
+		++i;
 	}
 }
 
@@ -193,7 +197,7 @@ void Database::queueUpdate(Store& store, Object::UpdateCallback&& callback)
 {
 	int storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
-	updateQueue.add({uint8_t(storeIndex), std::move(callback)});
+	updateQueue.add({this, uint8_t(storeIndex), std::move(callback)});
 }
 
 void Database::checkStoreRef(const StoreRef& ref)
@@ -225,7 +229,7 @@ void Database::checkStoreRef(const StoreRef& ref)
 
 			cacheCallbackQueued = false;
 
-			if(db->updateQueued || !db->updateQueue.isEmpty()) {
+			if(!db->updateQueue.isEmpty()) {
 				return;
 			}
 
@@ -252,19 +256,27 @@ void Database::checkUpdateQueue(Store& store)
 	}
 
 	int storeIndex = typeinfo.indexOf(storeInfo);
-	int i = updateQueue.indexOf(storeIndex);
+	int i = updateQueue.indexOf(UpdateQueueItem{this, uint8_t(storeIndex)});
 	if(i < 0) {
 		return;
 	}
-	auto callback = std::move(updateQueue[i].callback);
-	updateQueue.remove(i);
-	System.queueCallback([this, storeIndex, callback]() {
-		updateQueued = false;
-		auto store = openStoreForUpdate(storeIndex);
+
+	// Take reference in case database destroyed before callback invoked
+	auto& item = updateQueue[i];
+	UpdateQueueItem ref{item.database, item.storeIndex};
+	System.queueCallback([ref]() {
+		int i = updateQueue.indexOf(ref);
+		if(i < 0) {
+			// Database destroyed
+			return;
+		}
+		auto& item = updateQueue[i];
+		auto store = item.database->openStoreForUpdate(item.storeIndex);
+		auto callback = std::move(item.callback);
+		updateQueue.remove(i);
 		assert(store);
 		callback(*store);
 	});
-	updateQueued = true;
 }
 
 bool Database::save(Store& store) const

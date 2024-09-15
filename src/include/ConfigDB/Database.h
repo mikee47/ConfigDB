@@ -182,25 +182,32 @@ private:
 		{
 			return store && store.use_count() == 1;
 		}
+
+		void resetIf(const DatabaseInfo& info)
+		{
+			if(!*this){
+				return;
+			}
+			for(unsigned i = 0; i < info.storeCount; ++i) {
+				if(typeIs(info.stores[i])) {
+					reset();
+					break;
+				}
+			}
+		}
 	};
 
 	/**
 	 * @brief Information stored in a queue for asynchronous updates
 	 */
 	struct UpdateQueueItem {
-		/**
-		 * @brief Which store is to be updated
-		 */
+		Database* database;
 		uint8_t storeIndex;
-
-		/**
-		 * @brief Application-provided callback invoked with updatable Store
-		 */
 		Object::UpdateCallback callback;
 
-		bool operator==(int index) const
+		bool operator==(const UpdateQueueItem& item) const
 		{
-			return int(storeIndex) == index;
+			return database == item.database && storeIndex == item.storeIndex;
 		}
 	};
 
@@ -212,8 +219,7 @@ private:
 	static StoreCache readCache;
 	static StoreCache writeCache;
 	std::unique_ptr<WeakRef[]> updateRefs;
-	Vector<UpdateQueueItem> updateQueue;
-	bool updateQueued{false};
+	static Vector<UpdateQueueItem> updateQueue;
 	static bool cacheCallbackQueued;
 };
 
