@@ -298,7 +298,7 @@ class Object:
 
     @property
     def has_struct(self):
-        return (self.children or self.properties) and not self.is_array
+        return self.children or self.properties
 
     @property
     def index(self):
@@ -356,6 +356,7 @@ class Object:
 @dataclass
 class Array(Object):
     items: Property = None
+    default: list = None
 
     @property
     def is_array(self):
@@ -378,6 +379,7 @@ class Array(Object):
 @dataclass
 class ObjectArray(Object):
     items: Object = None
+    default: list = None
 
     @property
     def is_array(self):
@@ -574,6 +576,8 @@ def load_config(filename: str) -> Database:
         prop_type = get_ptype(fields)
 
         if prop_type == 'object':
+            if 'default' in fields:
+                raise ValueError('Object default not supported (use default on properties)')
             obj = Object(parent, key)
             obj.ref = ref
             database.object_defs[obj.typename] = obj
@@ -584,6 +588,8 @@ def load_config(filename: str) -> Database:
             item_ref, items = resolve_ref(fields['items'], database)
             items_type = get_ptype(items)
             if items_type in ['object', 'union']:
+                if 'default' in fields:
+                    raise ValueError('ObjectArray default not supported')
                 arr = ObjectArray(parent, key)
                 arr.ref = ref
                 database.object_defs[arr.typename] = arr
@@ -605,9 +611,12 @@ def load_config(filename: str) -> Database:
             assert len(arr.properties) == 1
             arr.items = arr.properties[0]
             arr.properties = []
+            arr.default = fields.get('default')
             return arr
 
         if prop_type == 'union':
+            if 'default' in fields:
+                raise ValueError('Union default not supported')
             union = Union(parent, key)
             union.ref = ref
             database.object_defs[union.typename] = union
@@ -901,13 +910,36 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         ]]
         offset += prop.data_size
 
+    defaultData = 'nullptr'
+    if isinstance(obj, Array):
+        arr: Array = obj
+        if arr.default:
+            id = f'{obj.typename_contained}_defaultData'
+            defaultData = f'&{id}'
+            if arr.items.ptype == 'string':
+                lines.source += [
+                    '',
+                    f'DEFINE_FSTR_VECTOR_LOCAL({id}, FSTR::String,',
+                    [f'&{strings[s]},' for s in arr.default],
+                    ')'
+                ]
+            else:
+                lines.source += [
+                    '',
+                    f'DEFINE_FSTR_ARRAY_LOCAL({id}, {arr.items.ctype},',
+                    [f'{v},' for v in arr.default],
+                    ')'
+                ]
+    elif obj.has_struct:
+        defaultData = '&defaultData'
+
     lines.source += [
         '',
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
             '.type = ObjectType::' + ('Store' if obj.is_root else obj.classname),
-            '.defaultData = ' + ('&defaultData' if obj.has_struct else 'nullptr'),
+            f'.defaultData = {defaultData}',
             '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
             f'.objectCount = {len(objinfo)}',
             f'.propertyCount = {len(proplist) - len(objinfo)}',
