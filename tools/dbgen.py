@@ -56,7 +56,7 @@ class StringTable:
     def __getitem__(self, value: str | None):
         if value is None:
             return 'nullptr'
-        return STRING_PREFIX + self.keys[self.get_index(value)]
+        return STRING_PREFIX + self.keys[self.get_index(str(value))]
 
     def get_index(self, value: str) -> int:
         try:
