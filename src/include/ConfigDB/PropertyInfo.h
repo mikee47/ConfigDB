@@ -172,6 +172,21 @@ struct PropertyInfo {
 	{
 		return getPropertySize(type);
 	}
+
+	/**
+	 * @brief Find named object information
+	 */
+	int findObject(const char* name, unsigned length) const;
+
+	/**
+	 * @brief Find named object information
+	 */
+	int findProperty(const char* name, unsigned length) const;
+
+	/**
+	 * @brief Get child object by index
+	 */
+	const PropertyInfo& getObject(unsigned index) const;
 };
 
 } // namespace ConfigDB

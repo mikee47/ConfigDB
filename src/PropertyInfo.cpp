@@ -18,6 +18,7 @@
  ****/
 
 #include "include/ConfigDB/PropertyInfo.h"
+#include "include/ConfigDB/ObjectInfo.h"
 #include "include/ConfigDB/PropertyData.h"
 
 String toString(ConfigDB::PropertyType type)
@@ -103,6 +104,28 @@ int EnumInfo::find(const char* value, unsigned length) const
 	}
 	assert(false);
 	return -1;
+}
+
+int PropertyInfo::findObject(const char* name, unsigned length) const
+{
+	if(type != PropertyType::Object) {
+		return -1;
+	}
+	return variant.object->findObject(name, length);
+}
+
+int PropertyInfo::findProperty(const char* name, unsigned length) const
+{
+	if(type != PropertyType::Object) {
+		return -1;
+	}
+	return variant.object->findProperty(name, length);
+}
+
+const PropertyInfo& PropertyInfo::getObject(unsigned index) const
+{
+	assert(type == PropertyType::Object);
+	return variant.object->getObject(index);
 }
 
 } // namespace ConfigDB
