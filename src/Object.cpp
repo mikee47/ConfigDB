@@ -24,6 +24,24 @@
 
 namespace ConfigDB
 {
+void Object::initDefaults()
+{
+	auto& info = typeinfo();
+	switch(info.type) {
+	case ObjectType::Array:
+		return static_cast<Array*>(this)->initDefaults();
+	case ObjectType::Object:
+	case ObjectType::Store:
+		break;
+	default:
+		return;
+	}
+
+	for(unsigned i = 0; i < info.objectCount; ++i) {
+		getObject(i).initDefaults();
+	}
+}
+
 Object& Object::operator=(const Object& other)
 {
 	propinfoPtr = other.propinfoPtr;

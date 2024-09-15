@@ -188,6 +188,7 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 
 	auto& format = getFormat(*store);
 	StoreUpdateRef update = store;
+	store->clear();
 	update->importFromFile(format);
 	update->clearDirty();
 	return store;

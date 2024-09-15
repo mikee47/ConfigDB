@@ -220,6 +220,8 @@ protected:
 	StoreRef openStore(Database& db, unsigned storeIndex);
 	StoreUpdateRef openStoreForUpdate(Database& db, unsigned storeIndex);
 
+	void initDefaults();
+
 	bool isWriteable() const;
 
 	StoreUpdateRef lockStore(StoreRef& store);
