@@ -42,4 +42,18 @@ const ArrayData& ArrayBase::getArray() const
 	return getStore().arrayPool[getId()];
 }
 
+void ArrayBase::clear()
+{
+	if(auto id = getId()) {
+		getStore().arrayPool[id].clear();
+	}
+}
+
+void ArrayBase::dispose()
+{
+	if(auto id = getId()) {
+		getStore().arrayPool[id].dispose();
+	}
+}
+
 } // namespace ConfigDB

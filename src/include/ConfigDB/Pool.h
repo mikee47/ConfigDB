@@ -229,6 +229,15 @@ public:
 	}
 
 	bool remove(unsigned index);
+
+	/**
+	 * @brief Clear and mark this array as 'not in use' so it can be re-used
+	 */
+	void dispose()
+	{
+		clear();
+		itemSize = 0;
+	}
 };
 
 /**
