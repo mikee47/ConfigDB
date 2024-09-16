@@ -188,8 +188,11 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 
 	auto& format = getFormat(*store);
 	StoreUpdateRef update = store;
-	store->clear();
-	update->importFromFile(format);
+	// Handle *any* import failure by loading defaults
+	if(!update->importFromFile(format)) {
+		debug_d("[CFGDB] Load defaults");
+		store->resetToDefaults();
+	}
 	update->clearDirty();
 	return store;
 }

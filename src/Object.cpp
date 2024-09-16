@@ -444,9 +444,6 @@ Status Object::importFromFile(const Format& format, const String& filename)
 {
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
-		if(stream.getLastError() == IFS::Error::NotFound) {
-			return {};
-		}
 		debug_w("[CFGDB] open '%s' failed", filename.c_str());
 		return Status::fileError(stream.getLastError());
 	}
