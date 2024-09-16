@@ -24,22 +24,95 @@
 
 namespace ConfigDB
 {
-void Object::initDefaults()
+void Object::clear()
 {
-	auto& info = typeinfo();
-	switch(info.type) {
-	case ObjectType::Array:
-		return static_cast<Array*>(this)->initDefaults();
-	case ObjectType::Object:
-	case ObjectType::Store:
-		break;
-	default:
+	if(!writeCheck()) {
 		return;
 	}
 
-	for(unsigned i = 0; i < info.objectCount; ++i) {
-		getObject(i).initDefaults();
+	auto& info = typeinfo();
+
+	switch(info.type) {
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+		static_cast<ArrayBase*>(this)->clear();
+		break;
+	case ObjectType::Store:
+	case ObjectType::Object:
+		disposeArrays();
+		if(info.defaultData) {
+			memcpy_P(getDataPtr(), info.defaultData, info.structSize);
+		}
+		break;
+	case ObjectType::Union:
+		static_cast<Union*>(this)->clear();
+		break;
 	}
+}
+
+/*
+ * Dipose all contained arrays in preparation for clearing the parent object.
+ */
+void Object::disposeArrays()
+{
+	auto& info = typeinfo();
+
+	switch(info.type) {
+	case ObjectType::Store:
+	case ObjectType::Object: {
+		auto n = getObjectCount();
+		for(unsigned i = 0; i < n; ++i) {
+			getObject(i).disposeArrays();
+		}
+		break;
+	}
+	case ObjectType::Union:
+		getObject(0).disposeArrays();
+		break;
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+		static_cast<ArrayBase*>(this)->dispose();
+		break;
+	}
+}
+
+void Object::loadArrayDefaults()
+{
+	if(writeCheck()) {
+		initArrays();
+	}
+}
+
+void Object::initArrays()
+{
+	auto& info = typeinfo();
+	switch(info.type) {
+	case ObjectType::Store:
+	case ObjectType::Object: {
+		auto n = getObjectCount();
+		for(unsigned i = 0; i < n; ++i) {
+			getObject(i).initArrays();
+		}
+		break;
+	}
+	case ObjectType::Union:
+		getObject(0).initArrays();
+		break;
+	case ObjectType::Array:
+		static_cast<Array*>(this)->loadDefaults();
+		break;
+	case ObjectType::ObjectArray:
+		break;
+	}
+}
+
+void Object::resetToDefaults()
+{
+	if(!writeCheck()) {
+		return;
+	}
+	clear();
+	initArrays();
 }
 
 Object& Object::operator=(const Object& other)

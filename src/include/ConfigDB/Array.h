@@ -66,7 +66,7 @@ public:
 protected:
 	friend class Object;
 
-	void initDefaults();
+	void loadDefaults();
 
 	StringId getStringId(const String& value)
 	{

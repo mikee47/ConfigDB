@@ -15,7 +15,7 @@ public:
 	void execute() override
 	{
 		TestConfigEnum db(F("out/test-enum"));
-		db.openStoreForUpdate(0)->clear();
+		db.openStoreForUpdate(0)->resetToDefaults();
 
 		using Root = TestConfigEnum::Root;
 

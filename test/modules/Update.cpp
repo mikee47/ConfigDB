@@ -104,6 +104,15 @@ public:
 			DEFINE_FSTR_LOCAL(stringArrayDefaults, "[\"a\",\"b\",\"c\"]")
 			REQUIRE_EQ(exportObject(root.intArray), intArrayDefaults);
 			REQUIRE_EQ(exportObject(root.stringArray), stringArrayDefaults);
+
+			if(auto upd = root.update()) {
+				upd.clear();
+				REQUIRE_EQ(upd.intArray.getItemCount(), 0);
+				REQUIRE_EQ(upd.stringArray.getItemCount(), 0);
+				upd.loadArrayDefaults();
+				REQUIRE_EQ(exportObject(upd.intArray), intArrayDefaults);
+				REQUIRE_EQ(exportObject(root.stringArray), stringArrayDefaults);
+			}
 		}
 
 		TEST_CASE("Array iterators")

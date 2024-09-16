@@ -21,8 +21,10 @@
 
 namespace ConfigDB
 {
-void Array::initDefaults()
+void Array::loadDefaults()
 {
+	clear();
+
 	auto& info = typeinfo();
 	if(!info.defaultData) {
 		return;
