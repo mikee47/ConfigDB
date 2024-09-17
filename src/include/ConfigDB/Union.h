@@ -64,7 +64,7 @@ public:
 		return 1;
 	}
 
-	Object getObject(unsigned index)
+	Object getObject([[maybe_unused]] unsigned index)
 	{
 		assert(index == 0);
 		return Object(*this, getTag());

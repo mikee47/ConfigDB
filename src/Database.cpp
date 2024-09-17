@@ -52,7 +52,7 @@ const Format& Database::getFormat(const Store&) const
 	return Json::format;
 }
 
-bool Database::handleFormatError(FormatError err, const Object& object, const String& arg)
+bool Database::handleFormatError([[maybe_unused]] FormatError err, const Object& object, const String& arg)
 {
 #if DEBUG_VERBOSE_LEVEL >= WARN
 	String msg;
