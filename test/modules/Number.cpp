@@ -137,12 +137,17 @@ DEFINE_FSTR_ARRAY_LOCAL(uintValues, IntValue<unsigned>, UINT_VALUE_MAP(XX))
 DEFINE_FSTR_ARRAY_LOCAL(int64Values, IntValue<int64_t>, INT64_VALUE_MAP(XX))
 #undef XX
 
-// Use library function to print number (may not be available in newlib builds)
+// Use library function to print number
 String floatToStr(double value)
 {
+#ifdef ARCH_HOST
 	char buf[64];
 	sprintf(buf, "%.*lg", number_t::maxSignificantDigits + 1, value);
 	return buf;
+#else
+	// may not be available in newlib builds - this calls dtostrf
+	return String(value);
+#endif
 }
 
 } // namespace
@@ -183,9 +188,8 @@ public:
 			for(auto test : intValues) {
 				ConfigDB::Number number(test.value);
 				auto input = strtol(test.input, nullptr, 0);
-				int64_t output = strtod(test.expected, nullptr);
 				Serial << "INT " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
-					   << String(number.asInt64(), HEX) << ", " << output << ", " << String(output, HEX) << endl;
+					   << String(number.asInt64(), HEX) << endl;
 				REQUIRE_EQ(String(test.expected), toString(number));
 			}
 			for(auto test : uintValues) {
