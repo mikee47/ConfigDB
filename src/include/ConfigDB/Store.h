@@ -24,8 +24,6 @@
 #include "ObjectArray.h"
 #include "Union.h"
 #include "Pool.h"
-#include <WString.h>
-#include <memory>
 
 #if DEBUG_VERBOSE_LEVEL == DBG
 #include <debug_progmem.h>

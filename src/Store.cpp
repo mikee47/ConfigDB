@@ -18,7 +18,6 @@
  ****/
 
 #include "include/ConfigDB/Database.h"
-#include <debug_progmem.h>
 
 namespace ConfigDB
 {

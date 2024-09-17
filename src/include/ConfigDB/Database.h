@@ -185,7 +185,7 @@ private:
 
 		void resetIf(const DatabaseInfo& info)
 		{
-			if(!*this){
+			if(!*this) {
 				return;
 			}
 			for(unsigned i = 0; i < info.storeCount; ++i) {

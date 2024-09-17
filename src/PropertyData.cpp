@@ -18,7 +18,6 @@
  ****/
 
 #include "include/ConfigDB/PropertyData.h"
-#include <stringconversion.h>
 
 namespace ConfigDB
 {

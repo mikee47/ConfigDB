@@ -19,11 +19,6 @@
 
 #include "include/ConfigDB/Number.h"
 #include <stringconversion.h>
-#include <debug_progmem.h>
-#include <cmath>
-
-// Defined in newlib but not ANSI or GNU standard
-extern "C" char* ecvtbuf(double invalue, int ndigit, int* decpt, int* sign, char* fcvt_buf);
 
 namespace ConfigDB
 {
