@@ -46,35 +46,47 @@ PoolData& PoolData::operator=(const PoolData& other)
 	return *this;
 }
 
-void* PoolData::allocate(size_t items)
+bool PoolData::ensureCapacity(size_t capacity)
 {
-	if(items <= space) {
-		count += items;
-		space -= items;
-		auto ptr = getItemPtr(count - items);
-		return ptr;
+	if(count + space >= capacity) {
+		return true;
 	}
 
-	size_t newSpace = std::min(255U, count / 8U);
-	size_t newCapacity = count + items + newSpace;
-
-	auto newBuffer = realloc(buffer, getItemSize(newCapacity));
+	auto newBuffer = realloc(buffer, getItemSize(capacity));
 	if(!newBuffer) {
-		return nullptr;
+		return false;
 	}
 
 	buffer = newBuffer;
-	count += items;
-	space = newSpace;
-	auto ptr = getItemPtr(count - items);
-	return ptr;
+	space = capacity - count;
+	return true;
 }
 
-void PoolData::deallocate(size_t items)
+void* PoolData::allocate(size_t itemCount)
 {
-	assert(items <= count);
-	count -= items;
-	space += items;
+	if(itemCount <= space) {
+		count += itemCount;
+		space -= itemCount;
+		auto ptr = getItemPtr(count - itemCount);
+		return ptr;
+	}
+
+	auto capacity = count + itemCount + std::min(255U, count / 8U);
+
+	if(!ensureCapacity(capacity)) {
+		return nullptr;
+	}
+
+	count += itemCount;
+	space -= itemCount;
+	return getItemPtr(count - itemCount);
+}
+
+void PoolData::deallocate(size_t itemCount)
+{
+	assert(itemCount <= count);
+	count -= itemCount;
+	space += itemCount;
 }
 
 CountedString StringPool::getString(unsigned offset) const
@@ -130,23 +142,23 @@ bool ArrayData::remove(unsigned index)
 	return true;
 }
 
-void* ArrayData::insert(unsigned index, const void* data)
+void* ArrayData::insert(unsigned index, const void* data, size_t itemCount)
 {
 	assert(index <= count);
 	if(index > count) {
 		return nullptr;
 	}
-	if(!allocate(1)) {
+	if(!allocate(itemCount)) {
 		return nullptr;
 	}
 	auto item = getItemPtr(index);
-	if(index + 1 < count) {
-		memmove(getItemPtr(index + 1), item, getItemSize(count - index - 1));
+	if(index + itemCount < count) {
+		memmove(getItemPtr(index + itemCount), item, getItemSize(count - index - itemCount));
 	}
 	if(data) {
-		memcpy_P(item, data, itemSize);
+		memcpy_P(item, data, itemSize * itemCount);
 	} else {
-		memset(item, 0, itemSize);
+		memset(item, 0, itemSize * itemCount);
 	}
 	return item;
 }

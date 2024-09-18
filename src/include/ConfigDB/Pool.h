@@ -80,14 +80,16 @@ public:
 		count = space = 0;
 	}
 
+	bool ensureCapacity(size_t capacity);
+
 	size_t usage() const
 	{
 		return getCapacity() * itemSize;
 	}
 
 protected:
-	void* allocate(size_t items);
-	void deallocate(size_t items);
+	void* allocate(size_t itemCount);
+	void deallocate(size_t itemCount);
 
 	void* getItemPtr(unsigned index)
 	{
@@ -221,11 +223,11 @@ class ArrayData : public PoolData
 public:
 	using PoolData::PoolData;
 
-	void* insert(unsigned index, const void* value = nullptr);
+	void* insert(unsigned index, const void* data = nullptr, size_t itemCount = 1);
 
-	void* add(const void* value = nullptr)
+	void* add(const void* data = nullptr, size_t itemCount = 1)
 	{
-		return insert(getCount(), value);
+		return insert(getCount(), data, itemCount);
 	}
 
 	bool remove(unsigned index);
