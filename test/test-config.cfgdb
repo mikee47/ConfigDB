@@ -33,14 +33,25 @@
       "type": "array",
       "items": {
         "type": "integer"
-      }
+      },
+      "default": [
+        13,
+        28,
+        39,
+        40
+      ]
     },
     "string_array": {
       "type": "array",
       "items": {
         "type": "string",
         "default": "abc"
-      }
+      },
+      "default": [
+        "a",
+        "b",
+        "c"
+      ]
     },
     "object_array": {
       "type": "array",

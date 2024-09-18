@@ -24,6 +24,97 @@
 
 namespace ConfigDB
 {
+void Object::clear()
+{
+	if(!writeCheck()) {
+		return;
+	}
+
+	auto& info = typeinfo();
+
+	switch(info.type) {
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+		static_cast<ArrayBase*>(this)->clear();
+		break;
+	case ObjectType::Store:
+	case ObjectType::Object:
+		disposeArrays();
+		if(info.defaultData) {
+			memcpy_P(getDataPtr(), info.defaultData, info.structSize);
+		}
+		break;
+	case ObjectType::Union:
+		static_cast<Union*>(this)->clear();
+		break;
+	}
+}
+
+/*
+ * Dipose all contained arrays in preparation for clearing the parent object.
+ */
+void Object::disposeArrays()
+{
+	auto& info = typeinfo();
+
+	switch(info.type) {
+	case ObjectType::Store:
+	case ObjectType::Object: {
+		auto n = getObjectCount();
+		for(unsigned i = 0; i < n; ++i) {
+			getObject(i).disposeArrays();
+		}
+		break;
+	}
+	case ObjectType::Union:
+		getObject(0).disposeArrays();
+		break;
+	case ObjectType::Array:
+	case ObjectType::ObjectArray:
+		static_cast<ArrayBase*>(this)->dispose();
+		break;
+	}
+}
+
+void Object::loadArrayDefaults()
+{
+	if(writeCheck()) {
+		initArrays();
+	}
+}
+
+void Object::initArrays()
+{
+	auto& info = typeinfo();
+	switch(info.type) {
+	case ObjectType::Store:
+	case ObjectType::Object: {
+		auto n = getObjectCount();
+		for(unsigned i = 0; i < n; ++i) {
+			getObject(i).initArrays();
+		}
+		break;
+	}
+	case ObjectType::Union:
+		getObject(0).initArrays();
+		break;
+	case ObjectType::Array:
+		static_cast<Array*>(this)->loadDefaults();
+		break;
+	case ObjectType::ObjectArray:
+		break;
+	}
+}
+
+void Object::resetToDefaults()
+{
+	if(!writeCheck()) {
+		return;
+	}
+	clear();
+	initArrays();
+}
+
 Object& Object::operator=(const Object& other)
 {
 	propinfoPtr = other.propinfoPtr;
@@ -353,9 +444,6 @@ Status Object::importFromFile(const Format& format, const String& filename)
 {
 	FileStream stream;
 	if(!stream.open(filename, File::ReadOnly)) {
-		if(stream.getLastError() == IFS::Error::NotFound) {
-			return {};
-		}
 		debug_w("[CFGDB] open '%s' failed", filename.c_str());
 		return Status::fileError(stream.getLastError());
 	}

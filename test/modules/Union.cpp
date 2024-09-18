@@ -120,6 +120,35 @@ public:
 		TestConfigUnion::Root root(db);
 		String json = exportObject(root);
 		CHECK_EQ(json, union_test_root_json);
+
+		TEST_CASE("Union with array with defaults")
+		{
+			DEFINE_FSTR_LOCAL(defaults, "{\"array-with-defaults\":[\"one\",\"two\",\"three\",\"four\"]}")
+			DEFINE_FSTR_LOCAL(cleared, "{\"last\":{}}")
+			DEFINE_FSTR_LOCAL(empty, "{\"array-with-defaults\":[]}")
+
+			TestConfigUnion::Root::Color3::OuterUpdater color3(db);
+			color3.toArrayWithDefaults();
+			REQUIRE_EQ(exportObject(color3), defaults);
+			color3.asArrayWithDefaults().clear();
+			REQUIRE_EQ(exportObject(color3), empty);
+			color3.loadArrayDefaults();
+			REQUIRE_EQ(exportObject(color3), defaults);
+
+			// Check level 3 debug output to confirm array gets disposed...
+			auto& arrayPool = color3.getStore().getArrayPool();
+			auto arrayCount = arrayPool.getCount();
+			color3.clear();
+			REQUIRE_EQ(arrayPool.getCount(), arrayCount);
+			REQUIRE_EQ(exportObject(color3), cleared);
+			color3.loadArrayDefaults();
+			REQUIRE_EQ(exportObject(color3), cleared);
+			// ...then re-used
+			Serial << _F("ArrayPool re-uses slot:") << endl;
+			color3.toArrayWithDefaults();
+			REQUIRE_EQ(arrayPool.getCount(), arrayCount);
+			REQUIRE_EQ(exportObject(color3), defaults);
+		}
 	}
 };
 

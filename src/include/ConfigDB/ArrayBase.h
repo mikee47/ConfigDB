@@ -57,10 +57,9 @@ public:
 		getArray().add(value);
 	}
 
-	void clear()
-	{
-		getArray().clear();
-	}
+	void clear();
+
+	void dispose();
 
 protected:
 	ArrayId& getId()

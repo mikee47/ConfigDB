@@ -153,6 +153,22 @@ public:
 	Property findProperty(const char* name, size_t length);
 
 	/**
+	 * @brief Reset contents to defaults (except arrays, which are cleared)
+	 * @note Use caution! All reference objects will be invalidated by this call
+	 */
+	void clear();
+
+	/**
+	 * @brief Clear and load all contained arrays with defaults from schema
+	 */
+	void loadArrayDefaults();
+
+	/**
+	 * @brief Does a 'clear' followed by 'loadArrayDefaults'
+	 */
+	void resetToDefaults();
+
+	/**
 	 * @brief Commit changes to the store
 	 */
 	bool commit();
@@ -219,6 +235,9 @@ public:
 protected:
 	StoreRef openStore(Database& db, unsigned storeIndex);
 	StoreUpdateRef openStoreForUpdate(Database& db, unsigned storeIndex);
+
+	void disposeArrays();
+	void initArrays();
 
 	bool isWriteable() const;
 

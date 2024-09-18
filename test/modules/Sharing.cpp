@@ -99,6 +99,7 @@ public:
 
 		if(auto update = root.update()) {
 			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root updater, root2/root3
+			update.intArray.clear();
 			update.intArray.addItem(12);
 			REQUIRE_EQ(root.intArray[0], 12);
 			update.intArray[0] = 123;
@@ -113,6 +114,7 @@ public:
 
 		if(auto update = root.update()) {
 			CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root updater, root2/root3
+			update.stringArray.clear();
 			update.stringArray.addItem(myString);
 			REQUIRE_EQ(root.stringArray[0], myString);
 			REQUIRE(root.stringArray.contains(myString));

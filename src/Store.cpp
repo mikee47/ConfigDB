@@ -50,11 +50,12 @@ Store::~Store()
 
 void Store::clear()
 {
-	auto& root = typeinfo();
-	memcpy_P(rootData.get(), root.defaultData, root.structSize);
+	if(!writeCheck()) {
+		return;
+	}
+
 	stringPool.clear();
-	arrayPool.clear();
-	dirty = true;
+	Object::clear();
 }
 
 String Store::getFilePath() const

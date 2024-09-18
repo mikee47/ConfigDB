@@ -1,5 +1,5 @@
 /**
- * ConfigDB/ArrayBase.cpp
+ * ConfigDB/Array.cpp
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
  *
@@ -17,43 +17,34 @@
  *
  ****/
 
-#include "include/ConfigDB/ArrayBase.h"
-#include "include/ConfigDB/Store.h"
+#include "include/ConfigDB/Array.h"
 
 namespace ConfigDB
 {
-ArrayData& ArrayBase::getArray()
+void Array::loadDefaults()
 {
-	auto& store = getStore();
-	auto& id = getId();
-	if(id == 0) {
-		auto& prop = typeinfo().propinfo[0];
-		if(typeinfo().type == ObjectType::ObjectArray) {
-			id = store.arrayPool.add(*prop.variant.object);
-		} else {
-			id = store.arrayPool.add(prop);
+	clear();
+
+	auto& info = typeinfo();
+	if(!info.defaultData) {
+		return;
+	}
+
+	auto& array = getArray();
+
+	auto& item = getItemType();
+	if(item.type == PropertyType::String) {
+		auto& strings = *static_cast<const FSTR::Vector<FSTR::String>*>(info.defaultData);
+		array.ensureCapacity(array.getCount() + strings.length());
+		for(auto& s : strings) {
+			auto id = getStringId(s);
+			array.add(&id);
 		}
+		return;
 	}
-	return store.arrayPool[id];
-}
 
-const ArrayData& ArrayBase::getArray() const
-{
-	return getStore().arrayPool[getId()];
-}
-
-void ArrayBase::clear()
-{
-	if(auto id = getId()) {
-		getStore().arrayPool[id].clear();
-	}
-}
-
-void ArrayBase::dispose()
-{
-	if(auto id = getId()) {
-		getStore().arrayPool[id].dispose();
-	}
+	auto& items = *static_cast<const FSTR::ObjectBase*>(info.defaultData);
+	array.add(items.data(), items.length() / item.getSize());
 }
 
 } // namespace ConfigDB

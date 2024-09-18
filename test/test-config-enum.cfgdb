@@ -9,7 +9,12 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/Color"
-      }
+      },
+      "default": [
+        "blue",
+        "blue",
+        "green"
+      ]
     },
     "quotients": {
       "type": "array",
@@ -28,7 +33,12 @@
           25000000,
           12000000000
         ]
-      }
+      },
+      "default": [
+        37,
+        15,
+        2500
+      ]
     },
     "small-map": {
       "type": "array",

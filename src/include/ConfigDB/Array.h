@@ -64,6 +64,10 @@ public:
 	}
 
 protected:
+	friend class Object;
+
+	void loadDefaults();
+
 	StringId getStringId(const String& value)
 	{
 		return ArrayBase::getStringId(getItemType(), value);

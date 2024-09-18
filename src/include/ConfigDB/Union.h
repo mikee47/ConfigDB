@@ -47,16 +47,21 @@ public:
 	void setTag(Tag tag)
 	{
 		assert(tag < typeinfo().objectCount);
+		disposeArrays();
+		memset(getDataPtr(), 0, typeinfo().structSize);
 		getPropertyData(0)->uint8 = tag;
-		auto& prop = typeinfo().propinfo[tag];
-		auto data = static_cast<uint8_t*>(getDataPtr());
-		data += prop.offset;
-		auto obj = prop.variant.object;
-		if(obj->defaultData) {
-			memcpy_P(data, obj->defaultData, obj->structSize);
-		} else {
-			memset(data, 0, obj->structSize);
-		}
+		getObject(0).resetToDefaults();
+	}
+
+	/**
+	 * @brief Reset tag to default and clear whatever object that corresponds to
+	 */
+	void clear()
+	{
+		disposeArrays();
+		memset(getDataPtr(), 0, typeinfo().structSize);
+		getPropertyData(0)->uint8 = 0;
+		getObject(0).clear();
 	}
 
 	unsigned getObjectCount() const

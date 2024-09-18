@@ -58,7 +58,7 @@ Configuration JSON can be validated against the **.cfgdb** schema files using **
 Schema rules
 ------------
 
-See the **Basic_Config** sample schema.
+See the :sample:`Basic_Config` sample schema. The test application contains further examples.
 
 - Root object is always a :cpp:class:`ConfigDB::Database`
 - A database is always rooted in a directory
@@ -67,47 +67,108 @@ See the **Basic_Config** sample schema.
 - Immediate children of the root may have a **store** value attached to place them into a new store.
   This can have any value, typically **true**.
 - A custom type can be defined for Property accessors using the **ctype** annotation. This means that with an IP address property, for example, you can use :cpp:class:`IpAddress` instead of :cpp:class:`String` because it can be constructed from a String. The database still stores the value internally as a regular String.
+- `Enumerated Properties`_ can be defined for any type; **ctype** is used here to optionally define a custom **enum class** type for these values.
+- Re-useable definitions can be created using the `$ref <https://json-schema.org/understanding-json-schema/structuring#dollarref>`__ schema keyword.
+  Such definitions must be contained within the **$defs** section of the schema.
+- `Arrays`_ of simple types (including Strings) or objects are supported.
+- `Unions`_ can contain any one of a number of user-defined object types, and can be used in object arrays.
 
-Re-useable definitions
-  These can be defined using the `$ref <https://json-schema.org/understanding-json-schema/structuring#dollarref>`__ schema keyword.
-  This allows types to be defined within the **$defs** section of the schema and re-used.
 
-  This is leveraged to support **Union** types via the  `oneOf <https://json-schema.org/understanding-json-schema/reference/combining#oneOf>`__ schema keyword.
-  The *test* application contains an example of this in the *test-config-union.cfgdb* schema. It is used in the *Updates* test module.
+Floating-point numbers
+~~~~~~~~~~~~~~~~~~~~~~
 
-  Like a regular C++ *union*, a :cpp:class:`ConfigDB::Union` object has one or more object types overlaid in the same storage space. The size of the object is therefore governed by the size of the largest type stored. A `uint8_t` property tag indicates which type is stored.
+Items with **number** type are considered floating-point values.
+They are not stored internally as *float* or *double* but instead use a base-10 representation.
 
-  The code generator produces an **asXXX** method for each type of object which can be stored. The application is responsible for checking which type is present via :cpp:func:`ConfigDB::Union::getTag`; if the wrong method is called, a runtime assertion will be generated.
+This provides more flexibility in how these values are used and allows applications to work
+with very large or small numbers without requiring any floating-point arithmetic.
 
-  The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object type.
+See :cpp:class:`ConfigDB::number_t` and :cpp:class:`ConfigDB::Number` for details.
+There is also :cpp:class:`ConfigDB::const_number_t` to ease support for format conversion
+at compile time.
 
-  Note that items in **$defs** can also be non-object property types. For these, a type is *not* defined but instead used as a base definition which can be modified. Take a general *Pin* definition, for example::
 
-    "Pin": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 63
+Enumerated properties
+~~~~~~~~~~~~~~~~~~~~~
+
+.. highlight: json
+
+JsonSchema offers the `enum <https://json-schema.org/understanding-json-schema/reference/enum>`__ keyword to restrict values to a set of known values. For example::
+
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "color": {
+        "type": "string",
+        "enum": [
+          "red",
+          "green",
+          "blue"
+        ]
+      }
     }
+  }
 
-  And in the main schema, use it like this::
+ConfigDB treats these as an *indexed map*, so *red* has the index 0, *green* is 1 and *blue* 2. Indices are of type *uint8_t*. The example has an intrinsic *minimum* of 0 and *maximum* of 2. As with other numeric properties, attempting to set values outside this range are clipped.
 
-    "pin": {
-      "$ref": "#/$defs/Pin",
-      "default": 13
-    }
+The default is 0 (the first string in the list). If a default value is given in the schema, it must match an item in the *enum* array.
 
-  The code generator expands this property::
+The corresponding `setColor`, `getColor` methods set or retrieve the value as a number. Adding *"ctype": "Color"* to the property will generate an *enum class* definition instead. This is the preferred approach.
 
-    "pin": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 63,
-      "default": 13
-    }
+The *color* value itself will be stored as a *string* with one of the given values. The *integer* and *number* types are also supported, which can be useful for generating constant lookup tables.
 
-  This can make the schema more readable, save duplication and simplify modification.
 
-  Note that no special type is defined in generated code. If a `ctype` annotation is present then that type must be defined elsewhere in the application.
+Arrays
+~~~~~~
+
+ConfigDB uses the **array** schema keyword to implement both *simple* arrays (containing integers, numbers or Strings) and *object* arrays.
+
+Simple arrays are accessed via the :cpp:class:`ConfigDB::Array` class. All elements must be of the same type. A **default** value may be specified which is applied automatically for uninitialised stores. The :cpp:func:`ConfigDB::Object::loadArrayDefaults` method may also be used during updates to load these default definitions.
+
+The :cpp:class:`ConfigDB::ObjectArray` type can be used for arrays of objects or unions. Default values are not currently supported for these.
+
+
+Unions
+~~~~~~
+
+These are defined using the  `oneOf <https://json-schema.org/understanding-json-schema/reference/combining#oneOf>`__ schema keyword.
+
+The *test* application contains an example of this in the *test-config-union.cfgdb* schema. It is used in the *Updates* test module.
+
+Like a regular C++ *union*, a :cpp:class:`ConfigDB::Union` object has one or more object types overlaid in the same storage space. The size of the object is therefore governed by the size of the largest type stored. A `uint8_t` property tag indicates which type is stored.
+
+The code generator produces an **asXXX** method for each type of object which can be stored. The application is responsible for checking which type is present via :cpp:func:`ConfigDB::Union::getTag`; if the wrong method is called, a runtime assertion will be generated.
+
+The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object type.
+
+Note that items in **$defs** can also be non-object property types. For these, a type is *not* defined but instead used as a base definition which can be modified. Take a general *Pin* definition, for example::
+
+  "Pin": {
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 63
+  }
+
+And in the main schema, use it like this::
+
+  "pin": {
+    "$ref": "#/$defs/Pin",
+    "default": 13
+  }
+
+The code generator expands this property::
+
+  "pin": {
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 63,
+    "default": 13
+  }
+
+This can make the schema more readable, save duplication and simplify modification.
+
+Note that no special type is defined in generated code. If a `ctype` annotation is present then that type must be defined elsewhere in the application.
 
 
 Store loading / saving
@@ -367,51 +428,6 @@ Code can update database entries in several ways.
 During an update, applications can optionally call :cpp:func:`Updater::commit` to save changes at any time.
 Changes are only saved if the Store *dirty* flag is set.
 Calling :cpp:func:`Updater::clearDirty` will prevent auto-commit, provided further changes are not made.
-
-
-Floating-point numbers
-----------------------
-
-Items with **number** type are considered floating-point values.
-They are not stored internally as *float* or *double* but instead use a base-10 representation.
-
-This provides more flexibility in how these values are used and allows applications to work
-with very large or small numbers without requiring any floating-point arithmetic.
-
-See :cpp:class:`ConfigDB::number_t` and :cpp:class:`ConfigDB::Number` for details.
-There is also :cpp:class:`ConfigDB::const_number_t` to ease support for format conversion
-at compile time.
-
-
-Enumerated properties
----------------------
-
-.. highlight: json
-
-JsonSchema offers the `enum <https://json-schema.org/understanding-json-schema/reference/enum>`__ keyword to restrict values to a set of known values. For example::
-
-  {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "color": {
-        "type": "string",
-        "enum": [
-          "red",
-          "green",
-          "blue"
-        ]
-      }
-    }
-  }
-
-ConfigDB treats these as an *indexed map*, so *red* has the index 0, *green* is 1 and *blue* 2. Indices are of type *uint8_t*. The example has an intrinsic *minimum* of 0 and *maximum* of 2. As with other numeric properties, attempting to set values outside this range are clipped.
-
-The default is 0 (the first string in the list). If a default value is given in the schema, it must match an item in the *enum* array.
-
-The corresponding `setColor`, `getColor` methods set or retrieve the value as a number. Adding *"ctype": "Color"* to the property will generate an *enum class* definition instead. This is the preferred approach.
-
-The *color* value itself will be stored as a *string* with one of the given values. The *integer* and *number* types are also supported, which can be useful for generating constant lookup tables.
 
 
 API Reference
