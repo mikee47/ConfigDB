@@ -103,7 +103,7 @@ public:
 			update.intArray.addItem(12);
 			REQUIRE_EQ(root.intArray[0], 12);
 			update.intArray[0] = 123;
-			REQUIRE_EQ(root.intArray[0], 123);
+			REQUIRE_EQ(root.intArray[0], 100);
 			Serial << root.intArray << endl;
 		}
 		CHECK_EQ(ConfigDB::Store::getInstanceCount(), 2); // root, root2/root3

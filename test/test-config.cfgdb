@@ -27,12 +27,14 @@
     "simple-float": {
       "type": "number",
       "default": 3.141592654,
-      "maximum": 1.2e21
+      "maximum": 1.2e8
     },
     "int_array": {
       "type": "array",
       "items": {
-        "type": "integer"
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100
       },
       "default": [
         13,
