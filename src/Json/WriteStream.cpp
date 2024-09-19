@@ -64,6 +64,16 @@ bool WriteStream::handleError(FormatError err, const String& arg)
 	return handleError(err, object, arg);
 }
 
+bool WriteStream::openStore(unsigned storeIndex)
+{
+	if(store && database->typeinfo.indexOf(store->propinfo()) == int(storeIndex)) {
+		return true;
+	}
+	store = StoreUpdateRef();
+	store = database->openStoreForUpdate(storeIndex);
+	return bool(store);
+}
+
 bool WriteStream::startElement(const Element& element)
 {
 	if(element.level == 0) {
@@ -80,9 +90,7 @@ bool WriteStream::startElement(const Element& element)
 			return locateStoreOrRoot(element);
 		}
 		// Assume this is a property of the root store
-		store = StoreUpdateRef();
-		store = database->openStoreForUpdate(0);
-		if(!store) {
+		if(!openStore(0)) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
 		}
 		parent = *store;
@@ -144,9 +152,7 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	auto& root = database->typeinfo.stores[0];
 	int i = root.findObject(element.key, element.keyLength);
 	if(i >= 0) {
-		store = StoreUpdateRef();
-		store = database->openStoreForUpdate(0);
-		if(!store) {
+		if(!openStore(0)) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
 		}
 		parent = *store;
@@ -160,10 +166,8 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	if(i < 0) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
-	store = database->openStoreForUpdate(i);
-	if(!store) {
-		auto& type = database->typeinfo.stores[i];
-		return handleError(FormatError::UpdateConflict, type.name);
+	if(!openStore(i)) {
+		return handleError(FormatError::UpdateConflict, element.getKey());
 	}
 	obj = *store;
 	return true;
