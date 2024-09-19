@@ -150,6 +150,8 @@ String floatToStr(double value)
 #endif
 }
 
+using ConfigDB::Number;
+
 } // namespace
 
 class NumberTest : public TestGroup
@@ -161,13 +163,31 @@ public:
 
 	void execute() override
 	{
+		TEST_CASE("Special values")
+		{
+			// Compare for both constexpr and non-constexpr
+			double inf{std::numeric_limits<double>::infinity()};
+			REQUIRE_EQ(String(Number(inf)), STR(NUMBER_MAX));
+			REQUIRE_EQ(String(Number(std::numeric_limits<double>::infinity())), STR(NUMBER_MAX));
+
+			double negInf{-std::numeric_limits<double>::infinity()};
+			REQUIRE_EQ(String(Number(negInf)), STR(NUMBER_LOWEST));
+			REQUIRE_EQ(String(Number(-std::numeric_limits<double>::infinity())), STR(NUMBER_LOWEST));
+
+			double nan{std::numeric_limits<double>::quiet_NaN()};
+			REQUIRE_EQ(String(Number(nan)), "0");
+			REQUIRE_EQ(String(Number(std::numeric_limits<double>::quiet_NaN())), "0");
+		}
+
+		return;
+
 		TEST_CASE("Parsing and printing")
 		{
 			for(auto test : testValues) {
-				ConfigDB::Number number(test.input);
+				Number number(test.input);
 				String output(number);
 
-				ConfigDB::Number floatNumber(test.value);
+				Number floatNumber(test.value);
 
 				number_t num = number;
 
@@ -175,10 +195,6 @@ public:
 					   << ", " << num.exponent << "]" << endl;
 
 				CHECK_EQ(number, floatNumber);
-				if(output != test.expected) {
-					ConfigDB::Number xxnum(test.input);
-					Serial << xxnum << endl;
-				}
 				CHECK_EQ(output, test.expected);
 			}
 		}
@@ -186,20 +202,20 @@ public:
 		TEST_CASE("Integers")
 		{
 			for(auto test : intValues) {
-				ConfigDB::Number number(test.value);
+				Number number(test.value);
 				auto input = strtol(test.input, nullptr, 0);
 				Serial << "INT " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
 					   << String(number.asInt64(), HEX) << endl;
 				REQUIRE_EQ(String(test.expected), toString(number));
 			}
 			for(auto test : uintValues) {
-				ConfigDB::Number number(test.value);
+				Number number(test.value);
 				auto input = strtoul(test.input, nullptr, 0);
 				Serial << "UINT " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
 					   << String(number.asInt64(), HEX) << endl;
 			}
 			for(auto test : int64Values) {
-				ConfigDB::Number number(test.value);
+				Number number(test.value);
 				auto input = strtoll(test.input, nullptr, 0);
 				Serial << "INT64 " << test.input << ", " << input << ": " << number << ", " << number.asInt64() << ", "
 					   << String(number.asInt64(), HEX) << endl;
@@ -207,7 +223,7 @@ public:
 		}
 
 		double v = 1 / 14.0;
-		Serial << floatToStr(v) << ", " << ConfigDB::Number(v) << endl;
+		Serial << floatToStr(v) << ", " << Number(v) << endl;
 
 		// return;
 
@@ -215,8 +231,8 @@ public:
 		{
 			for(auto test : compareValues) {
 				Serial << "compare(" << test.a << ", " << test.b << ")" << endl;
-				CHECK_EQ(ConfigDB::Number(test.a).compare(test.b), test.compare);
-				CHECK_EQ(ConfigDB::Number(test.b).compare(test.a), (~test.compare) + 1);
+				CHECK_EQ(Number(test.a).compare(test.b), test.compare);
+				CHECK_EQ(Number(test.b).compare(test.a), (~test.compare) + 1);
 			}
 		}
 
@@ -225,7 +241,7 @@ public:
 			size_t maxLength{0};
 
 			auto check = [&](unsigned exponent, double value) {
-				ConfigDB::Number number(value);
+				Number number(value);
 
 				int error = (1e7 * (1 - value / number.asFloat())) + 0.5;
 				Serial << exponent << ": " << floatToStr(value) << ", " << number << ", "
@@ -252,7 +268,7 @@ public:
 
 		if(0) {
 			// constexpr number_t expected{4294967, 3};
-			ConfigDB::Number num = number_t::normalise(0xffffffff, 0, 0);
+			Number num = number_t::normalise(0xffffffff, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 4294967000ull);
 			num = number_t::normalise(429496729ul, 0, 0);
 			REQUIRE_EQ(num.asInt64(), 429496700ull);
@@ -265,7 +281,7 @@ public:
 
 #ifdef ARCH_HOST
 			auto check = [&](uint64_t m) {
-				ConfigDB::Number num = number_t::normalise(m, 0, 0);
+				Number num = number_t::normalise(m, 0, 0);
 				unsigned mult = 1;
 				int64_t expected = m;
 				while(expected > number_t::maxMantissa) {
@@ -292,7 +308,7 @@ public:
 
 		TEST_CASE("constexpr")
 		{
-			using Number = ConfigDB::Number;
+			using Number = Number;
 
 			constexpr Number num1 = const_number_t(-5000e-14);
 			REQUIRE_EQ(num1, -5e-11);

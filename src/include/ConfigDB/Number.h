@@ -22,6 +22,7 @@
 #include <WString.h>
 #include <Print.h>
 #include <Data/BitSet.h>
+#include <cmath>
 
 namespace ConfigDB
 {
@@ -254,8 +255,15 @@ struct number_t {
 
 	static constexpr number_t normalise(double mantissa)
 	{
-		if(mantissa == 0) {
+		// Check for special values. NB. NaN values always fail self-compare
+		if(mantissa == 0 || mantissa != mantissa) {
 			return {};
+		}
+		if(mantissa == std::numeric_limits<double>::infinity()) {
+			return max();
+		}
+		if(mantissa == -std::numeric_limits<double>::infinity()) {
+			return lowest();
 		}
 
 		// Pull significant digits into integer part
