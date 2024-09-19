@@ -73,8 +73,19 @@ bool WriteStream::startElement(const Element& element)
 		return true;
 	}
 
+	auto& parent = info[element.level - 1];
+
 	if(database && element.level == 1) {
-		return locateStoreOrRoot(element);
+		if(element.type == Element::Type::Object) {
+			return locateStoreOrRoot(element);
+		}
+		// Assume this is a property of the root store
+		store = StoreUpdateRef();
+		store = database->openStoreForUpdate(0);
+		if(!store) {
+			return handleError(FormatError::UpdateConflict, element.getKey());
+		}
+		parent = *store;
 	}
 
 	// Check for array selector expression
@@ -83,7 +94,6 @@ bool WriteStream::startElement(const Element& element)
 		return handleSelector(element, sel);
 	}
 
-	auto& parent = info[element.level - 1];
 	auto& obj = info[element.level];
 
 	if(parent.typeIs(ObjectType::ObjectArray)) {
@@ -129,10 +139,6 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	auto& parent = info[element.level - 1];
 	auto& obj = info[element.level];
 	obj = {};
-
-	if(element.type != Element::Type::Object) {
-		return handleError(FormatError::BadType, toString(element.type));
-	}
 
 	// Look in root store for a matching object
 	auto& root = database->typeinfo.stores[0];
