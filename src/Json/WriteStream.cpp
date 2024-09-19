@@ -24,13 +24,6 @@ using Element = JSON::Element;
 
 namespace ConfigDB::Json
 {
-WriteStream::~WriteStream()
-{
-	if(database && store) {
-		database->save(*store);
-	}
-}
-
 Status WriteStream::getStatus() const
 {
 	switch(jsonStatus) {
@@ -145,7 +138,7 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	auto& root = database->typeinfo.stores[0];
 	int i = root.findObject(element.key, element.keyLength);
 	if(i >= 0) {
-		store.reset();
+		store = StoreUpdateRef();
 		store = database->openStoreForUpdate(0);
 		if(!store) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
@@ -156,10 +149,7 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	}
 
 	// Now check for a matching store
-	if(store) {
-		database->save(*store);
-	}
-	store.reset();
+	store = StoreUpdateRef();
 	i = database->typeinfo.findStore(element.key, element.keyLength);
 	if(i < 0) {
 		return handleError(FormatError::NotInSchema, element.getKey());

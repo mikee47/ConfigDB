@@ -46,8 +46,6 @@ public:
 	{
 	}
 
-	~WriteStream();
-
 	static Status parse(Database& database, Stream& source);
 
 	static Status parse(Object& object, Stream& source);

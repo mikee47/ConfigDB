@@ -56,7 +56,7 @@ size_t ReadStream::fillStream(Print& p)
 	if(!printer.isDone()) {
 		return n;
 	}
-	store.reset();
+	store = {};
 
 	if(!db) {
 		done = true;
