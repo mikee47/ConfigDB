@@ -74,6 +74,31 @@ See the :sample:`Basic_Config` sample schema. The test application contains furt
 - `Unions`_ can contain any one of a number of user-defined object types, and can be used in object arrays.
 
 
+Aliases
+-------
+
+Properties may have alternative names to support reading legacy datasets. For example::
+
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "trans_fin_interval": {
+        "type":"object",
+        "alias": "transfin_interval",
+        "properties":{
+          "type":"integer"
+        }
+      }
+    }
+  }
+
+Existing JSON data using the old *transfin_interval* name will be accepted during loading.
+When changes are made the new (canonical) name of *trans_fin_interval* will be used.
+
+If multiple aliases are required for a property, provide them as a list.
+
+
 Floating-point numbers
 ~~~~~~~~~~~~~~~~~~~~~~
 

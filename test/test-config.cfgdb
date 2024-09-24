@@ -16,6 +16,7 @@
     },
     "simple-string": {
       "type": "string",
+      "alias": "basic-string",
       "default": "donkey"
     },
     "simple-int": {
@@ -45,6 +46,7 @@
     },
     "string_array": {
       "type": "array",
+      "alias": ["basic_array", "old_array"],
       "items": {
         "type": "string",
         "default": "abc"

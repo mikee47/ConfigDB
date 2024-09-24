@@ -63,6 +63,7 @@ String EnumInfo::getString(uint8_t index) const
 	case PropertyType::Boolean:
 	case PropertyType::Enum:
 	case PropertyType::Object:
+	case PropertyType::Alias:
 		break;
 	}
 	assert(false);
@@ -100,6 +101,7 @@ int EnumInfo::find(const char* value, unsigned length) const
 	case PropertyType::Boolean:
 	case PropertyType::Enum:
 	case PropertyType::Object:
+	case PropertyType::Alias:
 		break;
 	}
 	assert(false);

@@ -41,7 +41,8 @@
 	XX(UInt64, 8)                                                                                                      \
 	XX(Number, 4)                                                                                                      \
 	XX(String, sizeof(StringId))                                                                                       \
-	XX(Object, sizeof(ObjectInfo*))
+	XX(Object, sizeof(ObjectInfo*))                                                                                    \
+	XX(Alias, 0)
 
 namespace ConfigDB
 {
@@ -144,7 +145,7 @@ struct PropertyInfo {
 
 	PropertyType type;
 	const FlashString& name;
-	uint32_t offset; ///< Location of property data in parent object
+	uint32_t offset; ///< Location of property data in parent object, OR Alias property index
 	Variant variant;
 
 	static const PropertyInfo empty;

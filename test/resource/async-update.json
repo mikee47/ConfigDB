@@ -1,1 +1,1 @@
-{"int_array":[127,1],"string_array":["go","away"],"object_array":[{"intval":1,"stringval":"biscuit"},{"intval":2,"stringval":"cake"}],"color":"green","simple-bool":true,"simple-string":"gorilla","simple-int":123,"simple-float":35e10}
+{"int_array":[127,1],"old_array":["go","away"],"object_array":[{"intval":1,"stringval":"biscuit"},{"intval":2,"stringval":"cake"}],"color":"green","simple-bool":true,"basic-string":"gorilla","simple-int":123,"simple-float":35e10}
