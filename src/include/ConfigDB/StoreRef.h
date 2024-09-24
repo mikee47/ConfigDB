@@ -37,6 +37,9 @@ public:
 	~StoreRef();
 
 	explicit operator bool() const;
+
+private:
+	using shared_ptr::reset;
 };
 
 class StoreUpdateRef : public StoreRef

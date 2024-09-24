@@ -1,0 +1,1 @@
+{"int_array":[100,1],"string_array":["go","away"],"object_array":[{"intval":1,"stringval":"biscuit"},{"intval":2,"stringval":"cake"}],"color":"green","simple-bool":true,"simple-string":"gorilla","simple-int":100,"simple-float":1.2e8}

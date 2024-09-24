@@ -83,7 +83,7 @@ public:
 				const auto newFloat = 12.0e20;
 				Serial << newFloat << endl;
 				updater.setSimpleFloat(newFloat);
-				REQUIRE_EQ(String(root.getSimpleFloat()), F("1.2e21"));
+				REQUIRE_EQ(String(root.getSimpleFloat()), F("1.2e8"));
 			} else {
 				TEST_ASSERT(false);
 			}

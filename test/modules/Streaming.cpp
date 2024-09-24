@@ -37,6 +37,8 @@ namespace json
 IMPORT_FSTR_LOCAL(update1, PROJECT_DIR "/resource/update1.json")
 IMPORT_FSTR_LOCAL(root1, PROJECT_DIR "/resource/root1.json")
 IMPORT_FSTR_LOCAL(array_test_default, PROJECT_DIR "/resource/array_test_default.json")
+IMPORT_FSTR_LOCAL(async_update, PROJECT_DIR "/resource/async-update.json")
+IMPORT_FSTR_LOCAL(async_update_result, PROJECT_DIR "/resource/async-update-result.json")
 } // namespace json
 
 class StreamingTest : public TestGroup
@@ -50,7 +52,9 @@ public:
 	void execute() override
 	{
 		general();
+		importExport();
 		arrays();
+		importAsync();
 	}
 
 	void general()
@@ -81,17 +85,20 @@ public:
 			REQUIRE_EQ(exportObject(root), json::root1);
 			REQUIRE_EQ(exportObject(database), json::root1);
 		}
+	}
 
+	void importExport()
+	{
 		/* Streaming objects */
 		resetDatabase();
 
 		TEST_CASE("Streaming object import")
 		{
+			TestConfig::Root root(database);
 			if(auto updater = root.update()) {
-				MemoryDataStream mem;
-				mem << json::update1;
+				FlashMemoryStream source(json::update1);
 				auto stream = updater.createImportStream(ConfigDB::Json::format);
-				REQUIRE_EQ(stream->copyFrom(&mem), json::update1.length());
+				REQUIRE_EQ(stream->copyFrom(&source), json::update1.length());
 				REQUIRE_EQ(root.getSimpleBool(), true);
 			} else {
 				TEST_ASSERT(false);
@@ -100,12 +107,57 @@ public:
 
 		TEST_CASE("Streaming object export")
 		{
+			TestConfig::Root root(database);
 			MemoryDataStream mem;
 			auto stream = root.createExportStream(ConfigDB::Json::format);
 			mem.copyFrom(stream.get());
 			String content;
 			mem.moveString(content);
 			REQUIRE_EQ(content, json::root1);
+		}
+
+		TEST_CASE("Streaming database import")
+		{
+			resetDatabase();
+			FlashMemoryStream source(json::update1);
+			auto stream = database.createImportStream(ConfigDB::Json::format);
+			REQUIRE_EQ(stream->copyFrom(&source), json::update1.length());
+			stream.reset();
+			TestConfig::Root root(database);
+			REQUIRE_EQ(root.getSimpleBool(), true);
+		}
+	}
+
+	void importAsync()
+	{
+		TEST_CASE("Streaming object import (async)")
+		{
+			importStream = database.createImportStream(ConfigDB::Json::format);
+			importSource = std::make_unique<FlashMemoryStream>(json::async_update);
+
+			importTimer.initializeMs<500>([this]() { importAsyncPart(); });
+			importTimer.start();
+
+			pending();
+		}
+	}
+
+	void importAsyncPart()
+	{
+		if(!importStream) {
+			TestConfig::Root root(database);
+			Serial << root << endl;
+			CHECK_EQ(exportObject(root), json::async_update_result);
+			complete();
+			return;
+		}
+
+		uint8_t buffer[55];
+		auto len = importSource->readBytes(buffer, sizeof(buffer));
+		m_printHex("importSource", buffer, len, 0);
+		importStream->write(buffer, len);
+		if(len < sizeof(buffer)) {
+			importStream.reset();
 		}
 	}
 
@@ -142,6 +194,11 @@ public:
 			root.clearDirty();
 		}
 	}
+
+private:
+	std::unique_ptr<ConfigDB::ImportStream> importStream;
+	std::unique_ptr<IDataSourceStream> importSource;
+	Timer importTimer;
 };
 
 void REGISTER_TEST(Streaming)

@@ -46,8 +46,6 @@ public:
 	{
 	}
 
-	~WriteStream();
-
 	static Status parse(Database& database, Stream& source);
 
 	static Status parse(Object& object, Stream& source);
@@ -101,6 +99,7 @@ private:
 		return true;
 	}
 
+	bool openStore(unsigned storeIndex);
 	bool locateStoreOrRoot(const JSON::Element& element);
 	bool handleSelector(const JSON::Element& element, const char* sel);
 	bool setProperty(const JSON::Element& element, Object& object, Property prop);
