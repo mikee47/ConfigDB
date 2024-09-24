@@ -143,6 +143,7 @@ class Property:
     ctype_override: str
     property_type: str
     default: str | int
+    alias: str | list[str] | None
     enum: list
     enum_type: str = None
     enum_ctype: str = None
@@ -160,6 +161,7 @@ class Property:
         self.default = fields.get('default')
         self.ctype = CPP_TYPENAMES[self.ptype]
         self.property_type = self.ptype.capitalize()
+        self.alias = fields.get('alias')
 
         if self.ptype == 'integer':
             int32 = IntRange(0, 0, True, 32)
@@ -246,9 +248,10 @@ class Property:
 class Object:
     parent: 'Object'
     name: str
+    ref: Object | None
+    alias: str | list[str] | None
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
-    ref: Object | None = None
 
     @property
     def is_store(self):
@@ -546,9 +549,9 @@ def load_config(filename: str) -> Database:
     '''Load, validate and parse schema into python objects'''
     config = load_schema(filename)
     dbname = os.path.splitext(os.path.basename(filename))[0]
-    database = Database(None, dbname, properties=config['properties'], definitions=config.get('$defs'))
+    database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
     database.include = config.get('include', [])
-    root = Object(database, '')
+    root = Object(database, '', None, None)
     database.children.append(root)
 
     def parse_properties(parent: Object, properties: dict):
@@ -574,12 +577,12 @@ def load_config(filename: str) -> Database:
     def parse_object(parent: Object, key: str, fields: dict) -> Object:
         ref, fields = resolve_ref(fields, database)
         prop_type = get_ptype(fields)
+        alias = fields.get('alias')
 
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key)
-            obj.ref = ref
+            obj = Object(parent, key, ref, alias)
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
@@ -590,13 +593,12 @@ def load_config(filename: str) -> Database:
             if items_type in ['object', 'union']:
                 if 'default' in fields:
                     raise ValueError('ObjectArray default not supported')
-                arr = ObjectArray(parent, key)
-                arr.ref = ref
+                arr = ObjectArray(parent, key, ref, alias)
                 database.object_defs[arr.typename] = arr
                 arr.items = database.object_defs.get(item_ref)
                 if arr.items and arr.items.ref:
                     return arr
-                arr.items = Object(arr, item_ref or f'{arr.typename}Item')
+                arr.items = Object(arr, item_ref or f'{arr.typename}Item', None, None)
                 arr.items.ref = item_ref
                 database.object_defs[arr.items.typename] = arr.items
                 if items_type == 'union':
@@ -606,7 +608,7 @@ def load_config(filename: str) -> Database:
                 return arr
 
             # Simple array
-            arr = Array(parent, key)
+            arr = Array(parent, key, ref, alias)
             parse_properties(arr, {'items': items})
             assert len(arr.properties) == 1
             arr.items = arr.properties[0]
@@ -617,8 +619,7 @@ def load_config(filename: str) -> Database:
         if prop_type == 'union':
             if 'default' in fields:
                 raise ValueError('Union default not supported')
-            union = Union(parent, key)
-            union.ref = ref
+            union = Union(parent, key, ref, alias)
             database.object_defs[union.typename] = union
             for opt in fields['oneOf']:
                 ref, opt = resolve_ref(opt, database)
@@ -880,6 +881,21 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         return ''
 
     proplist = []
+    aliaslist = []
+
+    def add_alias(alias: str | list):
+        if alias is None:
+            return
+        if isinstance(alias, str):
+            aliaslist.append([
+                f'.type = PropertyType::Alias',
+                f'.name = {strings[alias]}',
+                f'.offset = {len(proplist) - 1}'
+            ])
+        if isinstance(alias, list):
+            for x in alias:
+                add_alias(x)
+
     offset = 0
 
     objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
@@ -890,6 +906,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             f'.offset = {offset}',
             f'.variant = {{.object = &{child.namespace}::{child.typename_contained}::typeinfo}}'
         ]]
+        add_alias(child.alias)
         if not obj.is_union:
             offset += child.data_size
 
@@ -908,6 +925,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             f'.offset = {offset}',
             '.variant = {' + getVariantInfo(prop) + '}'
         ]]
+        add_alias(prop.alias)
         offset += prop.data_size
 
     # Generate array default data
@@ -951,10 +969,11 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
             f'.objectCount = {len(objinfo)}',
             f'.propertyCount = {len(proplist) - len(objinfo)}',
+            f'.aliasCount = {len(aliaslist)}'
         ]),
         [
             '.propinfo = {',
-            *(make_static_initializer(prop, ',') for prop in proplist),
+            *(make_static_initializer(prop, ',') for prop in proplist + aliaslist),
             '}'
         ],
         '};'

@@ -42,7 +42,8 @@ int ObjectInfo::findObject(const char* name, size_t length) const
 			return i;
 		}
 	}
-	return -1;
+	int i = findAlias(name, length);
+	return (i < int(objectCount)) ? i : -1;
 }
 
 int ObjectInfo::findProperty(const char* name, size_t length) const
@@ -50,6 +51,17 @@ int ObjectInfo::findProperty(const char* name, size_t length) const
 	for(unsigned i = 0; i < propertyCount; ++i) {
 		if(propinfo[objectCount + i].name.equals(name, length)) {
 			return i;
+		}
+	}
+	return findAlias(name, length) - objectCount;
+}
+
+int ObjectInfo::findAlias(const char* name, size_t length) const
+{
+	for(unsigned i = 0; i < aliasCount; ++i) {
+		auto& prop = propinfo[objectCount + propertyCount + i];
+		if(prop.name.equals(name, length)) {
+			return prop.offset;
 		}
 	}
 	return -1;

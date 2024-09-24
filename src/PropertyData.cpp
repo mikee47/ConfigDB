@@ -48,6 +48,7 @@ String PropertyData::getString(const PropertyInfo& info) const
 		return String(number);
 	case PropertyType::String:
 	case PropertyType::Object:
+	case PropertyType::Alias:
 		break;
 	}
 	assert(false);
@@ -94,6 +95,7 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		string = src.string;
 		break;
 	case PropertyType::Object:
+	case PropertyType::Alias:
 		assert(false);
 		break;
 	}
@@ -140,6 +142,7 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 	case PropertyType::Enum:
 	case PropertyType::String:
 	case PropertyType::Object:
+	case PropertyType::Alias:
 		break;
 	}
 	assert(false);

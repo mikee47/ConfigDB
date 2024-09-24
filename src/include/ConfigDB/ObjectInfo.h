@@ -42,6 +42,7 @@ struct ObjectInfo {
 	uint32_t structSize;
 	uint32_t objectCount;
 	uint32_t propertyCount;
+	uint32_t aliasCount;
 	const PropertyInfo propinfo[];
 
 	static const ObjectInfo empty;
@@ -68,6 +69,9 @@ struct ObjectInfo {
 		assert(index < propertyCount);
 		return (index < propertyCount) ? propinfo[objectCount + index] : PropertyInfo::empty;
 	}
+
+private:
+	int findAlias(const char* name, size_t length) const;
 };
 
 } // namespace ConfigDB
