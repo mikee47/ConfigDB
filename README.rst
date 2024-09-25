@@ -33,7 +33,7 @@ Usage:
 JsonSchema
 ----------
 
-The database structure is defined using a standard `JSON schema <https://json-schema.org>`.
+The database structure is defined using a standard `JSON schema <https://json-schema.org>`. A good introduction is to take the `Tour <https://tour.json-schema.org/>`__.
 
 An initial schema can be created from an existing sample JSON configuration file using a generation tool such as https://github.com/saasquatch/json-schema-inferrer. Go to the online demo and paste in your JSON configuration. The resulting schema can then be edited and further customised.
 
@@ -54,6 +54,12 @@ Configuration JSON can be validated against the **.cfgdb** schema files using **
   pip install check-jsonschema
   check-jsonschema --schemafile basic-config.cfgdb sample-config.json
 
+Separate documentation can be generated from JSON Schema using various tools such as `JSON Schema for Humans <https://coveooss.github.io/json-schema-for-humans/>`__.
+For example::
+
+  python -m pip install json-schema-for-humans
+  generate-schema-doc basic-config.cfgdb basic-config.md --config template_name=md
+
 
 Schema rules
 ------------
@@ -72,6 +78,8 @@ See the :sample:`Basic_Config` sample schema. The test application contains furt
   Such definitions must be contained within the **$defs** section of the schema.
 - `Arrays`_ of simple types (including Strings) or objects are supported.
 - `Unions`_ can contain any one of a number of user-defined object types, and can be used in object arrays.
+- Null values are not supported. If encountered in existing datasets then ConfigDB uses the default value for the property.
+- Multiple property types, such as *"type": ["boolean", "null"]* are not supported. A type must be defined for all properties and must be a string value. This also applies to array items.
 
 
 Aliases
