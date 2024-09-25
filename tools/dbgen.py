@@ -1103,6 +1103,11 @@ def generate_property_write_accessors(obj: Object) -> list:
         f'void set{prop.typename}({get_ctype(prop)} value)',
         '{',
         [f'setPropertyValue({index}, {get_value_expr(prop)});'],
+        '}',
+        '',
+        f'void reset{prop.typename}()',
+        '{',
+        [f'setPropertyValue({index}, nullptr);'],
         '}'
         ) for index, prop in enumerate(obj.properties))]
 
