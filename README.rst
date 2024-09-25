@@ -414,8 +414,8 @@ For example:
 - Both of these classes provide *read-only* access to the data via `getXXX` methods.
 - Outer classes contain a :cpp:class:`ConfigDB::StoreRef`, whereas contained classes do not (they obtain the store from their parent object).
 - Application code can instantiate the *outer* class directly **BasicConfig::Network network(database);**
-- Child objects within classes are defined as member variables, such as **network.mqtt**, which is a **ContainedMqtt** class instance.
-- A third *updater* class type is also generated which adds *setXXX* methods for changing values.
+- Child objects within classes are defined as read-only member variables, such as **network.mqtt**, which is a **ContainedMqtt** class instance.
+- A third *updater* class type is also generated which adds *setXXX* and *resetXXX* methods for changing values. Child objects/arrays can be updated using their provided methods.
 - Only one *updater* per store can be open at a time. This ensures consistent data updates.
 
 

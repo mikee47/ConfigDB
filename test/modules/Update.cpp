@@ -48,6 +48,8 @@ public:
 				// Check clipping
 				updater.setSimpleInt(101);
 				REQUIRE_EQ(root.getSimpleInt(), 100);
+				updater.resetSimpleInt();
+				REQUIRE_EQ(root.getSimpleInt(), -1);
 				updater.setSimpleInt(-6);
 				REQUIRE_EQ(root.getSimpleInt(), -5);
 			} else {
@@ -75,8 +77,9 @@ public:
 
 		TEST_CASE("Number")
 		{
+			DEFINE_FSTR_LOCAL(floatDefault, "3.1415927")
 			auto f = root.getSimpleFloat();
-			REQUIRE_EQ(String(f), "3.1415927");
+			REQUIRE_EQ(String(f), floatDefault);
 
 			// Change value
 			if(auto updater = root.update()) {
@@ -84,6 +87,8 @@ public:
 				Serial << newFloat << endl;
 				updater.setSimpleFloat(newFloat);
 				REQUIRE_EQ(String(root.getSimpleFloat()), F("1.2e8"));
+				updater.resetSimpleFloat();
+				REQUIRE_EQ(String(root.getSimpleFloat()), floatDefault);
 			} else {
 				TEST_ASSERT(false);
 			}
