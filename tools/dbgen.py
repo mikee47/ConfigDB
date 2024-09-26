@@ -565,7 +565,7 @@ def load_config(filename: str) -> Database:
             # Objects with 'store' annoation are managed by database, otherwise they live in root object
             if 'store' in fields:
                 if parent is not root:
-                    raise ValueError(f'{key} cannot have "store", not a root object')
+                    raise ValueError(f'{key} cannot have "store" annotation, not a root object')
                 obj = database
             else:
                 obj = parent
@@ -586,6 +586,9 @@ def load_config(filename: str) -> Database:
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
+
+        if 'store' in fields:
+            raise ValueError(f'"{key}" cannot have "store" annotation, not an object')
 
         if prop_type == 'array':
             item_ref, items = resolve_ref(fields['items'], database)
