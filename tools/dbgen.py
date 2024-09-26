@@ -572,10 +572,10 @@ def load_config(filename: str) -> Database:
                 obj.children.append(child)
 
     def parse_object(parent: Object, key: str, fields: dict) -> Object:
+        is_store = ('store' in fields)
         ref, fields = resolve_ref(fields, database)
         prop_type = get_ptype(fields)
         alias = fields.get('alias')
-        is_store = ('store' in fields)
 
         if prop_type == 'object':
             if 'default' in fields:

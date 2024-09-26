@@ -149,6 +149,17 @@ public:
 			REQUIRE_EQ(arrayPool.getCount(), arrayCount);
 			REQUIRE_EQ(exportObject(color3), defaults);
 		}
+
+		TEST_CASE("Union as store")
+		{
+			TestConfigUnion::UnionStore us(db);
+			if(auto upd = us.update()) {
+				upd.toRAW();
+			} else {
+				TEST_ASSERT(false);
+			}
+			Serial << "unionStore: " << us << endl;
+		}
 	}
 };
 
