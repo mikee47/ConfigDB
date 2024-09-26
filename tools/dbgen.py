@@ -1271,19 +1271,17 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
 
     typename = obj.typename_updater if is_updater else obj.typename_contained
     parent_typename = obj.parent.typename_updater if is_updater else obj.parent.typename_contained
-    headers = []
-    if not obj.is_item_member:
-        headers = [
-            '',
-            f'{typename}() = default;',
-            '',
-            f'{typename}(ConfigDB::Store& store, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
-                f'{obj.base_class}{template}(store, prop, offset)',
-                *children
-            ]),
-            '{',
-            '}',
-        ]
+    headers = [
+        '',
+        f'{typename}() = default;',
+        '',
+        f'{typename}(ConfigDB::Object& parent, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
+            f'{obj.base_class}{template}(parent, prop, offset)',
+            *children
+        ]),
+        '{',
+        '}',
+    ]
 
     if not obj.is_root:
         headers += [
