@@ -250,12 +250,9 @@ class Object:
     name: str
     ref: Object | None
     alias: str | list[str] | None
+    is_store: bool = False
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
-
-    @property
-    def is_store(self):
-        return isinstance(self.parent, Database)
 
     @property
     def store(self):
@@ -333,7 +330,7 @@ class Object:
 
     @property
     def is_root(self):
-        return isinstance(self.parent, Database)
+        return self in self.database.children
 
     @property
     def is_array(self):
@@ -551,7 +548,7 @@ def load_config(filename: str) -> Database:
     dbname = os.path.splitext(os.path.basename(filename))[0]
     database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
     database.include = config.get('include', [])
-    root = Object(database, '', None, None)
+    root = Object(database, '', None, None, is_store = True)
     database.children.append(root)
 
     def parse_properties(parent: Object, properties: dict):
@@ -582,7 +579,7 @@ def load_config(filename: str) -> Database:
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key, ref, alias)
+            obj = Object(parent, key, ref, alias, is_store = ('store' in fields))
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
@@ -967,7 +964,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            '.type = ObjectType::' + ('Store' if obj.is_root else obj.classname),
+            '.type = ObjectType::' + ('Store' if obj.is_store else obj.classname),
             f'.defaultData = {defaultData}',
             '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
             f'.objectCount = {len(objinfo)}',
