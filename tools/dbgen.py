@@ -250,12 +250,9 @@ class Object:
     name: str
     ref: Object | None
     alias: str | list[str] | None
+    is_store: bool = False
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
-
-    @property
-    def is_store(self):
-        return isinstance(self.parent, Database)
 
     @property
     def store(self):
@@ -316,7 +313,7 @@ class Object:
         while obj:
             if not isinstance(obj, ObjectArray):
                 ns.insert(0, obj.typename_contained)
-            obj = obj.parent
+            obj = obj.database if obj.ref else obj.parent
         return '::'.join(ns)
 
     @property
@@ -333,7 +330,7 @@ class Object:
 
     @property
     def is_root(self):
-        return isinstance(self.parent, Database)
+        return self in self.database.children
 
     @property
     def is_array(self):
@@ -551,7 +548,7 @@ def load_config(filename: str) -> Database:
     dbname = os.path.splitext(os.path.basename(filename))[0]
     database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
     database.include = config.get('include', [])
-    root = Object(database, '', None, None)
+    root = Object(database, '', None, None, is_store = True)
     database.children.append(root)
 
     def parse_properties(parent: Object, properties: dict):
@@ -565,7 +562,7 @@ def load_config(filename: str) -> Database:
             # Objects with 'store' annoation are managed by database, otherwise they live in root object
             if 'store' in fields:
                 if parent is not root:
-                    raise ValueError(f'{key} cannot have "store", not a root object')
+                    raise ValueError(f'{key} cannot have "store" annotation, not a root object')
                 obj = database
             else:
                 obj = parent
@@ -582,10 +579,13 @@ def load_config(filename: str) -> Database:
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key, ref, alias)
+            obj = Object(parent, key, ref, alias, is_store = ('store' in fields))
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
+
+        if 'store' in fields:
+            raise ValueError(f'"{key}" cannot have "store" annotation, not an object')
 
         if prop_type == 'array':
             item_ref, items = resolve_ref(fields['items'], database)
@@ -964,7 +964,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            '.type = ObjectType::' + ('Store' if obj.is_root else obj.classname),
+            '.type = ObjectType::' + ('Store' if obj.is_store else obj.classname),
             f'.defaultData = {defaultData}',
             '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
             f'.objectCount = {len(objinfo)}',
@@ -1271,17 +1271,17 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
 
     typename = obj.typename_updater if is_updater else obj.typename_contained
     parent_typename = obj.parent.typename_updater if is_updater else obj.parent.typename_contained
-    headers = []
-    if not obj.is_item_member:
-        headers = [
-            '',
-            f'{typename}(ConfigDB::Store& store, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
-                f'{obj.base_class}{template}(store, prop, offset)',
-                *children
-            ]),
-            '{',
-            '}',
-        ]
+    headers = [
+        '',
+        f'{typename}() = default;',
+        '',
+        f'{typename}(ConfigDB::Object& parent, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
+            f'{obj.base_class}{template}(parent, prop, offset)',
+            *children
+        ]),
+        '{',
+        '}',
+    ]
 
     if not obj.is_root:
         headers += [

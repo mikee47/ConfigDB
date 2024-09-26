@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$comment": "Schema with complex nested definitions, just check it compiles OK",
+  "type": "object",
+  "properties": {
+    "presets": {
+      "type": "object",
+      "store": true,
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "color": {
+                "$ref": "#/$defs/Color"
+              },
+              "ts": {
+                "type": "integer"
+              },
+              "id": {
+                "type": "integer"
+              },
+              "favorite": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "controllers": {
+      "type": "object",
+      "store": true,
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "ip": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "last-seen": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "scenes": {
+      "type": "object",
+      "store": true,
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "settings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "controller_id": {
+                      "type": "integer"
+                    },
+                    "color": {
+                      "$ref": "#/$defs/Color"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "RAW": {
+      "type": "object",
+      "properties": {
+        "ww": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "r": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "b": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "cw": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "g": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1023
+        },
+        "nested-color": {
+          "$comment": "This is the 'complex nested definition'",
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "HSV": {
+      "type": "object",
+      "properties": {
+        "s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "v": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "h": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 359
+        }
+      }
+    },
+    "Color": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/HSV"
+        },
+        {
+          "$ref": "#/$defs/RAW"
+        }
+      ]
+    },
+    "Channel": {
+      "type": "object",
+      "properties": {
+        "pin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
