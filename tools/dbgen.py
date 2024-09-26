@@ -1275,6 +1275,8 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
     if not obj.is_item_member:
         headers = [
             '',
+            f'{typename}() = default;',
+            '',
             f'{typename}(ConfigDB::Store& store, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
                 f'{obj.base_class}{template}(store, prop, offset)',
                 *children
