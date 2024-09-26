@@ -22,7 +22,6 @@
 #include "PropertyInfo.h"
 
 #define CONFIGDB_OBJECT_TYPE_MAP(XX)                                                                                   \
-	XX(Store)                                                                                                          \
 	XX(Object)                                                                                                         \
 	XX(Array)                                                                                                          \
 	XX(ObjectArray)                                                                                                    \

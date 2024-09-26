@@ -93,7 +93,7 @@ public:
 	 */
 	bool isStore() const
 	{
-		return typeinfo().type == ObjectType::Store && !parent;
+		return !parent;
 	}
 
 	Store& getStore();

@@ -26,7 +26,14 @@ uint8_t Store::instanceCount;
 Store::Store(Database& db, const PropertyInfo& propinfo)
 	: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(propinfo.variant.object->structSize))
 {
-	memcpy_P(rootData.get(), propinfo.variant.object->defaultData, propinfo.variant.object->structSize);
+	auto& obj = *propinfo.variant.object;
+	if(obj.defaultData) {
+		memcpy_P(rootData.get(), obj.defaultData, obj.structSize);
+	}
+	if(obj.type == ObjectType::Array) {
+		auto id = arrayPool.add(obj);
+		memcpy(rootData.get(), &id, sizeof(id));
+	}
 	++instanceCount;
 	CFGDB_DEBUG(" %u", instanceCount)
 }

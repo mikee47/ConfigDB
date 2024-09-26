@@ -46,7 +46,10 @@
     },
     "string_array": {
       "type": "array",
-      "alias": ["basic_array", "old_array"],
+      "alias": [
+        "basic_array",
+        "old_array"
+      ],
       "items": {
         "type": "string",
         "default": "abc"
@@ -67,6 +70,25 @@
           },
           "stringval": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "array-store": {
+      "type": "array",
+      "store": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "object-array-store": {
+      "type": "array",
+      "store": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "integer"
           }
         }
       }

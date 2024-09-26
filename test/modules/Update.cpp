@@ -164,6 +164,28 @@ public:
 			}
 			Serial << root.objectArray << endl;
 		}
+
+		TEST_CASE("Array as store")
+		{
+			TestConfig::ArrayStore arrayStore(database);
+			if(auto upd = arrayStore.update()) {
+				for(unsigned i = 0; i < 10; ++i) {
+					upd.addItem(F("hello ") + i);
+				}
+			}
+			Serial << "arrayStore: " << arrayStore << endl;
+		}
+
+		TEST_CASE("Object Array as store")
+		{
+			TestConfig::ObjectArrayStore arrayStore(database);
+			if(auto upd = arrayStore.update()) {
+				for(unsigned i = 0; i < 10; ++i) {
+					upd.addItem().setValue(i);
+				}
+			}
+			Serial << "arrayStore: " << arrayStore << endl;
+		}
 	}
 };
 
