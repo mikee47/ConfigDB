@@ -316,7 +316,7 @@ class Object:
         while obj:
             if not isinstance(obj, ObjectArray):
                 ns.insert(0, obj.typename_contained)
-            obj = obj.parent
+            obj = obj.database if obj.ref else obj.parent
         return '::'.join(ns)
 
     @property
