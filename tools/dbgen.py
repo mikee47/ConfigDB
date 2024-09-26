@@ -548,7 +548,7 @@ def load_config(filename: str) -> Database:
     dbname = os.path.splitext(os.path.basename(filename))[0]
     database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
     database.include = config.get('include', [])
-    root = Object(database, '', None, None, is_store = True)
+    root = Object(database, '', None, None, is_store=True)
     database.children.append(root)
 
     def parse_properties(parent: Object, properties: dict):
@@ -580,7 +580,7 @@ def load_config(filename: str) -> Database:
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key, ref, alias, is_store=is_store)
+            obj = Object(parent, key, ref, alias, is_store)
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
@@ -591,7 +591,7 @@ def load_config(filename: str) -> Database:
             if items_type in ['object', 'union']:
                 if 'default' in fields:
                     raise ValueError('ObjectArray default not supported')
-                arr = ObjectArray(parent, key, ref, alias, is_store=is_store)
+                arr = ObjectArray(parent, key, ref, alias, is_store)
                 database.object_defs[arr.typename] = arr
                 arr.items = database.object_defs.get(item_ref)
                 if arr.items and arr.items.ref:
@@ -606,7 +606,7 @@ def load_config(filename: str) -> Database:
                 return arr
 
             # Simple array
-            arr = Array(parent, key, ref, alias, is_store=is_store)
+            arr = Array(parent, key, ref, alias, is_store)
             parse_properties(arr, {'items': items})
             assert len(arr.properties) == 1
             arr.items = arr.properties[0]
@@ -617,7 +617,7 @@ def load_config(filename: str) -> Database:
         if prop_type == 'union':
             if 'default' in fields:
                 raise ValueError('Union default not supported')
-            union = Union(parent, key, ref, alias, is_store=is_store)
+            union = Union(parent, key, ref, alias, is_store)
             database.object_defs[union.typename] = union
             for opt in fields['oneOf']:
                 ref, opt = resolve_ref(opt, database)
