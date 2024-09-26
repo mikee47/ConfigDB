@@ -169,9 +169,12 @@ public:
 		{
 			TestConfig::ArrayStore arrayStore(database);
 			if(auto upd = arrayStore.update()) {
-				for(unsigned i = 0; i < 10; ++i) {
+				upd.clear();
+				for(unsigned i = 0; i < 5; ++i) {
 					upd.addItem(F("hello ") + i);
 				}
+			} else {
+				TEST_ASSERT(false);
 			}
 			Serial << "arrayStore: " << arrayStore << endl;
 		}
@@ -180,9 +183,12 @@ public:
 		{
 			TestConfig::ObjectArrayStore arrayStore(database);
 			if(auto upd = arrayStore.update()) {
-				for(unsigned i = 0; i < 10; ++i) {
+				upd.clear();
+				for(unsigned i = 0; i < 5; ++i) {
 					upd.addItem().setValue(i);
 				}
+			} else {
+				TEST_ASSERT(false);
 			}
 			Serial << "arrayStore: " << arrayStore << endl;
 		}
