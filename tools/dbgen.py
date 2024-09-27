@@ -573,9 +573,9 @@ def load_config(filename: str) -> Database:
 
     def parse_object(parent: Object, key: str, fields: dict) -> Object:
         is_store = ('store' in fields)
+        alias = fields.get('alias')
         ref, fields = resolve_ref(fields, database)
         prop_type = get_ptype(fields)
-        alias = fields.get('alias')
 
         if prop_type == 'object':
             if 'default' in fields:
