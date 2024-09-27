@@ -248,7 +248,7 @@ class Property:
 class Object:
     parent: 'Object'
     name: str
-    ref: Object | None
+    ref: str | None
     alias: str | list[str] | None
     is_store: bool = False
     properties: list[Property] = field(default_factory=list)
