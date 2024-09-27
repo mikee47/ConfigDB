@@ -253,6 +253,7 @@ class Object:
     ref: str | None
     alias: str | list[str] | None
     is_store: bool = False
+    is_external: bool = False
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
 
@@ -414,6 +415,7 @@ class Database(Object):
     strings: StringTable = StringTable()
     definitions: dict = None
     object_defs: dict[Object] = field(default_factory=dict)
+    object_refs: dict[str] = field(default_factory=dict)
     forward_decls: set[str] = None
 
     @property
@@ -513,16 +515,29 @@ def resolve_ref(fields: dict, db: Database) -> tuple[str, dict]:
     ref = fields.get('$ref')
     if not ref:
         return None, fields
-    if not db.definitions:
-        raise ValueError('Schema missing definitions')
     prefix = '#/$defs/'
     resolved_fields = None
     if ref.startswith(prefix):
+        # Internal reference
         ref = ref[len(prefix):]
+        if not db.definitions:
+            raise ValueError('Schema missing definitions')
         resolved_fields = db.definitions.get(ref)
-    if resolved_fields is None:
-        raise ValueError('Cannot resolve ' + ref)
-    return ref, resolved_fields
+        if resolved_fields is None:
+            raise ValueError('Cannot resolve ' + ref)
+        return ref, resolved_fields
+
+    # External reference
+    schema, _, ref = ref.partition('/')
+    existing_schema = db.object_refs.get(ref)
+    if existing_schema:
+        if existing_schema != schema:
+            raise ValueError(f'Ref "{ref}" already defined in schema "{existing_schema}"')
+    else:
+        db.object_refs[ref] = schema
+        assert ref not in db.object_defs
+        db.object_defs[ref] = Object(db, ref, ref, None, is_external=True)
+    return ref, {'type':'object', 'external': True}
 
 
 def resolve_prop_ref(fields: dict, db: Database) -> None:
@@ -532,6 +547,11 @@ def resolve_prop_ref(fields: dict, db: Database) -> None:
         return
 
     fields['ref'] = ref
+
+    # External reference?
+    if resolved_fields is None:
+        fields['type'] = 'object'
+        return
 
     # Object definitions are used as-is
     if get_ptype(resolved_fields) in ['object', 'union']:
@@ -581,7 +601,7 @@ def parse_schema(dbname: str, config: dict) -> Database:
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key, ref, alias, is_store)
+            obj = Object(parent, key, ref, alias, is_store, is_external = fields.get('external', False))
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
@@ -643,9 +663,19 @@ def generate_database(db: Database) -> CodeLines:
         'ContainedRoot',
         'RootUpdater'
     }
+    external_defs = []
     for obj in db.object_defs.values():
         if obj.ref:
-            db.forward_decls |= {obj.typename_contained, obj.typename_updater}
+            if obj.is_external:
+                schema = db.object_refs[obj.ref]
+                db.include.append(f'{schema}.h')
+                ns = make_typename(schema)
+                external_defs += [
+                    f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
+                    f'using {obj.typename_updater} = {ns}::{obj.typename_updater};',
+                ]
+            else:
+                db.forward_decls |= {obj.typename_contained, obj.typename_updater}
 
     lines = CodeLines(
         [
@@ -659,6 +689,7 @@ def generate_database(db: Database) -> CodeLines:
             '{',
             'public:',
             [
+                *external_defs,
                 *(f'class {name};' for name in db.forward_decls),
                 '',
                 'static const ConfigDB::DatabaseInfo typeinfo;',
@@ -691,7 +722,10 @@ def generate_database(db: Database) -> CodeLines:
 
     for obj in reversed(db.object_defs.values()):
         if obj.ref:
-            lines.append(generate_object(obj))
+            if obj.is_external:
+                pass
+            else:
+                lines.append(generate_object(obj))
 
     for store in db.children:
         if not store.ref:
