@@ -37,7 +37,6 @@ void Object::clear()
 	case ObjectType::ObjectArray:
 		static_cast<ArrayBase*>(this)->clear();
 		break;
-	case ObjectType::Store:
 	case ObjectType::Object:
 		disposeArrays();
 		if(info.defaultData) {
@@ -58,7 +57,6 @@ void Object::disposeArrays()
 	auto& info = typeinfo();
 
 	switch(info.type) {
-	case ObjectType::Store:
 	case ObjectType::Object: {
 		auto n = getObjectCount();
 		for(unsigned i = 0; i < n; ++i) {
@@ -87,7 +85,6 @@ void Object::initArrays()
 {
 	auto& info = typeinfo();
 	switch(info.type) {
-	case ObjectType::Store:
 	case ObjectType::Object: {
 		auto n = getObjectCount();
 		for(unsigned i = 0; i < n; ++i) {
@@ -137,11 +134,14 @@ StoreUpdateRef Object::openStoreForUpdate(Database& db, unsigned storeIndex)
 StoreUpdateRef Object::lockStore(StoreRef& store)
 {
 	// Get root object which has pointer to Store: this may change
+	assert(parent);
+	if(!parent) {
+		return {};
+	}
 	auto obj = this;
-	while(!obj->parent->typeIs(ObjectType::Store)) {
+	while(obj->parent->parent) {
 		obj = obj->parent;
 	}
-	assert(obj->parent);
 
 	// Update store pointer
 	auto update = store->getDatabase().lockStore(store);
@@ -157,7 +157,6 @@ Store& Object::getStore()
 	while(obj->parent) {
 		obj = obj->parent;
 	}
-	assert(obj->typeinfo().type == ObjectType::Store);
 	auto store = static_cast<Store*>(obj);
 	return *store;
 }
@@ -184,14 +183,13 @@ void* Object::getDataPtr()
 	unsigned offset{0};
 	auto obj = this;
 	while(obj->parent) {
-		if(obj->parent->isArray()) {
+		if(obj->parent->isArray() && !obj->parent->isStore()) {
 			auto array = static_cast<ArrayBase*>(obj->parent);
 			return static_cast<uint8_t*>(array->getItem(obj->dataRef)) + offset;
 		}
 		offset += obj->dataRef + obj->propinfo().offset;
 		obj = obj->parent;
 	}
-	assert(obj->typeIs(ObjectType::Store));
 	return static_cast<Store*>(obj)->getRootData() + offset;
 }
 
@@ -200,14 +198,13 @@ const void* Object::getDataPtr() const
 	unsigned offset{0};
 	auto obj = this;
 	while(obj->parent) {
-		if(obj->parent->isArray()) {
+		if(obj->parent->isArray() && !obj->parent->isStore()) {
 			auto array = static_cast<const ArrayBase*>(obj->parent);
 			return static_cast<const uint8_t*>(array->getItem(obj->dataRef)) + offset;
 		}
 		offset += obj->dataRef + obj->propinfo().offset;
 		obj = obj->parent;
 	}
-	assert(obj->typeIs(ObjectType::Store));
 	return static_cast<const Store*>(obj)->getRootData() + offset;
 }
 
@@ -330,7 +327,8 @@ String Object::getPropertyString(unsigned index) const
 StringId Object::getStringId(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
 	PropertyData dst{};
-	auto defaultData = PropertyData::fromStruct(prop, getDataPtr());
+	auto dataptr = isArray() ? nullptr : getDataPtr();
+	auto defaultData = PropertyData::fromStruct(prop, dataptr);
 	getStore().parseString(prop, dst, defaultData, value, valueLength);
 	return dst.string;
 }

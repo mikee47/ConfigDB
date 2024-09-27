@@ -34,6 +34,10 @@
           "$ref": "#/$defs/array-with-defaults"
         }
       ]
+    },
+    "union-store": {
+      "$ref": "#/$defs/Color",
+      "store": true
     }
   },
   "$defs": {
@@ -154,6 +158,6 @@
         "three",
         "four"
       ]
-  }
+    }
   }
 }

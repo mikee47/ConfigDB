@@ -548,7 +548,7 @@ def load_config(filename: str) -> Database:
     dbname = os.path.splitext(os.path.basename(filename))[0]
     database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
     database.include = config.get('include', [])
-    root = Object(database, '', None, None, is_store = True)
+    root = Object(database, '', None, None, is_store=True)
     database.children.append(root)
 
     def parse_properties(parent: Object, properties: dict):
@@ -572,6 +572,7 @@ def load_config(filename: str) -> Database:
                 obj.children.append(child)
 
     def parse_object(parent: Object, key: str, fields: dict) -> Object:
+        is_store = ('store' in fields)
         ref, fields = resolve_ref(fields, database)
         prop_type = get_ptype(fields)
         alias = fields.get('alias')
@@ -579,13 +580,10 @@ def load_config(filename: str) -> Database:
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key, ref, alias, is_store = ('store' in fields))
+            obj = Object(parent, key, ref, alias, is_store)
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
-
-        if 'store' in fields:
-            raise ValueError(f'"{key}" cannot have "store" annotation, not an object')
 
         if prop_type == 'array':
             item_ref, items = resolve_ref(fields['items'], database)
@@ -593,7 +591,7 @@ def load_config(filename: str) -> Database:
             if items_type in ['object', 'union']:
                 if 'default' in fields:
                     raise ValueError('ObjectArray default not supported')
-                arr = ObjectArray(parent, key, ref, alias)
+                arr = ObjectArray(parent, key, ref, alias, is_store)
                 database.object_defs[arr.typename] = arr
                 arr.items = database.object_defs.get(item_ref)
                 if arr.items and arr.items.ref:
@@ -608,7 +606,7 @@ def load_config(filename: str) -> Database:
                 return arr
 
             # Simple array
-            arr = Array(parent, key, ref, alias)
+            arr = Array(parent, key, ref, alias, is_store)
             parse_properties(arr, {'items': items})
             assert len(arr.properties) == 1
             arr.items = arr.properties[0]
@@ -619,7 +617,7 @@ def load_config(filename: str) -> Database:
         if prop_type == 'union':
             if 'default' in fields:
                 raise ValueError('Union default not supported')
-            union = Union(parent, key, ref, alias)
+            union = Union(parent, key, ref, alias, is_store)
             database.object_defs[union.typename] = union
             for opt in fields['oneOf']:
                 ref, opt = resolve_ref(opt, database)
@@ -775,7 +773,7 @@ def generate_structure(db: Database) -> list[str]:
     def print_structure(obj: Object, indent: int, offset: int):
         def add(offset: int, id: str, typename: str):
             structure.append(f'{offset:4} {"".ljust(indent*3)} {id}: {typename}')
-        add(offset, obj.id, 'Store' if obj.is_store else obj.base_class)
+        add(offset, obj.id, obj.base_class)
         for c in obj.children:
             print_structure(c, indent+1, offset)
             if not obj.is_union:
@@ -964,7 +962,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
-            '.type = ObjectType::' + ('Store' if obj.is_store else obj.classname),
+            f'.type = ObjectType::{obj.classname}',
             f'.defaultData = {defaultData}',
             '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
             f'.objectCount = {len(objinfo)}',

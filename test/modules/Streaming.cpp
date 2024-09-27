@@ -36,6 +36,7 @@ namespace json
 // Embedding JSON in C strings is virtual unreadable, just import it
 IMPORT_FSTR_LOCAL(update1, PROJECT_DIR "/resource/update1.json")
 IMPORT_FSTR_LOCAL(root1, PROJECT_DIR "/resource/root1.json")
+IMPORT_FSTR_LOCAL(database1, PROJECT_DIR "/resource/database1.json")
 IMPORT_FSTR_LOCAL(array_test_default, PROJECT_DIR "/resource/array_test_default.json")
 IMPORT_FSTR_LOCAL(async_update, PROJECT_DIR "/resource/async-update.json")
 IMPORT_FSTR_LOCAL(async_update_result, PROJECT_DIR "/resource/async-update-result.json")
@@ -83,7 +84,7 @@ public:
 			}
 
 			REQUIRE_EQ(exportObject(root), json::root1);
-			REQUIRE_EQ(exportObject(database), json::root1);
+			REQUIRE_EQ(exportObject(database), json::database1);
 		}
 	}
 

@@ -77,7 +77,7 @@ bool WriteStream::openStore(unsigned storeIndex)
 bool WriteStream::startElement(const Element& element)
 {
 	if(element.level == 0) {
-		if(element.type != Element::Type::Object) {
+		if(!element.isContainer()) {
 			return handleError(FormatError::BadType, toString(element.type));
 		}
 		return true;
