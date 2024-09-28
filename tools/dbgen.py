@@ -44,6 +44,8 @@ CPP_TYPESIZES = {
 
 STRING_PREFIX = 'fstr_'
 
+schemas: dict[str, dict] = dict()
+
 class StringTable:
     '''All string data stored as FSTR values
     This de-duplicates strings and returns a unique C++ identifier to be used.
@@ -79,8 +81,6 @@ class StringTable:
     def items(self):
         return zip(self.keys, self.values)
 
-
-strings = StringTable()
 
 @dataclass
 class Range:
@@ -136,6 +136,7 @@ def get_ptype(fields: dict):
 
 @dataclass
 class Property:
+    parent: 'Object'
     name: str
     ref: dict
     ptype: str
@@ -150,10 +151,11 @@ class Property:
     intrange: IntRange = None
     numrange: Range = None
 
-    def __init__(self, obj: Object, key: str, fields: dict):
+    def __init__(self, parent: Object, key: str, fields: dict):
         def error(msg: str):
-            raise ValueError(f'"{obj.path}": {msg} for "{self.name}"')
+            raise ValueError(f'"{parent.path}": {msg} for "{self.name}"')
 
+        self.parent = parent
         self.name = key
         self.ptype = get_ptype(fields)
         self.ref = fields.get('ref')
@@ -236,7 +238,7 @@ class Property:
     def default_str(self):
         default = self.default
         if self.ptype == 'string':
-            return strings[default]
+            return self.parent.strings[default]
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
         if self.ptype == 'number':
@@ -409,6 +411,7 @@ class Union(Object):
 
 @dataclass
 class Database(Object):
+    strings: StringTable = StringTable()
     definitions: dict = None
     object_defs: dict[Object] = field(default_factory=dict)
     forward_decls: set[str] = None
@@ -542,10 +545,8 @@ def resolve_prop_ref(fields: dict, db: Database) -> None:
             fields[key] = value;
 
 
-def load_config(filename: str) -> Database:
-    '''Load, validate and parse schema into python objects'''
-    config = load_schema(filename)
-    dbname = os.path.splitext(os.path.basename(filename))[0]
+def parse_schema(dbname: str, config: dict) -> Database:
+    '''Validate and parse schema into python objects'''
     database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
     database.include = config.get('include', [])
     root = Object(database, '', None, None, is_store=True)
@@ -673,13 +674,13 @@ def generate_database(db: Database) -> CodeLines:
             '',
             f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
             [
-                f'{strings[db.name]},',
+                f'{db.strings[db.name]},',
                 f'{len(db.children)},',
                 '{',
                 *(make_static_initializer(
                     [
                     '.type = PropertyType::Object',
-                    f'.name = {strings[store.name]}',
+                    f'.name = {db.strings[store.name]}',
                     '.offset = 0',
                     f'.variant = {{.object = &{store.typename_contained}::typeinfo}}'
                     ], ',') for store in db.children),
@@ -742,7 +743,7 @@ def generate_database(db: Database) -> CodeLines:
             '{',
             [
                 'switch(unsigned(tag)) {',
-                [f'case {index}: return {strings[child.name]};' for index, child in enumerate(obj.children)],
+                [f'case {index}: return {db.strings[child.name]};' for index, child in enumerate(obj.children)],
                 ['default: return nullptr;'],
                 '}'
             ],
@@ -755,7 +756,7 @@ def generate_database(db: Database) -> CodeLines:
         f'#include "{db.name}.h"',
         '',
         'namespace {',
-        [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for id, value in strings.items() if value],
+        [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for id, value in db.strings.items() if value],
         '} // namespace',
         '',
         'using namespace ConfigDB;',
@@ -810,6 +811,8 @@ def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool 
 def generate_typeinfo(obj: Object) -> CodeLines:
     '''Generate type information'''
 
+    db = obj.database
+
     lines = CodeLines(
         ['static const ConfigDB::ObjectInfo typeinfo;']
     )
@@ -854,7 +857,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 [
                     f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
                     '{',
-                    [f'&{strings[x]},' for x in values] if prop.enum_type == 'String' else
+                    [f'&{db.strings[x]},' for x in values] if prop.enum_type == 'String' else
                     [f'{x},' for x in values],
                     '}'
                 ],
@@ -862,7 +865,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             ]
             return '.enuminfo = &itemtype.enuminfo'
         if prop.ptype == 'string':
-            return f'.defaultString = &{strings[str(prop.default)]}' if prop.default else ''
+            return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype == 'number':
             r = prop.numrange
             return f'.number = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
@@ -887,7 +890,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         if isinstance(alias, str):
             aliaslist.append([
                 f'.type = PropertyType::Alias',
-                f'.name = {strings[alias]}',
+                f'.name = {db.strings[alias]}',
                 f'.offset = {len(proplist) - 1}'
             ])
         if isinstance(alias, list):
@@ -900,7 +903,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     for child in objinfo:
         proplist += [[
             '.type = PropertyType::Object',
-            '.name = ' + ('fstr_empty' if obj.is_array else strings[child.name]),
+            '.name = ' + ('fstr_empty' if obj.is_array else db.strings[child.name]),
             f'.offset = {offset}',
             f'.variant = {{.object = &{child.namespace}::{child.typename_contained}::typeinfo}}'
         ]]
@@ -911,7 +914,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     if obj.is_union:
         proplist += [[
             '.type = PropertyType::UInt8',
-            f'.name = {strings['tag']}',
+            f'.name = {db.strings['tag']}',
             f'.offset = {obj.data_size - UNION_TAG_SIZE}',
         ]]
 
@@ -919,7 +922,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     for prop in propinfo:
         proplist += [[
             f'.type = PropertyType::{prop.property_type}',
-            '.name = ' + ('fstr_empty' if obj.is_array else strings[prop.name]),
+            '.name = ' + ('fstr_empty' if obj.is_array else db.strings[prop.name]),
             f'.offset = {offset}',
             '.variant = {' + getVariantInfo(prop) + '}'
         ]]
@@ -944,7 +947,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 lines.source += [
                     '',
                     f'DEFINE_FSTR_VECTOR_LOCAL({id}, FSTR::String,',
-                    [f'&{strings[s]},' for s in arr.default],
+                    [f'&{db.strings[s]},' for s in arr.default],
                     ')'
                 ]
             else:
@@ -1322,20 +1325,25 @@ def write_file(content: list[str | list], filename: str):
 def main():
     parser = argparse.ArgumentParser(description='ConfigDB specification utility')
 
-    parser.add_argument('cfgfile', help='Path to configuration file')
-    parser.add_argument('outdir', help='Output directory')
+    parser.add_argument('cfgfiles', nargs='+', help='Path to configuration file(s)')
+    parser.add_argument('--outdir', help='Output directory')
 
     args = parser.parse_args()
 
-    db = load_config(args.cfgfile)
+    for f in args.cfgfiles:
+        name = os.path.splitext(os.path.basename(f))[0]
+        schemas[name] = load_schema(f)
 
-    lines = generate_database(db)
+    for name, schema in schemas.items():
+        db = parse_schema(name, schema)
 
-    filepath = os.path.join(args.outdir, f'{db.name}')
-    os.makedirs(args.outdir, exist_ok=True)
+        lines = generate_database(db)
 
-    write_file(lines.header, f'{filepath}.h')
-    write_file(lines.source, f'{filepath}.cpp')
+        filepath = os.path.join(args.outdir, f'{db.name}')
+        os.makedirs(args.outdir, exist_ok=True)
+
+        write_file(lines.header, f'{filepath}.h')
+        write_file(lines.source, f'{filepath}.cpp')
 
 
 if __name__ == '__main__':
