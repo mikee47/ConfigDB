@@ -3,7 +3,7 @@
   "type": "object",
   "properties": {
     "color": {
-      "$ref": "test-config-union/Color"
+      "$ref": "test-config-union/$defs/Color"
     }
   }
 }

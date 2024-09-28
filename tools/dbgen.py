@@ -253,7 +253,7 @@ class Object:
     ref: str | None
     alias: str | list[str] | None
     is_store: bool = False
-    is_external: bool = False
+    schema_id: str = None
     properties: list[Property] = field(default_factory=list)
     children: list['Object'] = field(default_factory=list)
 
@@ -413,9 +413,7 @@ class Union(Object):
 @dataclass
 class Database(Object):
     strings: StringTable = StringTable()
-    definitions: dict = None
     object_defs: dict[Object] = field(default_factory=dict)
-    object_refs: dict[str] = field(default_factory=dict)
     forward_decls: set[str] = None
 
     @property
@@ -510,48 +508,62 @@ def load_schema(filename: str) -> dict:
     return config
 
 
-def resolve_ref(fields: dict, db: Database) -> tuple[str, dict]:
+def resolve_ref(parent: Object, fields: dict, db: Database) -> tuple[str, dict]:
     '''If property contains a reference, deal with it'''
+    print("RESOLVE", parent.schema_id, fields)
     ref = fields.get('$ref')
     if not ref:
         return None, fields
     prefix = '#/$defs/'
     resolved_fields = None
-    if ref.startswith(prefix):
-        # Internal reference
-        ref = ref[len(prefix):]
-        if not db.definitions:
-            raise ValueError('Schema missing definitions')
-        resolved_fields = db.definitions.get(ref)
-        if resolved_fields is None:
-            raise ValueError('Cannot resolve ' + ref)
-        return ref, resolved_fields
-
-    # External reference
-    schema, _, ref = ref.partition('/')
-    existing_schema = db.object_refs.get(ref)
-    if existing_schema:
-        if existing_schema != schema:
-            raise ValueError(f'Ref "{ref}" already defined in schema "{existing_schema}"')
+    if ref.startswith('#/'):
+        ref = ref[2:]
+        schema_id = parent.schema_id or db.schema_id
+        print("INT", schema_id)
     else:
-        db.object_refs[ref] = schema
-        assert ref not in db.object_defs
-        db.object_defs[ref] = Object(db, ref, ref, None, is_external=True)
-    return ref, {'type':'object', 'external': True}
+        schema_id, _, ref = ref.partition('/')
+        print("EXT", schema_id)
+    x = schemas[schema_id]
+    print("REF", ref, x)
+    while ref:
+        node, _, ref = ref.partition('/')
+        print("X", node, ref)
+        x = x[node]
+    resolved_fields = x
+
+    #     # Internal reference
+    #     ref = ref[len(prefix):]
+    #     schema_id = parent.schema_id
+    #     if schema_id:
+    #         definitions = schemas[schema_id]
+    #         print('EXT', schema_id, ref, definitions)
+    #     else:
+    #         definitions = db.definitions
+    #         print('INT', ref, definitions)
+    # else:
+    #     # External reference
+    #     # TODO: This is very simple. Should revise this to support proper URI's as per spec.
+    #     schema_id, _, ref = ref.partition('/')
+    #     definitions = schemas[schema_id]['$defs']
+    #     print('EXT', schema_id, ref, definitions)
+
+    # if not definitions:
+    #     raise ValueError('Schema missing definitions')
+    # resolved_fields = definitions.get(ref)
+    if resolved_fields is None:
+        raise ValueError('Cannot resolve ' + ref)
+    resolved_fields['schema_id'] = schema_id
+
+    return ref, resolved_fields
 
 
-def resolve_prop_ref(fields: dict, db: Database) -> None:
+def resolve_prop_ref(parent: Object, fields: dict, db: Database) -> None:
     '''Resolve reference and update fields'''
-    ref, resolved_fields = resolve_ref(fields, db)
+    ref, resolved_fields = resolve_ref(parent, fields, db)
     if ref is None:
         return
 
     fields['ref'] = ref
-
-    # External reference?
-    if resolved_fields is None:
-        fields['type'] = 'object'
-        return
 
     # Object definitions are used as-is
     if get_ptype(resolved_fields) in ['object', 'union']:
@@ -565,16 +577,16 @@ def resolve_prop_ref(fields: dict, db: Database) -> None:
             fields[key] = value;
 
 
-def parse_schema(dbname: str, config: dict) -> Database:
+def parse_schema(schema_id: str, config: dict) -> Database:
     '''Validate and parse schema into python objects'''
-    database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
+    database = Database(None, schema_id, None, None, properties=config['properties'], schema_id=schema_id)
     database.include = config.get('include', [])
     root = Object(database, '', None, None, is_store=True)
     database.children.append(root)
 
     def parse_properties(parent: Object, properties: dict):
         for key, fields in properties.items():
-            resolve_prop_ref(fields, database)
+            resolve_prop_ref(parent, fields, database)
             prop = Property(parent, key, fields)
             if prop.ctype != '-': # object or array
                 parent.properties.append(prop)
@@ -593,26 +605,30 @@ def parse_schema(dbname: str, config: dict) -> Database:
                 obj.children.append(child)
 
     def parse_object(parent: Object, key: str, fields: dict) -> Object:
-        is_store = ('store' in fields)
-        alias = fields.get('alias')
-        ref, fields = resolve_ref(fields, database)
+        print("parse_object", parent.name, key, fields)
+        ref, fields = resolve_ref(parent, fields, database)
         prop_type = get_ptype(fields)
+
+        def createObject(Class):
+            return Class(parent, key, ref, fields.get('alias'),
+                is_store = ('store' in fields),
+                schema_id = fields.get('schema_id'))
 
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key, ref, alias, is_store, is_external = fields.get('external', False))
+            obj = createObject(Object)
             database.object_defs[obj.typename] = obj
             parse_properties(obj, fields.get('properties', {}))
             return obj
 
         if prop_type == 'array':
-            item_ref, items = resolve_ref(fields['items'], database)
+            item_ref, items = resolve_ref(parent, fields['items'], database)
             items_type = get_ptype(items)
             if items_type in ['object', 'union']:
                 if 'default' in fields:
                     raise ValueError('ObjectArray default not supported')
-                arr = ObjectArray(parent, key, ref, alias, is_store)
+                arr = createObject(ObjectArray)
                 database.object_defs[arr.typename] = arr
                 arr.items = database.object_defs.get(item_ref)
                 if arr.items and arr.items.ref:
@@ -627,7 +643,7 @@ def parse_schema(dbname: str, config: dict) -> Database:
                 return arr
 
             # Simple array
-            arr = Array(parent, key, ref, alias, is_store)
+            arr = createObject(Array)
             parse_properties(arr, {'items': items})
             assert len(arr.properties) == 1
             arr.items = arr.properties[0]
@@ -638,10 +654,10 @@ def parse_schema(dbname: str, config: dict) -> Database:
         if prop_type == 'union':
             if 'default' in fields:
                 raise ValueError('Union default not supported')
-            union = Union(parent, key, ref, alias, is_store)
+            union = createObject(Union)
             database.object_defs[union.typename] = union
             for opt in fields['oneOf']:
-                ref, opt = resolve_ref(opt, database)
+                ref, opt = resolve_ref(union, opt, database)
                 choice = database.object_defs.get(ref)
                 if not choice:
                     choice = parse_object(union, ref, opt)
@@ -666,10 +682,9 @@ def generate_database(db: Database) -> CodeLines:
     external_defs = []
     for obj in db.object_defs.values():
         if obj.ref:
-            if obj.is_external:
-                schema = db.object_refs[obj.ref]
-                db.include.append(f'{schema}.h')
-                ns = make_typename(schema)
+            if obj.schema_id:
+                db.include.append(f'{obj.schema_id}.h')
+                ns = make_typename(obj.schema_id)
                 external_defs += [
                     f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
                     f'using {obj.typename_updater} = {ns}::{obj.typename_updater};',
@@ -722,7 +737,7 @@ def generate_database(db: Database) -> CodeLines:
 
     for obj in reversed(db.object_defs.values()):
         if obj.ref:
-            if obj.is_external:
+            if obj.schema_id:
                 pass
             else:
                 lines.append(generate_object(obj))
