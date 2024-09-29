@@ -1341,9 +1341,9 @@ def generate_contained_constructors(object_prop: Property, is_updater = False) -
             '',
             f'{typename}() = default;',
             '',
-            f'{typename}({const}ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned propIndex, uint16_t index):',
+            f'{typename}({const}ConfigDB::{object_prop.parent.obj.base_class}& {object_prop.parent.id}, unsigned propIndex, uint16_t index):',
             [', '.join([
-                f'{obj.classname}{template}({obj.parent.id}, propIndex, index)',
+                f'{obj.classname}{template}({object_prop.parent.id}, propIndex, index)',
                 *children
             ])],
             '{',
