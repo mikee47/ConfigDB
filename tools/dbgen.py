@@ -250,7 +250,7 @@ class Property:
 
     @property
     def store_prop(self) -> Property:
-        return self if self.is_store else self.parent.store
+        return self if self.is_store else self.parent.store_prop
 
     @property
     def store(self) -> Object:
@@ -285,6 +285,7 @@ class Property:
             if not isinstance(prop.obj, ObjectArray):
                 ns.insert(0, prop.obj.typename_contained)
             # obj = obj.database if obj.ref else obj.parent
+            prop = prop.parent
         return '::'.join(ns)
 
 
@@ -392,7 +393,7 @@ class ObjectArray(Object):
 
     @property
     def items(self):
-        return self.object_properties[0].obj
+        return self.object_properties[0]
 
     @property
     def typename_struct(self):
@@ -422,6 +423,10 @@ class Database(Object):
     objects: dict[Object] = field(default_factory=dict)
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
+
+    @property
+    def obj(self):
+        return self
 
     @property
     def database(self):
@@ -654,7 +659,6 @@ def parse_database(database: Database):
             # Simple array
             prop = createObjectProperty(Array)
             parse_properties(prop, {'items': items})
-            print('CREATE', prop.name, type(prop.obj))
             arr = prop.obj
             assert len(arr.properties) == 1
             arr.default = fields.get('default')
@@ -750,7 +754,7 @@ def generate_database(db: Database) -> CodeLines:
             else:
                 lines.append(generate_object(db, obj))
 
-    for prop in db.properties:
+    for prop in db.object_properties:
         if not prop.obj.ref:
             lines.append(generate_object(db, prop))
 
@@ -766,9 +770,9 @@ def generate_database(db: Database) -> CodeLines:
     ]
     def generate_outer_class(parent: Object, object_prop: Property, store_offset: int) -> list:
         obj = object_prop.obj
-        template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {db.typename}, {object_prop.store_index}, {obj.parent.typename_contained}, {parent.object_properties.index(obj)}, {store_offset}>'
-        if not obj.is_store:
-            store_offset += obj.parent.get_offset(obj)
+        template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {db.typename}, {object_prop.store_index}, {parent.typename_contained}, {parent.object_properties.index(object_prop)}, {store_offset}>'
+        if not object_prop.is_store:
+            store_offset += parent.get_offset(obj)
         return [
             '',
             f'class {obj.typename_outer}: public {template}',
@@ -777,13 +781,13 @@ def generate_database(db: Database) -> CodeLines:
             [
                 'using OuterObjectTemplate::OuterObjectTemplate;',
             ],
-            *[generate_outer_class(child, store_offset) for child in obj.objects if not object_prop.is_item],
+            *[generate_outer_class(obj, prop, store_offset) for prop in obj.object_properties if not object_prop.is_item],
             '};'
-        ] if obj.objects and not obj.is_union else [
+        ] if obj.object_properties and not obj.is_union else [
             f'using {obj.typename_outer} = {template};'
         ]
-    for store in db.properties:
-        lines.header.append(generate_outer_class(db, store, 0))
+    for prop in db.object_properties:
+        lines.header.append(generate_outer_class(db, prop, 0))
 
     lines.header += ['};']
 
@@ -830,7 +834,6 @@ def generate_database(db: Database) -> CodeLines:
 def generate_structure(db: Database) -> list[str]:
     structure = []
     def print_structure(object_prop: Property, indent: int, offset: int):
-        print('STRUC', object_prop.name, object_prop.property_type, type(object_prop.obj))
         def add(offset: int, id: str, typename: str):
             structure.append(f'{offset:4} {"".ljust(indent*3)} {id}: {typename}')
         obj = object_prop.obj
@@ -1043,10 +1046,10 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
     return lines
 
 
-def generate_object_struct(obj: Object) -> CodeLines:
+def generate_object_struct(object_prop: Property) -> CodeLines:
     '''Generate struct definition for this object'''
 
-    if obj.data_size == 0:
+    if object_prop.data_size == 0:
         return CodeLines()
 
     def get_ctype(prop):
@@ -1056,6 +1059,8 @@ def generate_object_struct(obj: Object) -> CodeLines:
         if prop.ptype == 'string':
             return make_comment(prop.default) if prop.default else ''
         return prop.default_str
+
+    obj = object_prop.obj
 
     children = [prop for prop in obj.object_properties if prop.data_size]
 
@@ -1068,10 +1073,11 @@ def generate_object_struct(obj: Object) -> CodeLines:
         ]
     else:
         body = [
-            [f'{prop.typename_struct} {prop.id}{{}};' for prop in children] if children else None,
+            [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in children] if children else None,
             [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties]
         ]
 
+    typename = f'{object_prop.namespace}::{obj.typename_contained}'
     return CodeLines([
         '',
         'struct __attribute__((packed)) Struct {',
@@ -1082,7 +1088,7 @@ def generate_object_struct(obj: Object) -> CodeLines:
     ],
     [
         '',
-        f'const {obj.namespace}::{obj.typename_contained}::Struct PROGMEM {obj.namespace}::{obj.typename_contained}::defaultData{{}};'
+        f'const {typename}::Struct PROGMEM {typename}::defaultData{{}};'
     ])
 
 
@@ -1205,7 +1211,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
             [
                 *forward_decls,
                 *item_lines.header,
-                *declare_templated_class(obj, [obj.items.typename_contained]),
+                *declare_templated_class(obj, [obj.items.obj.typename_contained]),
                 typeinfo.header,
                 constructors,
                 '};',
@@ -1240,7 +1246,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
         if not prop.obj.ref:
             lines.append(generate_object(db, prop))
 
-    lines.append(generate_object_struct(obj))
+    lines.append(generate_object_struct(object_prop))
     lines.header += [
         constructors,
         *generate_property_accessors(obj)
@@ -1251,7 +1257,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
     if obj.object_properties and not obj.is_union:
         lines.header += [
             '',
-            [f'const {prop.obj.typename_contained} {child.id};' for prop in obj.object_properties],
+            [f'const {prop.obj.typename_contained} {prop.id};' for prop in obj.object_properties],
         ]
 
     lines.header += ['};']
@@ -1283,7 +1289,7 @@ def generate_updater(object_prop: Property) -> list:
             ] for tag, item in enumerate(obj.items.children)
         ] if isinstance(obj.items, Union) else []
         return [
-            *declare_templated_class(obj, [obj.items.typename_updater], True),
+            *declare_templated_class(obj, [obj.items.obj.typename_updater], True),
             constructors,
             *union_array_methods,
             '};',
