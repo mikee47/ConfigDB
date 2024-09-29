@@ -227,7 +227,7 @@ class Property:
 
     @property
     def id(self):
-        return make_identifier(self.name)
+        return make_identifier(self.name) if self.name else 'root'
 
     @property
     def typename(self):
@@ -339,15 +339,6 @@ class Object:
     def has_struct(self):
         return self.object_properties or self.properties
 
-    # @property
-    # def index(self):
-    #     '''Index of this object'''
-    #     return self.parent.object_properties.index(self)
-
-    @property
-    def id(self):
-        return make_identifier(self.name) if self.name else 'root'
-
     @property
     def classname(self):
         return type(self).__name__
@@ -355,10 +346,6 @@ class Object:
     @property
     def base_class(self):
         return f'{self.classname}'
-
-    # @property
-    # def is_root(self):
-    #     return self in self.database.children
 
     @property
     def is_array(self):
@@ -612,17 +599,17 @@ def parse_database(database: Database):
                 parent.properties.append(prop)
                 continue
 
-            # Objects with 'store' annoation are managed by database, otherwise they live in root object
+            # Objects with 'store' annotation are managed by database, otherwise they live in root object
             if 'store' in fields:
-                if parent is not root_store:
+                if parent_prop is not root:
                     raise ValueError(f'{key} cannot have "store" annotation, not a root object')
                 parse_object(database, key, fields)
             else:
                 parse_object(parent_prop, key, fields)
 
-    def parse_object(parent_prop: Property, key: str, fields: dict) -> Property:
+    def parse_object(parent_prop: Property | Database, key: str, fields: dict) -> Property:
         print("parse_object", parent_prop.name, key, fields)
-        parent = parent_prop.obj
+        parent = parent_prop if isinstance(parent_prop, Database) else parent_prop.obj
         ref, fields = resolve_ref(parent, fields, database)
         prop_type = get_ptype(fields)
 
@@ -651,22 +638,24 @@ def parse_database(database: Database):
                 prop = createObjectProperty(ObjectArray)
                 arr = prop.obj
                 database.objects[arr.typename] = arr
-                arr.items = Property(prop, '', {'type':'object'})
-                arr.items.obj = database.objects.get(item_ref)
-                if arr.items.obj and arr.items.obj.ref:
+                items_prop = Property(prop, '', {'type':'object'})
+                arr.object_properties.append(items_prop)
+                items_prop.obj = database.objects.get(item_ref)
+                if items_prop.obj and items_prop.obj.ref:
                     return arr
-                arr.items.obj = Object(item_ref or f'{arr.typename}Item', item_ref, None, schema_id=fields.get('schema_id'))
-                database.objects[arr.items.obj.typename] = arr.items.obj
+                items_prop.obj = Object(item_ref or f'{arr.typename}Item', item_ref, None, schema_id=fields.get('schema_id'))
+                database.objects[items_prop.obj.typename] = items_prop.obj
                 if items_type == 'union':
-                    parse_object(arr.items, item_ref, items)
+                    parse_object(items_prop, item_ref, items)
                 else:
-                    parse_properties(arr.items, items['properties'])
+                    parse_properties(items_prop, items['properties'])
                 return arr
 
             # Simple array
             prop = createObjectProperty(Array)
-            arr = prop.obj
             parse_properties(prop, {'items': items})
+            print('CREATE', prop.name, type(prop.obj))
+            arr = prop.obj
             assert len(arr.properties) == 1
             arr.default = fields.get('default')
             return arr
@@ -840,12 +829,16 @@ def generate_database(db: Database) -> CodeLines:
 
 def generate_structure(db: Database) -> list[str]:
     structure = []
-    def print_structure(obj: Object, indent: int, offset: int):
+    def print_structure(object_prop: Property, indent: int, offset: int):
+        print('STRUC', object_prop.name, object_prop.property_type, type(object_prop.obj))
         def add(offset: int, id: str, typename: str):
             structure.append(f'{offset:4} {"".ljust(indent*3)} {id}: {typename}')
-        add(offset, obj.id, obj.base_class)
+        obj = object_prop.obj
+        add(offset, object_prop.id, obj.base_class)
+        if obj.is_array:
+            return
         for prop in obj.object_properties:
-            print_structure(prop.obj, indent+1, offset)
+            print_structure(prop, indent+1, offset)
             if not prop.obj.is_union:
                 offset += prop.data_size
         indent += 1
@@ -856,7 +849,7 @@ def generate_structure(db: Database) -> list[str]:
         if obj.is_union:
             add(offset + obj.data_size - UNION_TAG_SIZE, 'tag', 'uint8_t')
     for prop in db.object_properties:
-        print_structure(prop.obj, 0, 0)
+        print_structure(prop, 0, 0)
         structure += ['']
     return structure
 
