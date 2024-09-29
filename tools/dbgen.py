@@ -702,7 +702,7 @@ def generate_database(db: Database) -> CodeLines:
     external_defs = []
     for obj in db.objects.values():
         if obj.ref:
-            if obj.schema_id:
+            if obj.schema_id != db.schema_id:
                 db.include.append(f'{obj.schema_id}.h')
                 ns = make_typename(obj.schema_id)
                 external_defs += [
@@ -1327,7 +1327,7 @@ def generate_contained_constructors(object_prop: Property, is_updater = False) -
 
     obj = object_prop.obj
 
-    if not obj.object_properties or obj.is_union:
+    if not obj.object_properties or obj.is_union or obj.is_array:
         return [
             f'using {obj.base_class}{template}::{obj.base_class}{template};'
         ]
@@ -1364,7 +1364,7 @@ def generate_contained_constructors(object_prop: Property, is_updater = False) -
         '}',
     ]
 
-    if True:# not obj.is_root:
+    if not object_prop.is_store:#is_root:
         headers += [
             '',
             f'{typename}({parent_typename}& parent, unsigned propIndex): ' + ', '.join([
