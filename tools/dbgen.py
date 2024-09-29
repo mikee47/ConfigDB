@@ -275,10 +275,14 @@ class Property:
         return join_path(self.parent.path, self.name) if self.parent else self.name
 
     @property
+    def database(self):
+        return self.store_prop.parent
+
+    @property
     def namespace(self):
         assert self.obj
         if self.obj.ref or (self.is_item and self.parent.obj.ref):
-            return self.store.parent.typename
+            return self.database.typename
         prop = self.parent
         ns = []
         while isinstance(prop, Property):
@@ -297,10 +301,6 @@ class Object:
     schema_id: str = None
     object_properties: list[Property] = field(default_factory=list)
     properties: list[Property] = field(default_factory=list)
-
-    # @property
-    # def database(self):
-    #     return self.parent.database
 
     @property
     def typename(self):
@@ -544,11 +544,11 @@ def resolve_ref(parent: Object, fields: dict, db: Database) -> tuple[str, dict]:
     db = databases[schema_id]
     x = db.schema
     print("REF", ref, x)
-    while ref:
+    while '/' in ref:
         node, _, ref = ref.partition('/')
         print("X", node, ref)
         x = x[node]
-    resolved_fields = x
+    resolved_fields = x[ref]
 
     '''So if this resolves to an object then we should process it and return the object.
     For simple properties we return a dictionary.
@@ -627,12 +627,12 @@ def parse_database(database: Database):
         if prop_type == 'object':
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
-            prop = createObjectProperty(Object)
-            parent.object_properties.append(prop)
-            obj = prop.obj
+            object_prop = createObjectProperty(Object)
+            parent.object_properties.append(object_prop)
+            obj = object_prop.obj
             database.objects[obj.typename] = obj
-            parse_properties(obj, fields.get('properties', {}))
-            return obj
+            parse_properties(object_prop, fields.get('properties', {}))
+            return object_prop
 
         if prop_type == 'array':
             item_ref, items = resolve_ref(parent, fields['items'], database)
@@ -640,44 +640,52 @@ def parse_database(database: Database):
             if items_type in ['object', 'union']:
                 if 'default' in fields:
                     raise ValueError('ObjectArray default not supported')
-                prop = createObjectProperty(ObjectArray)
-                arr = prop.obj
+                array_prop = createObjectProperty(ObjectArray)
+                arr = array_prop.obj
                 database.objects[arr.typename] = arr
-                items_prop = Property(prop, '', {'type':'object'})
+                items_prop = Property(array_prop, '', {'type':'object'})
                 arr.object_properties.append(items_prop)
                 items_prop.obj = database.objects.get(item_ref)
                 if items_prop.obj and items_prop.obj.ref:
-                    return arr
+                    return array_prop
                 items_prop.obj = Object(item_ref or f'{arr.typename}Item', item_ref, None, schema_id=fields.get('schema_id'))
                 database.objects[items_prop.obj.typename] = items_prop.obj
                 if items_type == 'union':
                     parse_object(items_prop, item_ref, items)
                 else:
                     parse_properties(items_prop, items['properties'])
-                return arr
+                return array_prop
 
             # Simple array
-            prop = createObjectProperty(Array)
-            parse_properties(prop, {'items': items})
-            arr = prop.obj
+            array_prop = createObjectProperty(Array)
+            parse_properties(array_prop, {'items': items})
+            arr = array_prop.obj
             assert len(arr.properties) == 1
             arr.default = fields.get('default')
-            return arr
+            return array_prop
 
         if prop_type == 'union':
             if 'default' in fields:
                 raise ValueError('Union default not supported')
-            union = createObject(Union)
+            union_prop = createObjectProperty(Union)
+            union = union_prop.obj
             database.objects[union.typename] = union
             for opt in fields['oneOf']:
+                print("REF FIND", opt)
                 ref, opt = resolve_ref(union, opt, database)
+                print("REF RESULT", type(ref), ref, opt)
                 choice = database.objects.get(ref)
-                if not choice:
-                    choice = parse_object(union, ref, opt)
+                if choice:
+                    choice_prop = Property(union_prop, ref, {'type':'object'})
+                    choice_prop.obj = choice
+                else:
+                    print("REF NOT FOUND")
+                    choice_prop = parse_object(union_prop, ref, opt)
+                    choice = choice_prop.obj
                     choice.ref = ref
                     database.objects[choice.typename] = choice
-                union.objects.append(choice)
-            return union
+                union.object_properties.append(choice_prop)
+            return union_prop
 
         raise ValueError('Bad type ' + prop_type)
 
@@ -794,7 +802,7 @@ def generate_database(db: Database) -> CodeLines:
     for obj in db.objects.values():
         if not obj.is_union:
             continue
-        decl = f'String toString({obj.namespace}::{obj.typename_contained}::Tag tag)'
+        decl = f'String toString({db.typename}::{obj.typename_contained}::Tag tag)'
         lines.header += [
             '',
             f'{decl};'
@@ -805,7 +813,7 @@ def generate_database(db: Database) -> CodeLines:
             '{',
             [
                 'switch(unsigned(tag)) {',
-                [f'case {index}: return {db.strings[child.name]};' for index, child in enumerate(obj.objects)],
+                [f'case {index}: return {db.strings[prop.name]};' for index, prop in enumerate(obj.object_properties)],
                 ['default: return nullptr;'],
                 '}'
             ],
@@ -1153,16 +1161,16 @@ def generate_property_write_accessors(obj: Object) -> list:
             ],
             *((
                 '',
-                f'{child.typename_updater} as{child.typename}()',
+                f'{prop.obj.typename_updater} as{prop.obj.typename}()',
                 '{',
-                [f'return Union::as<{child.typename_updater}>({index});'],
+                [f'return Union::as<{prop.obj.typename_updater}>({index});'],
                 '}',
                 '',
-                f'{child.typename_updater} to{child.typename}()',
+                f'{prop.obj.typename_updater} to{prop.obj.typename}()',
                 '{',
-                [f'return Union::to<{child.typename_updater}>({index});'],
+                [f'return Union::to<{prop.obj.typename_updater}>({index});'],
                 '}',
-                ) for index, child in enumerate(obj.children))
+                ) for index, prop in enumerate(obj.object_properties))
         ]
 
     return [*((
