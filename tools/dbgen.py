@@ -293,6 +293,12 @@ class Property:
         return '::'.join(ns)
 
 
+class ObjectProperty(Property):
+    def __init__(self, parent: Property, name: str, obj: 'Object'):
+        super().__init__(parent, name, {'type':'object'})
+        self.obj = obj
+
+
 @dataclass
 class Object:
     name: str
@@ -592,8 +598,7 @@ def resolve_prop_ref(parent: Object, fields: dict, db: Database) -> None:
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
     database.include = database.schema.get('include', set())
-    root = Property(database, '', {'type':'object'})
-    root.obj = Object('', None, None)
+    root = ObjectProperty(database, '', Object('', None, None))
     database.object_properties.append(root)
 
     def parse_properties(parent_prop: Property, properties: dict):
@@ -630,7 +635,7 @@ def parse_database(database: Database):
                 raise ValueError('Object default not supported (use default on properties)')
             object_prop = createObjectProperty(Object)
             obj = object_prop.obj
-            database.objects[obj.typename] = obj
+            # database.objects[obj.typename] = obj
             parse_properties(object_prop, fields.get('properties', {}))
             return object_prop
 
@@ -642,18 +647,22 @@ def parse_database(database: Database):
                     raise ValueError('ObjectArray default not supported')
                 array_prop = createObjectProperty(ObjectArray)
                 arr = array_prop.obj
-                database.objects[arr.typename] = arr
-                items_prop = Property(array_prop, '', {'type':'object'})
-                arr.object_properties.append(items_prop)
-                items_prop.obj = database.objects.get(item_ref)
-                if items_prop.obj and items_prop.obj.ref:
-                    return array_prop
-                items_prop.obj = Object(item_ref or f'{arr.typename}Item', item_ref, None, schema_id=fields.get('schema_id'))
-                database.objects[items_prop.obj.typename] = items_prop.obj
-                if items_type == 'union':
-                    parse_object(items_prop, item_ref, items)
+                # database.objects[arr.typename] = arr
+                obj = database.objects.get(item_ref)
+                if obj and obj.ref:
+                    is_new = False
                 else:
-                    parse_properties(items_prop, items['properties'])
+                    obj = Object(item_ref, item_ref, None, schema_id=fields.get('schema_id'))
+                    if item_ref:
+                        database.objects[item_ref] = obj
+                    is_new = True
+                items_prop = ObjectProperty(array_prop, f'{arr.typename}Item', obj)
+                arr.object_properties.append(items_prop)
+                if is_new:
+                    if items_type == 'union':
+                        parse_object(items_prop, item_ref, items)
+                    else:
+                        parse_properties(items_prop, items['properties'])
                 return array_prop
 
             # Simple array
@@ -669,7 +678,7 @@ def parse_database(database: Database):
                 raise ValueError('Union default not supported')
             union_prop = createObjectProperty(Union)
             union = union_prop.obj
-            database.objects[union.typename] = union
+            # database.objects[union.typename] = union
             for opt in fields['oneOf']:
                 print("REF FIND", opt)
                 ref, opt = resolve_ref(union, opt, database)
@@ -681,10 +690,11 @@ def parse_database(database: Database):
                     union.object_properties.append(choice_prop)
                 else:
                     print("REF NOT FOUND")
+                    assert ref
                     choice_prop = parse_object(union_prop, ref, opt)
                     choice = choice_prop.obj
                     choice.ref = ref
-                    database.objects[choice.typename] = choice
+                    database.objects[ref] = choice
             return union_prop
 
         raise ValueError('Bad type ' + prop_type)
@@ -702,7 +712,7 @@ def generate_database(db: Database) -> CodeLines:
     external_defs = []
     for obj in db.objects.values():
         if obj.ref:
-            if obj.schema_id != db.schema_id:
+            if obj.schema_id and obj.schema_id != db.schema_id:
                 db.include.add(f'{obj.schema_id}.h')
                 ns = make_typename(obj.schema_id)
                 external_defs += [
@@ -756,11 +766,8 @@ def generate_database(db: Database) -> CodeLines:
         ])
 
     for obj in reversed(db.objects.values()):
-        if obj.ref:
-            if obj.schema_id:
-                pass
-            else:
-                lines.append(generate_object(db, obj))
+        prop = ObjectProperty(db, obj.name, obj)
+        lines.append(generate_object(db, prop))
 
     for prop in db.object_properties:
         if not prop.obj.ref:
