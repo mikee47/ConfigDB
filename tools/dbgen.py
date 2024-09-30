@@ -237,6 +237,11 @@ class Property:
         return make_typename(self.name)
 
     @property
+    def typename_outer(self):
+        assert self.obj
+        return make_typename(self.name or 'Root')
+
+    @property
     def default_str(self):
         default = self.default
         if self.ptype == 'string':
@@ -289,7 +294,7 @@ class Property:
         prop = self.parent
         ns = []
         while isinstance(prop, Property):
-            if not isinstance(prop.obj, ObjectArray):
+            if not prop.obj.is_array:
                 ns.insert(0, prop.obj.typename_contained)
             prop = prop.parent
         return '::'.join(ns)
@@ -317,10 +322,6 @@ class Object:
     @property
     def typename_contained(self):
         return 'Contained' + self.typename
-
-    @property
-    def typename_outer(self):
-        return make_typename(self.name or 'Root')
 
     @property
     def typename_updater(self):
@@ -354,10 +355,14 @@ class Object:
 
     @property
     def base_class(self):
-        return f'{self.classname}'
+        return self.classname
 
     @property
     def is_array(self):
+        return False
+
+    @property
+    def is_object_array(self):
         return False
 
     @property
@@ -370,38 +375,24 @@ class Array(Object):
     default: list = None
 
     @property
+    def classname(self):
+        return 'ObjectArray' if self.is_object_array else 'Array'
+
+    @property
     def is_array(self):
         return True
 
     @property
+    def is_object_array(self):
+        return self.is_array and bool(self.object_properties)
+
+    @property
     def items(self):
-        return self.properties[0]
+        return self.object_properties[0] if self.is_object_array else self.properties[0]
 
     @property
     def base_class(self):
-        return 'StringArray' if self.items.ptype == 'string' else 'Array'
-
-    @property
-    def typename_struct(self):
-        return 'ConfigDB::ArrayId'
-
-    @property
-    def data_size(self):
-        '''Size of the corresponding C++ storage'''
-        return ARRAY_ID_SIZE
-
-
-@dataclass
-class ObjectArray(Object):
-    default: list = None
-
-    @property
-    def is_array(self):
-        return True
-
-    @property
-    def items(self):
-        return self.object_properties[0]
+        return 'StringArray' if self.items.ptype == 'string' else self.classname
 
     @property
     def typename_struct(self):
@@ -599,8 +590,10 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         fields = ref_node
 
     def createObjectProperty(Class) -> Property:
-        obj = Class(key, ref, fields.get('alias'), schema_id=schema_id)
-        fields['object'] = obj
+        obj = Class(ref or key, ref, fields.get('alias'), schema_id=schema_id)
+        if ref:
+            assert 'object' not in fields
+            fields['object'] = obj
         prop = ObjectProperty(parent_prop, key, obj)
         parent_prop.obj.object_properties.append(prop)
         return prop
@@ -614,20 +607,12 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
 
     if prop_type == 'array':
         items = fields['items']
-        array_prop = createObjectProperty(ObjectArray)
+        array_prop = createObjectProperty(Array)
         items_prop = parse_property(array_prop, f'{array_prop.typename}Item', items)
-        if items_prop.ptype in ['object', 'union']:
+        array_prop.obj.default = fields.get('default')
+        if array_prop.obj.is_object_array:
             if 'default' in fields:
                 raise ValueError('ObjectArray default not supported')
-            return array_prop
-
-        # Simple array
-        parent_prop.obj.object_properties.pop()
-        array_prop = createObjectProperty(Array)
-        items_prop.parent = array_prop
-        arr = array_prop.obj
-        arr.properties.append(items_prop)
-        arr.default = fields.get('default')
         return array_prop
 
     if prop_type == 'union':
@@ -741,7 +726,7 @@ def generate_database(db: Database) -> CodeLines:
             store_offset += parent.get_offset(obj)
         return [
             '',
-            f'class {obj.typename_outer}: public {template}',
+            f'class {object_prop.typename_outer}: public {template}',
             '{',
             'public:',
             [
@@ -750,7 +735,7 @@ def generate_database(db: Database) -> CodeLines:
             *[generate_outer_class(obj, prop, store_offset) for prop in obj.object_properties if not object_prop.is_item],
             '};'
         ] if obj.object_properties and not obj.is_union else [
-            f'using {obj.typename_outer} = {template};'
+            f'using {object_prop.typename_outer} = {template};'
         ]
     for prop in db.object_properties:
         lines.header.append(generate_outer_class(db, prop, 0))
@@ -1172,8 +1157,8 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
                 ]
         return enumlist
 
-    if isinstance(obj, ObjectArray):
-        item_lines = CodeLines() if obj.items.ref else generate_object(db, obj.items)
+    if obj.is_object_array:
+        item_lines = CodeLines() if obj.items.obj.ref else generate_object(db, obj.items)
         return CodeLines(
             [
                 *forward_decls,
@@ -1186,7 +1171,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
             ],
             item_lines.source + typeinfo.source)
 
-    if isinstance(obj, Array):
+    if obj.is_array:
         return CodeLines(
             [
                 *forward_decls,
@@ -1240,21 +1225,21 @@ def generate_updater(object_prop: Property) -> list:
 
     obj = object_prop.obj
 
-    if isinstance(obj, ObjectArray):
+    if obj.is_object_array:
         union_array_methods = [
             [
                 '',
-                f'{item.typename_updater} addItem{item.typename}()',
+                f'{item.obj.typename_updater} addItem{item.typename}()',
                 '{',
-                [f'return ObjectArray::addItem<ConfigDB::Union>().to<{item.typename_updater}>({tag});'],
+                [f'return ObjectArray::addItem<ConfigDB::Union>().to<{item.obj.typename_updater}>({tag});'],
                 '}',
                 '',
-                f'{item.typename_updater} insertItem{item.typename}(unsigned index)',
+                f'{item.obj.typename_updater} insertItem{item.typename}(unsigned index)',
                 '{',
-                [f'return ObjectArray::insertItem<ConfigDB::Union>(index).to<{item.typename_updater}>({tag});'],
+                [f'return ObjectArray::insertItem<ConfigDB::Union>(index).to<{item.obj.typename_updater}>({tag});'],
                 '}',
-            ] for tag, item in enumerate(obj.items.children)
-        ] if isinstance(obj.items, Union) else []
+            ] for tag, item in enumerate(obj.items.obj.object_properties)
+        ] if isinstance(obj.items.obj, Union) else []
         return [
             *declare_templated_class(obj, [obj.items.obj.typename_updater], True),
             constructors,
@@ -1262,7 +1247,7 @@ def generate_updater(object_prop: Property) -> list:
             '};',
         ]
 
-    if isinstance(obj, Array):
+    if obj.is_array:
         return [
             *declare_templated_class(obj, [obj.items.ctype_ret], True),
             constructors,
