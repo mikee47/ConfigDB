@@ -423,6 +423,7 @@ class Database(Object):
     objects: dict[Object] = field(default_factory=dict)
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
+    include: set[str] = None
 
     @property
     def obj(self):
@@ -590,7 +591,7 @@ def resolve_prop_ref(parent: Object, fields: dict, db: Database) -> None:
 
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
-    database.include = database.schema.get('include', [])
+    database.include = database.schema.get('include', set())
     root = Property(database, '', {'type':'object'})
     root.obj = Object('', None, None)
     database.object_properties.append(root)
@@ -628,7 +629,6 @@ def parse_database(database: Database):
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
             object_prop = createObjectProperty(Object)
-            parent.object_properties.append(object_prop)
             obj = object_prop.obj
             database.objects[obj.typename] = obj
             parse_properties(object_prop, fields.get('properties', {}))
@@ -678,13 +678,13 @@ def parse_database(database: Database):
                 if choice:
                     choice_prop = Property(union_prop, ref, {'type':'object'})
                     choice_prop.obj = choice
+                    union.object_properties.append(choice_prop)
                 else:
                     print("REF NOT FOUND")
                     choice_prop = parse_object(union_prop, ref, opt)
                     choice = choice_prop.obj
                     choice.ref = ref
                     database.objects[choice.typename] = choice
-                union.object_properties.append(choice_prop)
             return union_prop
 
         raise ValueError('Bad type ' + prop_type)
@@ -703,7 +703,7 @@ def generate_database(db: Database) -> CodeLines:
     for obj in db.objects.values():
         if obj.ref:
             if obj.schema_id != db.schema_id:
-                db.include.append(f'{obj.schema_id}.h')
+                db.include.add(f'{obj.schema_id}.h')
                 ns = make_typename(obj.schema_id)
                 external_defs += [
                     f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
