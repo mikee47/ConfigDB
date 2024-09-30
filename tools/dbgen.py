@@ -291,7 +291,6 @@ class Property:
         while isinstance(prop, Property):
             if not isinstance(prop.obj, ObjectArray):
                 ns.insert(0, prop.obj.typename_contained)
-            # obj = obj.database if obj.ref else obj.parent
             prop = prop.parent
         return '::'.join(ns)
 
@@ -560,20 +559,18 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
     ref = fields.get('$ref')
     if ref:
         parent = parent_prop.obj
-        print("RESOLVE", parent.schema_id)#, fields)
         if ref.startswith('#/'):
             ref = ref[2:]
-            print("INT", schema_id)
         else:
             schema_id, _, ref = ref.partition('/')
-            print("EXT", schema_id)
         db = databases[schema_id]
         ref_node = db.schema
-        print("REF", ref)#, ref_node)
         while ref:
             name, _, ref = ref.partition('/')
-            print("X", name, ref)
             ref_node = ref_node[name]
+        ref = name
+        if not key:
+            key = make_identifier(ref)
 
         # Has object already been parsed?
         if obj := ref_node.get('object'):
@@ -590,9 +587,9 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         if ref_node:
             # For simple properties the definition is a template,
             # so copy over any non-existent values
-            for key, value in ref_node.items():
-                if key not in fields:
-                    fields[key] = value
+            for k, v in ref_node.items():
+                if k not in fields:
+                    fields[k] = v
 
         prop = Property(parent_prop, key, fields)
         parent_prop.obj.properties.append(prop)
@@ -619,10 +616,9 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         items = fields['items']
         array_prop = createObjectProperty(ObjectArray)
         items_prop = parse_property(array_prop, f'{array_prop.typename}Item', items)
-        if items_prop.property_type in ['object', 'union']:
+        if items_prop.ptype in ['object', 'union']:
             if 'default' in fields:
                 raise ValueError('ObjectArray default not supported')
-            array_prop.obj.object_properties.append(items_prop)
             return array_prop
 
         # Simple array
@@ -640,8 +636,7 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         union_prop = createObjectProperty(Union)
         union = union_prop.obj
         for opt in fields['oneOf']:
-            opt_prop = parse_property(union_prop, '', opt)
-            union_prop.obj.object_properties.append(opt_prop)
+            parse_property(union_prop, '', opt)
         return union_prop
 
     raise ValueError('Bad type ' + prop_type)
@@ -720,10 +715,8 @@ def generate_database(db: Database) -> CodeLines:
             '};'
         ])
 
-    # for obj in reversed(db.objects.values()):
-    for node in db.schema.get('$defs', {}).values():
-        obj = node.get('object')
-        if obj:
+    for node in reversed(db.schema.get('$defs', {}).values()):
+        if obj := node.get('object'):
             prop = ObjectProperty(db, obj.name, obj)
             lines.append(generate_object(db, prop))
 
@@ -832,7 +825,6 @@ def generate_structure(db: Database) -> list[str]:
 
 
 def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool = False) -> list[str]:
-    print("declare_templated_class", obj.name, is_updater)
     typename = obj.typename_updater if is_updater else obj.typename_contained
     template = 'UpdaterTemplate' if is_updater else 'Template'
     params = [f'{obj.typename_contained}']
