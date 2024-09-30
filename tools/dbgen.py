@@ -531,7 +531,13 @@ def load_schema(filename: str) -> Database:
     databases[schema_id] = Database(schema_id, None, None, schema_id=schema_id, schema=schema)
 
 
-def resolve_ref(parent_prop: Property, fields: dict, db: Database) -> tuple[str, dict]:
+def parse_properties(parent_prop: Property, properties: dict):
+    database = parent_prop.database
+    for key, fields in properties.items():
+        parse_property(parent_prop, key, fields)
+
+
+def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
     '''If property contains a reference, deal with it
 
     References can point to anywhere in the current database (prefixed with '#') or in another one.
@@ -548,128 +554,83 @@ def resolve_ref(parent_prop: Property, fields: dict, db: Database) -> tuple[str,
     We can put that definition directly into the schema so it only needs to be parsed once.
     No need for separate `Database.objects`, we use `Database.schema` instead.
     '''
-    ref = fields.get('$ref')
-    if not ref:
-        return None
-    parent = parent_prop.obj
-    print("RESOLVE", parent.schema_id, fields)
-    if ref.startswith('#/'):
-        ref = ref[2:]
-        schema_id = parent.schema_id or db.schema_id
-        print("INT", schema_id)
-    else:
-        schema_id, _, ref = ref.partition('/')
-        print("EXT", schema_id)
-    db = databases[schema_id]
-    node = db.schema
-    print("REF", ref, node)
-    while ref:
-        name, _, ref = ref.partition('/')
-        print("X", name, ref)
-        node = node[name]
-
-    # Has object already been parsed?
-    if obj := node.get('object'):
-        return obj
-
-    '''So if this resolves to an object then we should process it and return the object.
-    For simple properties we return a dictionary.
-    '''
-    print('NODE', node)
-    if node is None:
-        raise ValueError('Cannot resolve ' + ref)
-
-    if 'oneOf' in node:
-        return parse_object(parent_prop, ref, node)
-    if node['type'] == 'object':
-        return parse_object(parent_prop, ref, node['properties'])
-    # if node['type'] == 'array':
-    #     return parse_object(parent_prop, ref, node['items'])
-
-    # node['schema_id'] = schema_id
-    # fields['ref'] = name
-
-    # For simple properties the definition is a template,
-    # so copy over any non-existent values
-    for key, value in node.items():
-        if key not in fields:
-            fields[key] = value;
-
-    return None
-
-
-def parse_properties(parent_prop: Property, properties: dict):
     database = parent_prop.database
-    for key, fields in properties.items():
-        obj = resolve_ref(parent_prop, fields, database)
-        if obj:
+    parent = parent_prop if isinstance(parent_prop, Database) else parent_prop.obj
+    schema_id = parent.schema_id or database.schema_id
+    ref = fields.get('$ref')
+    if ref:
+        parent = parent_prop.obj
+        print("RESOLVE", parent.schema_id)#, fields)
+        if ref.startswith('#/'):
+            ref = ref[2:]
+            print("INT", schema_id)
+        else:
+            schema_id, _, ref = ref.partition('/')
+            print("EXT", schema_id)
+        db = databases[schema_id]
+        ref_node = db.schema
+        print("REF", ref)#, ref_node)
+        while ref:
+            name, _, ref = ref.partition('/')
+            print("X", name, ref)
+            ref_node = ref_node[name]
+
+        # Has object already been parsed?
+        if obj := ref_node.get('object'):
             prop = ObjectProperty(parent_prop, key, obj)
             parent_prop.obj.object_properties.append(prop)
-        else:
-            prop = Property(parent_prop, key, fields)
-            parent_prop.obj.properties.append(prop)
-        # parse_object(parent_prop, key, fields)
+            return prop
+    else:
+        ref_node = None
 
+    # print("parse_object", parent_prop.name, key, fields)
+    prop_type = get_ptype(ref_node or fields)
 
-def parse_object(parent_prop: Property | Database, key: str, fields: dict) -> Property:
-    database = parent_prop.database
-    print("parse_object", parent_prop.name, key, fields)
-    parent = parent_prop if isinstance(parent_prop, Database) else parent_prop.obj
-    # ref, fields = resolve_ref(parent, fields, database)
-    prop_type = get_ptype(fields)
+    if CPP_TYPENAMES[prop_type] != '-':
+        if ref_node:
+            # For simple properties the definition is a template,
+            # so copy over any non-existent values
+            for key, value in ref_node.items():
+                if key not in fields:
+                    fields[key] = value
+
+        prop = Property(parent_prop, key, fields)
+        parent_prop.obj.properties.append(prop)
+        return prop
+
+    if ref_node:
+        fields = ref_node
 
     def createObjectProperty(Class) -> Property:
-        prop = Property(parent_prop, key, fields)
-        parent.object_properties.append(prop)
-        ref = None
-        prop.obj = Class(key, ref, fields.get('alias'), schema_id = fields.get('schema_id'))
+        obj = Class(key, ref, fields.get('alias'), schema_id=schema_id)
+        fields['object'] = obj
+        prop = ObjectProperty(parent_prop, key, obj)
+        parent_prop.obj.object_properties.append(prop)
         return prop
 
     if prop_type == 'object':
         if 'default' in fields:
             raise ValueError('Object default not supported (use default on properties)')
         object_prop = createObjectProperty(Object)
-        obj = object_prop.obj
         parse_properties(object_prop, fields.get('properties', {}))
         return object_prop
 
     if prop_type == 'array':
-        item_ref, items = resolve_ref(parent, fields['items'], database)
-        items_type = get_ptype(items)
-        if items_type in ['object', 'union']:
+        items = fields['items']
+        array_prop = createObjectProperty(ObjectArray)
+        items_prop = parse_property(array_prop, f'{array_prop.typename}Item', items)
+        if items_prop.property_type in ['object', 'union']:
             if 'default' in fields:
                 raise ValueError('ObjectArray default not supported')
-            array_prop = createObjectProperty(ObjectArray)
-            arr = array_prop.obj
-
-            if isinstance(item_ref, Object):
-                obj = item_ref
-
-            def_found = False
-            if item_ref:
-                obj = database.objects.get(item_ref)
-                if obj and obj.ref:
-                    def_found = True
-            if not def_found:
-                obj = Object(item_ref, item_ref, None, schema_id=fields.get('schema_id'))
-                if item_ref:
-                    print("ITEM_REF", item_ref)
-                    database.objects[item_ref] = obj
-            items_prop = ObjectProperty(array_prop, f'{array_prop.typename}Item', obj)
-            items_prop.is_item = True
-            arr.object_properties.append(items_prop)
-            if not def_found:
-                if items_type == 'union':
-                    parse_object(items_prop, item_ref, items)
-                else:
-                    parse_properties(items_prop, items['properties'])
+            array_prop.obj.object_properties.append(items_prop)
             return array_prop
 
         # Simple array
+        parent_prop.obj.object_properties.pop()
         array_prop = createObjectProperty(Array)
-        parse_properties(array_prop, {'items': items})
+        items_prop.parent = array_prop
         arr = array_prop.obj
-        assert len(arr.properties) == 1
+        arr.properties.append(items_prop)
         arr.default = fields.get('default')
         return array_prop
 
@@ -678,35 +639,22 @@ def parse_object(parent_prop: Property | Database, key: str, fields: dict) -> Pr
             raise ValueError('Union default not supported')
         union_prop = createObjectProperty(Union)
         union = union_prop.obj
-        # database.objects[union.typename] = union
         for opt in fields['oneOf']:
-            print("REF FIND", opt)
-            ref, opt = resolve_ref(union_prop, opt, database)
-            print("REF RESULT", type(ref), ref, opt)
-            # choice = database.objects.get(ref)
-            # if choice:
-            #     choice_prop = Property(union_prop, ref, {'type':'object'})
-            #     choice_prop.obj = choice
-            #     union.object_properties.append(choice_prop)
-            # else:
-            #     print("REF NOT FOUND")
-            #     assert ref
-            #     choice_prop = parse_object(union_prop, ref, opt)
-            #     choice = choice_prop.obj
-            #     choice.ref = ref
-            #     print("ITEM_REF", ref)
-            #     database.objects[ref] = choice
+            opt_prop = parse_property(union_prop, '', opt)
+            union_prop.obj.object_properties.append(opt_prop)
         return union_prop
 
     raise ValueError('Bad type ' + prop_type)
 
+
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
+    print("parse_database", database.name)
     database.include = database.schema.get('include', set())
     root = ObjectProperty(database, '', Object('', None, None))
+    database.object_properties.append(root)
     root.is_store = True
     database.schema['object'] = root.obj
-    database.object_properties.append(root)
     parse_properties(root, database.schema['properties'])
 
 def generate_database(db: Database) -> CodeLines:
