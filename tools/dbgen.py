@@ -710,7 +710,7 @@ def generate_database(db: Database) -> CodeLines:
             '};'
         ])
 
-    for node in reversed(db.schema.get('$defs', {}).values()):
+    for node in db.schema.get('$defs', {}).values():
         if obj := node.get('object'):
             prop = ObjectProperty(db, obj.name, obj)
             lines.append(generate_object(db, prop))

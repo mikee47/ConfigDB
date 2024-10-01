@@ -44,28 +44,6 @@
     "last": {
       "type": "object"
     },
-    "Color": {
-      "oneOf": [
-        {
-          "$ref": "#/$defs/RGB"
-        },
-        {
-          "$ref": "#/$defs/HSV"
-        },
-        {
-          "$ref": "#/$defs/RAW"
-        },
-        {
-          "$ref": "#/$defs/ColorList"
-        }
-      ]
-    },
-    "ColorList": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/Color"
-      }
-    },
     "RGB": {
       "type": "object",
       "properties": {
@@ -145,6 +123,28 @@
           "minimum": 0,
           "maximum": 1023
         }
+      }
+    },
+    "Color": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RGB"
+        },
+        {
+          "$ref": "#/$defs/HSV"
+        },
+        {
+          "$ref": "#/$defs/RAW"
+        },
+        {
+          "$ref": "#/$defs/ColorList"
+        }
+      ]
+    },
+    "ColorList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Color"
       }
     },
     "array-with-defaults": {
