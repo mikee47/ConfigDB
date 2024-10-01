@@ -757,7 +757,8 @@ def generate_database(db: Database) -> CodeLines:
         for prop in object_prop.obj.object_properties:
             obj = prop.obj
             if obj.is_union:
-                unions[f'{prop.namespace}::{obj.typename_contained}'] = obj
+                if obj.schema_id == db.schema_id:
+                    unions[f'{prop.namespace}::{obj.typename_contained}'] = obj
             else:
                 find_unions(prop)
     find_unions(db)
