@@ -427,8 +427,8 @@ class Union(Object):
 @dataclass
 class Database(Object):
     schema: dict = None
-    object_defs: dict = field(default_factory=dict)
-    external_objects: dict = field(default_factory=dict)
+    object_defs: dict[Object] = field(default_factory=dict)
+    external_object_properties: dict[Property] = field(default_factory=dict)
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
     include: set[str] = None
@@ -570,19 +570,15 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         else:
             prop = ObjectProperty(parent_prop, key, fields, obj)
             parent_prop.obj.object_properties.append(prop)
-        if obj.schema_id != database.schema_id:
-            database.external_objects[obj.ref] = obj
+        fields['property'] = prop
         return prop
 
-    object_name = key
-    object_ref = fields.get('$ref')
-    if object_ref:
-        ref = object_ref
-        if ref.startswith('#/'):
-            ref = ref[2:]
+    if object_ref := fields.get('$ref'):
+        if object_ref.startswith('#/'):
+            ref = object_ref[2:]
             object_ref = f'{schema_id}/{ref}'
         else:
-            schema_id, _, ref = ref.partition('/')
+            schema_id, _, ref = object_ref.partition('/')
         db = databases[schema_id]
         ref_node = db.schema
         while ref:
@@ -593,9 +589,12 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
             key = name
 
         # Has object already been parsed?
-        if obj := ref_node.get('object'):
-            return createObjectProperty(obj)
+        if prop := ref_node.get('property'):
+            if prop.obj.schema_id != parent_prop.obj.schema_id:
+                database.external_object_properties[object_ref] = prop
+            return createObjectProperty(prop.obj)
     else:
+        object_name = key
         ref_node = None
 
     prop_type = get_ptype(ref_node or fields)
@@ -616,10 +615,9 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         fields = ref_node
 
     def createObjectAndProperty(Class) -> Property:
-        obj = Class(object_name, object_ref, schema_id=schema_id)
+        obj = Class(object_name, object_ref, schema_id)
         if object_ref and not object_ref in db.object_defs:
             db.object_defs[object_ref] = obj
-        fields['object'] = obj
         return createObjectProperty(obj)
 
     if prop_type == 'object':
@@ -659,10 +657,9 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
     database.include = database.schema.get('include', set())
-    root = ObjectProperty(database, '', {}, Object('', None, None))
+    root = ObjectProperty(database, '', {}, Object('', None, database.schema_id))
     database.object_properties.append(root)
     root.is_store = True
-    database.schema['object'] = root.obj
     parse_properties(root, database.schema['properties'])
 
 def generate_database(db: Database) -> CodeLines:
@@ -674,9 +671,10 @@ def generate_database(db: Database) -> CodeLines:
     }
 
     external_defs = []
-    for obj in db.external_objects.values():
+    for prop in db.external_object_properties.values():
+        obj = prop.obj
         db.include.add(f'{obj.schema_id}.h')
-        ns = make_typename(obj.schema_id)
+        ns = prop.namespace
         external_defs += [
             f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
             f'using {obj.typename_updater} = {ns}::{obj.typename_updater};',

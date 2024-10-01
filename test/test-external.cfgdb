@@ -4,6 +4,9 @@
   "properties": {
     "color": {
       "$ref": "test-config-union/$defs/Color"
+    },
+    "colors": {
+      "$ref": "test-config-enum/properties/colors"
     }
   }
 }
