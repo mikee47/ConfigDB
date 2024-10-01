@@ -304,6 +304,7 @@ class ObjectProperty(Property):
     def __init__(self, parent: Property, name: str, obj: 'Object'):
         super().__init__(parent, name, {'type':'object'})
         self.obj = obj
+        self.is_store = isinstance(parent, Database)
 
 
 @dataclass
@@ -545,11 +546,22 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
     No need for separate `Database.objects`, we use `Database.schema` instead.
     '''
     database = parent_prop.database
-    parent = parent_prop if isinstance(parent_prop, Database) else parent_prop.obj
-    schema_id = parent.schema_id or database.schema_id
+    schema_id = parent_prop.obj.schema_id or database.schema_id
+
+    def createObjectProperty(obj: Object) -> Property:
+        # Objects with 'store' annoation are managed by database, otherwise they live in root object
+        if 'store' in fields:
+            if not parent_prop.is_root:
+                raise ValueError(f'{key} cannot have "store" annotation, not a root object')
+            parent = database
+        else:
+            parent = parent_prop
+        prop = ObjectProperty(parent, key, obj)
+        parent.obj.object_properties.append(prop)
+        return prop
+
     ref = fields.get('$ref')
     if ref:
-        parent = parent_prop.obj
         if ref.startswith('#/'):
             ref = ref[2:]
         else:
@@ -565,9 +577,7 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
 
         # Has object already been parsed?
         if obj := ref_node.get('object'):
-            prop = ObjectProperty(parent_prop, key, obj)
-            parent_prop.obj.object_properties.append(prop)
-            return prop
+            return createObjectProperty(obj)
     else:
         ref_node = None
 
@@ -589,25 +599,23 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
     if ref_node:
         fields = ref_node
 
-    def createObjectProperty(Class) -> Property:
+    def createObjectAndProperty(Class) -> Property:
         obj = Class(ref or key, ref, fields.get('alias'), schema_id=schema_id)
         if ref:
             assert 'object' not in fields
             fields['object'] = obj
-        prop = ObjectProperty(parent_prop, key, obj)
-        parent_prop.obj.object_properties.append(prop)
-        return prop
+        return createObjectProperty(obj)
 
     if prop_type == 'object':
         if 'default' in fields:
             raise ValueError('Object default not supported (use default on properties)')
-        object_prop = createObjectProperty(Object)
+        object_prop = createObjectAndProperty(Object)
         parse_properties(object_prop, fields.get('properties', {}))
         return object_prop
 
     if prop_type == 'array':
         items = fields['items']
-        array_prop = createObjectProperty(Array)
+        array_prop = createObjectAndProperty(Array)
         items_prop = parse_property(array_prop, f'{array_prop.typename}Item', items)
         array_prop.obj.default = fields.get('default')
         if array_prop.obj.is_object_array:
@@ -618,7 +626,7 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
     if prop_type == 'union':
         if 'default' in fields:
             raise ValueError('Union default not supported')
-        union_prop = createObjectProperty(Union)
+        union_prop = createObjectAndProperty(Union)
         union = union_prop.obj
         for opt in fields['oneOf']:
             parse_property(union_prop, '', opt)
