@@ -293,7 +293,7 @@ class Property:
             return self.database.typename
         prop = self.parent
         ns = []
-        while isinstance(prop, Property):
+        while prop:
             if not prop.obj.is_array:
                 ns.insert(0, prop.obj.typename_contained)
             prop = prop.parent
@@ -428,6 +428,10 @@ class Database(Object):
     @property
     def obj(self):
         return self
+
+    @property
+    def parent(self):
+        return None
 
     @property
     def database(self):
@@ -601,9 +605,8 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
 
     def createObjectAndProperty(Class) -> Property:
         obj = Class(ref or key, ref, fields.get('alias'), schema_id=schema_id)
-        if ref:
-            assert 'object' not in fields
-            fields['object'] = obj
+        assert 'object' not in fields
+        fields['object'] = obj
         return createObjectProperty(obj)
 
     if prop_type == 'object':
@@ -750,28 +753,34 @@ def generate_database(db: Database) -> CodeLines:
 
     lines.header += ['};']
 
-    for node in db.schema.get('$defs', {}).values():
-        obj = node.get('object')
-        if not obj or not obj.is_union:
-            continue
-        decl = f'String toString({db.typename}::{obj.typename_contained}::Tag tag)'
-        lines.header += [
-            '',
-            f'{decl};'
-        ]
-        lines.source += [
-            '',
-            decl,
-            '{',
-            [
-                'switch(unsigned(tag)) {',
-                [f'case {index}: return {db.strings[prop.name]};' for index, prop in enumerate(obj.object_properties)],
-                ['default: return nullptr;'],
+    unions = {}
+    def find_unions(object_prop: ObjectProperty | Database):
+        for prop in object_prop.obj.object_properties:
+            obj = prop.obj
+            if obj.is_union:
+                unions[f'{prop.namespace}::{obj.typename_contained}'] = obj
+            else:
+                find_unions(prop)
+    find_unions(db)
+    if unions:
+        lines.header += ['']
+        for typename, obj in unions.items():
+            decl = f'String toString({typename}::Tag tag)'
+            lines.header += [
+                f'{decl};'
+            ]
+            lines.source += [
+                '',
+                decl,
+                '{',
+                [
+                    'switch(unsigned(tag)) {',
+                    [f'case {index}: return {db.strings[prop.name]};' for index, prop in enumerate(obj.object_properties)],
+                    ['default: return nullptr;'],
+                    '}'
+                ],
                 '}'
-            ],
-            '}'
-        ]
-
+            ]
 
     # Insert this at end once string table has been populated
     lines.source[:0] = [
