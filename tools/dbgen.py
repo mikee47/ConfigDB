@@ -570,6 +570,8 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         else:
             prop = ObjectProperty(parent_prop, key, fields, obj)
             parent_prop.obj.object_properties.append(prop)
+        if obj.schema_id != database.schema_id:
+            database.external_objects[obj.ref] = obj
         return prop
 
     object_name = key
@@ -671,23 +673,8 @@ def generate_database(db: Database) -> CodeLines:
         'RootUpdater'
     }
 
-    scanned_objects = []
-    external_objects = {}
-    def find_external_objects(object_prop: ObjectProperty | Database):
-        for prop in object_prop.obj.object_properties:
-            obj = prop.obj
-            if obj in scanned_objects:
-                continue
-            scanned_objects.append(obj)
-            if obj.ref and obj.schema_id != db.schema_id:
-                path = f'{make_typename(obj.schema_id)}::{obj.typename}'
-                external_objects[path] = obj
-            else:
-                find_external_objects(prop)
-    find_external_objects(db)
-
     external_defs = []
-    for obj in external_objects.values():
+    for obj in db.external_objects.values():
         db.include.add(f'{obj.schema_id}.h')
         ns = make_typename(obj.schema_id)
         external_defs += [
