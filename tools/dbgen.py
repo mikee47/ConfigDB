@@ -138,7 +138,6 @@ def get_ptype(fields: dict):
 class Property:
     parent: Property | Database
     name: str
-    ref: str | None
     ptype: str
     ctype: str
     property_type: str
@@ -159,7 +158,6 @@ class Property:
         self.parent = parent
         self.name = key
         self.ptype = get_ptype(fields)
-        self.ref = fields.get('ref')
         self.ctype_override = fields.get('ctype')
         self.default = fields.get('default')
         self.ctype = CPP_TYPENAMES[self.ptype]
@@ -301,8 +299,10 @@ class Property:
 
 
 class ObjectProperty(Property):
-    def __init__(self, parent: Property, name: str, obj: 'Object'):
-        super().__init__(parent, name, {'type':'object'})
+    def __init__(self, parent: Property, name: str, fields: dict, obj: 'Object'):
+        if 'type' not in fields:
+            fields['type'] = 'object'
+        super().__init__(parent, name, fields)
         self.obj = obj
 
 
@@ -310,14 +310,13 @@ class ObjectProperty(Property):
 class Object:
     name: str
     ref: str | None
-    alias: str | list[str] | None
     schema_id: str = None
     object_properties: list[Property] = field(default_factory=list)
     properties: list[Property] = field(default_factory=list)
 
     @property
     def typename(self):
-        return make_typename(self.ref or self.name or 'Root')
+        return make_typename(self.name or 'Root')
 
     @property
     def typename_contained(self):
@@ -522,7 +521,7 @@ def load_schema(filename: str) -> Database:
     except ImportError as err:
         print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
     schema_id = os.path.splitext(os.path.basename(filename))[0]
-    databases[schema_id] = Database(schema_id, None, None, schema_id=schema_id, schema=schema)
+    databases[schema_id] = Database(schema_id, None, schema_id=schema_id, schema=schema)
 
 
 def parse_properties(parent_prop: Property, properties: dict):
@@ -555,16 +554,18 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         if 'store' in fields:
             if not parent_prop.is_root:
                 raise ValueError(f'{key} cannot have "store" annotation, not a root object')
-            prop = ObjectProperty(database, key, obj)
+            prop = ObjectProperty(database, key, fields, obj)
             prop.is_store = True
             database.object_properties.append(prop)
         else:
-            prop = ObjectProperty(parent_prop, key, obj)
+            prop = ObjectProperty(parent_prop, key, fields, obj)
             parent_prop.obj.object_properties.append(prop)
         return prop
 
-    ref = fields.get('$ref')
-    if ref:
+    object_name = key
+    object_ref = fields.get('$ref')
+    if object_ref:
+        ref = object_ref
         if ref.startswith('#/'):
             ref = ref[2:]
         else:
@@ -574,9 +575,9 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         while ref:
             name, _, ref = ref.partition('/')
             ref_node = ref_node[name]
-        ref = name
+        object_name = name
         if not key:
-            key = make_identifier(ref)
+            key = make_identifier(name)
 
         # Has object already been parsed?
         if obj := ref_node.get('object'):
@@ -603,7 +604,7 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         fields = ref_node
 
     def createObjectAndProperty(Class) -> Property:
-        obj = Class(ref or key, ref, fields.get('alias'), schema_id=schema_id)
+        obj = Class(object_name, object_ref, schema_id=schema_id)
         assert 'object' not in fields
         fields['object'] = obj
         return createObjectProperty(obj)
@@ -641,7 +642,7 @@ def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
     print("parse_database", database.name)
     database.include = database.schema.get('include', set())
-    root = ObjectProperty(database, '', Object('', None, None))
+    root = ObjectProperty(database, '', {}, Object('', None, None))
     database.object_properties.append(root)
     root.is_store = True
     database.schema['object'] = root.obj
@@ -654,8 +655,24 @@ def generate_database(db: Database) -> CodeLines:
         'ContainedRoot',
         'RootUpdater'
     }
+
+    scanned_objects = []
+    external_objects = {}
+    def find_external_objects(object_prop: ObjectProperty | Database):
+        for prop in object_prop.obj.object_properties:
+            obj = prop.obj
+            if obj in scanned_objects:
+                continue
+            scanned_objects.append(obj)
+            if obj.ref and obj.schema_id != db.schema_id:
+                path = f'{make_typename(obj.schema_id)}::{obj.typename}'
+                external_objects[path] = obj
+            else:
+                find_external_objects(prop)
+    find_external_objects(db)
+
     external_defs = []
-    for obj in db.external_objects:
+    for obj in external_objects.values():
         db.include.add(f'{obj.schema_id}.h')
         ns = make_typename(obj.schema_id)
         external_defs += [
@@ -696,7 +713,7 @@ def generate_database(db: Database) -> CodeLines:
             f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
             [
                 f'{db.strings[db.name]},',
-                f'{len(db.properties)},',
+                f'{len(db.object_properties)},',
                 '{',
                 *(make_static_initializer(
                     [
@@ -704,7 +721,7 @@ def generate_database(db: Database) -> CodeLines:
                     f'.name = {db.strings[prop.name]}',
                     '.offset = 0',
                     f'.variant = {{.object = &{prop.obj.typename_contained}::typeinfo}}'
-                    ], ',') for prop in db.properties),
+                    ], ',') for prop in db.object_properties),
                 '}'
             ],
             '};'
@@ -712,7 +729,7 @@ def generate_database(db: Database) -> CodeLines:
 
     for node in db.schema.get('$defs', {}).values():
         if obj := node.get('object'):
-            prop = ObjectProperty(db, obj.name, obj)
+            prop = ObjectProperty(db, obj.name, {}, obj)
             lines.append(generate_object(db, prop))
 
     for prop in db.object_properties:
