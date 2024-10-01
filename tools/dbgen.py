@@ -427,6 +427,7 @@ class Union(Object):
 @dataclass
 class Database(Object):
     schema: dict = None
+    object_defs: dict = field(default_factory=dict)
     external_objects: dict = field(default_factory=dict)
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
@@ -577,6 +578,7 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         ref = object_ref
         if ref.startswith('#/'):
             ref = ref[2:]
+            object_ref = f'{schema_id}/{ref}'
         else:
             schema_id, _, ref = ref.partition('/')
         db = databases[schema_id]
@@ -594,7 +596,6 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
     else:
         ref_node = None
 
-    # print("parse_object", parent_prop.name, key, fields)
     prop_type = get_ptype(ref_node or fields)
 
     if CPP_TYPENAMES[prop_type] != '-':
@@ -614,7 +615,8 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
 
     def createObjectAndProperty(Class) -> Property:
         obj = Class(object_name, object_ref, schema_id=schema_id)
-        assert 'object' not in fields
+        if object_ref and not object_ref in db.object_defs:
+            db.object_defs[object_ref] = obj
         fields['object'] = obj
         return createObjectProperty(obj)
 
@@ -654,7 +656,6 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
 
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
-    print("parse_database", database.name)
     database.include = database.schema.get('include', set())
     root = ObjectProperty(database, '', {}, Object('', None, None))
     database.object_properties.append(root)
@@ -693,10 +694,9 @@ def generate_database(db: Database) -> CodeLines:
             f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
             f'using {obj.typename_updater} = {ns}::{obj.typename_updater};',
         ]
-    for node in db.schema.get('$defs', {}).values():
-        obj = node.get('object')
-        if obj:
-            db.forward_decls |= {obj.typename_contained, obj.typename_updater}
+
+    for obj in db.object_defs.values():
+        db.forward_decls |= {obj.typename_contained, obj.typename_updater}
 
     lines = CodeLines(
         [
@@ -741,10 +741,9 @@ def generate_database(db: Database) -> CodeLines:
             '};'
         ])
 
-    for node in db.schema.get('$defs', {}).values():
-        if obj := node.get('object'):
-            prop = ObjectProperty(db, obj.name, {}, obj)
-            lines.append(generate_object(db, prop))
+    for obj in reversed(db.object_defs.values()):
+        prop = ObjectProperty(db, obj.name, {}, obj)
+        lines.append(generate_object(db, prop))
 
     for prop in db.object_properties:
         if not prop.obj.ref:

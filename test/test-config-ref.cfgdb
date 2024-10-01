@@ -48,6 +48,23 @@
     }
   },
   "$defs": {
+    "Color": {
+      "type": "object",
+      "properties": {
+        "rgb1": {
+          "$ref": "#/$defs/RGB"
+        },
+        "rgb2": {
+          "$ref": "#/$defs/RGB"
+        },
+        "hsv": {
+          "$ref": "#/$defs/HSV"
+        },
+        "raw": {
+          "$ref": "#/$defs/RAW"
+        }
+      }
+    },
     "RGB": {
       "type": "object",
       "properties": {
@@ -126,23 +143,6 @@
           "default": 100,
           "minimum": 0,
           "maximum": 255
-        }
-      }
-    },
-    "Color": {
-      "type": "object",
-      "properties": {
-        "rgb1": {
-          "$ref": "#/$defs/RGB"
-        },
-        "rgb2": {
-          "$ref": "#/$defs/RGB"
-        },
-        "hsv": {
-          "$ref": "#/$defs/HSV"
-        },
-        "raw": {
-          "$ref": "#/$defs/RAW"
         }
       }
     }
