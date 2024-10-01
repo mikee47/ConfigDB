@@ -146,7 +146,6 @@ class Property:
     enum_type: str | None = None
     enum_ctype: str | None = None
     obj: Object | None = None
-    is_item: bool = False
     is_store: bool = False
 
     def __init__(self, parent: Property, key: str, fields: dict):
@@ -266,6 +265,10 @@ class Property:
             if prop.is_store:
                 i += 1
         assert False
+
+    @property
+    def is_item(self):
+        return self.parent.obj.is_array
 
     @property
     def is_item_member(self):
