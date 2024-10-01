@@ -304,7 +304,6 @@ class ObjectProperty(Property):
     def __init__(self, parent: Property, name: str, obj: 'Object'):
         super().__init__(parent, name, {'type':'object'})
         self.obj = obj
-        self.is_store = isinstance(parent, Database)
 
 
 @dataclass
@@ -527,7 +526,6 @@ def load_schema(filename: str) -> Database:
 
 
 def parse_properties(parent_prop: Property, properties: dict):
-    database = parent_prop.database
     for key, fields in properties.items():
         parse_property(parent_prop, key, fields)
 
@@ -557,11 +555,12 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         if 'store' in fields:
             if not parent_prop.is_root:
                 raise ValueError(f'{key} cannot have "store" annotation, not a root object')
-            parent = database
+            prop = ObjectProperty(database, key, obj)
+            prop.is_store = True
+            database.object_properties.append(prop)
         else:
-            parent = parent_prop
-        prop = ObjectProperty(parent, key, obj)
-        parent.obj.object_properties.append(prop)
+            prop = ObjectProperty(parent_prop, key, obj)
+            parent_prop.obj.object_properties.append(prop)
         return prop
 
     ref = fields.get('$ref')
@@ -1312,7 +1311,6 @@ def generate_contained_constructors(object_prop: Property, is_updater = False) -
         ]
 
     typename = obj.typename_updater if is_updater else obj.typename_contained
-    parent_typename = object_prop.parent.obj.typename_updater if is_updater else object_prop.parent.obj.typename_contained
     headers = [
         '',
         f'{typename}() = default;',
@@ -1328,7 +1326,7 @@ def generate_contained_constructors(object_prop: Property, is_updater = False) -
     if not object_prop.is_store:#is_root:
         headers += [
             '',
-            f'{typename}({parent_typename}& parent, unsigned propIndex): ' + ', '.join([
+            f'{typename}(ConfigDB::Object& parent, unsigned propIndex): ' + ', '.join([
                 f'{obj.base_class}{template}(parent, propIndex)',
                 *children
             ]),
