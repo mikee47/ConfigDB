@@ -296,7 +296,7 @@ class Property:
         while prop:
             if not prop.obj.is_array:
                 ns.insert(0, prop.obj.typename_contained)
-            prop = prop.parent
+            prop = prop.database if prop.obj.ref else prop.parent
         return '::'.join(ns)
 
 
