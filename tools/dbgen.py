@@ -22,8 +22,6 @@ CPP_TYPENAMES = {
 
 STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
-UNION_TAG_SIZE = 1
-UNION_TAG_TYPE = 'uint8_t'
 # These values get truncated by ConstNumber during C++ compilation
 NUMBER_MIN = -1e100
 NUMBER_MAX = 1e100
@@ -410,9 +408,17 @@ class Union(Object):
         return True
 
     @property
+    def max_object_size(self):
+        return max(prop.data_size for prop in self.object_properties)
+
+    @property
+    def max_property_size(self):
+        return max(prop.data_size for prop in self.properties)
+
+    @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return max(prop.data_size for prop in self.object_properties) + UNION_TAG_SIZE
+        return self.max_object_size + self.max_property_size
 
 
 @dataclass
@@ -577,7 +583,7 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
             ref_node = ref_node[name]
         object_name = name
         if not key:
-            key = make_identifier(name)
+            key = name
 
         # Has object already been parsed?
         if obj := ref_node.get('object'):
@@ -630,9 +636,14 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         if 'default' in fields:
             raise ValueError('Union default not supported')
         union_prop = createObjectAndProperty(Union)
-        union = union_prop.obj
         for opt in fields['oneOf']:
             parse_property(union_prop, '', opt)
+        prop = Property(union_prop, 'tag', {
+            'type': 'integer',
+            'minimum': 0,
+            'maximum': len(union_prop.obj.object_properties) - 1
+        })
+        union_prop.obj.properties.append(prop)
         return union_prop
 
     raise ValueError('Bad type ' + prop_type)
@@ -828,15 +839,15 @@ def generate_structure(db: Database) -> list[str]:
             return
         for prop in obj.object_properties:
             print_structure(prop, indent+1, offset)
-            if not prop.obj.is_union:
+            if not obj.is_union:
                 offset += prop.data_size
+        if obj.is_union:
+            offset += obj.max_object_size
         indent += 1
         for prop in obj.properties:
             add(offset, prop.id, prop.ctype)
             if not obj.is_union:
                 offset += prop.data_size
-        if obj.is_union:
-            add(offset + obj.data_size - UNION_TAG_SIZE, 'tag', 'uint8_t')
     for prop in db.object_properties:
         print_structure(prop, 0, 0)
         structure += ['']
@@ -958,15 +969,11 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             f'.variant = {{.object = &{prop.namespace}::{prop.obj.typename_contained}::typeinfo}}'
         ]]
         add_alias(prop.alias)
-        if not prop.obj.is_union:
+        if not obj.is_union:
             offset += prop.data_size
 
     if obj.is_union:
-        proplist += [[
-            '.type = PropertyType::UInt8',
-            f'.name = {db.strings['tag']}',
-            f'.offset = {object_prop.data_size - UNION_TAG_SIZE}',
-        ]]
+        offset += obj.max_object_size
 
     for prop in obj.properties:
         proplist += [[
@@ -1035,9 +1042,6 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
 def generate_object_struct(object_prop: Property) -> CodeLines:
     '''Generate struct definition for this object'''
 
-    if object_prop.data_size == 0:
-        return CodeLines()
-
     def get_ctype(prop):
         return 'ConfigDB::StringId' if prop.ptype == 'string' else prop.ctype
 
@@ -1048,26 +1052,19 @@ def generate_object_struct(object_prop: Property) -> CodeLines:
 
     obj = object_prop.obj
 
-    children = [prop for prop in obj.object_properties if prop.data_size]
-
-    if obj.is_union:
-        body = [
-            'union __attribute__((packed)) {',
-            [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(children)],
-            '};',
-            f'{UNION_TAG_TYPE} tag{{0}};',
-        ]
-    else:
-        body = [
-            [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in children] if children else None,
-            [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties]
-        ]
-
     typename = f'{object_prop.namespace}::{obj.typename_contained}'
     return CodeLines([
         '',
         'struct __attribute__((packed)) Struct {',
-        body,
+        [
+            'union __attribute__((packed)) {',
+            [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(obj.object_properties)],
+            '};',
+        ] if obj.is_union else
+        [
+            [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in obj.object_properties],
+        ],
+        [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties],
         '};',
         '',
         'static const Struct defaultData;',
@@ -1392,8 +1389,6 @@ def main():
 
     for db in databases.values():
         parse_database(db)
-
-    for db in databases.values():
         lines = generate_database(db)
 
         filepath = os.path.join(args.outdir, f'{db.name}')
