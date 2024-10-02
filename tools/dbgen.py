@@ -518,8 +518,20 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
 def load_schema(filename: str) -> Database:
     '''Load JSON configuration schema and validate
     '''
+    def parse_object_pairs(pairs):
+        d = {}
+        identifiers = set()
+        for k, v in pairs:
+            id = make_identifier(k)
+            if not id:
+                raise ValueError(f'Invalid key "{k}"')
+            if id in identifiers:
+                raise ValueError(f'Key "{k}" produces duplicate identifier "{id}"')
+            identifiers.add(id)
+            d[k] = v
+        return d
     with open(filename, 'r', encoding='utf-8') as f:
-        schema = json.load(f)
+        schema = json.load(f, object_pairs_hook=parse_object_pairs)
     try:
         from jsonschema import Draft7Validator
         v = Draft7Validator(Draft7Validator.META_SCHEMA)
