@@ -81,6 +81,7 @@ See the :sample:`Basic_Config` sample schema. The test application contains furt
 - Null values are not supported. If encountered in existing datasets then ConfigDB uses the default value for the property.
 - Multiple property types, such as *"type": ["boolean", "null"]* are not supported. A type must be defined for all properties and must be a string value. This also applies to array items.
 
+.. highlight: json
 
 Aliases
 -------
@@ -123,8 +124,6 @@ at compile time.
 
 Enumerated properties
 ~~~~~~~~~~~~~~~~~~~~~
-
-.. highlight: json
 
 JsonSchema offers the `enum <https://json-schema.org/understanding-json-schema/reference/enum>`__ keyword to restrict values to a set of known values. For example::
 
@@ -177,8 +176,6 @@ The code generator produces an **asXXX** method for each type of object which ca
 
 The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object type.
 
-Option objects are specified using "$ref"
-
 
 Re-using objects
 ~~~~~~~~~~~~~~~~
@@ -207,7 +204,7 @@ The *dbgen.py* code generator is passed the names of *all* schema found in the c
 
 
 When using shared objects only the name of the related property can be changed.
-For example:
+For example::
 
   "font-color": {
     "foreground": {
