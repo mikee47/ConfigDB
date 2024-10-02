@@ -33,11 +33,11 @@ Usage:
 JsonSchema
 ----------
 
-The database structure is defined using a standard `JSON schema <https://json-schema.org>`. A good introduction is to take the `Tour <https://tour.json-schema.org/>`__.
+The database structure is defined using a standard `JSON schema <https://json-schema.org>`__. A good introduction is to take the `Tour <https://tour.json-schema.org/>`__.
 
 An initial schema can be created from an existing sample JSON configuration file using a generation tool such as https://github.com/saasquatch/json-schema-inferrer. Go to the online demo and paste in your JSON configuration. The resulting schema can then be edited and further customised.
 
-The schema can then be used to provide auto-generated Standardised web editors can also be generated using tools such as https://github.com/json-editor/json-editor. Go to the online demo and scroll down to **Schema**.
+Standardised web editors can also be generated using tools such as https://github.com/json-editor/json-editor. Go to the online demo and scroll down to **Schema**.
 
 .. note::
 
@@ -47,7 +47,7 @@ The schema can then be used to provide auto-generated Standardised web editors c
         - IFS build scripts `Sming/Components/IFS/tools/fsbuild/schema.json`
         - USB config `Sming/Libraries/USB/schema.json`
 
-    It's probably fair to consider it a standard part of the framework so this should be documented somewhere centrally and referred to.
+    It's probably fair to consider it a standard part of the framework.
 
 Configuration JSON can be validated against the **.cfgdb** schema files using **check-jsonschema**::
 
@@ -165,7 +165,9 @@ The :cpp:class:`ConfigDB::ObjectArray` type can be used for arrays of objects or
 Unions
 ~~~~~~
 
-These are defined using the  `oneOf <https://json-schema.org/understanding-json-schema/reference/combining#oneOf>`__ schema keyword.
+These are defined using the  `oneOf <https://json-schema.org/understanding-json-schema/reference/combining#oneOf>`__ schema keyword, which defines an array of option definitions.
+
+Each definition can be defined using **$ref**. The name of the option will be taken from that definition, and can be overridden by adding a **title** keyword. Option definitions can also be given directly, in which case **title** is required.
 
 The *test* application contains an example of this in the *test-config-union.cfgdb* schema. It is used in the *Updates* test module.
 
@@ -175,33 +177,96 @@ The code generator produces an **asXXX** method for each type of object which ca
 
 The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object type.
 
-Note that items in **$defs** can also be non-object property types. For these, a type is *not* defined but instead used as a base definition which can be modified. Take a general *Pin* definition, for example::
+Option objects are specified using "$ref"
 
-  "Pin": {
-    "type": "integer",
-    "minimum": 0,
-    "maximum": 63
+
+Re-using objects
+~~~~~~~~~~~~~~~~
+
+JSON Schema describes ways to `structure complex schemas <https://json-schema.org/understanding-json-schema/structuring>`__.
+
+Re-useable (shared) definitions are, by convention, placed under **$defs**.
+These are referenced using the **$ref** keyword with JSON pointer syntax.
+
+For example:
+
+  "$ref": "#/$defs/MyObject"
+
+Definitions from other schema may be used:
+
+  "$ref": "other-schema/$defs/MyObject"
+
+The *dbgen.py* code generator is passed the names of *all* schema found in the current Sming project, which are loaded and parsed as a set using the base name of the *.cfgdb* schema (without file extension) as its identifier.
+
+.. note::
+  
+    The full URI resolution described by JSON Schema is not currently implemented.
+    This would require **$id** annotations in all schema.
+
+    Nested references are not supported. That is, a **$ref** must point to an actual definition and not just another **$ref**.
+
+
+When using shared objects only the name of the related property can be changed.
+For example:
+
+  "font-color": {
+    "foreground": {
+      "$ref": "#/$defs/Color"
+    },
+    "background": {
+      "$ref": "#/$defs/Color"
+    }
   }
 
-And in the main schema, use it like this::
+This generates a C++ property *fontColor* using a *FontColor* object definition which itself contains two properties: *foreground* and *background*. The object definition for both is *Color*.
 
-  "pin": {
-    "$ref": "#/$defs/Pin",
-    "default": 13
+
+Simple property definitions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+References to simple (non-object) property types are handled differently. A type is *not* defined but instead used as a base definition which can be modified. For example, we can provide a general *Pin* definition::
+
+  "$defs": {
+    "Pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63
+    }
   }
 
-The code generator expands this property::
+And use it like this::
 
-  "pin": {
-    "type": "integer",
-    "minimum": 0,
-    "maximum": 63,
-    "default": 13
+  "properties": {
+    "input-pin": {
+      "$ref": "#/$defs/Pin",
+      "default": 13
+    },
+    "output-pin": {
+      "$ref": "#/$defs/Pin",
+      "default": 4
+    }
   }
 
-This can make the schema more readable, save duplication and simplify modification.
+This is identical to the following::
 
-Note that no special type is defined in generated code. If a `ctype` annotation is present then that type must be defined elsewhere in the application.
+  "properties": {
+    "input-pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63,
+      "default": 13
+    }
+    "output-pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63,
+      "default": 4
+    }
+  }
+
+This approach can make the schema more readable, reduce duplication and simplify maintainance.
+
+This example generates a `uint8_t` property value. A different type may be specified for property accessors using the `ctype` annotation.
 
 
 Store loading / saving
