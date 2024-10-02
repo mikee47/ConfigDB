@@ -642,7 +642,11 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
             raise ValueError('Union default not supported')
         union_prop = createObjectAndProperty(Union)
         for opt in fields['oneOf']:
-            parse_property(union_prop, '', opt)
+            prop = parse_property(union_prop, opt.get('title'), opt)
+            if not prop.obj:
+                raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
+            if not prop.id or not prop.obj.typename:
+                raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
         prop = Property(union_prop, 'tag', {
             'type': 'integer',
             'minimum': 0,
@@ -1325,7 +1329,7 @@ def generate_contained_constructors(object_prop: Property, is_updater = False) -
         '}',
     ]
 
-    if not object_prop.is_store:#is_root:
+    if not object_prop.is_store:
         headers += [
             '',
             f'{typename}(ConfigDB::Object& parent, unsigned propIndex): ' + ', '.join([
@@ -1375,6 +1379,7 @@ def main():
         load_schema(f)
 
     for db in databases.values():
+        print(f'Parsing {db.name} ...')
         parse_database(db)
         lines = generate_database(db)
 

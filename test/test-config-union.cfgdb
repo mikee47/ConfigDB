@@ -25,7 +25,8 @@
     "color3": {
       "oneOf": [
         {
-          "$ref": "#/$defs/last"
+          "type": "object",
+          "title": "last"
         },
         {
           "$ref": "#/$defs/Color"
@@ -41,9 +42,6 @@
     }
   },
   "$defs": {
-    "last": {
-      "type": "object"
-    },
     "Color": {
       "oneOf": [
         {
