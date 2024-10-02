@@ -25,7 +25,8 @@
     "color3": {
       "oneOf": [
         {
-          "$ref": "#/$defs/last"
+          "type": "object",
+          "title": "last"
         },
         {
           "$ref": "#/$defs/Color"
@@ -41,9 +42,6 @@
     }
   },
   "$defs": {
-    "last": {
-      "type": "object"
-    },
     "Color": {
       "oneOf": [
         {
@@ -70,22 +68,16 @@
       "type": "object",
       "properties": {
         "red": {
-          "type": "integer",
-          "default": 100,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 100
         },
         "green": {
-          "type": "integer",
-          "default": 100,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 100
         },
         "blue": {
-          "type": "integer",
-          "default": 100,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 100
         }
       }
     },
@@ -93,22 +85,15 @@
       "type": "object",
       "properties": {
         "hue": {
-          "type": "integer",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 359
+          "$ref": "#/$defs/Degrees"
         },
         "saturation": {
-          "type": "integer",
-          "default": 100,
-          "minimum": 0,
-          "maximum": 100
+          "$ref": "#/$defs/Percent",
+          "default": 100
         },
         "value": {
-          "type": "integer",
-          "default": 100,
-          "minimum": 0,
-          "maximum": 100
+          "$ref": "#/$defs/Percent",
+          "default": 100
         }
       }
     },
@@ -116,36 +101,41 @@
       "type": "object",
       "properties": {
         "red": {
-          "type": "integer",
-          "default": 800,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 800
         },
         "green": {
-          "type": "integer",
-          "default": 500,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 500
         },
         "blue": {
-          "type": "integer",
-          "default": 200,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 200
         },
         "warm-white": {
-          "type": "integer",
-          "default": 1023,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 1023
         },
         "cold-white": {
-          "type": "integer",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1023
+          "$ref": "#/$defs/Color16",
+          "default": 0
         }
       }
+    },
+    "Color16": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1023
+    },
+    "Degrees": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 359
+    },
+    "Percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
     },
     "array-with-defaults": {
       "type": "array",

@@ -19,7 +19,10 @@ The corresponding schema **basic-config.cfgdb** was generated as follows:
 Then do some editing:
 
 - Open the .cfgdb file in vscode and associate with JSON format (hit *F1* then *change language mode*)
-- Add ``"store": "json"`` values to the root, *general*, *color* and *events* objects.
+- Add ``"store": true`` values to the root, *general*, *color* and *events* objects.
+- Add some shared definitions in ``$defs`` and corresponding ``$ref`` references.
+- Use ``ctype`` annotations to use more specific types for some property accessors (Url, IpAddress, etc)
+- Add ``include`` annotation to ensure our referenced types are available
 
 
 Web client

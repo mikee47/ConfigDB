@@ -22,8 +22,6 @@ CPP_TYPENAMES = {
 
 STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
-UNION_TAG_SIZE = 1
-UNION_TAG_TYPE = 'uint8_t'
 # These values get truncated by ConstNumber during C++ compilation
 NUMBER_MIN = -1e100
 NUMBER_MAX = 1e100
@@ -43,6 +41,8 @@ CPP_TYPESIZES = {
 }
 
 STRING_PREFIX = 'fstr_'
+
+databases: dict[str, 'Database'] = {}
 
 class StringTable:
     '''All string data stored as FSTR values
@@ -79,8 +79,6 @@ class StringTable:
     def items(self):
         return zip(self.keys, self.values)
 
-
-strings = StringTable()
 
 @dataclass
 class Range:
@@ -136,32 +134,33 @@ def get_ptype(fields: dict):
 
 @dataclass
 class Property:
+    parent: Property | Database
     name: str
-    ref: dict
     ptype: str
     ctype: str
-    ctype_override: str
     property_type: str
-    default: str | int
+    ctype_override: str | None
+    default: str | int | None
     alias: str | list[str] | None
-    enum: list
-    enum_type: str = None
-    enum_ctype: str = None
-    intrange: IntRange = None
-    numrange: Range = None
+    enum: list | None
+    enum_type: str | None = None
+    enum_ctype: str | None = None
+    obj: Object | None = None
+    is_store: bool = False
 
-    def __init__(self, obj: Object, key: str, fields: dict):
+    def __init__(self, parent: Property, key: str, fields: dict):
         def error(msg: str):
-            raise ValueError(f'"{obj.path}": {msg} for "{self.name}"')
+            raise ValueError(f'"{parent.path}": {msg} for "{self.name}"')
 
+        self.parent = parent
         self.name = key
         self.ptype = get_ptype(fields)
-        self.ref = fields.get('ref')
         self.ctype_override = fields.get('ctype')
         self.default = fields.get('default')
         self.ctype = CPP_TYPENAMES[self.ptype]
         self.property_type = self.ptype.capitalize()
         self.alias = fields.get('alias')
+        self.is_store = ('store' in fields)
 
         if self.ptype == 'integer':
             int32 = IntRange(0, 0, True, 32)
@@ -222,57 +221,107 @@ class Property:
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage type'''
-        return CPP_TYPESIZES[self.ctype]
+        return self.obj.data_size if self.obj else CPP_TYPESIZES[self.ctype]
 
     @property
     def id(self):
-        return make_identifier(self.name)
+        return make_identifier(self.name) if self.name else 'root'
 
     @property
     def typename(self):
         return make_typename(self.name)
 
     @property
+    def typename_outer(self):
+        assert self.obj
+        return make_typename(self.name or 'Root')
+
+    @property
     def default_str(self):
         default = self.default
         if self.ptype == 'string':
-            return strings[default]
+            return self.parent.database.strings[default]
         if self.ptype == 'boolean':
             return 'true' if default else 'false'
         if self.ptype == 'number':
             return f'const_number_t({self.default})' if self.default else '0'
         return str(default) if default else 0
 
+    @property
+    def is_root(self):
+        '''Is this the root store?'''
+        return self.is_store and not self.name
+
+    @property
+    def store_index(self):
+        prop = self
+        while not prop.is_store:
+            prop = prop.parent
+        store = prop
+        i = 0
+        for prop in self.database.object_properties:
+            if prop is store:
+                return i
+            if prop.is_store:
+                i += 1
+        assert False
+
+    @property
+    def is_item(self):
+        return self.parent.obj.is_array
+
+    @property
+    def is_item_member(self):
+        return self.is_item or self.parent.is_item_member
+
+    @property
+    def path(self):
+        return join_path(self.parent.path, self.name) if self.parent else self.name
+
+    @property
+    def database(self) -> Database:
+        prop = self
+        while not isinstance(prop, Database):
+            prop = prop.parent
+        return prop
+
+    @property
+    def namespace(self):
+        assert self.obj
+        if self.obj.ref or (self.is_item and self.parent.obj.ref):
+            return self.database.typename
+        prop = self.parent
+        ns = []
+        while prop:
+            if not prop.obj.is_array:
+                ns.insert(0, prop.obj.typename_contained)
+            prop = prop.database if prop.obj.ref else prop.parent
+        return '::'.join(ns)
+
+
+class ObjectProperty(Property):
+    def __init__(self, parent: Property, name: str, fields: dict, obj: 'Object'):
+        if 'type' not in fields:
+            fields['type'] = 'object'
+        super().__init__(parent, name, fields)
+        self.obj = obj
+
 
 @dataclass
 class Object:
-    parent: 'Object'
     name: str
-    ref: Object | None
-    alias: str | list[str] | None
-    is_store: bool = False
+    ref: str | None
+    schema_id: str = None
+    object_properties: list[Property] = field(default_factory=list)
     properties: list[Property] = field(default_factory=list)
-    children: list['Object'] = field(default_factory=list)
-
-    @property
-    def store(self):
-        return self if self.is_store else self.parent.store
-
-    @property
-    def database(self):
-        return self.parent.database
 
     @property
     def typename(self):
-        return make_typename(self.ref or self.name or 'Root')
+        return make_typename(self.name or 'Root')
 
     @property
     def typename_contained(self):
         return 'Contained' + self.typename
-
-    @property
-    def typename_outer(self):
-        return make_typename(self.name or 'Root')
 
     @property
     def typename_updater(self):
@@ -285,8 +334,8 @@ class Object:
     def get_offset(self, obj: Object):
         '''Offset of a child object in the data structure'''
         offset = 0
-        for c in self.children:
-            if c is obj:
+        for c in self.object_properties:
+            if c.obj is obj:
                 return offset
             offset += c.data_size
         assert False, 'Not a child'
@@ -294,31 +343,11 @@ class Object:
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return sum(child.data_size for child in self.children) + sum(prop.data_size for prop in self.properties)
+        return sum(obj.data_size for obj in self.object_properties) + sum(prop.data_size for prop in self.properties)
 
     @property
     def has_struct(self):
-        return self.children or self.properties
-
-    @property
-    def index(self):
-        return self.parent.children.index(self)
-
-    @property
-    def namespace(self):
-        if self.ref or (self.is_item and self.parent.ref):
-            return self.store.parent.typename
-        obj = self.parent
-        ns = []
-        while obj:
-            if not isinstance(obj, ObjectArray):
-                ns.insert(0, obj.typename_contained)
-            obj = obj.database if obj.ref else obj.parent
-        return '::'.join(ns)
-
-    @property
-    def id(self):
-        return make_identifier(self.name) if self.name else 'root'
+        return bool(self.object_properties or self.properties)
 
     @property
     def classname(self):
@@ -326,64 +355,44 @@ class Object:
 
     @property
     def base_class(self):
-        return f'{self.classname}'
-
-    @property
-    def is_root(self):
-        return self in self.database.children
+        return self.classname
 
     @property
     def is_array(self):
+        return False
+
+    @property
+    def is_object_array(self):
         return False
 
     @property
     def is_union(self):
         return False
 
-    @property
-    def is_item(self):
-        return self.parent.is_array
-
-    @property
-    def is_item_member(self):
-        return self.is_item or self.parent.is_item_member
-
-    @property
-    def path(self):
-        return join_path(self.parent.path, self.name) if self.parent else self.name
-
 
 @dataclass
 class Array(Object):
-    items: Property = None
     default: list = None
+
+    @property
+    def classname(self):
+        return 'ObjectArray' if self.is_object_array else 'Array'
 
     @property
     def is_array(self):
         return True
+
+    @property
+    def is_object_array(self):
+        return self.is_array and bool(self.object_properties)
+
+    @property
+    def items(self):
+        return self.object_properties[0] if self.is_object_array else self.properties[0]
 
     @property
     def base_class(self):
-        return 'StringArray' if self.items.ptype == 'string' else 'Array'
-
-    @property
-    def typename_struct(self):
-        return 'ConfigDB::ArrayId'
-
-    @property
-    def data_size(self):
-        '''Size of the corresponding C++ storage'''
-        return ARRAY_ID_SIZE
-
-
-@dataclass
-class ObjectArray(Object):
-    items: Object = None
-    default: list = None
-
-    @property
-    def is_array(self):
-        return True
+        return 'StringArray' if self.items.ptype == 'string' else self.classname
 
     @property
     def typename_struct(self):
@@ -402,16 +411,35 @@ class Union(Object):
         return True
 
     @property
+    def max_object_size(self):
+        return max(prop.data_size for prop in self.object_properties)
+
+    @property
+    def max_property_size(self):
+        return max(prop.data_size for prop in self.properties)
+
+    @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return max(child.data_size for child in self.children) + UNION_TAG_SIZE
+        return self.max_object_size + self.max_property_size
 
 
 @dataclass
 class Database(Object):
-    definitions: dict = None
+    schema: dict = None
     object_defs: dict[Object] = field(default_factory=dict)
+    external_object_properties: dict[Property] = field(default_factory=dict)
+    strings: StringTable = StringTable()
     forward_decls: set[str] = None
+    include: set[str] = None
+
+    @property
+    def obj(self):
+        return self
+
+    @property
+    def parent(self):
+        return None
 
     @property
     def database(self):
@@ -487,153 +515,168 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
     return [ '{', [str(e) + ',' for e in entries], '}' + term_str]
 
 
-def load_schema(filename: str) -> dict:
+def load_schema(filename: str) -> Database:
     '''Load JSON configuration schema and validate
     '''
+    def parse_object_pairs(pairs):
+        d = {}
+        identifiers = set()
+        for k, v in pairs:
+            id = make_identifier(k)
+            if not id:
+                raise ValueError(f'Invalid key "{k}"')
+            if id in identifiers:
+                raise ValueError(f'Key "{k}" produces duplicate identifier "{id}"')
+            identifiers.add(id)
+            d[k] = v
+        return d
     with open(filename, 'r', encoding='utf-8') as f:
-        config = json.load(f)
+        schema = json.load(f, object_pairs_hook=parse_object_pairs)
     try:
         from jsonschema import Draft7Validator
         v = Draft7Validator(Draft7Validator.META_SCHEMA)
-        errors = list(v.iter_errors(config))
+        errors = list(v.iter_errors(schema))
         if errors:
             for e in errors:
                 print(f'{e.message} @ {e.path}')
             sys.exit(3)
     except ImportError as err:
         print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
-    return config
+    schema_id = os.path.splitext(os.path.basename(filename))[0]
+    databases[schema_id] = Database(schema_id, None, schema_id=schema_id, schema=schema)
 
 
-def resolve_ref(fields: dict, db: Database) -> tuple[str, dict]:
-    '''If property contains a reference, deal with it'''
-    ref = fields.get('$ref')
-    if not ref:
-        return None, fields
-    if not db.definitions:
-        raise ValueError('Schema missing definitions')
-    prefix = '#/$defs/'
-    resolved_fields = None
-    if ref.startswith(prefix):
-        ref = ref[len(prefix):]
-        resolved_fields = db.definitions.get(ref)
-    if resolved_fields is None:
-        raise ValueError('Cannot resolve ' + ref)
-    return ref, resolved_fields
+def parse_properties(parent_prop: Property, properties: dict):
+    for key, fields in properties.items():
+        parse_property(parent_prop, key, fields)
 
 
-def resolve_prop_ref(fields: dict, db: Database) -> None:
-    '''Resolve reference and update fields'''
-    ref, resolved_fields = resolve_ref(fields, db)
-    if ref is None:
-        return
+def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
+    '''If property contains a reference, deal with it
 
-    fields['ref'] = ref
+    References can point to anywhere in the current database (prefixed with '#') or in another one.
 
-    # Object definitions are used as-is
-    if get_ptype(resolved_fields) in ['object', 'union']:
-        fields.update(resolved_fields)
-        return
+        #/$defs/Color
+        test-config-union/$defs/Color
+        test-config                         The entire schema
 
-    # For simple properties the definition is a template,
-    # so copy over any non-existent values
-    for key, value in resolved_fields.items():
-        if key not in fields:
-            fields[key] = value;
+    References can also be chained, so we need to follow them:
 
+        test-config/properties/color1 -> `#/$defs/Color`
 
-def load_config(filename: str) -> Database:
-    '''Load, validate and parse schema into python objects'''
-    config = load_schema(filename)
-    dbname = os.path.splitext(os.path.basename(filename))[0]
-    database = Database(None, dbname, None, None, properties=config['properties'], definitions=config.get('$defs'))
-    database.include = config.get('include', [])
-    root = Object(database, '', None, None, is_store=True)
-    database.children.append(root)
+    A reference is parsed into an object definition on first use.
+    We can put that definition directly into the schema so it only needs to be parsed once.
+    No need for separate `Database.objects`, we use `Database.schema` instead.
+    '''
+    database = parent_prop.database
+    schema_id = parent_prop.obj.schema_id or database.schema_id
 
-    def parse_properties(parent: Object, properties: dict):
-        for key, fields in properties.items():
-            resolve_prop_ref(fields, database)
-            prop = Property(parent, key, fields)
-            if prop.ctype != '-': # object or array
-                parent.properties.append(prop)
-                continue
+    def createObjectProperty(obj: Object) -> Property:
+        # Objects with 'store' annoation are managed by database, otherwise they live in root object
+        if 'store' in fields:
+            if not parent_prop.is_root:
+                raise ValueError(f'{key} cannot have "store" annotation, not a root object')
+            prop = ObjectProperty(database, key, fields, obj)
+            prop.is_store = True
+            database.object_properties.append(prop)
+        else:
+            prop = ObjectProperty(parent_prop, key, fields, obj)
+            parent_prop.obj.object_properties.append(prop)
+        fields['property'] = prop
+        return prop
 
-            # Objects with 'store' annoation are managed by database, otherwise they live in root object
-            if 'store' in fields:
-                if parent is not root:
-                    raise ValueError(f'{key} cannot have "store" annotation, not a root object')
-                obj = database
-            else:
-                obj = parent
+    if object_ref := fields.get('$ref'):
+        if object_ref.startswith('#/'):
+            ref = object_ref[2:]
+            object_ref = f'{schema_id}/{ref}'
+        else:
+            schema_id, _, ref = object_ref.partition('/')
+        db = databases[schema_id]
+        ref_node = db.schema
+        while ref:
+            name, _, ref = ref.partition('/')
+            ref_node = ref_node[name]
+        object_name = name
+        if not key:
+            key = name
 
-            child = parse_object(obj, key, fields)
-            if child:
-                obj.children.append(child)
+        # Has object already been parsed?
+        if prop := ref_node.get('property'):
+            if prop.obj.schema_id != parent_prop.obj.schema_id:
+                database.external_object_properties[object_ref] = prop
+            return createObjectProperty(prop.obj)
+    else:
+        object_name = key
+        ref_node = None
 
-    def parse_object(parent: Object, key: str, fields: dict) -> Object:
-        is_store = ('store' in fields)
-        ref, fields = resolve_ref(fields, database)
-        prop_type = get_ptype(fields)
-        alias = fields.get('alias')
+    prop_type = get_ptype(ref_node or fields)
 
-        if prop_type == 'object':
+    if CPP_TYPENAMES[prop_type] != '-':
+        if ref_node:
+            # For simple properties the definition is a template,
+            # so copy over any non-existent values
+            for k, v in ref_node.items():
+                if k not in fields:
+                    fields[k] = v
+
+        prop = Property(parent_prop, key, fields)
+        parent_prop.obj.properties.append(prop)
+        return prop
+
+    if ref_node:
+        fields = ref_node
+
+    def createObjectAndProperty(Class) -> Property:
+        obj = Class(object_name, object_ref, schema_id)
+        if object_ref and not object_ref in db.object_defs:
+            db.object_defs[object_ref] = obj
+        return createObjectProperty(obj)
+
+    if prop_type == 'object':
+        if 'default' in fields:
+            raise ValueError('Object default not supported (use default on properties)')
+        object_prop = createObjectAndProperty(Object)
+        parse_properties(object_prop, fields.get('properties', {}))
+        return object_prop
+
+    if prop_type == 'array':
+        items = fields['items']
+        array_prop = createObjectAndProperty(Array)
+        items_prop = parse_property(array_prop, f'{array_prop.typename}Item', items)
+        array_prop.obj.default = fields.get('default')
+        if array_prop.obj.is_object_array:
             if 'default' in fields:
-                raise ValueError('Object default not supported (use default on properties)')
-            obj = Object(parent, key, ref, alias, is_store)
-            database.object_defs[obj.typename] = obj
-            parse_properties(obj, fields.get('properties', {}))
-            return obj
+                raise ValueError('ObjectArray default not supported')
+        return array_prop
 
-        if prop_type == 'array':
-            item_ref, items = resolve_ref(fields['items'], database)
-            items_type = get_ptype(items)
-            if items_type in ['object', 'union']:
-                if 'default' in fields:
-                    raise ValueError('ObjectArray default not supported')
-                arr = ObjectArray(parent, key, ref, alias, is_store)
-                database.object_defs[arr.typename] = arr
-                arr.items = database.object_defs.get(item_ref)
-                if arr.items and arr.items.ref:
-                    return arr
-                arr.items = Object(arr, item_ref or f'{arr.typename}Item', None, None)
-                arr.items.ref = item_ref
-                database.object_defs[arr.items.typename] = arr.items
-                if items_type == 'union':
-                    parse_object(arr.items, item_ref, items)
-                else:
-                    parse_properties(arr.items, items['properties'])
-                return arr
+    if prop_type == 'union':
+        if 'default' in fields:
+            raise ValueError('Union default not supported')
+        union_prop = createObjectAndProperty(Union)
+        for opt in fields['oneOf']:
+            prop = parse_property(union_prop, opt.get('title'), opt)
+            if not prop.obj:
+                raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
+            if not prop.id or not prop.obj.typename:
+                raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
+        prop = Property(union_prop, 'tag', {
+            'type': 'integer',
+            'minimum': 0,
+            'maximum': len(union_prop.obj.object_properties) - 1
+        })
+        union_prop.obj.properties.append(prop)
+        return union_prop
 
-            # Simple array
-            arr = Array(parent, key, ref, alias, is_store)
-            parse_properties(arr, {'items': items})
-            assert len(arr.properties) == 1
-            arr.items = arr.properties[0]
-            arr.properties = []
-            arr.default = fields.get('default')
-            return arr
+    raise ValueError('Bad type ' + prop_type)
 
-        if prop_type == 'union':
-            if 'default' in fields:
-                raise ValueError('Union default not supported')
-            union = Union(parent, key, ref, alias, is_store)
-            database.object_defs[union.typename] = union
-            for opt in fields['oneOf']:
-                ref, opt = resolve_ref(opt, database)
-                choice = database.object_defs.get(ref)
-                if not choice:
-                    choice = parse_object(union, ref, opt)
-                    choice.ref = ref
-                    database.object_defs[choice.typename] = choice
-                union.children.append(choice)
-            return union
 
-        raise ValueError('Bad type ' + prop_type)
-
-    parse_properties(root, database.properties)
-    return database
-
+def parse_database(database: Database):
+    '''Validate and parse schema into python objects'''
+    database.include = database.schema.get('include', set())
+    root = ObjectProperty(database, '', {}, Object('', None, database.schema_id))
+    database.object_properties.append(root)
+    root.is_store = True
+    parse_properties(root, database.schema['properties'])
 
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
@@ -642,9 +685,19 @@ def generate_database(db: Database) -> CodeLines:
         'ContainedRoot',
         'RootUpdater'
     }
+
+    external_defs = []
+    for prop in db.external_object_properties.values():
+        obj = prop.obj
+        db.include.add(f'{obj.schema_id}.h')
+        ns = prop.namespace
+        external_defs += [
+            f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
+            f'using {obj.typename_updater} = {ns}::{obj.typename_updater};',
+        ]
+
     for obj in db.object_defs.values():
-        if obj.ref:
-            db.forward_decls |= {obj.typename_contained, obj.typename_updater}
+        db.forward_decls |= {obj.typename_contained, obj.typename_updater}
 
     lines = CodeLines(
         [
@@ -658,6 +711,7 @@ def generate_database(db: Database) -> CodeLines:
             '{',
             'public:',
             [
+                *external_defs,
                 *(f'class {name};' for name in db.forward_decls),
                 '',
                 'static const ConfigDB::DatabaseInfo typeinfo;',
@@ -673,28 +727,28 @@ def generate_database(db: Database) -> CodeLines:
             '',
             f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
             [
-                f'{strings[db.name]},',
-                f'{len(db.children)},',
+                f'{db.strings[db.name]},',
+                f'{len(db.object_properties)},',
                 '{',
                 *(make_static_initializer(
                     [
                     '.type = PropertyType::Object',
-                    f'.name = {strings[store.name]}',
+                    f'.name = {db.strings[prop.name]}',
                     '.offset = 0',
-                    f'.variant = {{.object = &{store.typename_contained}::typeinfo}}'
-                    ], ',') for store in db.children),
+                    f'.variant = {{.object = &{prop.obj.typename_contained}::typeinfo}}'
+                    ], ',') for prop in db.object_properties),
                 '}'
             ],
             '};'
         ])
 
     for obj in reversed(db.object_defs.values()):
-        if obj.ref:
-            lines.append(generate_object(obj))
+        prop = ObjectProperty(db, obj.name, {}, obj)
+        lines.append(generate_object(db, prop))
 
-    for store in db.children:
-        if not store.ref:
-            lines.append(generate_object(store))
+    for prop in db.object_properties:
+        if not prop.obj.ref:
+            lines.append(generate_object(db, prop))
 
     lines.header += [
         '',
@@ -706,56 +760,65 @@ def generate_database(db: Database) -> CodeLines:
             ' */'
         ]
     ]
-    def generate_outer_class(obj: Object, store_offset: int) -> list:
-        template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {obj.database.typename}, {obj.store.index}, {obj.parent.typename_contained}, {obj.index}, {store_offset}>'
-        if not obj.is_store:
-            store_offset += obj.parent.get_offset(obj)
+    def generate_outer_class(parent: Object, object_prop: Property, store_offset: int) -> list:
+        obj = object_prop.obj
+        template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {db.typename}, {object_prop.store_index}, {parent.typename_contained}, {parent.object_properties.index(object_prop)}, {store_offset}>'
+        if not object_prop.is_store:
+            store_offset += parent.get_offset(obj)
         return [
             '',
-            f'class {obj.typename_outer}: public {template}',
+            f'class {object_prop.typename_outer}: public {template}',
             '{',
             'public:',
             [
                 'using OuterObjectTemplate::OuterObjectTemplate;',
             ],
-            *[generate_outer_class(child, store_offset) for child in obj.children if not obj.is_item],
+            *[generate_outer_class(obj, prop, store_offset) for prop in obj.object_properties if not object_prop.is_item],
             '};'
-        ] if obj.children and not obj.is_union else [
-            f'using {obj.typename_outer} = {template};'
+        ] if obj.object_properties and not obj.is_union else [
+            f'using {object_prop.typename_outer} = {template};'
         ]
-    for store in db.children:
-        lines.header.append(generate_outer_class(store, 0))
+    for prop in db.object_properties:
+        lines.header.append(generate_outer_class(db, prop, 0))
 
     lines.header += ['};']
 
-    for obj in db.object_defs.values():
-        if not obj.is_union:
-            continue
-        decl = f'String toString({obj.namespace}::{obj.typename_contained}::Tag tag)'
-        lines.header += [
-            '',
-            f'{decl};'
-        ]
-        lines.source += [
-            '',
-            decl,
-            '{',
-            [
-                'switch(unsigned(tag)) {',
-                [f'case {index}: return {strings[child.name]};' for index, child in enumerate(obj.children)],
-                ['default: return nullptr;'],
+    unions = {}
+    def find_unions(object_prop: ObjectProperty | Database):
+        for prop in object_prop.obj.object_properties:
+            obj = prop.obj
+            if obj.is_union:
+                if obj.schema_id == db.schema_id:
+                    unions[f'{prop.namespace}::{obj.typename_contained}'] = obj
+            else:
+                find_unions(prop)
+    find_unions(db)
+    if unions:
+        lines.header += ['']
+        for typename, obj in unions.items():
+            decl = f'String toString({typename}::Tag tag)'
+            lines.header += [
+                f'{decl};'
+            ]
+            lines.source += [
+                '',
+                decl,
+                '{',
+                [
+                    'switch(unsigned(tag)) {',
+                    [f'case {index}: return {db.strings[prop.name]};' for index, prop in enumerate(obj.object_properties)],
+                    ['default: return nullptr;'],
+                    '}'
+                ],
                 '}'
-            ],
-            '}'
-        ]
-
+            ]
 
     # Insert this at end once string table has been populated
     lines.source[:0] = [
         f'#include "{db.name}.h"',
         '',
         'namespace {',
-        [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for id, value in strings.items() if value],
+        [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for id, value in db.strings.items() if value],
         '} // namespace',
         '',
         'using namespace ConfigDB;',
@@ -770,23 +833,26 @@ def generate_database(db: Database) -> CodeLines:
 
 def generate_structure(db: Database) -> list[str]:
     structure = []
-    def print_structure(obj: Object, indent: int, offset: int):
+    def print_structure(object_prop: Property, indent: int, offset: int):
         def add(offset: int, id: str, typename: str):
             structure.append(f'{offset:4} {"".ljust(indent*3)} {id}: {typename}')
-        add(offset, obj.id, obj.base_class)
-        for c in obj.children:
-            print_structure(c, indent+1, offset)
+        obj = object_prop.obj
+        add(offset, object_prop.id, obj.base_class)
+        if obj.is_array:
+            return
+        for prop in obj.object_properties:
+            print_structure(prop, indent+1, offset)
             if not obj.is_union:
-                offset += c.data_size
+                offset += prop.data_size
+        if obj.is_union:
+            offset += obj.max_object_size
         indent += 1
         for prop in obj.properties:
             add(offset, prop.id, prop.ctype)
             if not obj.is_union:
                 offset += prop.data_size
-        if obj.is_union:
-            add(offset + obj.data_size - UNION_TAG_SIZE, 'tag', 'uint8_t')
-    for store in db.children:
-        print_structure(store, 0, 0)
+    for prop in db.object_properties:
+        print_structure(prop, 0, 0)
         structure += ['']
     return structure
 
@@ -807,17 +873,19 @@ def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool 
     ]
 
 
-def generate_typeinfo(obj: Object) -> CodeLines:
+def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
     '''Generate type information'''
 
     lines = CodeLines(
         ['static const ConfigDB::ObjectInfo typeinfo;']
     )
 
+    obj = object_prop.obj
+
     def getVariantInfo(prop: Property) -> list:
         if prop.enum:
             values = prop.enum
-            obj_type = f'{obj.namespace}::{obj.typename_contained}'
+            obj_type = f'{object_prop.namespace}::{obj.typename_contained}'
             item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
             if obj.is_array and prop.ctype_override:
                 lines.header += [
@@ -854,7 +922,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 [
                     f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
                     '{',
-                    [f'&{strings[x]},' for x in values] if prop.enum_type == 'String' else
+                    [f'&{db.strings[x]},' for x in values] if prop.enum_type == 'String' else
                     [f'{x},' for x in values],
                     '}'
                 ],
@@ -862,7 +930,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
             ]
             return '.enuminfo = &itemtype.enuminfo'
         if prop.ptype == 'string':
-            return f'.defaultString = &{strings[str(prop.default)]}' if prop.default else ''
+            return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype == 'number':
             r = prop.numrange
             return f'.number = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
@@ -887,7 +955,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
         if isinstance(alias, str):
             aliaslist.append([
                 f'.type = PropertyType::Alias',
-                f'.name = {strings[alias]}',
+                f'.name = {db.strings[alias]}',
                 f'.offset = {len(proplist) - 1}'
             ])
         if isinstance(alias, list):
@@ -896,30 +964,24 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 
     offset = 0
 
-    objinfo = [obj.items] if isinstance(obj, ObjectArray) else obj.children
-    for child in objinfo:
+    for prop in obj.object_properties:
         proplist += [[
             '.type = PropertyType::Object',
-            '.name = ' + ('fstr_empty' if obj.is_array else strings[child.name]),
+            '.name = ' + ('fstr_empty' if obj.is_array else db.strings[prop.name]),
             f'.offset = {offset}',
-            f'.variant = {{.object = &{child.namespace}::{child.typename_contained}::typeinfo}}'
+            f'.variant = {{.object = &{prop.namespace}::{prop.obj.typename_contained}::typeinfo}}'
         ]]
-        add_alias(child.alias)
+        add_alias(prop.alias)
         if not obj.is_union:
-            offset += child.data_size
+            offset += prop.data_size
 
     if obj.is_union:
-        proplist += [[
-            '.type = PropertyType::UInt8',
-            f'.name = {strings['tag']}',
-            f'.offset = {obj.data_size - UNION_TAG_SIZE}',
-        ]]
+        offset += obj.max_object_size
 
-    propinfo = [obj.items] if isinstance(obj, Array) else obj.properties
-    for prop in propinfo:
+    for prop in obj.properties:
         proplist += [[
             f'.type = PropertyType::{prop.property_type}',
-            '.name = ' + ('fstr_empty' if obj.is_array else strings[prop.name]),
+            '.name = ' + ('fstr_empty' if obj.is_array else db.strings[prop.name]),
             f'.offset = {offset}',
             '.variant = {' + getVariantInfo(prop) + '}'
         ]]
@@ -944,7 +1006,7 @@ def generate_typeinfo(obj: Object) -> CodeLines:
                 lines.source += [
                     '',
                     f'DEFINE_FSTR_VECTOR_LOCAL({id}, FSTR::String,',
-                    [f'&{strings[s]},' for s in arr.default],
+                    [f'&{db.strings[s]},' for s in arr.default],
                     ')'
                 ]
             else:
@@ -959,14 +1021,14 @@ def generate_typeinfo(obj: Object) -> CodeLines:
 
     lines.source += [
         '',
-        f'const ObjectInfo {obj.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
+        f'const ObjectInfo {object_prop.namespace}::{obj.typename_contained}::typeinfo PROGMEM',
         '{',
         *([str(e) + ','] for e in [
             f'.type = ObjectType::{obj.classname}',
             f'.defaultData = {defaultData}',
             '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
-            f'.objectCount = {len(objinfo)}',
-            f'.propertyCount = {len(proplist) - len(objinfo)}',
+            f'.objectCount = {len(obj.object_properties)}',
+            f'.propertyCount = {len(obj.properties)}',
             f'.aliasCount = {len(aliaslist)}'
         ]),
         [
@@ -980,11 +1042,8 @@ def generate_typeinfo(obj: Object) -> CodeLines:
     return lines
 
 
-def generate_object_struct(obj: Object) -> CodeLines:
+def generate_object_struct(object_prop: Property) -> CodeLines:
     '''Generate struct definition for this object'''
-
-    if obj.data_size == 0:
-        return CodeLines()
 
     def get_ctype(prop):
         return 'ConfigDB::StringId' if prop.ptype == 'string' else prop.ctype
@@ -994,32 +1053,28 @@ def generate_object_struct(obj: Object) -> CodeLines:
             return make_comment(prop.default) if prop.default else ''
         return prop.default_str
 
-    children = [child for child in obj.children if child.data_size]
+    obj = object_prop.obj
 
-    if obj.is_union:
-        body = [
-            'union __attribute__((packed)) {',
-            [f'{child.typename_struct} {child.id}{"{}" if index == 0 else ""};' for index, child in enumerate(children)],
-            '};',
-            f'{UNION_TAG_TYPE} tag{{0}};',
-        ]
-    else:
-        body = [
-            [f'{child.typename_struct} {child.id}{{}};' for child in children] if children else None,
-            [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties]
-        ]
-
+    typename = f'{object_prop.namespace}::{obj.typename_contained}'
     return CodeLines([
         '',
         'struct __attribute__((packed)) Struct {',
-        body,
+        [
+            'union __attribute__((packed)) {',
+            [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(obj.object_properties)],
+            '};',
+        ] if obj.is_union else
+        [
+            [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in obj.object_properties],
+        ],
+        [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties],
         '};',
         '',
         'static const Struct defaultData;',
     ],
     [
         '',
-        f'const {obj.namespace}::{obj.typename_contained}::Struct PROGMEM {obj.namespace}::{obj.typename_contained}::defaultData{{}};'
+        f'const {typename}::Struct PROGMEM {typename}::defaultData{{}};'
     ])
 
 
@@ -1031,7 +1086,7 @@ def generate_property_accessors(obj: Object) -> list:
             '',
             [
                 'enum class Tag {',
-                [f'{child.typename},' for child in obj.children],
+                [f'{prop.obj.typename},' for prop in obj.object_properties],
                 '};',
                 '',
                 'Tag getTag() const',
@@ -1041,11 +1096,11 @@ def generate_property_accessors(obj: Object) -> list:
             ],
             *((
                 '',
-                f'const {child.typename_contained} as{child.typename}() const',
+                f'const {prop.obj.typename_contained} as{prop.obj.typename}() const',
                 '{',
-                [f'return Union::as<{child.typename_contained}>({index});'],
+                [f'return Union::as<{prop.obj.typename_contained}>({index});'],
                 '}',
-                ) for index, child in enumerate(obj.children))
+                ) for index, prop in enumerate(obj.object_properties))
             ]
 
     return [*((
@@ -1084,16 +1139,16 @@ def generate_property_write_accessors(obj: Object) -> list:
             ],
             *((
                 '',
-                f'{child.typename_updater} as{child.typename}()',
+                f'{prop.obj.typename_updater} as{prop.obj.typename}()',
                 '{',
-                [f'return Union::as<{child.typename_updater}>({index});'],
+                [f'return Union::as<{prop.obj.typename_updater}>({index});'],
                 '}',
                 '',
-                f'{child.typename_updater} to{child.typename}()',
+                f'{prop.obj.typename_updater} to{prop.obj.typename}()',
                 '{',
-                [f'return Union::to<{child.typename_updater}>({index});'],
+                [f'return Union::to<{prop.obj.typename_updater}>({index});'],
                 '}',
-                ) for index, child in enumerate(obj.children))
+                ) for index, prop in enumerate(obj.object_properties))
         ]
 
     return [*((
@@ -1110,13 +1165,15 @@ def generate_property_write_accessors(obj: Object) -> list:
         ) for index, prop in enumerate(obj.properties))]
 
 
-def generate_object(obj: Object) -> CodeLines:
+def generate_object(db: Database, object_prop: Property) -> CodeLines:
     '''Generate code for Object implementation'''
 
-    typeinfo = generate_typeinfo(obj)
-    constructors = generate_contained_constructors(obj)
-    updater = generate_updater(obj)
-    forward_decls = [] if obj.typename_updater in obj.database.forward_decls else [
+    obj = object_prop.obj
+
+    typeinfo = generate_typeinfo(db, object_prop)
+    constructors = generate_contained_constructors(object_prop)
+    updater = generate_updater(object_prop)
+    forward_decls = [] if obj.typename_updater in db.forward_decls else [
         '',
         f'class {obj.typename_updater};'
     ]
@@ -1134,13 +1191,13 @@ def generate_object(obj: Object) -> CodeLines:
                 ]
         return enumlist
 
-    if isinstance(obj, ObjectArray):
-        item_lines = CodeLines() if obj.items.ref else generate_object(obj.items)
+    if obj.is_object_array:
+        item_lines = CodeLines() if obj.items.obj.ref else generate_object(db, obj.items)
         return CodeLines(
             [
                 *forward_decls,
                 *item_lines.header,
-                *declare_templated_class(obj, [obj.items.typename_contained]),
+                *declare_templated_class(obj, [obj.items.obj.typename_contained]),
                 typeinfo.header,
                 constructors,
                 '};',
@@ -1148,7 +1205,7 @@ def generate_object(obj: Object) -> CodeLines:
             ],
             item_lines.source + typeinfo.source)
 
-    if isinstance(obj, Array):
+    if obj.is_array:
         return CodeLines(
             [
                 *forward_decls,
@@ -1171,11 +1228,11 @@ def generate_object(obj: Object) -> CodeLines:
         ])
 
     # Append child object definitions
-    for child in obj.children:
-        if not child.ref:
-            lines.append(generate_object(child))
+    for prop in obj.object_properties:
+        if not prop.obj.ref:
+            lines.append(generate_object(db, prop))
 
-    lines.append(generate_object_struct(obj))
+    lines.append(generate_object_struct(object_prop))
     lines.header += [
         constructors,
         *generate_property_accessors(obj)
@@ -1183,10 +1240,10 @@ def generate_object(obj: Object) -> CodeLines:
     lines.source += typeinfo.source
 
     # Contained children member variables
-    if obj.children and not obj.is_union:
+    if obj.object_properties and not obj.is_union:
         lines.header += [
             '',
-            [f'const {child.typename_contained} {child.id};' for child in obj.children],
+            [f'const {prop.obj.typename_contained} {prop.id};' for prop in obj.object_properties],
         ]
 
     lines.header += ['};']
@@ -1195,34 +1252,36 @@ def generate_object(obj: Object) -> CodeLines:
     return lines
 
 
-def generate_updater(obj: Object) -> list:
+def generate_updater(object_prop: Property) -> list:
     '''Generate code for Object Updater implementation'''
 
-    constructors = generate_contained_constructors(obj, True)
+    constructors = generate_contained_constructors(object_prop, True)
 
-    if isinstance(obj, ObjectArray):
+    obj = object_prop.obj
+
+    if obj.is_object_array:
         union_array_methods = [
             [
                 '',
-                f'{item.typename_updater} addItem{item.typename}()',
+                f'{item.obj.typename_updater} addItem{item.typename}()',
                 '{',
-                [f'return ObjectArray::addItem<ConfigDB::Union>().to<{item.typename_updater}>({tag});'],
+                [f'return ObjectArray::addItem<ConfigDB::Union>().to<{item.obj.typename_updater}>({tag});'],
                 '}',
                 '',
-                f'{item.typename_updater} insertItem{item.typename}(unsigned index)',
+                f'{item.obj.typename_updater} insertItem{item.typename}(unsigned index)',
                 '{',
-                [f'return ObjectArray::insertItem<ConfigDB::Union>(index).to<{item.typename_updater}>({tag});'],
+                [f'return ObjectArray::insertItem<ConfigDB::Union>(index).to<{item.obj.typename_updater}>({tag});'],
                 '}',
-            ] for tag, item in enumerate(obj.items.children)
-        ] if isinstance(obj.items, Union) else []
+            ] for tag, item in enumerate(obj.items.obj.object_properties)
+        ] if isinstance(obj.items.obj, Union) else []
         return [
-            *declare_templated_class(obj, [obj.items.typename_updater], True),
+            *declare_templated_class(obj, [obj.items.obj.typename_updater], True),
             constructors,
             *union_array_methods,
             '};',
         ]
 
-    if isinstance(obj, Array):
+    if obj.is_array:
         return [
             *declare_templated_class(obj, [obj.items.ctype_ret], True),
             constructors,
@@ -1235,32 +1294,34 @@ def generate_updater(obj: Object) -> list:
         *generate_property_write_accessors(obj),
         None if obj.is_union else [
             '',
-            *(f'{child.typename_updater} {child.id};' for child in obj.children)
+            *(f'{prop.obj.typename_updater} {prop.id};' for prop in obj.object_properties)
         ],
         '};'
     ]
 
 
-def generate_contained_constructors(obj: Object, is_updater = False) -> list:
+def generate_contained_constructors(object_prop: Property, is_updater = False) -> list:
     template = 'UpdaterTemplate' if is_updater else 'Template'
 
-    if not obj.children or obj.is_union:
+    obj = object_prop.obj
+
+    if not obj.object_properties or obj.is_union or obj.is_array:
         return [
             f'using {obj.base_class}{template}::{obj.base_class}{template};'
         ]
 
-    children = [f'{child.id}(*this, {index})' for index, child in enumerate(obj.children)]
+    children = [f'{prop.id}(*this, {index})' for index, prop in enumerate(obj.object_properties)]
 
-    if obj.is_item:
+    if object_prop.is_item:
         typename = obj.typename_updater if is_updater else obj.typename_contained
         const = '' if is_updater else 'const '
         return [
             '',
             f'{typename}() = default;',
             '',
-            f'{typename}({const}ConfigDB::{obj.parent.base_class}& {obj.parent.id}, unsigned propIndex, uint16_t index):',
+            f'{typename}({const}ConfigDB::{object_prop.parent.obj.base_class}& {object_prop.parent.id}, unsigned propIndex, uint16_t index):',
             [', '.join([
-                f'{obj.classname}{template}({obj.parent.id}, propIndex, index)',
+                f'{obj.classname}{template}({object_prop.parent.id}, propIndex, index)',
                 *children
             ])],
             '{',
@@ -1268,7 +1329,6 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
         ]
 
     typename = obj.typename_updater if is_updater else obj.typename_contained
-    parent_typename = obj.parent.typename_updater if is_updater else obj.parent.typename_contained
     headers = [
         '',
         f'{typename}() = default;',
@@ -1281,10 +1341,10 @@ def generate_contained_constructors(obj: Object, is_updater = False) -> list:
         '}',
     ]
 
-    if not obj.is_root:
+    if not object_prop.is_store:
         headers += [
             '',
-            f'{typename}({parent_typename}& parent, unsigned propIndex): ' + ', '.join([
+            f'{typename}(ConfigDB::Object& parent, unsigned propIndex): ' + ', '.join([
                 f'{obj.base_class}{template}(parent, propIndex)',
                 *children
             ]),
@@ -1322,20 +1382,24 @@ def write_file(content: list[str | list], filename: str):
 def main():
     parser = argparse.ArgumentParser(description='ConfigDB specification utility')
 
-    parser.add_argument('cfgfile', help='Path to configuration file')
-    parser.add_argument('outdir', help='Output directory')
+    parser.add_argument('cfgfiles', nargs='+', help='Path to configuration file(s)')
+    parser.add_argument('--outdir', help='Output directory')
 
     args = parser.parse_args()
 
-    db = load_config(args.cfgfile)
+    for f in args.cfgfiles:
+        load_schema(f)
 
-    lines = generate_database(db)
+    for db in databases.values():
+        print(f'Parsing {db.name} ...')
+        parse_database(db)
+        lines = generate_database(db)
 
-    filepath = os.path.join(args.outdir, f'{db.name}')
-    os.makedirs(args.outdir, exist_ok=True)
+        filepath = os.path.join(args.outdir, f'{db.name}')
+        os.makedirs(args.outdir, exist_ok=True)
 
-    write_file(lines.header, f'{filepath}.h')
-    write_file(lines.source, f'{filepath}.cpp')
+        write_file(lines.header, f'{filepath}.h')
+        write_file(lines.source, f'{filepath}.cpp')
 
 
 if __name__ == '__main__':
