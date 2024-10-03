@@ -676,7 +676,7 @@ def parse_database(database: Database):
     root = ObjectProperty(database, '', {}, Object('', None, database.schema_id))
     database.object_properties.append(root)
     root.is_store = True
-    parse_properties(root, database.schema['properties'])
+    parse_properties(root, database.schema.get('properties', {}))
 
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''

@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$defs": {
+    "Color": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RGB"
+        },
+        {
+          "$ref": "#/$defs/HSV"
+        },
+        {
+          "$ref": "#/$defs/RAW"
+        },
+        {
+          "$ref": "#/$defs/ColorList"
+        }
+      ]
+    },
+    "ColorList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Color"
+      }
+    },
+    "RGB": {
+      "type": "object",
+      "properties": {
+        "red": {
+          "$ref": "#/$defs/Color16",
+          "default": 100
+        },
+        "green": {
+          "$ref": "#/$defs/Color16",
+          "default": 100
+        },
+        "blue": {
+          "$ref": "#/$defs/Color16",
+          "default": 100
+        }
+      }
+    },
+    "HSV": {
+      "type": "object",
+      "properties": {
+        "hue": {
+          "$ref": "#/$defs/Degrees"
+        },
+        "saturation": {
+          "$ref": "#/$defs/Percent",
+          "default": 100
+        },
+        "value": {
+          "$ref": "#/$defs/Percent",
+          "default": 100
+        }
+      }
+    },
+    "RAW": {
+      "type": "object",
+      "properties": {
+        "red": {
+          "$ref": "#/$defs/Color16",
+          "default": 800
+        },
+        "green": {
+          "$ref": "#/$defs/Color16",
+          "default": 500
+        },
+        "blue": {
+          "$ref": "#/$defs/Color16",
+          "default": 200
+        },
+        "warm-white": {
+          "$ref": "#/$defs/Color16",
+          "default": 1023
+        },
+        "cold-white": {
+          "$ref": "#/$defs/Color16",
+          "default": 0
+        }
+      }
+    },
+    "Color16": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1023
+    },
+    "Degrees": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 359
+    },
+    "Percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "array-with-defaults": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "one",
+        "two",
+        "three",
+        "four"
+      ]
+    }
+  }
+}
