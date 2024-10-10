@@ -586,25 +586,39 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
         return prop
 
     if object_ref := fields.get('$ref'):
-        if object_ref.startswith('#/'):
-            ref = object_ref[2:]
-            object_ref = f'{schema_id}/{ref}'
-        else:
-            schema_id, _, ref = object_ref.partition('/')
-        db = databases[schema_id]
-        ref_node = db.schema
-        while ref:
-            name, _, ref = ref.partition('/')
-            ref_node = ref_node[name]
-        object_name = name
-        if not key:
-            key = name
+        while object_ref:
+            if object_ref.startswith('#/'):
+                ref = object_ref[2:]
+                object_ref = f'{schema_id}/{ref}'
+            else:
+                schema_id, _, ref = object_ref.partition('/')
+            db = databases[schema_id]
+            parent = db
+            ref_node = db.schema
+            print('REF', ref)
+            while ref:
+                try:
+                    if 'object' in ref_node:
+                        parent = ref_node['object']
+                except:
+                    print('RN', ref, ref_node)
+                    raise
+                name, _, ref = ref.partition('/')
+                ref_node = ref_node[name]
+            object_name = name
+            if not key:
+                key = name
 
-        # Has object already been parsed?
-        if prop := ref_node.get('property'):
-            if prop.obj.schema_id != parent_prop.obj.schema_id:
-                database.external_object_properties[object_ref] = prop
-            return createObjectProperty(prop.obj)
+            # Has object already been parsed?
+            if obj := ref_node.get('object'):
+                if obj.schema_id != parent_prop.obj.schema_id:
+                    database.external_objects[object_ref] = obj
+                return createObjectProperty(obj)
+
+            if next_ref := ref_node.get('$ref'):
+                object_ref = next_ref
+            else:
+                break
     else:
         object_name = key
         ref_node = None
