@@ -575,7 +575,7 @@ def parse_properties(path: str, parent_prop: Property, properties: dict):
         try:
             parse_property(f'{path}/{key}', parent_prop, key, fields)
         except Exception as e:
-            raise RuntimeError(f'{path}/{key}"') from e
+            raise RuntimeError(f'"{path}/{key}"') from e
 
 
 def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> Property:
@@ -602,7 +602,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         # Objects with 'store' annoation are managed by database, otherwise they live in root object
         if 'store' in fields:
             if not parent_prop.is_root:
-                raise ValueError(f'{key} cannot have "store" annotation, not a root object')
+                raise ValueError(f'{path} cannot have "store" annotation, not a root object')
             prop = ObjectProperty(database, key, fields, obj)
             prop.is_store = True
             database.object_properties.append(prop)
@@ -618,6 +618,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                 object_ref = f'{schema_id}/{ref}'
             else:
                 schema_id, _, ref = object_ref.partition('/')
+            path = f'{path} -> /{object_ref}'
             db = databases[schema_id]
             parent = db
             ref_node = db.schema
@@ -690,13 +691,13 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         if 'default' in fields:
             raise ValueError('Object default not supported (use default on properties)')
         object_prop = createObjectAndProperty(Object)
-        parse_properties(f'{object_ref or path}/{key}/properties', object_prop, fields.get('properties', {}))
+        parse_properties(f'{path}/properties', object_prop, fields.get('properties', {}))
         return object_prop
 
     if prop_type == 'array':
         items = fields['items']
         array_prop = createObjectAndProperty(Array)
-        items_prop = parse_property(f'{object_ref or path}/items', array_prop, f'{array_prop.typename}Item', items)
+        items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
         array_prop.obj.default = fields.get('default')
         if array_prop.obj.is_object_array:
             
@@ -709,7 +710,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             raise ValueError('Union default not supported')
         union_prop = createObjectAndProperty(Union)
         for i, opt in enumerate(fields['oneOf']):
-            prop = parse_property(f'{object_ref or path}/oneOf/{i}', union_prop, opt.get('title'), opt)
+            prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
             if not prop.obj:
                 raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
             if not prop.id or not prop.obj.typename:
@@ -733,7 +734,7 @@ def parse_database(database: Database):
     root = ObjectProperty(database, '', {}, root_obj)
     database.object_properties.append(root)
     root.is_store = True
-    parse_properties(f'{database.name}/properties', root, database.schema.get('properties', {}))
+    parse_properties(f'/{database.name}/properties', root, database.schema.get('properties', {}))
 
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
