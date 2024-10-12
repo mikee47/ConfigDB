@@ -309,11 +309,21 @@ class ObjectProperty(Property):
 
 @dataclass
 class Object:
+    parent: Object
     name: str
     ref: str | None
-    schema_id: str = None
+    schema_id: str
     object_properties: list[Property] = field(default_factory=list)
     properties: list[Property] = field(default_factory=list)
+
+    @property
+    def namespace(self):
+        names = []
+        obj = self.parent
+        while obj:
+            names.append(obj.typename_contained)
+            obj = obj.parent
+        return '::'.join(reversed(names))
 
     @property
     def typename(self):
@@ -367,6 +377,16 @@ class Object:
 
     @property
     def is_union(self):
+        return False
+
+    def __lt__(self, obj: Object):
+        '''Sort lists by dependency'''
+        return obj.depends_on(self)
+
+    def depends_on(self, obj: Object):
+        for prop in self.object_properties:
+            if prop.obj is obj or prop.obj.depends_on(obj):
+                return True
         return False
 
 
@@ -428,18 +448,18 @@ class Union(Object):
 class Database(Object):
     schema: dict = None
     object_defs: dict[Object] = field(default_factory=dict)
-    external_object_properties: dict[Property] = field(default_factory=dict)
+    external_objects: dict[Object] = field(default_factory=dict)
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
     include: set[str] = None
 
     @property
-    def obj(self):
-        return self
+    def namespace(self):
+        return make_typename(self.schema_id)
 
     @property
-    def parent(self):
-        return None
+    def obj(self):
+        return self
 
     @property
     def database(self):
@@ -543,7 +563,7 @@ def load_schema(filename: str) -> Database:
     except ImportError as err:
         print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
     schema_id = os.path.splitext(os.path.basename(filename))[0]
-    databases[schema_id] = Database(schema_id, None, schema_id=schema_id, schema=schema)
+    databases[schema_id] = Database(None, schema_id, None, schema_id=schema_id, schema=schema)
 
 
 def parse_properties(path: str, parent_prop: Property, properties: dict):
@@ -585,7 +605,6 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         else:
             prop = ObjectProperty(parent_prop, key, fields, obj)
             parent_prop.obj.object_properties.append(prop)
-        fields['property'] = prop
         return prop
 
     if object_ref := fields.get('$ref'):
@@ -624,6 +643,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                 break
     else:
         object_name = key
+        parent = parent_prop.obj
         ref_node = None
 
     prop_type = get_ptype(ref_node or fields)
@@ -644,9 +664,22 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         fields = ref_node
 
     def createObjectAndProperty(Class) -> Property:
-        obj = Class(object_name, object_ref, schema_id)
-        if object_ref and not object_ref in db.object_defs:
+        # parent = db if object_ref else parent_prop.obj
+        # if not object_ref:
+        #     parent = parent_prop.obj
+        # elif schema_id == parent_prop.obj.schema_id:
+        #     parent = db
+        # else:
+        #     parent = db
+        print("OBJ", parent.namespace, parent.name, object_name)
+        obj = Class(parent, object_name, object_ref, schema_id)
+        if object_ref:
+            print("OBJREF", object_ref, db.name, obj.name, obj.namespace)
+        if object_ref:
             db.object_defs[object_ref] = obj
+        if obj.schema_id != parent_prop.obj.schema_id:
+            database.external_objects[object_ref] = obj
+        fields['object'] = obj
         return createObjectProperty(obj)
 
     if prop_type == 'object':
@@ -662,6 +695,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         items_prop = parse_property(f'{object_ref or path}/items', array_prop, f'{array_prop.typename}Item', items)
         array_prop.obj.default = fields.get('default')
         if array_prop.obj.is_object_array:
+            
             if 'default' in fields:
                 raise ValueError('ObjectArray default not supported')
         return array_prop
@@ -690,7 +724,9 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
     database.include = database.schema.get('include', set())
-    root = ObjectProperty(database, '', {}, Object('', None, database.schema_id))
+    root_obj = Object(database, '', None, database.schema_id)
+    database.schema['object'] = root_obj
+    root = ObjectProperty(database, '', {}, root_obj)
     database.object_properties.append(root)
     root.is_store = True
     parse_properties(f'{database.name}/properties', root, database.schema.get('properties', {}))
@@ -704,16 +740,16 @@ def generate_database(db: Database) -> CodeLines:
     }
 
     external_defs = []
-    for prop in db.external_object_properties.values():
-        obj = prop.obj
+    for obj in db.external_objects.values():
         db.include.add(f'{obj.schema_id}.h')
-        ns = prop.namespace
+        ns = obj.namespace
         external_defs += [
             f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
             f'using {obj.typename_updater} = {ns}::{obj.typename_updater};',
         ]
 
     for obj in db.object_defs.values():
+        print("DEF", obj.namespace, obj.name)
         db.forward_decls |= {obj.typename_contained, obj.typename_updater}
 
     lines = CodeLines(
@@ -759,11 +795,11 @@ def generate_database(db: Database) -> CodeLines:
             '};'
         ])
 
-    for obj in reversed(db.object_defs.values()):
+    for obj in sorted(db.object_defs.values()):
         prop = ObjectProperty(db, obj.name, {}, obj)
         lines.append(generate_object(db, prop))
 
-    for prop in db.object_properties:
+    for prop in reversed(db.object_properties):
         if not prop.obj.ref:
             lines.append(generate_object(db, prop))
 
@@ -986,7 +1022,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             '.type = PropertyType::Object',
             '.name = ' + ('fstr_empty' if obj.is_array else db.strings[prop.name]),
             f'.offset = {offset}',
-            f'.variant = {{.object = &{prop.namespace}::{prop.obj.typename_contained}::typeinfo}}'
+            f'.variant = {{.object = &{prop.obj.namespace}::{prop.obj.typename_contained}::typeinfo}}'
         ]]
         add_alias(prop.alias)
         if not obj.is_union:
@@ -1400,7 +1436,7 @@ def main():
     parser = argparse.ArgumentParser(description='ConfigDB specification utility')
 
     parser.add_argument('cfgfiles', nargs='+', help='Path to configuration file(s)')
-    parser.add_argument('--outdir', help='Output directory')
+    parser.add_argument('--outdir', required=True, help='Output directory')
 
     args = parser.parse_args()
 
@@ -1410,6 +1446,8 @@ def main():
     for db in databases.values():
         print(f'Parsing {db.name} ...')
         parse_database(db)
+
+    for db in databases.values():
         lines = generate_database(db)
 
         filepath = os.path.join(args.outdir, f'{db.name}')
