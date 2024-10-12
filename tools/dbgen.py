@@ -160,7 +160,11 @@ class Property:
         self.ctype = CPP_TYPENAMES[self.ptype]
         self.property_type = self.ptype.capitalize()
         self.alias = fields.get('alias')
-        self.is_store = ('store' in fields)
+        is_store = fields.get('store')
+        if is_store is not None:
+            self.is_store = True
+            if not isinstance(is_store, bool):
+                print(f'WARNING: bool expected for "{key}/properties/store", found "{is_store}"')
 
         if self.ptype == 'integer':
             int32 = IntRange(0, 0, True, 32)
