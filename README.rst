@@ -75,7 +75,7 @@ See the :sample:`Basic_Config` sample schema. The test application contains furt
 - A custom type can be defined for Property accessors using the **ctype** annotation. This means that with an IP address property, for example, you can use :cpp:class:`IpAddress` instead of :cpp:class:`String` because it can be constructed from a String. The database still stores the value internally as a regular String.
 - `Enumerated Properties`_ can be defined for any type; **ctype** is used here to optionally define a custom **enum class** type for these values.
 - Re-useable definitions can be created using the `$ref <https://json-schema.org/understanding-json-schema/structuring#dollarref>`__ schema keyword.
-  Such definitions must be contained within the **$defs** section of the schema.
+  Such definitions should be contained within the **$defs** section of the schema.
 - `Arrays`_ of simple types (including Strings) or objects are supported.
 - `Unions`_ can contain any one of a number of user-defined object types, and can be used in object arrays.
 - Null values are not supported. If encountered in existing datasets then ConfigDB uses the default value for the property.
@@ -199,9 +199,6 @@ The *dbgen.py* code generator is passed the names of *all* schema found in the c
   
     The full URI resolution described by JSON Schema is not currently implemented.
     This would require **$id** annotations in all schema.
-
-    Nested references are not supported. That is, a **$ref** must point to an actual definition and not just another **$ref**.
-
 
 When using shared objects only the name of the related property can be changed.
 For example::
