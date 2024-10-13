@@ -20,12 +20,13 @@ CONFIGDB_FILES := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/%.h,$(CONFIGDB_SCHEMA))
 CONFIGDB_FILES := $(CONFIGDB_FILES) $(CONFIGDB_FILES:.h=.cpp)
 COMPONENT_PREREQUISITES := $(CONFIGDB_FILES)
 
-$(APP_CONFIGDB_DIR)/%.h: $(CONFIGDB_SCHEMA)
-	$(vecho) "CFGDB $^"
-	$(Q) $(CONFIGDB_GEN_CMDLINE) --outdir $(APP_CONFIGDB_DIR) $^
+$(CONFIGDB_FILES): $(CONFIGDB_SCHEMA)
+	$(MAKE) configdb-build
 
 .PHONY: configdb-build
-configdb-build: $(CONFIGDB_FILES)
+configdb-build: $(CONFIGDB_SCHEMA)
+	$(vecho) "CFGDB $^"
+	$(Q) $(CONFIGDB_GEN_CMDLINE) --outdir $(APP_CONFIGDB_DIR) $^
 
 .PHONY: configdb-rebuild
 configdb-rebuild: configdb-clean configdb-build
