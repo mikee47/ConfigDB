@@ -129,7 +129,12 @@ class IntRange(Range):
 
 def get_ptype(fields: dict):
     '''Identify a pseudo-type 'union' which makes script a bit clearer'''
-    return 'union' if 'oneOf' in fields else fields['type']
+    if 'oneOf' in fields:
+        return 'union'
+    ptype = fields.get('type')
+    if not ptype:
+        raise ValueError(f'"type" is required')
+    return ptype
 
 
 @dataclass
@@ -160,7 +165,11 @@ class Property:
         self.ctype = CPP_TYPENAMES[self.ptype]
         self.property_type = self.ptype.capitalize()
         self.alias = fields.get('alias')
-        self.is_store = ('store' in fields)
+        is_store = fields.get('store')
+        if is_store is not None:
+            self.is_store = True
+            if not isinstance(is_store, bool):
+                print(f'WARNING: bool expected for "{key}/properties/store", found "{is_store}"')
 
         if self.ptype == 'integer':
             int32 = IntRange(0, 0, True, 32)
@@ -309,11 +318,22 @@ class ObjectProperty(Property):
 
 @dataclass
 class Object:
+    parent: Object
     name: str
     ref: str | None
-    schema_id: str = None
+    schema_id: str
     object_properties: list[Property] = field(default_factory=list)
     properties: list[Property] = field(default_factory=list)
+
+    @property
+    def namespace(self):
+        ns = []
+        obj = self.parent
+        while obj:
+            if not obj.is_array:
+                ns.insert(0, obj.typename_contained)
+            obj = obj.parent
+        return '::'.join(ns)
 
     @property
     def typename(self):
@@ -368,6 +388,23 @@ class Object:
     @property
     def is_union(self):
         return False
+
+    def __lt__(self, obj: Object):
+        '''Sort lists by dependency'''
+        return obj.depends_on(self)
+
+    def depends_on(self, other: Object):
+        dependencies = []
+        def scan(obj: Object):
+            for prop in obj.object_properties:
+                if other is prop.obj:
+                    return True
+                if prop.obj in dependencies:
+                    continue
+                dependencies.append(prop.obj)
+                scan(prop.obj)
+            return False
+        return scan(self)
 
 
 @dataclass
@@ -428,18 +465,18 @@ class Union(Object):
 class Database(Object):
     schema: dict = None
     object_defs: dict[Object] = field(default_factory=dict)
-    external_object_properties: dict[Property] = field(default_factory=dict)
+    external_objects: dict[Object] = field(default_factory=dict)
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
     include: set[str] = None
 
     @property
-    def obj(self):
-        return self
+    def namespace(self):
+        return make_typename(self.schema_id)
 
     @property
-    def parent(self):
-        return None
+    def obj(self):
+        return self
 
     @property
     def database(self):
@@ -543,15 +580,15 @@ def load_schema(filename: str) -> Database:
     except ImportError as err:
         print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
     schema_id = os.path.splitext(os.path.basename(filename))[0]
-    databases[schema_id] = Database(schema_id, None, schema_id=schema_id, schema=schema)
+    databases[schema_id] = Database(None, schema_id, None, schema_id=schema_id, schema=schema)
 
 
-def parse_properties(parent_prop: Property, properties: dict):
+def parse_properties(path: str, parent_prop: Property, properties: dict):
     for key, fields in properties.items():
-        parse_property(parent_prop, key, fields)
+        parse_property(f'{path}/{key}', parent_prop, key, fields)
 
 
-def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
+def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> Property:
     '''If property contains a reference, deal with it
 
     References can point to anywhere in the current database (prefixed with '#') or in another one.
@@ -568,115 +605,138 @@ def parse_property(parent_prop: Property, key: str, fields: dict) -> Property:
     We can put that definition directly into the schema so it only needs to be parsed once.
     No need for separate `Database.objects`, we use `Database.schema` instead.
     '''
-    database = parent_prop.database
-    schema_id = parent_prop.obj.schema_id or database.schema_id
+    try:
+        database = parent_prop.database
+        schema_id = parent_prop.obj.schema_id or database.schema_id
 
-    def createObjectProperty(obj: Object) -> Property:
-        # Objects with 'store' annoation are managed by database, otherwise they live in root object
-        if 'store' in fields:
-            if not parent_prop.is_root:
-                raise ValueError(f'{key} cannot have "store" annotation, not a root object')
-            prop = ObjectProperty(database, key, fields, obj)
-            prop.is_store = True
-            database.object_properties.append(prop)
+        def create_object_property(obj: Object) -> Property:
+            # Objects with 'store' annoation are managed by database, otherwise they live in root object
+            if 'store' in fields:
+                if not parent_prop.is_root:
+                    raise ValueError(f'{path} cannot have "store" annotation, not a root object')
+                prop = ObjectProperty(database, key, fields, obj)
+                prop.is_store = True
+                database.object_properties.append(prop)
+            else:
+                prop = ObjectProperty(parent_prop, key, fields, obj)
+                parent_prop.obj.object_properties.append(prop)
+            return prop
+
+        if object_ref := fields.get('$ref'):
+            while object_ref:
+                if object_ref.startswith('#/'):
+                    ref = object_ref[2:]
+                    object_ref = f'{schema_id}/{ref}'
+                else:
+                    schema_id, _, ref = object_ref.partition('/')
+                path = f'{path} -> /{object_ref}'
+                db = databases.get(schema_id)
+                if not db:
+                    raise ValueError(f'Database "{schema_id}" not found')
+                parent = db
+                ref_node = db.schema
+                while ref:
+                    if 'object' in ref_node:
+                        parent = ref_node['object']
+                    name, _, ref = ref.partition('/')
+                    ref_node = ref_node.get(name)
+                    if not ref_node:
+                        raise ValueError(f'Missing reference "{name}" in "{object_ref}"')
+                object_name = name
+                if not key:
+                    key = name
+
+                # Has object already been parsed?
+                if obj := ref_node.get('object'):
+                    if obj.schema_id != parent_prop.obj.schema_id:
+                        database.external_objects[object_ref] = obj
+                    return create_object_property(obj)
+
+                if next_ref := ref_node.get('$ref'):
+                    object_ref = next_ref
+                else:
+                    break
         else:
-            prop = ObjectProperty(parent_prop, key, fields, obj)
-            parent_prop.obj.object_properties.append(prop)
-        fields['property'] = prop
-        return prop
+            object_name = key
+            parent = parent_prop.obj
+            ref_node = None
 
-    if object_ref := fields.get('$ref'):
-        if object_ref.startswith('#/'):
-            ref = object_ref[2:]
-            object_ref = f'{schema_id}/{ref}'
-        else:
-            schema_id, _, ref = object_ref.partition('/')
-        db = databases[schema_id]
-        ref_node = db.schema
-        while ref:
-            name, _, ref = ref.partition('/')
-            ref_node = ref_node[name]
-        object_name = name
-        if not key:
-            key = name
+        prop_type = get_ptype(ref_node or fields)
 
-        # Has object already been parsed?
-        if prop := ref_node.get('property'):
-            if prop.obj.schema_id != parent_prop.obj.schema_id:
-                database.external_object_properties[object_ref] = prop
-            return createObjectProperty(prop.obj)
-    else:
-        object_name = key
-        ref_node = None
+        if prop_type not in ['object', 'array', 'union']:
+            if ref_node:
+                # For simple properties the definition is a template, so copy over any non-existent values
+                for k, v in ref_node.items():
+                    if k not in fields:
+                        fields[k] = v
 
-    prop_type = get_ptype(ref_node or fields)
+            prop = Property(parent_prop, key, fields)
+            parent_prop.obj.properties.append(prop)
+            return prop
 
-    if CPP_TYPENAMES[prop_type] != '-':
         if ref_node:
-            # For simple properties the definition is a template,
-            # so copy over any non-existent values
-            for k, v in ref_node.items():
-                if k not in fields:
-                    fields[k] = v
+            fields = ref_node
 
-        prop = Property(parent_prop, key, fields)
-        parent_prop.obj.properties.append(prop)
-        return prop
+        def create_object_and_property(Class) -> Property:
+            obj = Class(database if 'store' in fields else db if object_ref else parent, object_name, object_ref, schema_id)
+            if object_ref:
+                db.object_defs[object_ref] = obj
+            if obj.schema_id != parent_prop.obj.schema_id:
+                database.external_objects[object_ref] = obj
+            fields['object'] = obj
+            return create_object_property(obj)
 
-    if ref_node:
-        fields = ref_node
-
-    def createObjectAndProperty(Class) -> Property:
-        obj = Class(object_name, object_ref, schema_id)
-        if object_ref and not object_ref in db.object_defs:
-            db.object_defs[object_ref] = obj
-        return createObjectProperty(obj)
-
-    if prop_type == 'object':
-        if 'default' in fields:
-            raise ValueError('Object default not supported (use default on properties)')
-        object_prop = createObjectAndProperty(Object)
-        parse_properties(object_prop, fields.get('properties', {}))
-        return object_prop
-
-    if prop_type == 'array':
-        items = fields['items']
-        array_prop = createObjectAndProperty(Array)
-        items_prop = parse_property(array_prop, f'{array_prop.typename}Item', items)
-        array_prop.obj.default = fields.get('default')
-        if array_prop.obj.is_object_array:
+        if prop_type == 'object':
             if 'default' in fields:
-                raise ValueError('ObjectArray default not supported')
-        return array_prop
+                raise ValueError('Object default not supported (use default on properties)')
+            object_prop = create_object_and_property(Object)
+            parse_properties(f'{path}/properties', object_prop, fields.get('properties', {}))
+            return object_prop
 
-    if prop_type == 'union':
-        if 'default' in fields:
-            raise ValueError('Union default not supported')
-        union_prop = createObjectAndProperty(Union)
-        for opt in fields['oneOf']:
-            prop = parse_property(union_prop, opt.get('title'), opt)
-            if not prop.obj:
-                raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
-            if not prop.id or not prop.obj.typename:
-                raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
-        prop = Property(union_prop, 'tag', {
-            'type': 'integer',
-            'minimum': 0,
-            'maximum': len(union_prop.obj.object_properties) - 1
-        })
-        union_prop.obj.properties.append(prop)
-        return union_prop
+        if prop_type == 'array':
+            items = fields.get('items')
+            if not items:
+                raise ValueError(f'Missing "items" property for array')
+            array_prop = create_object_and_property(Array)
+            items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
+            array_prop.obj.default = fields.get('default')
+            if array_prop.obj.is_object_array:
+                if 'default' in fields:
+                    raise ValueError('ObjectArray default not supported')
+            return array_prop
 
-    raise ValueError('Bad type ' + prop_type)
+        if prop_type == 'union':
+            if 'default' in fields:
+                raise ValueError('Union default not supported')
+            union_prop = create_object_and_property(Union)
+            for i, opt in enumerate(fields['oneOf']):
+                prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
+                if not prop.obj:
+                    raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
+                if not prop.id or not prop.obj.typename:
+                    raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
+            prop = Property(union_prop, 'tag', {
+                'type': 'integer',
+                'minimum': 0,
+                'maximum': len(union_prop.obj.object_properties) - 1
+            })
+            union_prop.obj.properties.append(prop)
+            return union_prop
+
+        raise ValueError('Bad type ' + prop_type)
+    except ValueError as e:
+        raise RuntimeError(path) from e
 
 
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
     database.include = database.schema.get('include', set())
-    root = ObjectProperty(database, '', {}, Object('', None, database.schema_id))
+    root_obj = Object(database, '', None, database.schema_id)
+    database.schema['object'] = root_obj
+    root = ObjectProperty(database, '', {}, root_obj)
     database.object_properties.append(root)
     root.is_store = True
-    parse_properties(root, database.schema['properties'])
+    parse_properties(f'/{database.name}/properties', root, database.schema.get('properties', {}))
 
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''
@@ -687,10 +747,9 @@ def generate_database(db: Database) -> CodeLines:
     }
 
     external_defs = []
-    for prop in db.external_object_properties.values():
-        obj = prop.obj
+    for obj in db.external_objects.values():
         db.include.add(f'{obj.schema_id}.h')
-        ns = prop.namespace
+        ns = obj.namespace
         external_defs += [
             f'using {obj.typename_contained} = {ns}::{obj.typename_contained};',
             f'using {obj.typename_updater} = {ns}::{obj.typename_updater};',
@@ -742,11 +801,11 @@ def generate_database(db: Database) -> CodeLines:
             '};'
         ])
 
-    for obj in reversed(db.object_defs.values()):
+    for obj in sorted(db.object_defs.values()):
         prop = ObjectProperty(db, obj.name, {}, obj)
         lines.append(generate_object(db, prop))
 
-    for prop in db.object_properties:
+    for prop in reversed(db.object_properties):
         if not prop.obj.ref:
             lines.append(generate_object(db, prop))
 
@@ -969,7 +1028,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             '.type = PropertyType::Object',
             '.name = ' + ('fstr_empty' if obj.is_array else db.strings[prop.name]),
             f'.offset = {offset}',
-            f'.variant = {{.object = &{prop.namespace}::{prop.obj.typename_contained}::typeinfo}}'
+            f'.variant = {{.object = &{prop.obj.namespace}::{prop.obj.typename_contained}::typeinfo}}'
         ]]
         add_alias(prop.alias)
         if not obj.is_union:
@@ -1383,16 +1442,19 @@ def main():
     parser = argparse.ArgumentParser(description='ConfigDB specification utility')
 
     parser.add_argument('cfgfiles', nargs='+', help='Path to configuration file(s)')
-    parser.add_argument('--outdir', help='Output directory')
+    parser.add_argument('--outdir', required=True, help='Output directory')
 
     args = parser.parse_args()
 
     for f in args.cfgfiles:
+        print(f'Loading "{f}"')
         load_schema(f)
 
     for db in databases.values():
-        print(f'Parsing {db.name} ...')
+        print(f'Parsing "{db.name}"')
         parse_database(db)
+
+    for db in databases.values():
         lines = generate_database(db)
 
         filepath = os.path.join(args.outdir, f'{db.name}')
@@ -1403,4 +1465,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        if e.__cause__:
+            print('ERROR:', e.__cause__, 'from', ', '.join(e.args))
+        else:
+            print(repr(e))
