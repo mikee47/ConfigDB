@@ -763,6 +763,8 @@ def generate_database(db: Database) -> CodeLines:
             '/*',
             generate_structure(db),
             '*/',
+            '#pragma once',
+            '',
             '#include <ConfigDB/Database.h>',
             *(f'#include <{file}>' for file in db.include),
             '',
