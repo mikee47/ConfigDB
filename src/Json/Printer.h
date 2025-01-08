@@ -30,18 +30,13 @@ namespace ConfigDB::Json
 class Printer
 {
 public:
-	/**
-	 * @brief Determines behaviour for display of initial object only (doesn't apply to children)
-	 */
-	enum class RootStyle {
-		hidden, ///< Don't show name or braces
-		braces, ///< Just show braces
-		normal, ///< Show name and braces
-	};
-
 	Printer() = default;
 
 	Printer(Print& p, const Object& object, bool pretty, RootStyle style);
+
+	void reset();
+
+	void setRootStyle(RootStyle style);
 
 	explicit operator bool() const
 	{
@@ -73,7 +68,7 @@ public:
 private:
 	Print* p{};
 	Object objects[JSON::StreamingParser::maxNesting];
-	const FlashString* rootName{};
+	RootStyle rootStyle{};
 	uint8_t nesting{};
 	bool pretty{};
 };

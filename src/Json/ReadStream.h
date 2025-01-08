@@ -36,7 +36,7 @@ public:
 	}
 
 	ReadStream(StoreRef& store, const Object& object, bool pretty)
-		: store(store), printer(stream, object, pretty, Printer::RootStyle::braces), pretty(pretty)
+		: store(store), printer(stream, object, pretty, RootStyle::braces), pretty(pretty)
 	{
 	}
 
@@ -49,7 +49,7 @@ public:
 
 	uint16_t readMemoryBlock(char* data, int bufSize) override;
 
-	bool seek(int len) override;
+	int seekFrom(int offset, SeekOrigin origin) override;
 
 	bool isFinished() override
 	{
@@ -71,6 +71,16 @@ public:
 		return Status{};
 	}
 
+	virtual Options getOptions() const override
+	{
+		return Options{};
+	}
+
+	virtual void setOptions(const Options& options) override
+	{
+		printer.setRootStyle(options.rootStyle);
+	}
+
 private:
 	size_t fillStream(Print& p);
 
@@ -78,6 +88,7 @@ private:
 	StoreRef store;
 	Printer printer;
 	MemoryDataStream stream;
+	unsigned streamPos{0};
 	bool pretty;
 	uint8_t storeIndex{0};
 	bool done{false};

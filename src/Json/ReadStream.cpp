@@ -39,30 +39,26 @@ size_t ReadStream::fillStream(Print& p)
 
 	size_t n{0};
 
-	if(db) {
-		if(!store) {
-			if(storeIndex == 0) {
-				n += p.print('{');
-			}
-			store = db->openStore(storeIndex);
-			auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
-			printer = Printer(p, *store, pretty, style);
+	if(db && !store) {
+		if(storeIndex == 0) {
+			n += p.print('{');
 		}
-	} else if(!printer) {
-		printer = Printer(p, *store, pretty, Printer::RootStyle::normal);
+		store = db->openStore(storeIndex);
+		auto style = storeIndex == 0 ? RootStyle::hidden : RootStyle::name;
+		printer = Printer(p, *store, pretty, style);
 	}
 
 	n += printer();
 	if(!printer.isDone()) {
 		return n;
 	}
-	store = {};
 
 	if(!db) {
 		done = true;
 		return n;
 	}
 
+	store = {};
 	++storeIndex;
 	if(storeIndex < db->typeinfo.storeCount) {
 		n += p.print(',');
@@ -90,22 +86,39 @@ uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
 	return stream.readMemoryBlock(data, bufSize);
 }
 
-bool ReadStream::seek(int len)
+int ReadStream::seekFrom(int offset, SeekOrigin origin)
 {
-	if(len <= 0) {
-		return false;
+	if(origin == SeekOrigin::Start && offset == 0) {
+		// Reset to starting position
+		if(db) {
+			store = {};
+			printer = {};
+		} else {
+			printer.reset();
+		}
+		stream.clear();
+		streamPos = 0;
+		storeIndex = 0;
+		done = false;
+		return streamPos;
 	}
 
-	if(!stream.seek(len)) {
-		return false;
+	if(origin != SeekOrigin::Current || offset <= 0) {
+		return streamPos;
 	}
+
+	if(!stream.seek(offset)) {
+		return streamPos;
+	}
+
+	streamPos += offset;
 
 	if(stream.available() == 0) {
 		stream.clear();
 		fillStream(stream);
 	}
 
-	return true;
+	return streamPos;
 }
 
 } // namespace ConfigDB::Json

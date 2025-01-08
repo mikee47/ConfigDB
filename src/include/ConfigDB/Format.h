@@ -35,10 +35,35 @@ public:
 	virtual Status getStatus() const = 0;
 };
 
+/**
+ * @brief Options for streaming object output
+ */
+enum class RootStyle {
+	hidden, ///< Show content only 13,28,39,40
+	braces, ///< Add braces [13,28,39,40]
+	name,   ///< Add name "int_array":[13,28,39,40]
+	object, ///< Add outer braces {"int_array":[13,28,39,40]}
+};
+
 class ExportStream : public IDataSourceStream
 {
 public:
+	struct Options {
+		RootStyle rootStyle;
+	};
+
 	virtual Status getStatus() const = 0;
+
+	/**
+	 * @brief Get currently active export options
+	 */
+	virtual Options getOptions() const = 0;
+
+	/**
+	 * @brief Set export options
+	 * @param options New options
+	 */
+	virtual void setOptions(const Options& options) = 0;
 };
 
 /**

@@ -3,6 +3,7 @@
  */
 
 #include <ConfigDBTest.h>
+#include <Data/CStringArray.h>
 
 /*
  * Array selector test data is generated using a python script.
@@ -115,6 +116,30 @@ public:
 			String content;
 			mem.moveString(content);
 			REQUIRE_EQ(content, json::root1);
+		}
+
+		TEST_CASE("Streaming object export options")
+		{
+			TestConfig::Root::IntArray intarray(database);
+			auto stream = intarray.createExportStream(ConfigDB::Json::format);
+			auto options = stream->getOptions();
+			CStringArray expectedOutputs = F("13,28,39,40\0"
+											 "[13,28,39,40]\0"
+											 "\"int_array\":[13,28,39,40]\0"
+											 "{\"int_array\":[13,28,39,40]}");
+			for(unsigned i = 0; i < 4; ++i) {
+				auto style = ConfigDB::RootStyle(i);
+				options.rootStyle = style;
+				debug_i("OPTIONS.rootStyle %u", options.rootStyle);
+				stream->setOptions(options);
+				stream->seekFrom(0, SeekOrigin::Start);
+				MemoryDataStream mem;
+				mem.copyFrom(stream.get());
+				String content;
+				mem.moveString(content);
+				Serial << F("Style #") << i << ' ' << content << endl;
+				CHECK_EQ(content, expectedOutputs[i]);
+			}
 		}
 
 		TEST_CASE("Streaming database import")
