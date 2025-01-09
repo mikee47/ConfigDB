@@ -33,8 +33,8 @@ public:
 
 	std::unique_ptr<ExportStream> createExportStream(Database& db) const override;
 	std::unique_ptr<ExportStream> createExportStream(StoreRef store, const Object& object) const override;
-	size_t exportToStream(const Object& object, Print& output) const override;
-	size_t exportToStream(Database& database, Print& output) const override;
+	size_t exportToStream(const Object& object, Print& output, const ExportOptions& options) const override;
+	size_t exportToStream(Database& database, Print& output, const ExportOptions& options) const override;
 	std::unique_ptr<ImportStream> createImportStream(Database& db) const override;
 	std::unique_ptr<ImportStream> createImportStream(StoreUpdateRef& store, Object& object) const override;
 	Status importFromStream(Object& object, Stream& source) const override;

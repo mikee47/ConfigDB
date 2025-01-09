@@ -21,9 +21,9 @@
 
 namespace ConfigDB::Json
 {
-size_t ReadStream::print(Database& db, Print& p, bool pretty)
+size_t ReadStream::print(Database& db, Print& p, const ExportOptions& options)
 {
-	ReadStream rs(db, pretty);
+	ReadStream rs(db, options);
 	size_t n{0};
 	while(!rs.done) {
 		n += rs.fillStream(p);
@@ -45,7 +45,7 @@ size_t ReadStream::fillStream(Print& p)
 		}
 		store = db->openStore(storeIndex);
 		auto style = storeIndex == 0 ? RootStyle::content : RootStyle::name;
-		printer = Printer(p, *store, pretty, style);
+		printer = Printer(p, *store, options.pretty, style);
 	}
 
 	n += printer();

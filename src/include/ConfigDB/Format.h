@@ -113,15 +113,21 @@ public:
 
 	/**
 	 * @brief Print object
+	 * @param object The object to serialize
+	 * @param output Where to write output
+	 * @param options Advanced settings for adjusting output
 	 * @retval size_t Number of characters written
 	 */
-	virtual size_t exportToStream(const Object& object, Print& output) const = 0;
+	virtual size_t exportToStream(const Object& object, Print& output, const ExportOptions& options) const = 0;
 
 	/**
 	 * @brief Serialise entire database directly to an output stream
+	 * @param database The database to serialize
+	 * @param output Where to write output
+	 * @param options Advanced settings for adjusting output
 	 * @retval size_t Number of bytes written to the stream
 	 */
-	virtual size_t exportToStream(Database& database, Print& output) const = 0;
+	virtual size_t exportToStream(Database& database, Print& output, const ExportOptions& options) const = 0;
 
 	/**
 	 * @brief Create a stream for de-serialising (writing) into the database

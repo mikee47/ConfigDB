@@ -28,17 +28,17 @@ Format format;
 
 std::unique_ptr<ExportStream> Format::createExportStream(Database& db) const
 {
-	return std::make_unique<ReadStream>(db, pretty);
+	return std::make_unique<ReadStream>(db);
 }
 
 std::unique_ptr<ExportStream> Format::createExportStream(StoreRef store, const Object& object) const
 {
-	return std::make_unique<ReadStream>(store, object, pretty);
+	return std::make_unique<ReadStream>(store, object);
 }
 
-size_t Format::exportToStream(const Object& object, Print& output) const
+size_t Format::exportToStream(const Object& object, Print& output, const ExportOptions& options) const
 {
-	Printer printer(output, object, pretty, RootStyle::braces);
+	Printer printer(output, object, options.pretty, std::max(RootStyle::braces, options.rootStyle));
 	size_t n{0};
 	do {
 		n += printer();
@@ -46,9 +46,9 @@ size_t Format::exportToStream(const Object& object, Print& output) const
 	return n;
 }
 
-size_t Format::exportToStream(Database& database, Print& output) const
+size_t Format::exportToStream(Database& database, Print& output, const ExportOptions& options) const
 {
-	return ReadStream::print(database, output, pretty);
+	return ReadStream::print(database, output, options);
 }
 
 std::unique_ptr<ImportStream> Format::createImportStream(Database& db) const

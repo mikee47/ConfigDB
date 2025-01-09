@@ -31,16 +31,17 @@ namespace ConfigDB::Json
 class ReadStream : public ExportStream
 {
 public:
-	ReadStream(Database& db, bool pretty) : db(&db), pretty(pretty)
+	ReadStream(Database& db, const ExportOptions& options = {}) : db(&db), options(options)
 	{
 	}
 
-	ReadStream(StoreRef& store, const Object& object, bool pretty)
-		: store(store), printer(stream, object, pretty, RootStyle::braces), pretty(pretty)
+	ReadStream(StoreRef& store, const Object& object, const ExportOptions& options = {})
+		: store(store), printer(stream, object, options.pretty, std::max(RootStyle::braces, options.rootStyle)),
+		  options(options)
 	{
 	}
 
-	static size_t print(Database& db, Print& p, bool pretty);
+	static size_t print(Database& db, Print& p, const ExportOptions& options);
 
 	bool isValid() const override
 	{
@@ -88,8 +89,8 @@ private:
 	StoreRef store;
 	Printer printer;
 	MemoryDataStream stream;
+	const ExportOptions options;
 	unsigned streamPos{0};
-	bool pretty;
 	uint8_t storeIndex{0};
 	bool done{false};
 };

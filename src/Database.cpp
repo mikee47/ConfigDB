@@ -339,12 +339,12 @@ std::unique_ptr<ExportStream> Database::createExportStream(const Format& format,
 	return format.createExportStream(store, obj);
 }
 
-bool Database::exportToFile(const Format& format, const String& filename)
+bool Database::exportToFile(const Format& format, const String& filename, const ExportOptions& options)
 {
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		format.exportToStream(*this, buffer);
+		format.exportToStream(*this, buffer, options);
 	}
 
 	if(stream.getLastError() == FS_OK) {

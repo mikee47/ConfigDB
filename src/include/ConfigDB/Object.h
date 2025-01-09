@@ -185,12 +185,12 @@ public:
 
 	size_t printTo(Print& p) const;
 
-	bool exportToStream(const Format& format, Print& output) const
+	bool exportToStream(const Format& format, Print& output, const ExportOptions& options = {}) const
 	{
-		return format.exportToStream(*this, output);
+		return format.exportToStream(*this, output, options);
 	}
 
-	bool exportToFile(const Format& format, const String& filename) const;
+	bool exportToFile(const Format& format, const String& filename, const ExportOptions& options = {}) const;
 
 	Status importFromStream(const Format& format, Stream& source)
 	{

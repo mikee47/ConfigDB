@@ -118,15 +118,15 @@ public:
 	/**
 	 * @brief Serialize the database to a stream
 	 */
-	size_t exportToStream(const Format& format, Print& output)
+	size_t exportToStream(const Format& format, Print& output, const ExportOptions& options = {})
 	{
-		return format.exportToStream(*this, output);
+		return format.exportToStream(*this, output, options);
 	}
 
 	/**
 	 * @brief Serialize the database to a single file
 	 */
-	bool exportToFile(const Format& format, const String& filename);
+	bool exportToFile(const Format& format, const String& filename, const ExportOptions& options = {});
 
 	/**
 	 * @brief De-serialize the entire database from a stream
