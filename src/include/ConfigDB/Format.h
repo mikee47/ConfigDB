@@ -36,7 +36,7 @@ public:
 };
 
 /**
- * @brief Options for streaming object output
+ * @brief Style options for output of root item in export stream
  */
 enum class RootStyle {
 	content, ///< Show content only 13,28,39,40
@@ -45,13 +45,36 @@ enum class RootStyle {
 	object,  ///< Add outer braces {"int_array":[13,28,39,40]}
 };
 
+/**
+ * @brief Options for streaming object output
+ */
+struct ExportOptions {
+	/**
+	 * @brief Applicable style for root object output
+	 */
+	RootStyle rootStyle{};
+
+	/**
+	 * @brief Optional override for root object name
+	 *
+	 * Useful where object is un-named or the name is to change.
+	 * Applicable to `name` and `object` root styles.
+	 */
+	String rootName;
+
+	/**
+	 * @brief Set compact (default) or prettified output.
+	 */
+	bool pretty{false};
+};
+
+/**
+ * @brief Interface for formatted export stream
+ */
 class ExportStream : public IDataSourceStream
 {
 public:
-	struct Options {
-		RootStyle rootStyle;
-		String rootName; ///< Optional override for root object name
-	};
+	using Options = ExportOptions;
 
 	virtual Status getStatus() const = 0;
 

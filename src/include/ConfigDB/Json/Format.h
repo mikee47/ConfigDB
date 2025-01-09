@@ -49,14 +49,6 @@ public:
 	{
 		return MimeType::JSON;
 	}
-
-	void setPretty(bool pretty)
-	{
-		this->pretty = pretty;
-	}
-
-private:
-	bool pretty{false};
 };
 
 extern Format format;
