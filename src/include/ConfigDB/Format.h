@@ -39,10 +39,10 @@ public:
  * @brief Options for streaming object output
  */
 enum class RootStyle {
-	hidden, ///< Show content only 13,28,39,40
-	braces, ///< Add braces [13,28,39,40]
-	name,   ///< Add name "int_array":[13,28,39,40]
-	object, ///< Add outer braces {"int_array":[13,28,39,40]}
+	content, ///< Show content only 13,28,39,40
+	braces,  ///< Add braces [13,28,39,40]
+	name,	///< Add name "int_array":[13,28,39,40]
+	object,  ///< Add outer braces {"int_array":[13,28,39,40]}
 };
 
 class ExportStream : public IDataSourceStream

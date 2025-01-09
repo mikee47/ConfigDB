@@ -32,7 +32,7 @@ void Printer::setRootStyle(RootStyle style, const String& name)
 {
 	rootStyle = style;
 	switch(rootStyle) {
-	case RootStyle::hidden:
+	case RootStyle::content:
 		rootName = nullptr;
 		break;
 	case RootStyle::braces:
