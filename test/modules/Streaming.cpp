@@ -118,28 +118,51 @@ public:
 			REQUIRE_EQ(content, json::root1);
 		}
 
-		TEST_CASE("Streaming object export options")
+		TEST_CASE("Streaming object export options (intarray)")
 		{
 			TestConfig::Root::IntArray intarray(database);
 			auto stream = intarray.createExportStream(ConfigDB::Json::format);
-			auto options = stream->getOptions();
 			CStringArray expectedOutputs = F("13,28,39,40\0"
 											 "[13,28,39,40]\0"
 											 "\"int_array\":[13,28,39,40]\0"
-											 "{\"int_array\":[13,28,39,40]}");
-			for(unsigned i = 0; i < 4; ++i) {
-				auto style = ConfigDB::RootStyle(i);
-				options.rootStyle = style;
-				debug_i("OPTIONS.rootStyle %u", options.rootStyle);
-				stream->setOptions(options);
-				stream->seekFrom(0, SeekOrigin::Start);
-				MemoryDataStream mem;
-				mem.copyFrom(stream.get());
-				String content;
-				mem.moveString(content);
-				Serial << F("Style #") << i << ' ' << content << endl;
-				CHECK_EQ(content, expectedOutputs[i]);
-			}
+											 "{\"int_array\":[13,28,39,40]}\0"
+											 "13,28,39,40\0"
+											 "[13,28,39,40]\0"
+											 "\"newname\":[13,28,39,40]\0"
+											 "{\"newname\":[13,28,39,40]}\0");
+			exportCheck(*stream, expectedOutputs);
+		}
+
+		TEST_CASE("Streaming object export options (root)")
+		{
+			TestConfig::Root root(database);
+			auto stream = root.createExportStream(ConfigDB::Json::format);
+			CStringArray expectedOutputs =
+				F("\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
+				  "1415927\0"
+				  "{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
+				  "1415927}\0"
+				  "{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
+				  "1415927}\0"
+				  "{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
+				  "1415927}\0"
+				  "\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
+				  "1415927\0"
+				  "{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
+				  "1415927}\0"
+				  "\"newname\":{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],"
+				  "\"color\":\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-"
+				  "float\":3.1415927}\0"
+				  "{\"newname\":{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[]"
+				  ",\"color\":\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-"
+				  "float\":3.1415927}}\0");
+			exportCheck(*stream, expectedOutputs);
 		}
 
 		TEST_CASE("Streaming database import")
@@ -151,6 +174,27 @@ public:
 			stream.reset();
 			TestConfig::Root root(database);
 			REQUIRE_EQ(root.getSimpleBool(), true);
+		}
+	}
+
+	void exportCheck(ConfigDB::ExportStream& stream, const CStringArray& expectedOutputs)
+	{
+		for(unsigned i = 0; i < 8; ++i) {
+			auto style = ConfigDB::RootStyle(i % 4);
+			ConfigDB::ExportStream::Options options{.rootStyle = style};
+			if(i < 4) {
+				options.rootName = nullptr;
+			} else {
+				options.rootName = F("newname");
+			}
+			stream.setOptions(options);
+			stream.seekFrom(0, SeekOrigin::Start);
+			MemoryDataStream mem;
+			mem.copyFrom(&stream);
+			String content;
+			mem.moveString(content);
+			Serial << F("Style #") << i << ' ' << content << endl;
+			CHECK_EQ(content, expectedOutputs[i]);
 		}
 	}
 

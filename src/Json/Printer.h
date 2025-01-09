@@ -36,7 +36,7 @@ public:
 
 	void reset();
 
-	void setRootStyle(RootStyle style);
+	void setRootStyle(RootStyle style, const String& name);
 
 	explicit operator bool() const
 	{
@@ -68,6 +68,7 @@ public:
 private:
 	Print* p{};
 	Object objects[JSON::StreamingParser::maxNesting];
+	String rootName;
 	RootStyle rootStyle{};
 	uint8_t nesting{};
 	bool pretty{};

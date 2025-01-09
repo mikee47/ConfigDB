@@ -50,6 +50,7 @@ class ExportStream : public IDataSourceStream
 public:
 	struct Options {
 		RootStyle rootStyle;
+		String rootName; ///< Optional override for root object name
 	};
 
 	virtual Status getStatus() const = 0;

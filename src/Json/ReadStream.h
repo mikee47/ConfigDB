@@ -78,7 +78,7 @@ public:
 
 	virtual void setOptions(const Options& options) override
 	{
-		printer.setRootStyle(options.rootStyle);
+		printer.setRootStyle(options.rootStyle, options.rootName);
 	}
 
 private:
