@@ -85,8 +85,11 @@ bool WriteStream::startElement(const Element& element)
 
 	auto& parent = info[element.level - 1];
 
+	// Check for array selector expression
+	auto sel = strchr(element.key, '[');
+
 	if(database && element.level == 1) {
-		if(element.type == Element::Type::Object) {
+		if(!sel && element.type == Element::Type::Object) {
 			return locateStoreOrRoot(element);
 		}
 		// Assume this is a property of the root store
@@ -96,8 +99,6 @@ bool WriteStream::startElement(const Element& element)
 		parent = *store;
 	}
 
-	// Check for array selector expression
-	auto sel = strchr(element.key, '[');
 	if(sel) {
 		return handleSelector(element, sel);
 	}

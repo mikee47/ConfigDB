@@ -173,6 +173,26 @@ public:
 		{
 			arrayTests(object_array_test_cases, true);
 		}
+
+		TEST_CASE("Indexed object array update against database")
+		{
+			for(auto test : object_array_test_cases) {
+				String expr = test.expr.get(arrayTestData);
+				Serial << "CASE: " << expr << endl;
+				String result = test.result.get(arrayTestData);
+				bool isValid = (result[0] == '[');
+				Serial << expr << " -> ";
+				CHECK(importObject(database, json::array_test_default));
+				CHECK_EQ(importObject(database, expr), isValid);
+				if(isValid) {
+					TestConfig::Root root(database);
+					String s = exportObject(root.objectArray);
+					Serial << s;
+					REQUIRE_EQ(s, result);
+				}
+				Serial << " - " << result << endl;
+			}
+		}
 	}
 
 	void arrayTests(const FSTR::Array<ArrayTestCase>& testCases, bool isObject)

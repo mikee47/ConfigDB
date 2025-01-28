@@ -17,6 +17,14 @@ template <typename T> bool importObject(T& object, const String& data)
 	return bool(status);
 }
 
+inline bool importObject(ConfigDB::Database& db, const String& data)
+{
+	MemoryDataStream mem;
+	mem << data;
+	auto status = db.importFromStream(ConfigDB::Json::format, mem);
+	return bool(status);
+}
+
 template <typename T> String exportObject(T& object)
 {
 	MemoryDataStream mem;
