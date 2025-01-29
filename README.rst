@@ -402,7 +402,12 @@ Note that the assigned value *must* be an array or the import will fail::
 
 **Object array selection**
 
-The **x[name=value]** syntax can be used to select *one* object from an array of objects. Here's the test data::
+The **x[name=value]** syntax can be used to select *one* object from an array of objects.
+Primarily this is to support data mapping with a unique *key* field, so there is the assumption that there should only be *one* matching entry in the array.
+
+Thus only the first matching object will be selected. Matching multiple properties is not supported.
+
+Here's the test data::
 
   {
     "x": [
@@ -450,10 +455,47 @@ or::
     ]
   }
 
-Limitations:
+To delete an entry, assign to an empty array::
 
-- Only the first matching object will be selected
-- Only one object key can be matched
+  {
+    "x[name=object 1]": [],
+    "result": [
+      {
+        "name": "object 2",
+        "value": 2
+      }
+    ]
+  }
+
+If the array is populated then a delete+insert operation is performed::
+
+  {
+    "x[name=object 1]": [
+      {
+        "name": "object 3",
+        "value": 25
+      },
+      {
+        "name": "object 4",
+        "value": 18
+      }
+    ],
+    "result": [
+      {
+        "name": "object 3",
+        "value": 25
+      },
+      {
+        "name": "object 4",
+        "value": 18
+      },
+      {
+        "name": "object 2",
+        "value": 2
+      }
+    ]
+  }
+
 
 You can find more examples in the test application under *resource/array-test.json*.
 
