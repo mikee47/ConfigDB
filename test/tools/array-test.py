@@ -102,7 +102,13 @@ TEST_CASES = {
             'x[] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
             'x[10:] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
             ('x[10:] = {}', '"Require array value"')
-        ]
+        ],
+		'Delete named item': [
+            'x[stringval=c] = []',
+		],
+		'Delete/Insert at named item position': [
+            'x[stringval=c] = [{"intval":12,"stringval":"xyz"}]',
+		]
     }
 }
 
@@ -148,7 +154,12 @@ def parse_expression(array_name: str, expr: str | tuple[str, str]) -> tuple[str,
             name, key_name, key_value = m.group(1), m.group(2), m.group(3)
             i = next(i for i, x in enumerate(vars[name]) if x[key_name] == key_value)
             # print(f'{name}; {key_name}; {key_value}; {i}; {vars[name]}; {value}')
-            tmp_expr = f'{name}[{i}] = {value}'
+            if value[0] == '[':
+                tmp_expr = f'del {name}[{i}]'
+                exec(tmp_expr, None, vars)
+                tmp_expr = f'{name}[{i}:{i}] = {value}'
+            else:
+                tmp_expr = f'{name}[{i}] = {value}'
         else:
             tmp_expr = f'{tmp_key} = {value}'
         exec(tmp_expr, None, vars)

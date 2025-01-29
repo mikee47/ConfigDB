@@ -53,7 +53,7 @@
 			},
 			{
 				"expr": {"int_array[0:1]": 8},
-				"result": "can only assign an iterable"
+				"result": "must assign iterable to extended slice"
 			},
 			{
 				"expr": {"int_array[pin]": 8},
@@ -85,7 +85,7 @@
 			},
 			{
 				"expr": {"int_array[10:]": 8},
-				"result": "can only assign an iterable"
+				"result": "must assign iterable to extended slice"
 			},
 			{
 				"expr": {"int_array[]": 8},
@@ -200,6 +200,18 @@
 			{
 				"expr": {"object_array[10:]": {}},
 				"result": "Require array value"
+			}
+		],
+		"Delete named item": [
+			{
+				"expr": {"object_array[stringval=c]": []},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":4,"stringval":"d"}]
+			}
+		],
+		"Delete/Insert at named item position": [
+			{
+				"expr": {"object_array[stringval=c]": [{"intval":12,"stringval":"xyz"}]},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":12,"stringval":"xyz"},{"intval":4,"stringval":"d"}]
 			}
 		]
 	}
