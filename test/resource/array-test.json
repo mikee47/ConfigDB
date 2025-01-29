@@ -144,6 +144,10 @@
 				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":4,"stringval":"d"}]
 			},
 			{
+				"expr": {"object_array[intval=4]": {"intval":5}, "object_array[intval=5]": {}},
+				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":5,"stringval":"d"}]
+			},
+			{
 				"expr": {"object_array[intval=0]": {}},
 				"result": "Bad selector"
 			}
