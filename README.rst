@@ -497,6 +497,17 @@ If the array is populated then a delete+insert operation is performed::
   }
 
 
+.. note::
+
+    This update expression::
+
+      {
+        "x[name=object 1]": {}
+      }
+
+    is an empty update and has no effect: It does **not** clear the object to defaults!
+
+
 You can find more examples in the test application under *resource/array-test.json*.
 
 
