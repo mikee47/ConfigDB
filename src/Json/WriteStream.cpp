@@ -236,7 +236,13 @@ bool WriteStream::handleSelector(const Element& element, const char* sel)
 			auto prop = item.getProperty(propIndex);
 			auto propValue = prop.getValue();
 			if(propValue.equals(value, valuelen)) {
-				obj = item;
+				if(element.type == Element::Type::Array) {
+					// Convert named selector into range
+					array.removeItem(i);
+					obj.streamPos = i; // Where to insert new items
+				} else {
+					obj = item;
+				}
 				return true;
 			}
 		}

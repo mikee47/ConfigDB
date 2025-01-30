@@ -30,6 +30,7 @@ OBJECT_ARRAY = json_dumps(get_default_vars()['object_array'])
 A test case is a python expression equivalent to the JSON operation we want.
 In some cases this is invalid python so a tuple is given instead with the expected result.
 Note that we deal with `x[] = ...` case in code since that *can* be evaluated with tweaking.
+The tuple form may also contain multiple expressions separated by semi-colon.
 '''
 TEST_CASES = {
     'int_array': {
@@ -83,6 +84,7 @@ TEST_CASES = {
             'x[4] = {"intval":8,"stringval":"baboo"}',
             'x[stringval=c] = {"intval":8,"stringval":"baboo"}',
             ('x[intval=1] = {}', OBJECT_ARRAY),
+            ('x[intval=4] = {"intval": 5}; x[intval=5] = {}', '[{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":3,"stringval":"c"},{"intval":5,"stringval":"d"}]'),
             ('x[intval=0] = {}', '"Bad selector"')
         ],
         'Update multiple items': [
@@ -102,7 +104,13 @@ TEST_CASES = {
             'x[] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
             'x[10:] = [{"intval":8,"stringval":"abc"},{"intval":9,"stringval":"abc"}]',
             ('x[10:] = {}', '"Require array value"')
-        ]
+        ],
+		'Delete named item': [
+            'x[stringval=c] = []',
+		],
+		'Delete/Insert at named item position': [
+            'x[stringval=c] = [{"intval":12,"stringval":"xyz"}]',
+		]
     }
 }
 
@@ -127,16 +135,20 @@ class ArrayTestCase:
 
 def parse_expression(array_name: str, expr: str | tuple[str, str]) -> tuple[str, str]:
     '''Parse a test expression and return the JSON text for (expr, result)'''
+    def cvt_expr(expr: str) -> tuple[str, str]:
+        key, _, value = expr.partition(' = ')
+        value = value.replace(' ','')
+        key = key.replace('x', array_name)
+        return key, value
+    def expr_str(key:str, value: str):
+        return f'"{key}": {value}'
+    # With the tuple form multiple expressions can be given
     if isinstance(expr, tuple):
         expr, result = expr
-    else:
-        result = None
-    key, _, value = expr.partition(' = ')
-    value = value.replace(' ','')
-    key = key.replace('x', array_name)
-    expr = f'{{"{key}": {value}}}'
-    if result:
-        return expr, result
+        expr_list = [expr_str(*cvt_expr(e)) for e in expr.split('; ')]
+        return f'{{{", ".join(expr_list)}}}', result
+    key, value = cvt_expr(expr)
+    expr = '{' + expr_str(key, value) + '}'
     vars = get_default_vars()
     vars['null'] = None
     try:
@@ -148,7 +160,12 @@ def parse_expression(array_name: str, expr: str | tuple[str, str]) -> tuple[str,
             name, key_name, key_value = m.group(1), m.group(2), m.group(3)
             i = next(i for i, x in enumerate(vars[name]) if x[key_name] == key_value)
             # print(f'{name}; {key_name}; {key_value}; {i}; {vars[name]}; {value}')
-            tmp_expr = f'{name}[{i}] = {value}'
+            if value[0] == '[':
+                tmp_expr = f'del {name}[{i}]'
+                exec(tmp_expr, None, vars)
+                tmp_expr = f'{name}[{i}:{i}] = {value}'
+            else:
+                tmp_expr = f'{name}[{i}] = {value}'
         else:
             tmp_expr = f'{tmp_key} = {value}'
         exec(tmp_expr, None, vars)
