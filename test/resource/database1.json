@@ -1,1 +1,1 @@
-{"int_array":[13,28,39,40],"string_array":["a","b","c"],"object_array":[],"color":"red","simple-bool":true,"simple-string":"donkey","simple-int":100,"simple-float":3.1415927,"array-store":["hello 0","hello 1","hello 2","hello 3","hello 4"],"object-array-store":[{"value":0},{"value":1},{"value":2},{"value":3},{"value":4}]}
+{"int_array":[13,28,39,40],"string_array":["a","b","c"],"object_array":[],"color":"red","simple-bool":true,"simple-string":"donkey","simple-int":100,"simple-float":3.1415927,"array-store":[],"object-array-store":[]}

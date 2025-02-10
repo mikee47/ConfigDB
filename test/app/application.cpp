@@ -13,7 +13,10 @@ TestConfig database("out/test-config");
 
 void resetDatabase()
 {
-	database.openStoreForUpdate(0)->resetToDefaults();
+	// Reset in reverse order so reference held on root store, for consistency
+	for(unsigned i = database.typeinfo.storeCount; i > 0; --i) {
+		database.openStoreForUpdate(i - 1)->resetToDefaults();
+	}
 }
 
 #define XX(t) extern void REGISTER_TEST(t);
