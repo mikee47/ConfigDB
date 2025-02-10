@@ -34,9 +34,10 @@ public:
 	 * @brief Determines behaviour for display of initial object only (doesn't apply to children)
 	 */
 	enum class RootStyle {
-		hidden, ///< Don't show name or braces
-		braces, ///< Just show braces
-		normal, ///< Show name and braces
+		hidden, ///< Show content only 13,28,39,40
+		braces, ///< Add braces [13,28,39,40]
+		name,   ///< Add name "int_array":[13,28,39,40]
+		object, ///< Add outer braces {"int_array":[13,28,39,40]}
 	};
 
 	Printer() = default;
@@ -73,7 +74,7 @@ public:
 private:
 	Print* p{};
 	Object objects[JSON::StreamingParser::maxNesting];
-	const FlashString* rootName{};
+	RootStyle rootStyle{};
 	uint8_t nesting{};
 	bool pretty{};
 };

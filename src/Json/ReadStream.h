@@ -36,7 +36,11 @@ public:
 	}
 
 	ReadStream(StoreRef& store, const Object& object, const ExportOptions& options = {})
-		: store(store), printer(stream, object, options.pretty, Printer::RootStyle::braces), options(options)
+		: store(store),
+		  printer(stream, object, options.pretty,
+				  options.asObject ? Printer::RootStyle::object
+								   : options.useName ? Printer::RootStyle::name : Printer::RootStyle::braces),
+		  options(options)
 	{
 	}
 

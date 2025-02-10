@@ -39,7 +39,9 @@ std::unique_ptr<ExportStream> Format::createExportStream(StoreRef store, const O
 
 size_t Format::exportToStream(const Object& object, Print& output, const ExportOptions& options) const
 {
-	Printer printer(output, object, options.pretty, Printer::RootStyle::braces);
+	Printer printer(output, object, options.pretty,
+					options.asObject ? Printer::RootStyle::object
+									 : options.useName ? Printer::RootStyle::name : Printer::RootStyle::braces);
 	size_t n{0};
 	do {
 		n += printer();

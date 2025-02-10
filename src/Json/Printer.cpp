@@ -22,20 +22,10 @@
 
 namespace ConfigDB::Json
 {
-Printer::Printer(Print& p, const Object& object, bool pretty, RootStyle style) : p(&p), pretty(pretty)
+Printer::Printer(Print& p, const Object& object, bool pretty, RootStyle style) : p(&p), rootStyle(style), pretty(pretty)
 {
 	objects[0] = object;
-	switch(style) {
-	case RootStyle::hidden:
-		rootName = nullptr;
-		break;
-	case RootStyle::braces:
-		rootName = &fstr_empty;
-		break;
-	case RootStyle::normal:
-		rootName = &object.propinfo().name;
-		break;
-	}
+	objects[0].streamPos = 0;
 }
 
 size_t Printer::operator()()
@@ -50,6 +40,19 @@ size_t Printer::operator()()
 	auto name = &object.propinfo().name;
 	auto indentLength = nesting;
 
+	const FlashString* rootName{};
+	switch(rootStyle) {
+	case RootStyle::hidden:
+		rootName = nullptr;
+		break;
+	case RootStyle::braces:
+		rootName = &fstr_empty;
+		break;
+	case RootStyle::name:
+	case RootStyle::object:
+		rootName = &objects[0].propinfo().name;
+		break;
+	}
 	if(nesting == 0) {
 		name = rootName;
 	}
@@ -75,6 +78,9 @@ size_t Printer::operator()()
 	// If required, print object name and opening brace
 	if(index == 0 && name) {
 		if(name->length()) {
+			if(nesting == 0 && rootStyle == RootStyle::object) {
+				n += p->print('{');
+			}
 			if(pretty) {
 				n += p->print(indent);
 			}
@@ -129,6 +135,10 @@ size_t Printer::operator()()
 			n += p->print(indent);
 		}
 		n += p->print(isArray ? ']' : '}');
+
+		if(nesting == 0 && rootStyle == RootStyle::object && name->length()) {
+			n += p->print('}');
+		}
 	}
 
 	--nesting;

@@ -40,6 +40,18 @@ public:
  */
 struct ExportOptions {
 	/**
+	 * @brief Include the object name in output.
+	 */
+	bool useName{false};
+
+	/**
+	 * @brief Wrap everything as an object definition
+	 *
+	 * For JSON, this adds outer braces.
+	 */
+	bool asObject{false};
+
+	/**
 	 * @brief Set compact (default) or prettified output.
 	 */
 	bool pretty{false};
