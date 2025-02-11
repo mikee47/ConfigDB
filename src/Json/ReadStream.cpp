@@ -39,17 +39,13 @@ size_t ReadStream::fillStream(Print& p)
 
 	size_t n{0};
 
-	if(db) {
-		if(!store) {
-			if(storeIndex == 0) {
-				n += p.print('{');
-			}
-			store = db->openStore(storeIndex);
-			auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
-			printer = Printer(p, *store, pretty, style);
+	if(db && !store) {
+		if(storeIndex == 0) {
+			n += p.print('{');
 		}
-	} else if(!printer) {
-		printer = Printer(p, *store, pretty, Printer::RootStyle::normal);
+		store = db->openStore(storeIndex);
+		auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
+		printer = Printer(p, *store, pretty, style);
 	}
 
 	n += printer();
