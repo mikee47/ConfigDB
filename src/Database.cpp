@@ -299,7 +299,8 @@ bool Database::save(Store& store) const
 	return result;
 }
 
-std::unique_ptr<ExportStream> Database::createExportStream(const Format& format, const String& path)
+std::unique_ptr<ExportStream> Database::createExportStream(const Format& format, const String& path,
+														   const ExportOptions& options)
 {
 	CStringArray csa;
 	{
@@ -309,7 +310,7 @@ std::unique_ptr<ExportStream> Database::createExportStream(const Format& format,
 	}
 	auto it = csa.begin();
 	if(!it) {
-		return format.createExportStream(*this);
+		return format.createExportStream(*this, options);
 	}
 
 	int storeIndex = typeinfo.findStore(*it, strlen(*it));
@@ -336,15 +337,15 @@ std::unique_ptr<ExportStream> Database::createExportStream(const Format& format,
 	}
 
 	Object obj(*store, *prop, offset);
-	return format.createExportStream(store, obj);
+	return format.createExportStream(store, obj, options);
 }
 
-bool Database::exportToFile(const Format& format, const String& filename)
+bool Database::exportToFile(const Format& format, const String& filename, const ExportOptions& options)
 {
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		format.exportToStream(*this, buffer);
+		format.exportToStream(*this, buffer, options);
 	}
 
 	if(stream.getLastError() == FS_OK) {

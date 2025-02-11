@@ -415,18 +415,17 @@ PropertyConst Object::getProperty(unsigned index) const
 size_t Object::printTo(Print& p) const
 {
 	Json::Format format;
-	format.setPretty(true);
-	return format.exportToStream(*this, p);
+	return format.exportToStream(*this, p, {.pretty = true});
 }
 
-bool Object::exportToFile(const Format& format, const String& filename) const
+bool Object::exportToFile(const Format& format, const String& filename, const ExportOptions& options) const
 {
 	createDirectories(filename);
 
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		exportToStream(format, buffer);
+		exportToStream(format, buffer, options);
 	}
 
 	if(stream.getLastError() == FS_OK) {

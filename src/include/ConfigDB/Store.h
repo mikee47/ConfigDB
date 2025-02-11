@@ -131,10 +131,10 @@ public:
 
 	using Object::exportToFile;
 
-	bool exportToFile(const Format& format) const
+	bool exportToFile(const Format& format, const ExportOptions& options = {}) const
 	{
 		String filename = getFilePath() + format.getFileExtension();
-		return exportToFile(format, filename);
+		return exportToFile(format, filename, options);
 	}
 
 	using Object::importFromFile;
