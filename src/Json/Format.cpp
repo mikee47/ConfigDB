@@ -26,19 +26,22 @@ namespace ConfigDB::Json
 {
 Format format;
 
-std::unique_ptr<ExportStream> Format::createExportStream(Database& db) const
+std::unique_ptr<ExportStream> Format::createExportStream(Database& db, const ExportOptions& options) const
 {
-	return std::make_unique<ReadStream>(db, pretty);
+	return std::make_unique<ReadStream>(db, options);
 }
 
-std::unique_ptr<ExportStream> Format::createExportStream(StoreRef store, const Object& object) const
+std::unique_ptr<ExportStream> Format::createExportStream(StoreRef store, const Object& object,
+														 const ExportOptions& options) const
 {
-	return std::make_unique<ReadStream>(store, object, pretty);
+	return std::make_unique<ReadStream>(store, object, options);
 }
 
-size_t Format::exportToStream(const Object& object, Print& output) const
+size_t Format::exportToStream(const Object& object, Print& output, const ExportOptions& options) const
 {
-	Printer printer(output, object, pretty, Printer::RootStyle::braces);
+	Printer printer(output, object, options.pretty,
+					options.asObject ? Printer::RootStyle::object
+									 : options.useName ? Printer::RootStyle::name : Printer::RootStyle::braces);
 	size_t n{0};
 	do {
 		n += printer();
@@ -46,9 +49,9 @@ size_t Format::exportToStream(const Object& object, Print& output) const
 	return n;
 }
 
-size_t Format::exportToStream(Database& database, Print& output) const
+size_t Format::exportToStream(Database& database, Print& output, const ExportOptions& options) const
 {
-	return ReadStream::print(database, output, pretty);
+	return ReadStream::print(database, output, options);
 }
 
 std::unique_ptr<ImportStream> Format::createImportStream(Database& db) const

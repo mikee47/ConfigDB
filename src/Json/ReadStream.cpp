@@ -18,12 +18,13 @@
  ****/
 
 #include "ReadStream.h"
+#include "Data/Format/Json.h"
 
 namespace ConfigDB::Json
 {
-size_t ReadStream::print(Database& db, Print& p, bool pretty)
+size_t ReadStream::print(Database& db, Print& p, const ExportOptions& options)
 {
-	ReadStream rs(db, pretty);
+	ReadStream rs(db, options);
 	size_t n{0};
 	while(!rs.done) {
 		n += rs.fillStream(p);
@@ -41,11 +42,20 @@ size_t ReadStream::fillStream(Print& p)
 
 	if(db && !store) {
 		if(storeIndex == 0) {
+			if(options.asObject) {
+				n += p.print('{');
+			}
+			if(options.useName || options.asObject) {
+				String s = db->typeinfo.name;
+				::Format::json.quote(s);
+				n += p.print(s);
+				n += p.print(':');
+			}
 			n += p.print('{');
 		}
 		store = db->openStore(storeIndex);
-		auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::normal;
-		printer = Printer(p, *store, pretty, style);
+		auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::name;
+		printer = Printer(p, *store, options.pretty, style);
 	}
 
 	n += printer();
@@ -69,6 +79,9 @@ size_t ReadStream::fillStream(Print& p)
 	n += printer.newline();
 	n += p.print('}');
 	n += printer.newline();
+	if(options.asObject) {
+		n += p.print('}');
+	}
 	done = true;
 	return n;
 }

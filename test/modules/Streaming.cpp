@@ -3,6 +3,7 @@
  */
 
 #include <ConfigDBTest.h>
+#include <Data/CStringArray.h>
 
 /*
  * Array selector test data is generated using a python script.
@@ -41,6 +42,19 @@ IMPORT_FSTR_LOCAL(array_test_default, PROJECT_DIR "/resource/array_test_default.
 IMPORT_FSTR_LOCAL(async_update, PROJECT_DIR "/resource/async-update.json")
 IMPORT_FSTR_LOCAL(async_update_result, PROJECT_DIR "/resource/async-update-result.json")
 } // namespace json
+
+namespace
+{
+String getContent(IDataSourceStream& stream)
+{
+	MemoryDataStream mem;
+	mem.copyFrom(&stream);
+	String content;
+	mem.moveString(content);
+	return content;
+}
+
+} // namespace
 
 class StreamingTest : public TestGroup
 {
@@ -111,10 +125,48 @@ public:
 			TestConfig::Root root(database);
 			MemoryDataStream mem;
 			auto stream = root.createExportStream(ConfigDB::Json::format);
-			mem.copyFrom(stream.get());
-			String content;
-			mem.moveString(content);
+			String content = getContent(*stream);
 			REQUIRE_EQ(content, json::root1);
+		}
+
+		TEST_CASE("Streaming export options (intarray)")
+		{
+			TestConfig::Root::IntArray intarray(database);
+			auto stream = intarray.createExportStream(ConfigDB::Json::format);
+			REQUIRE_EQ(getContent(*stream), F("[13,28,39,40]"));
+			stream = intarray.createExportStream(ConfigDB::Json::format, {.useName = true});
+			REQUIRE_EQ(getContent(*stream), F("\"int_array\":[13,28,39,40]"));
+			stream = intarray.createExportStream(ConfigDB::Json::format, {.asObject = true});
+			REQUIRE_EQ(getContent(*stream), F("{\"int_array\":[13,28,39,40]}"));
+		}
+
+		TEST_CASE("Streaming export options (root)")
+		{
+			// An un-named root object should produce same output (i.e. options are ignored)
+			String expectedContent =
+				F("{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
+				  "1415927}");
+			TestConfig::Root root(database);
+			auto stream = root.createExportStream(ConfigDB::Json::format);
+			REQUIRE_EQ(getContent(*stream), expectedContent);
+			stream = root.createExportStream(ConfigDB::Json::format, {.useName = true});
+			REQUIRE_EQ(getContent(*stream), expectedContent);
+			stream = root.createExportStream(ConfigDB::Json::format, {.asObject = true});
+			REQUIRE_EQ(getContent(*stream), expectedContent);
+		}
+
+		TEST_CASE("Streaming export options (database)")
+		{
+			auto stream = database.createExportStream(ConfigDB::Json::format);
+			REQUIRE_EQ(getContent(*stream), json::database1);
+
+			stream = database.createExportStream(ConfigDB::Json::format, nullptr, {.useName = true});
+			String withName = F("\"test-config\":") + json::database1;
+			REQUIRE_EQ(getContent(*stream), withName);
+
+			stream = database.createExportStream(ConfigDB::Json::format, nullptr, {.asObject = true});
+			REQUIRE_EQ(getContent(*stream), '{' + withName + '}');
 		}
 
 		TEST_CASE("Streaming database import")

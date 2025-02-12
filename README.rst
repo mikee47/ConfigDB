@@ -285,6 +285,24 @@ The :sample:`BasicConfig` sample demonstrates using the stream classes to read a
   Any invalid data in a JSON update file will produce a debug warning, but will not cause processing to stop.
   This behaviour can be changed by implementing a custom :cpp:func:`ConfigDB::Database::handleFormatError` method.
 
+Export
+  Methods are provided to export the entire database, or a specific store, object or array.
+  These can be divided into immediate methods such as :cpp:func:`ConfigDB::Database::exportToFile`,
+  which are appropriate for small amounts of data or local memory or file streams.
+
+  Methods such as :cpp:func:`ConfigDB::Database::createExportStream` create a read-only stream
+  instance which is necessary for large datasets and for passing data over network connections.
+  Data is serialised as it is read from the stream to minimise memory usage.
+
+  The generated output can be customised with an optional :cpp:struct:`ConfigDB::ExportOptions` parameter.
+
+Import
+  As with export, immediate methods such as :cpp:func:`ConfigDB::Database::importFromFile`
+  are available, plus streaming methods such as :cpp:func:`ConfigDB::Database::createImportStream`.
+
+Note that both import and export use the *content* of the object and do not include the name of the object itself.
+As a convenience, this behaviour can be changed via options, but only for export.
+
 
 JSON Update mechanism
 ---------------------

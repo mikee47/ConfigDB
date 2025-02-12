@@ -183,20 +183,45 @@ public:
 
 	String getPath() const;
 
+	/**
+	 * @brief Support standard streaming output of this object's content in prettified JSON.
+	 */
 	size_t printTo(Print& p) const;
 
-	bool exportToStream(const Format& format, Print& output) const
+	/**
+	 * @brief Export object to an output stream
+	 * @param format Formatter used to generate output
+	 * @param output Where to write output
+	 * @param options Options for customising output
+	 */
+	bool exportToStream(const Format& format, Print& output, const ExportOptions& options = {}) const
 	{
-		return format.exportToStream(*this, output);
+		return format.exportToStream(*this, output, options);
 	}
 
-	bool exportToFile(const Format& format, const String& filename) const;
+	/**
+	 * @brief Export object to an output stream
+	 * @param format Formatter used to generate output
+	 * @param filename Where to write output. Non-existent directories are created automatically.
+	 * @param options Options for customising output
+	 */
+	bool exportToFile(const Format& format, const String& filename, const ExportOptions& options = {}) const;
 
+	/**
+	 * @brief Import content to this object
+	 * @param format Formatter used to read the source data
+	 * @param source The source data, not including the name of the object itself
+	 */
 	Status importFromStream(const Format& format, Stream& source)
 	{
 		return format.importFromStream(*this, source);
 	}
 
+	/**
+	 * @brief Import content to this object
+	 * @param format Formatter used to read the source data
+	 * @param filename File containing source data, not including the name of the object itself
+	 */
 	Status importFromFile(const Format& format, const String& filename);
 
 	const PropertyInfo& propinfo() const
@@ -328,6 +353,10 @@ public:
 	{
 	}
 
+	/**
+	 * @brief Create a write-only stream for importing data to this object
+	 * @param format Format of the incoming data
+	 */
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{
 		return format.createImportStream(store, *this);
@@ -366,9 +395,15 @@ public:
 	{
 	}
 
-	std::unique_ptr<ExportStream> createExportStream(const Format& format) const
+	/**
+	 * @brief Create a read-only stream for serializing object contents
+	 * @param format Formatter used to generate output
+	 * @param path JSONPath-like expression to restrict output to specific store or object
+	 * @param options Options for customising output
+	 */
+	std::unique_ptr<ExportStream> createExportStream(const Format& format, const ExportOptions& options = {}) const
 	{
-		return format.createExportStream(store, *this);
+		return format.createExportStream(store, *this, options);
 	}
 
 	using OuterUpdater =

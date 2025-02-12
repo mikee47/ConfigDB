@@ -35,6 +35,31 @@ public:
 	virtual Status getStatus() const = 0;
 };
 
+/**
+ * @brief Options for streaming object output
+ */
+struct ExportOptions {
+	/**
+	 * @brief Include the object name in output.
+	 */
+	bool useName{false};
+
+	/**
+	 * @brief Wrap everything as an object definition
+	 *
+	 * For JSON, this adds outer braces.
+	 */
+	bool asObject{false};
+
+	/**
+	 * @brief Set compact (default) or prettified output.
+	 */
+	bool pretty{false};
+};
+
+/**
+ * @brief Interface for formatted export stream
+ */
 class ExportStream : public IDataSourceStream
 {
 public:
@@ -49,30 +74,41 @@ class Format
 public:
 	/**
 	 * @brief Create a stream to serialize the entire database
+	 * @param database The database to serialize
+	 * @param options Advanced settings for adjusting output
+	 *
 	 * This is used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<ExportStream> createExportStream(Database& db) const = 0;
+	virtual std::unique_ptr<ExportStream> createExportStream(Database& db, const ExportOptions& options = {}) const = 0;
 
 	/**
 	 * @brief Create a stream to serialize an Object
 	 * @param store Shared pointer to store
 	 * @param object Object to start streaming from
+	 * @param options Advanced settings for adjusting output
 	 *
 	 * Used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<ExportStream> createExportStream(StoreRef store, const Object& object) const = 0;
+	virtual std::unique_ptr<ExportStream> createExportStream(StoreRef store, const Object& object,
+															 const ExportOptions& options = {}) const = 0;
 
 	/**
 	 * @brief Print object
+	 * @param object The object to serialize
+	 * @param output Where to write output
+	 * @param options Advanced settings for adjusting output
 	 * @retval size_t Number of characters written
 	 */
-	virtual size_t exportToStream(const Object& object, Print& output) const = 0;
+	virtual size_t exportToStream(const Object& object, Print& output, const ExportOptions& options = {}) const = 0;
 
 	/**
 	 * @brief Serialise entire database directly to an output stream
+	 * @param database The database to serialize
+	 * @param output Where to write output
+	 * @param options Advanced settings for adjusting output
 	 * @retval size_t Number of bytes written to the stream
 	 */
-	virtual size_t exportToStream(Database& database, Print& output) const = 0;
+	virtual size_t exportToStream(Database& database, Print& output, const ExportOptions& options = {}) const = 0;
 
 	/**
 	 * @brief Create a stream for de-serialising (writing) into the database
