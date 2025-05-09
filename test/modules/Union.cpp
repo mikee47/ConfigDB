@@ -6,7 +6,7 @@
 #include <test-config-union.h>
 #include <ConfigDB/Json/Format.h>
 
-namespace
+namespace json
 {
 IMPORT_FSTR_LOCAL(union_test_root_json, PROJECT_DIR "/resource/union-test-root.json")
 }
@@ -119,7 +119,7 @@ public:
 
 		TestConfigUnion::Root root(db);
 		String json = exportObject(root);
-		CHECK_EQ(json, union_test_root_json);
+		CHECK_EQ(json, json::union_test_root_json);
 
 		TEST_CASE("Union with array with defaults")
 		{
