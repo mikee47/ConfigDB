@@ -172,21 +172,26 @@ class Property:
             if not isinstance(is_store, bool):
                 print(f'WARNING: bool expected for "{key}/properties/store", found "{is_store}"')
 
+        minval = fields.get('minimum')
+        self.validate_type(minval, 'minimum')
+        maxval = fields.get('maximum')
+        self.validate_type(maxval, 'maximum')
+
         if self.ptype == 'integer':
             int32 = IntRange(0, 0, True, 32)
-            minval = fields.get('minimum', int32.typemin)
-            maxval = fields.get('maximum', int32.typemax)
-            self.validate_type(minval, 'minimum')
-            self.validate_type(maxval, 'maximum')
+            if minval is None:
+                minval = int32.typemin
+            if maxval is None:
+                maxval = int32.typemax
             self.intrange = r = IntRange.deduce(minval, maxval)
             r.check(self.default or 0)
             self.ctype = r.ctype
             self.property_type = r.property_type
         elif self.ptype == 'number':
-            minval = fields.get('minimum', NUMBER_MIN)
-            maxval = fields.get('maximum', NUMBER_MAX)
-            self.validate_type(minval, 'minimum')
-            self.validate_type(maxval, 'maximum')
+            if minval is None:
+                minval = NUMBER_MIN
+            if maxval is None:
+                maxval = NUMBER_MAX
             self.numrange = r = Range(minval, maxval)
             r.check(self.default or 0)
 
