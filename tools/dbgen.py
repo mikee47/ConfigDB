@@ -165,30 +165,39 @@ class Property:
         self.ctype = CPP_TYPENAMES[self.ptype]
         self.property_type = self.ptype.capitalize()
         self.alias = fields.get('alias')
+        self.enum = fields.get('enum')
         is_store = fields.get('store')
         if is_store is not None:
             self.is_store = True
             if not isinstance(is_store, bool):
                 print(f'WARNING: bool expected for "{key}/properties/store", found "{is_store}"')
 
+        minval = fields.get('minimum')
+        self.validate_type(minval, 'minimum')
+        maxval = fields.get('maximum')
+        self.validate_type(maxval, 'maximum')
+
         if self.ptype == 'integer':
             int32 = IntRange(0, 0, True, 32)
-            minval = fields.get('minimum', int32.typemin)
-            maxval = fields.get('maximum', int32.typemax)
+            if minval is None:
+                minval = int32.typemin
+            if maxval is None:
+                maxval = int32.typemax
             self.intrange = r = IntRange.deduce(minval, maxval)
             r.check(self.default or 0)
             self.ctype = r.ctype
             self.property_type = r.property_type
         elif self.ptype == 'number':
-            minval = fields.get('minimum', NUMBER_MIN)
-            maxval = fields.get('maximum', NUMBER_MAX)
+            if minval is None:
+                minval = NUMBER_MIN
+            if maxval is None:
+                maxval = NUMBER_MAX
             self.numrange = r = Range(minval, maxval)
             r.check(self.default or 0)
 
         if not self.ctype:
             error(f'Invalid property type "{self.ptype}"')
 
-        self.enum = fields.get('enum')
         if self.enum:
             if 'minimum' in fields or 'maximum' in fields:
                 error('enum and minimum/maximum fields are mutually-exclusive')
@@ -217,6 +226,30 @@ class Property:
             self.ptype = 'integer'
             self.property_type = 'Enum'
             self.ctype = 'uint8_t'
+
+        self.validate_type(self.default, 'default')
+
+    def validate_type(self, value, attr_name: str) -> None:
+        '''Verify that if value is given it is of the correct schema type'''
+        if value is None:
+            return
+        if isinstance(value, list) and self.ptype != 'array':
+            for x in value:
+                self.validate_type(x, attr_name)
+            return
+        if self.enum:
+            if value not in self.enum and value != 0:
+                raise ValueError(f'Attribute "{attr_name}" ({value}) not in enum')
+            return
+        types = {
+            'array': list,
+            'string': str,
+            'integer': int,
+            'boolean': bool,
+            'number': (float, int),
+        }
+        if not isinstance(value, types[self.ptype]):
+            raise ValueError(f'Attribute "{attr_name}" must be an {self.ptype}, found {type(value).__name__} ({value})')
 
     @property
     def ctype_ret(self):
@@ -703,6 +736,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             if array_prop.obj.is_object_array:
                 if 'default' in fields:
                     raise ValueError('ObjectArray default not supported')
+            items_prop.validate_type(array_prop.obj.default, 'default[]')
             return array_prop
 
         if prop_type == 'union':
@@ -1474,3 +1508,4 @@ if __name__ == '__main__':
             print('ERROR:', e.__cause__, 'from', ', '.join(e.args))
         else:
             print(repr(e))
+        sys.exit(1)
