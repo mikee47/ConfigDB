@@ -912,6 +912,9 @@ def generate_database(db: Database) -> CodeLines:
     lines.source[:0] = [
         f'#include "{db.name}.h"',
         '',
+        '// Not all defined strings may be referenced here',
+        '#pragma GCC diagnostic ignored "-Wunused-variable"',
+        '',
         'namespace {',
         [f'DEFINE_FSTR({STRING_PREFIX}{id}, {make_string(value)})' for id, value in db.strings.items() if value],
         '} // namespace',
