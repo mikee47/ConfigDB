@@ -238,8 +238,6 @@ class Property:
                 self.validate_type(x, attr_name)
             return
         if self.enum:
-            if value not in self.enum and value != 0:
-                raise ValueError(f'Attribute "{attr_name}" ({value}) not in enum')
             return
         types = {
             'array': list,
