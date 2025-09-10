@@ -978,7 +978,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
 
     obj = object_prop.obj
 
-       def getVariantInfo(prop: Property) -> list:
+    def getVariantInfo(prop: Property) -> list:
         if prop.enum:
             values = prop.enum
             obj_type = f'{object_prop.namespace}::{obj.typename_contained}'
@@ -1046,6 +1046,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
 
     proplist = []
     aliaslist = [] 
+
     def add_alias(alias: str | list):
         if alias is None:
             return
