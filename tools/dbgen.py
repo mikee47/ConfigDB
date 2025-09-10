@@ -978,7 +978,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
 
     obj = object_prop.obj
 
-    def getVariantInfo(prop: Property) -> list:
+       def getVariantInfo(prop: Property) -> list:
         if prop.enum:
             values = prop.enum
             obj_type = f'{object_prop.namespace}::{obj.typename_contained}'
@@ -988,9 +988,11 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                     '',
                     f'using Item = {prop.ctype_override};'
                 ]
+            itemtype_name = f'{make_typename(prop.name)}ItemType'
+            itemtype_var = f'{prop.id}ItemType'
             lines.header += [
                 '',
-                'struct ItemType {',
+                f'struct {itemtype_name} {{',
                 [
                     'ConfigDB::EnumInfo enuminfo;',
                     f'{item_type} data[{len(values)}];',
@@ -1010,11 +1012,11 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                 ],
                 '};',
                 '',
-                'static const ItemType itemtype;',
+                f'static const {itemtype_name} {prop.id}ItemType;',
             ]
             lines.source += [
                 '',
-                f'constexpr const {obj_type}::ItemType {obj_type}::itemtype PROGMEM = {{',
+                f'constexpr const {obj_type}::{itemtype_name} {obj_type}::{itemtype_var} PROGMEM = {{',
                 [
                     f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
                     '{',
@@ -1024,7 +1026,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                 ],
                 '};'
             ]
-            return '.enuminfo = &itemtype.enuminfo'
+            return f'.enuminfo = &{itemtype_var}.enuminfo'
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype == 'number':
@@ -1043,8 +1045,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
         return ''
 
     proplist = []
-    aliaslist = []
-
+    aliaslist = [] 
     def add_alias(alias: str | list):
         if alias is None:
             return
