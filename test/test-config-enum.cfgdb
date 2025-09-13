@@ -3,8 +3,30 @@
   "type": "object",
   "properties": {
     "color": {
-      "$ref": "#/$defs/Color",
-      "default": "green"
+      "$ref": "#/$defs/Color"
+    },
+    "num": {
+      "type": "integer",
+      "default": 25,
+      "enum": [
+        15,
+        37,
+        1445,
+        889,
+        25,
+        45,
+        18
+      ]
+    },
+    "word": {
+      "type": "string",
+      "default": "brown",
+      "enum": [
+        "the",
+        "quick",
+        "brown",
+        "fox"
+      ]
     },
     "colors": {
       "type": "array",
