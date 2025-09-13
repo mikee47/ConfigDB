@@ -3,7 +3,8 @@
   "type": "object",
   "properties": {
     "color": {
-      "$ref": "#/$defs/Color"
+      "$ref": "#/$defs/Color",
+      "default": "green"
     },
     "colors": {
       "type": "array",
