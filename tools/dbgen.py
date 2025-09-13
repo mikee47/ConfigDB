@@ -990,11 +990,11 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                 ]
             # Objects can contain multiple enums so use unique names,
             # but make an exception for array items since there is only one definition
-            itemtype_name = 'ItemType' if prop.is_item else f'{make_typename(prop.name)}Type'
-            itemtype_var = 'itemType' if prop.is_item else f'{prop.id}Type'
+            enumtype = 'ItemType' if prop.is_item else f'{make_typename(prop.name)}Type'
+            enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
             lines.header += [
                 '',
-                f'struct {itemtype_name} {{',
+                f'struct {enumtype} {{',
                 [
                     'ConfigDB::EnumInfo enuminfo;',
                     f'{item_type} data[{len(values)}];',
@@ -1014,11 +1014,11 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                 ],
                 '};',
                 '',
-                f'static const {itemtype_name} {itemtype_var};',
+                f'static const {enumtype} {enumtype_inst};',
             ]
             lines.source += [
                 '',
-                f'constexpr const {obj_type}::{itemtype_name} {obj_type}::{itemtype_var} PROGMEM = {{',
+                f'constexpr const {obj_type}::{enumtype} {obj_type}::{enumtype_inst} PROGMEM = {{',
                 [
                     f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
                     '{',
@@ -1028,7 +1028,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                 ],
                 '};'
             ]
-            return f'.enuminfo = &{itemtype_var}.enuminfo'
+            return f'.enuminfo = &{enumtype_inst}.enuminfo'
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype == 'number':
