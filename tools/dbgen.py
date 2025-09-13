@@ -988,8 +988,10 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                     '',
                     f'using Item = {prop.ctype_override};'
                 ]
-            itemtype_name = f'{make_typename(prop.name)}ItemType'
-            itemtype_var = f'{prop.id}ItemType'
+            # Objects can contain multiple enums so use unique names,
+            # but make an exception for array items since there is only one definition
+            itemtype_name = 'ItemType' if prop.is_item else f'{make_typename(prop.name)}Type'
+            itemtype_var = 'itemType' if prop.is_item else f'{prop.id}Type'
             lines.header += [
                 '',
                 f'struct {itemtype_name} {{',
@@ -1012,7 +1014,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                 ],
                 '};',
                 '',
-                f'static const {itemtype_name} {prop.id}ItemType;',
+                f'static const {itemtype_name} {itemtype_var};',
             ]
             lines.source += [
                 '',
@@ -1045,7 +1047,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
         return ''
 
     proplist = []
-    aliaslist = [] 
+    aliaslist = []
 
     def add_alias(alias: str | list):
         if alias is None:
