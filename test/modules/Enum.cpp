@@ -19,10 +19,10 @@ public:
 
 		using Root = TestConfigEnum::Root;
 
-		auto& colorType = Root::Colors::itemtype;
-		auto& quotientType = Root::Quotients::itemtype;
-		auto& smallMapType = Root::SmallMap::itemtype;
-		auto& numberMapType = Root::NumberMap::itemtype;
+		auto& colorType = Root::Colors::itemType;
+		auto& quotientType = Root::Quotients::itemType;
+		auto& smallMapType = Root::SmallMap::itemType;
+		auto& numberMapType = Root::NumberMap::itemType;
 
 		Serial << "colors[" << colorType.values().length() << "]: " << colorType.values() << endl;
 		Serial << "quotients[" << quotientType.values().length() << "]: " << quotientType.values() << endl;
