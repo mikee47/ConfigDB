@@ -1037,11 +1037,10 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:
-                id = prop.id
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {id}_minimum = {r.minimum};']
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {id}_maximum = {r.maximum};']
+                # Constants are defined in the Struct
+                obj_type = f'{object_prop.namespace}::{obj.typename_contained}'
                 tag = 'int64' if r.is_signed else 'uint64'
-                return f'.{tag} = {{.minimum = &{id}_minimum, .maximum = &{id}_maximum}}'
+                return f'.{tag} = {{.minimum = &{obj_type}::Struct::{prop.id}_minimum, .maximum = &{obj_type}::Struct::{prop.id}_maximum}}'
             tag = 'int32' if r.is_signed else 'uint32'
             return f'.{tag} = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
         return ''
@@ -1168,6 +1167,14 @@ def generate_object_struct(object_prop: Property) -> CodeLines:
             [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in obj.object_properties],
         ],
         [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties],
+        [
+            f'static constexpr {prop.ctype} {prop.id}_minimum = {prop.intrange.minimum}{"LL" if prop.intrange.is_signed else "ULL"};'
+            for prop in obj.properties if prop.ptype == "integer" and getattr(prop, 'intrange', None) and prop.intrange.bits > 32
+        ],
+        [
+            f'static constexpr {prop.ctype} {prop.id}_maximum = {prop.intrange.maximum}{"LL" if prop.intrange.is_signed else "ULL"};'
+            for prop in obj.properties if prop.ptype == "integer" and getattr(prop, 'intrange', None) and prop.intrange.bits > 32
+        ],
         '};',
         '',
         'static const Struct defaultData;',
