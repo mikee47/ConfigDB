@@ -1037,13 +1037,10 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:
-                id = prop.id
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {id}_minimum = {r.minimum};']
-                lines.source += [f'constexpr const {prop.ctype} PROGMEM {id}_maximum = {r.maximum};']
-                tag = 'int64' if r.is_signed else 'uint64'
-                return f'.{tag} = {{.minimum = &{id}_minimum, .maximum = &{id}_maximum}}'
-            tag = 'int32' if r.is_signed else 'uint32'
-            return f'.{tag} = {{.minimum = {r.minimum}, .maximum = {r.maximum}}}'
+                tag, suffix = ('int64', 'LL') if r.is_signed else ('uint64', 'ULL')
+            else:
+                tag, suffix = ('int32', 'L') if r.is_signed else ('uint32', 'UL')
+            return f'.{tag} = {{.minimum = {r.minimum}{suffix}, .maximum = {r.maximum}{suffix}}}'
         return ''
 
     proplist = []

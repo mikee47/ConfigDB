@@ -119,18 +119,6 @@ struct PropertyInfo {
 			return TRange(U(minimum), U(maximum)).clip(value);
 		}
 	};
-	template <typename T> struct RangePtrTemplate {
-		const T* minimum;
-		const T* maximum;
-
-		T clip(T value) const
-		{
-			if(minimum || maximum) {
-				return TRange(minimum ? *minimum : 0, maximum ? *maximum : 0).clip(value);
-			}
-			return value;
-		}
-	};
 	// Variant property information depends on type
 	union Variant {
 		const FlashString* defaultString;
@@ -139,8 +127,8 @@ struct PropertyInfo {
 		RangeTemplate<int32_t> int32;
 		RangeTemplate<uint32_t> uint32;
 		RangeTemplate<const_number_t, number_t> number;
-		RangePtrTemplate<int64_t> int64;
-		RangePtrTemplate<uint64_t> uint64;
+		RangeTemplate<int64_t> int64;
+		RangeTemplate<uint64_t> uint64;
 	};
 
 	PropertyType type;
