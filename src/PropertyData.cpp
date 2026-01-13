@@ -65,31 +65,31 @@ void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
 		uint8 = std::min(unsigned(src.uint8), prop.variant.enuminfo->length() - 1);
 		break;
 	case PropertyType::Int8:
-		int8 = prop.variant.int32.clip(src.int8);
+		int8 = prop.variant.int32 ? prop.variant.int32->clip(src.int8) : src.int8;
 		break;
 	case PropertyType::Int16:
-		int16 = prop.variant.int32.clip(src.int16);
+		int16 = prop.variant.int32 ? prop.variant.int32->clip(src.int16) : src.int16;
 		break;
 	case PropertyType::Int32:
-		int32 = prop.variant.int32.clip(src.int32);
+		int32 = prop.variant.int32 ? prop.variant.int32->clip(src.int32) : src.int32;
 		break;
 	case PropertyType::Int64:
-		int64 = prop.variant.int64.clip(src.int64);
+		int64 = prop.variant.int64 ? prop.variant.int64->clip(src.int64) : src.int64;
 		break;
 	case PropertyType::UInt8:
-		uint8 = prop.variant.uint32.clip(src.uint8);
+		uint8 = prop.variant.uint32 ? prop.variant.uint32->clip(src.uint8) : src.uint8;
 		break;
 	case PropertyType::UInt16:
-		uint16 = prop.variant.uint32.clip(src.uint16);
+		uint16 = prop.variant.uint32 ? prop.variant.uint32->clip(src.uint16) : src.uint16;
 		break;
 	case PropertyType::UInt32:
-		uint32 = prop.variant.uint32.clip(src.uint32);
+		uint32 = prop.variant.uint32 ? prop.variant.uint32->clip(src.uint32) : src.uint32;
 		break;
 	case PropertyType::UInt64:
-		uint64 = prop.variant.uint64.clip(src.uint64);
+		uint64 = prop.variant.uint64 ? prop.variant.uint64->clip(src.uint64) : src.uint64;
 		break;
 	case PropertyType::Number:
-		number = prop.variant.number.clip(src.number);
+		number = prop.variant.number ? Number{prop.variant.number->clip(src.number)} : src.number;
 		break;
 	case PropertyType::String:
 		string = src.string;

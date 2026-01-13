@@ -124,11 +124,11 @@ struct PropertyInfo {
 		const FlashString* defaultString;
 		const ObjectInfo* object;
 		const EnumInfo* enuminfo;
-		RangeTemplate<int32_t> int32;
-		RangeTemplate<uint32_t> uint32;
-		RangeTemplate<const_number_t, number_t> number;
-		RangeTemplate<int64_t> int64;
-		RangeTemplate<uint64_t> uint64;
+		const RangeTemplate<int32_t>* int32;
+		const RangeTemplate<uint32_t>* uint32;
+		const RangeTemplate<const_number_t, number_t>* number;
+		const RangeTemplate<int64_t>* int64;
+		const RangeTemplate<uint64_t>* uint64;
 	};
 
 	PropertyType type;
