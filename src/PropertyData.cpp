@@ -108,10 +108,10 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 		boolean = (valueLength == 4) && memicmp(value, "true", 4) == 0;
 		return true;
 	case PropertyType::Int8:
-		int8 = strtol(value, nullptr, 0);
+		int8 = clamp<int8_t>(strtol(value, nullptr, 0));
 		return true;
 	case PropertyType::Int16:
-		int16 = strtol(value, nullptr, 0);
+		int16 = clamp<int16_t>(strtol(value, nullptr, 0));
 		return true;
 	case PropertyType::Int32:
 		int32 = strtol(value, nullptr, 0);
@@ -120,10 +120,10 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 		int64 = strtoll(value, nullptr, 0);
 		return true;
 	case PropertyType::UInt8:
-		uint8 = strtoul(value, nullptr, 0);
+		uint8 = clamp<uint8_t>(strtoul(value, nullptr, 0));
 		return true;
 	case PropertyType::UInt16:
-		uint16 = strtoul(value, nullptr, 0);
+		uint16 = clamp<uint16_t>(strtoul(value, nullptr, 0));
 		return true;
 	case PropertyType::UInt32:
 		uint32 = strtoul(value, nullptr, 0);

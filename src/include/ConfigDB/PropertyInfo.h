@@ -106,6 +106,12 @@ struct EnumInfo {
 	}
 };
 
+template <typename T, typename U> T clamp(const U& value)
+{
+	using L = std::numeric_limits<T>;
+	return TRange<U>{L::min(), L::max()}.clip(value);
+}
+
 /**
  * @brief Property metadata
  */
