@@ -94,6 +94,10 @@ class Range:
             return
         raise ValueError(f'Value {value} outside range {self.minimum} <= value <= {self.maximum}')
 
+    @property
+    def property_type(self):
+        return 'Number'
+
 
 @dataclass
 class IntRange(Range):
@@ -183,7 +187,7 @@ class Property:
                 minval = int32.typemin
             if maxval is None:
                 maxval = int32.typemax
-            self.intrange = r = IntRange.deduce(minval, maxval)
+            self.range = r = IntRange.deduce(minval, maxval)
             r.check(self.default or 0)
             self.ctype = r.ctype
             self.property_type = r.property_type
@@ -192,7 +196,7 @@ class Property:
                 minval = NUMBER_MIN
             if maxval is None:
                 maxval = NUMBER_MAX
-            self.numrange = r = Range(minval, maxval)
+            self.range = r = Range(minval, maxval)
             r.check(self.default or 0)
 
         if not self.ctype:
@@ -207,12 +211,12 @@ class Property:
                 pass
             elif self.ptype == 'integer':
                 minval, maxval = min(self.enum), max(self.enum)
-                self.intrange = r = IntRange.deduce(minval, maxval)
+                self.range = r = IntRange.deduce(minval, maxval)
                 r.check(self.enum)
                 self.enum_type = r.property_type
                 self.enum_ctype = r.ctype
             elif self.ptype == 'number':
-                self.numrange = r = Range(NUMBER_MIN, NUMBER_MAX)
+                self.range = r = Range(NUMBER_MIN, NUMBER_MAX)
                 r.check(self.enum)
                 self.enum_ctype = 'const_number_t'
             else:
@@ -1031,23 +1035,10 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             return f'.enuminfo = &{enumtype_inst}.enuminfo'
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
-        if prop.ptype == 'number':
-            r = prop.numrange
-            tag = 'number'
-            rtype = 'const_number_t, number_t'
+        if r := getattr(prop, 'range', None):
+            tag = r.property_type.lower()
             lines.header += [
-                f'static constexpr ConfigDB::PropertyInfo::RangeTemplate<{rtype}> {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
-            ]
-            return f'.{tag} = &{prop.id}_range'
-        if prop.ptype == 'integer':
-            r = prop.intrange
-            if r.bits > 32:
-                tag = 'int64' if r.is_signed else 'uint64'
-            else:
-                tag = 'int32' if r.is_signed else 'uint32'
-            rtype = f'{tag}_t'
-            lines.header += [
-                f'static constexpr ConfigDB::PropertyInfo::RangeTemplate<{rtype}> {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
+                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
             ]
             return f'.{tag} = &{prop.id}_range'
         return ''
