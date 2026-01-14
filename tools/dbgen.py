@@ -1033,18 +1033,21 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype == 'number':
             r = prop.numrange
+            tag = 'number'
+            rtype = 'const_number_t, number_t'
             lines.header += [
-                f'static constexpr ConfigDB::PropertyInfo::RangeTemplate<const_number_t, number_t> {prop.id}_range {{{r.minimum}, {r.maximum}}};'
+                f'static constexpr ConfigDB::PropertyInfo::RangeTemplate<{rtype}> {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
             ]
-            return f'.number = &{prop.id}_range'
+            return f'.{tag} = &{prop.id}_range'
         if prop.ptype == 'integer':
             r = prop.intrange
             if r.bits > 32:
                 tag = 'int64' if r.is_signed else 'uint64'
             else:
                 tag = 'int32' if r.is_signed else 'uint32'
+            rtype = f'{tag}_t'
             lines.header += [
-                f'static constexpr ConfigDB::PropertyInfo::RangeTemplate<{tag}_t> {prop.id}_range {{{r.minimum}, {r.maximum}}};'
+                f'static constexpr ConfigDB::PropertyInfo::RangeTemplate<{rtype}> {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
             ]
             return f'.{tag} = &{prop.id}_range'
         return ''
