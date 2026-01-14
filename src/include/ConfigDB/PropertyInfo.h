@@ -118,14 +118,19 @@ struct PropertyInfo {
 		{
 			return TRange(U(minimum), U(maximum)).clip(value);
 		}
+
+		static U clip(const RangeTemplate<T, U>* range, U value)
+		{
+			return range ? range->clip(value) : value;
+		}
 	};
 	using RangeNumber = RangeTemplate<const_number_t, number_t>;
-	using RangeInt8 = RangeTemplate<int32_t>;
-	using RangeInt16 = RangeTemplate<int32_t>;
+	using RangeInt8 = RangeTemplate<int32_t, int8_t>;
+	using RangeInt16 = RangeTemplate<int32_t, int16_t>;
 	using RangeInt32 = RangeTemplate<int32_t>;
 	using RangeInt64 = RangeTemplate<int64_t>;
-	using RangeUInt8 = RangeTemplate<uint32_t>;
-	using RangeUInt16 = RangeTemplate<uint32_t>;
+	using RangeUInt8 = RangeTemplate<uint32_t, uint8_t>;
+	using RangeUInt16 = RangeTemplate<uint32_t, uint16_t>;
 	using RangeUInt32 = RangeTemplate<uint32_t>;
 	using RangeUInt64 = RangeTemplate<uint64_t>;
 	// Variant property information depends on type

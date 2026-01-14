@@ -98,6 +98,9 @@ class Range:
     def property_type(self):
         return 'Number'
 
+    def is_constrained(self):
+        return (self.minimum, self.maximum) != (NUMBER_MIN, NUMBER_MAX)
+
 
 @dataclass
 class IntRange(Range):
@@ -129,6 +132,9 @@ class IntRange(Range):
     @property
     def property_type(self):
         return f'Int{self.bits}' if self.is_signed else f'UInt{self.bits}'
+
+    def is_constrained(self):
+        return (self.minimum, self.maximum) != (self.typemin, self.typemax)
 
 
 def get_ptype(fields: dict):
@@ -1035,12 +1041,14 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             return f'.enuminfo = &{enumtype_inst}.enuminfo'
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
-        if r := getattr(prop, 'range', None):
-            tag = r.property_type.lower()
-            lines.header += [
-                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
-            ]
-            return f'.{tag} = &{prop.id}_range'
+        if prop.ptype in ['number', 'integer']:
+            r = prop.range
+            if r.is_constrained():
+                tag = r.property_type.lower()
+                lines.header += [
+                    f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
+                ]
+                return f'.{tag} = &{prop.id}_range'
         return ''
 
     proplist = []
