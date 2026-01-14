@@ -1231,7 +1231,11 @@ def generate_property_write_accessors(obj: Object) -> list:
     def get_ctype(prop):
         if prop.ctype_override:
             return prop.ctype_override if prop.enum else f'const {prop.ctype_override}&'
-        return 'const String&' if prop.ptype == 'string' else prop.ctype
+        if prop.ptype == 'string':
+            return 'const String&'
+        if prop.ptype == 'integer' and not prop.enum:
+            return f'ConfigDB::{prop.property_type}'
+        return prop.ctype
 
     if obj.is_union:
         return [
