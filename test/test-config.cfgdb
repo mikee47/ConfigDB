@@ -17,13 +17,13 @@
     "simple-string": {
       "type": "string",
       "alias": "basic-string",
-      "default": "donkey"
+      "@default": "os.environ.get('SIMPLE_STRING', 'donkey')"
     },
     "simple-int": {
       "type": "integer",
-      "minimum": -5,
+      "@minimum": "-5",
       "maximum": 100,
-      "default": -1
+      "@default": "-1"
     },
     "simple-float": {
       "type": "number",
@@ -37,10 +37,10 @@
         "minimum": 0,
         "maximum": 100
       },
-      "default": [
-        13,
-        28,
-        39,
+      "@default": [
+        "13",
+        "0x1c",
+        "32+7",
         40
       ]
     },
