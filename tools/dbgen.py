@@ -177,19 +177,6 @@ class Property:
         def error(msg: str):
             raise ValueError(f'"{parent.path}": {msg} for "{self.name}"')
 
-        try:
-            if s := fields.get('@default'):
-                if isinstance(s, list):
-                    fields['default'] = [eval(str(x)) for x in s]
-                else:
-                    fields['default'] = eval(s)
-            if s := fields.get('@minimum'):
-                fields['minimum'] = eval(s)
-            if s := fields.get('@maximum'):
-                fields['maximum'] = eval(s)
-        except Exception as e:
-            raise ValueError(repr(e))
-
         self.parent = parent
         self.name = key
         self.ptype = get_ptype(fields)
@@ -639,6 +626,12 @@ def load_schema(filename: str) -> Database:
         d = {}
         identifiers = set()
         for k, v in pairs:
+            if k.startswith('@'):
+                try:
+                    v = [eval(str(x)) for x in v] if isinstance(v, list) else eval(v)
+                    k = k[1:]
+                except Exception as e:
+                    raise ValueError(repr(e))
             id = make_identifier(k)
             if not id:
                 raise ValueError(f'Invalid key "{k}"')
