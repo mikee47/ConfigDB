@@ -660,7 +660,9 @@ def load_schema(filename: str) -> Database:
     except ImportError as err:
         print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
     schema_id = os.path.splitext(os.path.basename(filename))[0]
-    databases[schema_id] = Database(None, schema_id, None, schema_id=schema_id, schema=schema)
+    db = Database(None, schema_id, None, schema_id=schema_id, schema=schema)
+    databases[schema_id] = db
+    return db
 
 
 def parse_properties(path: str, parent_prop: Property, properties: dict):
@@ -1535,9 +1537,15 @@ def main():
 
     args = parser.parse_args()
 
+    schema_out_dir = os.path.join(args.outdir, 'schema')
+    os.makedirs(schema_out_dir, exist_ok=True)
+
     for f in args.cfgfiles:
         print(f'Loading "{f}"')
-        load_schema(f)
+        db = load_schema(f)
+        filename = os.path.join(schema_out_dir, f'{db.name}.json')
+        with open(filename, 'w') as f_schema:
+            json.dump(db.schema, f_schema, indent=2)
 
     for db in databases.values():
         print(f'Parsing "{db.name}"')
@@ -1547,7 +1555,6 @@ def main():
         lines = generate_database(db)
 
         filepath = os.path.join(args.outdir, f'{db.name}')
-        os.makedirs(args.outdir, exist_ok=True)
 
         write_file(lines.header, f'{filepath}.h')
         write_file(lines.source, f'{filepath}.cpp')
