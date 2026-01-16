@@ -620,6 +620,12 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
 
 
 def load_schema(filename: str) -> Database:
+    def evaluate(expr: str) -> Any:
+        expr = re.sub(r"\$(\w+)", r"{\1}", expr)
+        expr = expr.format(**os.environ)
+        return eval(expr)
+
+
     '''Load JSON configuration schema and validate
     '''
     def parse_object_pairs(pairs):
@@ -628,7 +634,7 @@ def load_schema(filename: str) -> Database:
         for k, v in pairs:
             if k.startswith('@'):
                 try:
-                    v = [eval(str(x)) for x in v] if isinstance(v, list) else eval(v)
+                    v = [evaluate(str(x)) for x in v] if isinstance(v, list) else evaluate(v)
                     k = k[1:]
                 except Exception as e:
                     raise ValueError(repr(e))
