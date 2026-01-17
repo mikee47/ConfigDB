@@ -51,6 +51,9 @@ enum class FormatError {
 #undef XX
 };
 
+/**
+ * @brief Stores import/export stream status information
+ */
 struct Status {
 	struct Code {
 		int fileError{};
@@ -60,16 +63,26 @@ struct Status {
 	Error error{};
 	Code code;
 
+	/**
+	 * @brief Create a file error status structure
+	 * @param errorCode Filesystem error code
+	 */
 	static Status fileError(int errorCode)
 	{
 		return Status{Error::FileError, {.fileError = errorCode}};
 	}
 
+	/**
+	 * @brief Create a format error status structure
+	 */
 	static Status formatError(FormatError err)
 	{
 		return Status{Error::FormatError, {.formatError = err}};
 	}
 
+	/**
+	 * @brief Set status to format error
+	 */
 	Status& operator=(FormatError err)
 	{
 		error = Error::FormatError;

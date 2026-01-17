@@ -46,16 +46,17 @@ namespace ConfigDB
  *
  * It does not need to be computationally efficient, but does have advantages:
  *
- *		- structure is transparent
- *		- Base-10 operations can be performed efficiently without rounding errors
- *		- Serialising (converting to strings) and de-serialising is consistent and JSON-compatible
+ *	- structure is transparent
+ *	- Base-10 operations can be performed efficiently without rounding errors
+ *	- Serialising (converting to strings) and de-serialising is consistent and JSON-compatible
  *
  * Some similarity to python's Decimal class, but with restriction on significant digits and exponent.
  *
  * The initial version of this used 24 bits for the mantissa, but 8 bits for the exponent is overkill.
  * Reducing exponent to 6 bits increases precision by 2 bits to give:
- * 	smallest: 1e-31
- *  largest: 33554431e31 (3.3554431e38)
+ *
+ *	- smallest: 1e-31
+ *	- largest: 33554431e31 (3.3554431e38)
  *
  * Numbers always have a valid representation for ease of use and JSON compatibility.
  * There is no definition for 'NaN' (not a number) or 'infinity.
@@ -69,30 +70,21 @@ namespace ConfigDB
  *
  * An example of custom arithmetic:
  *
- * 			number_t multiplyBy2000(number_t value)
- * 			{
- * 				value.mantissa *= 2;
- * 				value.exponent += 3;
- * 				return value;
- * 			}
+ * 		number_t multiplyBy2000(number_t value)
+ * 		{
+ * 			value.mantissa *= 2;
+ * 			value.exponent += 3;
+ * 			return value;
+ * 		}
  *
  * If there's a risk of over/under flowing in the calculation, do this:
  * 
- * 			number_t multiplyBy2000(number_t value)
- * 			{
- * 				int mantissa = value.mantissa * 2;
- * 				int exponent = value.exponent + 3;
- * 				return number_t::normalise(mantissa, exponent);
- * 			}
- *
- * , avoiding overflow risk, multiplying a number by 2000
- * 			int mantissa = number.mantissa;
- * 			int exponent = number.exponent;
- * 			mantissa *= 2;
- * 			exponent += 3;
- * 			number_t new_number = number_t::normalise(number);
- *
- * 
+ * 		number_t multiplyBy2000(number_t value)
+ * 		{
+ * 			int mantissa = value.mantissa * 2;
+ * 			int exponent = value.exponent + 3;
+ * 			return number_t::normalise(mantissa, exponent);
+ * 		}
  *
  * @note This structure is *not* packed to ensure values stored in flash behave correctly.
  */

@@ -35,6 +35,9 @@ class Object;
 class ImportStream : public ReadWriteStream
 {
 public:
+	/**
+	 * @brief Get current status of import
+	 */
 	virtual Status getStatus() const = 0;
 };
 
@@ -66,6 +69,9 @@ struct ExportOptions {
 class ExportStream : public IDataSourceStream
 {
 public:
+	/**
+	 * @brief Get current status of export
+	 */
 	virtual Status getStatus() const = 0;
 };
 

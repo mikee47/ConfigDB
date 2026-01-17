@@ -601,7 +601,6 @@ API Reference
    :members:
 
 .. doxygenclass:: ConfigDB::DatabaseTemplate
-   :members:
 
 .. doxygenclass:: ConfigDB::Store
    :members:
@@ -619,10 +618,15 @@ API Reference
    :members:
 
 .. doxygenclass:: ConfigDB::ObjectTemplate
-   :members:
+.. doxygenclass:: ConfigDB::ObjectUpdaterTemplate
+.. doxygenclass:: ConfigDB::OuterObjectTemplate
+.. doxygenclass:: ConfigDB::OuterObjectUpdaterTemplate
 
 .. doxygenclass:: ConfigDB::Union
    :members:
+
+.. doxygenclass:: ConfigDB::UnionTemplate
+.. doxygenclass:: ConfigDB::UnionUpdaterTemplate
 
 .. doxygenclass:: ConfigDB::ArrayBase
    :members:
@@ -630,16 +634,16 @@ API Reference
 .. doxygenclass:: ConfigDB::Array
    :members:
 
+.. doxygenclass:: ConfigDB::ArrayTemplate
+.. doxygenclass:: ConfigDB::ArrayUpdaterTemplate
+.. doxygenclass:: ConfigDB::StringArrayTemplate
+.. doxygenclass:: ConfigDB::StringArrayUpdaterTemplate
+
 .. doxygenclass:: ConfigDB::ObjectArray
    :members:
 
-.. doxygenclass:: ConfigDB::Format
-   :members:
-
-.. doxygenstruct:: ConfigDB::ExportOptions
-   :members:
-
-.. doxygenvariable:: ConfigDB::Json::format
+.. doxygenclass:: ConfigDB::ObjectArrayTemplate
+.. doxygenclass:: ConfigDB::ObjectArrayUpdaterTemplate
 
 .. doxygenclass:: ConfigDB::Number
    :members:
@@ -648,3 +652,21 @@ API Reference
    :members:
 
 .. doxygenstruct:: ConfigDB::const_number_t
+
+
+.. doxygenclass:: ConfigDB::Format
+   :members:
+
+.. doxygenstruct:: ConfigDB::Status
+   :members:
+
+.. doxygenclass:: ConfigDB::ImportStream
+   :members:
+
+.. doxygenclass:: ConfigDB::ExportStream
+   :members:
+
+.. doxygenstruct:: ConfigDB::ExportOptions
+   :members:
+
+.. doxygennamespace:: ConfigDB::Json
