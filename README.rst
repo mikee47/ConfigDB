@@ -124,7 +124,7 @@ Note that when setting values via *setXXX* methods, streaming updates or inside 
     }
   }
 
-This creates a *pin* property of type :cpp:type:`uint8_t`. The updater will have a *setPin()* method, which if called with values outside of the range 0-63 will be clamped.
+This creates a *pin* property of type :cpp:type:`uint8_t`. The updater will have a *setPin(int64_t)* method, which if called with values outside of the range 0-63 will be clamped.
 
 
 Floating-point numbers
