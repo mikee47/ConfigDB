@@ -106,7 +106,7 @@ struct EnumInfo {
 	}
 };
 
-template <typename T, typename U> T clamp(const U& value)
+template <typename T, typename U> constexpr T clamp(const U& value)
 {
 	using L = std::numeric_limits<T>;
 	return TRange<U>{L::min(), L::max()}.clip(value);
@@ -115,18 +115,18 @@ template <typename T, typename U> T clamp(const U& value)
 template <typename T, typename U> struct IntClamped {
 	T value;
 
-	IntClamped(U v) : value(clamp<T>(v))
+	constexpr IntClamped(const U& v) : value(clamp<T>(v))
 	{
 	}
 };
 
-using Int8 = IntClamped<int8_t, int32_t>;
-using Int16 = IntClamped<int16_t, int32_t>;
-using Int32 = int32_t;
+using Int8 = IntClamped<int8_t, int64_t>;
+using Int16 = IntClamped<int16_t, int64_t>;
+using Int32 = IntClamped<int32_t, int64_t>;
 using Int64 = int64_t;
-using UInt8 = IntClamped<uint8_t, uint32_t>;
-using UInt16 = IntClamped<uint16_t, uint32_t>;
-using UInt32 = uint32_t;
+using UInt8 = IntClamped<uint8_t, uint64_t>;
+using UInt16 = IntClamped<uint16_t, uint64_t>;
+using UInt32 = IntClamped<uint32_t, uint64_t>;
 using UInt64 = uint64_t;
 
 /**

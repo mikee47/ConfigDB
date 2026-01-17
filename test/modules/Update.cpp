@@ -69,8 +69,10 @@ public:
 			// Change value
 			if(auto updater = root.update()) {
 				// Check clipping
-				updater.setSimpleInt(101000);
+				updater.setSimpleInt(11111111111101000ULL);
 				REQUIRE_EQ(root.getSimpleInt(), 100);
+				updater.setSimpleInt(-11111111111101000LL);
+				REQUIRE_EQ(root.getSimpleInt(), -5);
 				updater.resetSimpleInt();
 				REQUIRE_EQ(root.getSimpleInt(), -1);
 				updater.setSimpleInt(-6);
