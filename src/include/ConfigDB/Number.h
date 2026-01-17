@@ -42,11 +42,11 @@ namespace ConfigDB
  *
  * Integer values can also be specified, but may be subject to rounding if too precise.
  * Very large (or small) values can be used, such as 1.5e25.
- * This would actually be stored as 15e4 `{15, 24}`.
+ * This would actually be stored as 15e24 `{15, 24}`.
  *
  * It does not need to be computationally efficient, but does have advantages:
  *
- * 		- structure is transparent
+ *		- structure is transparent
  *		- Base-10 operations can be performed efficiently without rounding errors
  *		- Serialising (converting to strings) and de-serialising is consistent and JSON-compatible
  *

@@ -25,6 +25,9 @@ namespace ConfigDB
 {
 class Store;
 
+/**
+ * @brief Holds a strong reference to a store instance for reading
+ */
 class StoreRef : public std::shared_ptr<Store>
 {
 public:
@@ -42,6 +45,9 @@ private:
 	using shared_ptr::reset;
 };
 
+/**
+ * @brief Holds a strong reference to a store instance for writing (updating)
+ */
 class StoreUpdateRef : public StoreRef
 {
 public:

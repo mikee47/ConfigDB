@@ -20,7 +20,7 @@ Design goals:
 - Allow partitioning of database into multiple *stores* to control use of RAM and enable more efficient updates for related data groups
 - Reduce RAM usage as database size increases
 - Maintain good read/write performance
-- Pluggable system to support backing stores other than ArduinoJson. For example, binary formats
+- Pluggable system to support backing stores other than JSON, such as binary formats
 - Keep application interface independent of implementation detail
 
 Usage:
@@ -43,13 +43,14 @@ Standardised web editors can also be generated using tools such as https://githu
 
     Sming uses JSON schema for:
 
-        - Hardware configuration `Sming/Components/Storage/schema.json`
-        - IFS build scripts `Sming/Components/IFS/tools/fsbuild/schema.json`
-        - USB config `Sming/Libraries/USB/schema.json`
+        - Hardware configuration :source:`Sming/Components/Storage/schema.json`
+        - IFS build scripts :source:`Sming/Components/IFS/tools/fsbuild/schema.json`
+        - USB config :source:`Sming/Libraries/USB/schema.json`
 
     It's probably fair to consider it a standard part of the framework.
 
-Configuration JSON can be validated against the **.cfgdb** schema files using **check-jsonschema**::
+Configuration JSON is validated against the **.cfgdb** schema files as a pre-build step.
+This can also be done separately using a tool such as  **check-jsonschema**::
 
   pip install check-jsonschema
   check-jsonschema --schemafile basic-config.cfgdb sample-config.json
@@ -599,13 +600,31 @@ API Reference
 .. doxygenclass:: ConfigDB::Database
    :members:
 
+.. doxygenclass:: ConfigDB::DatabaseTemplate
+   :members:
+
 .. doxygenclass:: ConfigDB::Store
+   :members:
+
+.. doxygenclass:: ConfigDB::StoreRef
+   :members:
+
+.. doxygenclass:: ConfigDB::PropertyConst
+   :members:
+
+.. doxygenclass:: ConfigDB::Property
    :members:
 
 .. doxygenclass:: ConfigDB::Object
    :members:
 
+.. doxygenclass:: ConfigDB::ObjectTemplate
+   :members:
+
 .. doxygenclass:: ConfigDB::Union
+   :members:
+
+.. doxygenclass:: ConfigDB::ArrayBase
    :members:
 
 .. doxygenclass:: ConfigDB::Array
@@ -615,6 +634,9 @@ API Reference
    :members:
 
 .. doxygenclass:: ConfigDB::Format
+   :members:
+
+.. doxygenstruct:: ConfigDB::ExportOptions
    :members:
 
 .. doxygenvariable:: ConfigDB::Json::format

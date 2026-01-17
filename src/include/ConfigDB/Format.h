@@ -29,6 +29,9 @@ class Database;
 class Store;
 class Object;
 
+/**
+ * @brief Interface for formatted import stream
+ */
 class ImportStream : public ReadWriteStream
 {
 public:
