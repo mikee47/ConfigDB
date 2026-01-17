@@ -408,7 +408,7 @@ PropertyConst Object::getProperty(unsigned index) const
 		}
 		auto& prop = typeinfo().getProperty(index);
 		auto propData = getPropertyData(index);
-		return {getStore(), prop, propData, nullptr};
+		return {getStore(), prop, propData};
 	}
 }
 

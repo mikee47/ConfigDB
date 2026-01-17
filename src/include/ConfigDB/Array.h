@@ -113,7 +113,7 @@ private:
 
 	PropertyConst makeProperty(const void* data) const
 	{
-		return {getStore(), getItemType(), static_cast<const PropertyData*>(data), nullptr};
+		return {getStore(), getItemType(), static_cast<const PropertyData*>(data)};
 	}
 };
 

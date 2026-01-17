@@ -34,13 +34,12 @@ public:
 	PropertyConst() = default;
 
 	/**
-	 * @brief Create a Property instance
+	 * @brief Create a PropertyConst instance
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
 	 */
-	PropertyConst(const Store& store, const PropertyInfo& info, const PropertyData* data,
-				  const PropertyData* defaultData)
-		: propinfo(&info), store(&store), data(data), defaultData(defaultData)
+	PropertyConst(const Store& store, const PropertyInfo& info, const PropertyData* data)
+		: propinfo(&info), store(&store), data(data)
 	{
 	}
 
@@ -62,13 +61,23 @@ protected:
 	const PropertyInfo* propinfo{&PropertyInfo::empty};
 	const Store* store{};
 	const PropertyData* data{};
-	const PropertyData* defaultData{};
 };
 
 class Property : public PropertyConst
 {
 public:
-	using PropertyConst::PropertyConst;
+	Property() = default;
+
+	/**
+	 * @brief Create a Property instance
+	 * @param info Property information
+	 * @param data Pointer to location where value is stored
+	 * @param defaultData Pointer to default value for property (if any)
+	 */
+	Property(const Store& store, const PropertyInfo& info, const PropertyData* data, const PropertyData* defaultData)
+		: PropertyConst(store, info, data), defaultData(defaultData)
+	{
+	}
 
 	bool setJsonValue(const char* value, size_t valueLength);
 
@@ -76,6 +85,9 @@ public:
 	{
 		return setJsonValue(value.c_str(), value.length());
 	}
+
+protected:
+	const PropertyData* defaultData{};
 };
 
 } // namespace ConfigDB
