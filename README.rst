@@ -109,6 +109,24 @@ When changes are made the new (canonical) name of *trans_fin_interval* will be u
 If multiple aliases are required for a property, provide them as a list.
 
 
+Integers
+~~~~~~~~
+
+Items with **integer** type default to a regular signed 32-bit :cpp:type:`int32_t`. This can be changed by setting a *minimum* and or *maximum* attribute. The database will then use the smallest C++ type appropriate for that range. If the range excludes negative values then an unsigned value will be used.
+
+Note that when setting values via *setXXX* methods, streaming updates or inside arrays, integers will be **clipped** to the defined range, never truncated. For example::
+
+  "properties": {
+    "Pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63
+    }
+  }
+
+This creates a *pin* property of type :cpp:type:`uint8_t`. The updater will have a *setPin()* method, which if called with values outside of the range 0-63 will be clamped.
+
+
 Floating-point numbers
 ~~~~~~~~~~~~~~~~~~~~~~
 
