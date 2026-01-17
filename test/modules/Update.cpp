@@ -145,6 +145,8 @@ public:
 
 				upd.intArray[0] = 12345U;
 				REQUIRE_EQ(100, upd.intArray[0]);
+				upd.intArray[0] = -12345;
+				REQUIRE_EQ(0, upd.intArray[0]);
 			}
 		}
 

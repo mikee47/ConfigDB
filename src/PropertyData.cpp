@@ -108,28 +108,28 @@ bool PropertyData::setValue(PropertyType type, const char* value, unsigned value
 		boolean = (valueLength == 4) && memicmp(value, "true", 4) == 0;
 		return true;
 	case PropertyType::Int8:
-		int8 = Int8{strtoll(value, nullptr, 0)}.value;
+		int8 = Int8{strtoll(value, nullptr, 0)};
 		return true;
 	case PropertyType::Int16:
-		int16 = Int16{strtoll(value, nullptr, 0)}.value;
+		int16 = Int16{strtoll(value, nullptr, 0)};
 		return true;
 	case PropertyType::Int32:
-		int32 = Int32{strtoll(value, nullptr, 0)}.value;
+		int32 = Int32{strtoll(value, nullptr, 0)};
 		return true;
 	case PropertyType::Int64:
-		int64 = strtoll(value, nullptr, 0);
+		int64 = Int64{strtoll(value, nullptr, 0)};
 		return true;
 	case PropertyType::UInt8:
-		uint8 = UInt8{strtoull(value, nullptr, 0)}.value;
+		uint8 = UInt8{strtoll(value, nullptr, 0)};
 		return true;
 	case PropertyType::UInt16:
-		uint16 = UInt16{strtoull(value, nullptr, 0)}.value;
+		uint16 = UInt16{strtoll(value, nullptr, 0)};
 		return true;
 	case PropertyType::UInt32:
-		uint32 = UInt32{strtoull(value, nullptr, 0)}.value;
+		uint32 = UInt32{strtoll(value, nullptr, 0)};
 		return true;
 	case PropertyType::UInt64:
-		uint64 = strtoull(value, nullptr, 0);
+		uint64 = UInt64{strtoull(value, nullptr, 0)};
 		return true;
 	case PropertyType::Number: {
 		number_t num{};
