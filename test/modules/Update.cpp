@@ -142,6 +142,9 @@ public:
 				upd.loadArrayDefaults();
 				REQUIRE_EQ(exportObject(upd.intArray), intArrayDefaults);
 				REQUIRE_EQ(exportObject(root.stringArray), stringArrayDefaults);
+
+				upd.intArray[0] = 12345U;
+				REQUIRE_EQ(100, upd.intArray[0]);
 			}
 		}
 
