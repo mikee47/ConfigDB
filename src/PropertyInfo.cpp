@@ -77,7 +77,7 @@ int EnumInfo::find(const char* value, unsigned length) const
 	}
 
 	PropertyData d{};
-	d.setValue(type, value, length);
+	// d.setValue(type, value, length);
 	switch(type) {
 	case PropertyType::Int8:
 		return getArray<int8_t>().indexOf(d.int8);

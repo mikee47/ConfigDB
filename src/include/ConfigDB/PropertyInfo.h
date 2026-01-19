@@ -116,27 +116,23 @@ template <typename T> constexpr T clamp(const int64_t& value)
 	return TRange<int64_t>{L::min(), L::max()}.clip(value);
 }
 
-template <typename T> struct IntClamped {
-	T value;
+/**
+ * @brief Used to set integer property values clamped to their storage type without truncation
+ */
+template <typename T, int64_t minimum = std::numeric_limits<T>::minimum(),
+		  int64_t maximum = std::numeric_limits<T>::maximum()>
+struct IntClamped {
+	int64_t value;
 
-	constexpr IntClamped(const int64_t& v) : value(clamp<T>(v))
+	constexpr IntClamped(const int64_t& v) : value(v)
 	{
 	}
 
-	constexpr operator T() const
+	T clamped() const
 	{
-		return value;
+		return T(TRange(minimum, maximum).clip(value));
 	}
 };
-
-using Int8 = IntClamped<int8_t>;
-using Int16 = IntClamped<int16_t>;
-using Int32 = IntClamped<int32_t>;
-using Int64 = int64_t;
-using UInt8 = IntClamped<uint8_t>;
-using UInt16 = IntClamped<uint16_t>;
-using UInt32 = IntClamped<uint32_t>;
-using UInt64 = uint64_t;
 
 /**
  * @brief Property metadata

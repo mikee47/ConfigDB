@@ -62,7 +62,6 @@ union __attribute__((packed)) PropertyData {
 	 */
 	void setValue(const PropertyInfo& prop, const PropertyData& src);
 
-	bool setValue(PropertyType type, const char* value, unsigned valueLength);
 	bool setValue(const PropertyInfo& prop, const char* value, unsigned valueLength);
 
 	static PropertyData* fromStruct(const PropertyInfo& prop, void* data)

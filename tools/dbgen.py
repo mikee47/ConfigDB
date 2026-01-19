@@ -268,7 +268,7 @@ class Property:
     def ctype_set(self):
         '''Type to use for updater value'''
         if self.ptype == 'integer' and not self.enum:
-            return f'ConfigDB::{self.property_type}'
+            return self.ctype_override or 'int64_t'
         return self.ctype_ret
 
     @property
@@ -1233,6 +1233,8 @@ def generate_property_write_accessors(obj: Object) -> list:
         if prop.ptype == 'string':
             stype = prop.ctype_ret
             return 'value' if stype == 'String' else f'String(value)'
+        if prop.ptype == 'integer' and not prop.enum:
+            return f'ConfigDB::IntClamped<{prop.ctype_ret}, {prop.intrange.minimum}, {prop.intrange.maximum}>{{value}}'
         return '&value'
 
     if obj.is_union:
