@@ -118,29 +118,35 @@ struct PropertyInfo {
 		{
 			return TRange(U(minimum), U(maximum)).clip(value);
 		}
-	};
-	template <typename T> struct RangePtrTemplate {
-		const T* minimum;
-		const T* maximum;
 
-		T clip(T value) const
+		static U clip(const RangeTemplate<T, U>* range, U value)
 		{
-			if(minimum || maximum) {
-				return TRange(minimum ? *minimum : 0, maximum ? *maximum : 0).clip(value);
-			}
-			return value;
+			return range ? range->clip(value) : value;
 		}
 	};
+	using RangeNumber = RangeTemplate<const_number_t, number_t>;
+	using RangeInt8 = RangeTemplate<int32_t, int8_t>;
+	using RangeInt16 = RangeTemplate<int32_t, int16_t>;
+	using RangeInt32 = RangeTemplate<int32_t>;
+	using RangeInt64 = RangeTemplate<int64_t>;
+	using RangeUInt8 = RangeTemplate<uint32_t, uint8_t>;
+	using RangeUInt16 = RangeTemplate<uint32_t, uint16_t>;
+	using RangeUInt32 = RangeTemplate<uint32_t>;
+	using RangeUInt64 = RangeTemplate<uint64_t>;
 	// Variant property information depends on type
 	union Variant {
 		const FlashString* defaultString;
 		const ObjectInfo* object;
 		const EnumInfo* enuminfo;
-		RangeTemplate<int32_t> int32;
-		RangeTemplate<uint32_t> uint32;
-		RangeTemplate<const_number_t, number_t> number;
-		RangePtrTemplate<int64_t> int64;
-		RangePtrTemplate<uint64_t> uint64;
+		const RangeNumber* number;
+		const RangeInt8* int8;
+		const RangeInt16* int16;
+		const RangeInt32* int32;
+		const RangeInt64* int64;
+		const RangeUInt8* uint8;
+		const RangeUInt16* uint16;
+		const RangeUInt32* uint32;
+		const RangeUInt64* uint64;
 	};
 
 	PropertyType type;
