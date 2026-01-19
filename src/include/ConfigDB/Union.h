@@ -1,4 +1,4 @@
-/**
+/****
  * ConfigDB/Union.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
@@ -24,11 +24,16 @@
 namespace ConfigDB
 {
 /**
- * @brief Variant object, can contain one of a selection of objects types
+ * @brief Variant object, can contain one of a selection of object types
+ * A union contains one private property, the tag, and one or more object types.
+ * Only one of these objects is stored, accessed at object index 0.
  */
 class Union : public Object
 {
 public:
+	/**
+	 * @brief A zero-based index which identifies the stored object type
+	 */
 	using Tag = uint8_t;
 
 	using Object::Object;
@@ -92,6 +97,8 @@ public:
 
 	/**
 	 * @brief Used by code generator to obtain a read-only reference to the contained object
+	 * @tparam Item The item type
+	 * @param tag The tag for the given item type
 	 */
 	template <typename Item> const Item as(Tag tag) const
 	{
@@ -104,6 +111,8 @@ public:
 
 	/**
 	 * @brief Used by code generator to obtain a writeable reference to the contained object
+	 * @tparam Item The item type
+	 * @param tag The tag for the given item type
 	 */
 	template <typename Item> Item as(Tag tag)
 	{
@@ -116,6 +125,8 @@ public:
 
 	/**
 	 * @brief Used by code generator to set the tag and return a direct reference to the contained object.
+	 * @tparam Item The item type
+	 * @param tag The tag for the desired item type
 	 */
 	template <typename Item> Item to(Tag tag)
 	{

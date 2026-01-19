@@ -20,7 +20,7 @@ Design goals:
 - Allow partitioning of database into multiple *stores* to control use of RAM and enable more efficient updates for related data groups
 - Reduce RAM usage as database size increases
 - Maintain good read/write performance
-- Pluggable system to support backing stores other than ArduinoJson. For example, binary formats
+- Pluggable system to support backing stores other than JSON, such as binary formats
 - Keep application interface independent of implementation detail
 
 Usage:
@@ -43,13 +43,14 @@ Standardised web editors can also be generated using tools such as https://githu
 
     Sming uses JSON schema for:
 
-        - Hardware configuration `Sming/Components/Storage/schema.json`
-        - IFS build scripts `Sming/Components/IFS/tools/fsbuild/schema.json`
-        - USB config `Sming/Libraries/USB/schema.json`
+        - Hardware configuration :source:`Sming/Components/Storage/schema.json`
+        - IFS build scripts :source:`Sming/Components/IFS/tools/fsbuild/schema.json`
+        - USB config :source:`Sming/Libraries/USB/schema.json`
 
     It's probably fair to consider it a standard part of the framework.
 
-Configuration JSON can be validated against the **.cfgdb** schema files using **check-jsonschema**::
+Configuration JSON is validated against the **.cfgdb** schema files as a pre-build step.
+This can also be done separately using a tool such as  **check-jsonschema**::
 
   pip install check-jsonschema
   check-jsonschema --schemafile basic-config.cfgdb sample-config.json
@@ -106,6 +107,24 @@ Existing JSON data using the old *transfin_interval* name will be accepted durin
 When changes are made the new (canonical) name of *trans_fin_interval* will be used.
 
 If multiple aliases are required for a property, provide them as a list.
+
+
+Integers
+~~~~~~~~
+
+Items with **integer** type default to a regular signed 32-bit :cpp:type:`int32_t`. This can be changed by setting a *minimum* and or *maximum* attribute. The database will then use the smallest C++ type appropriate for that range. If the range excludes negative values then an unsigned value will be used.
+
+Note that when setting values via *setXXX* methods, streaming updates or inside arrays, integers will be **clipped** to the defined range, never truncated. For example::
+
+  "properties": {
+    "Pin": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 63
+    }
+  }
+
+This creates a *pin* property of type :cpp:type:`uint8_t`. The updater will have a *setPin()* method, which if called with values outside of the range 0-63 will be clamped.
 
 
 Floating-point numbers
@@ -599,25 +618,50 @@ API Reference
 .. doxygenclass:: ConfigDB::Database
    :members:
 
+.. doxygenclass:: ConfigDB::DatabaseTemplate
+
 .. doxygenclass:: ConfigDB::Store
+   :members:
+
+.. doxygenclass:: ConfigDB::StoreRef
+   :members:
+
+.. doxygenclass:: ConfigDB::PropertyConst
+   :members:
+
+.. doxygenclass:: ConfigDB::Property
    :members:
 
 .. doxygenclass:: ConfigDB::Object
    :members:
 
+.. doxygenclass:: ConfigDB::ObjectTemplate
+.. doxygenclass:: ConfigDB::ObjectUpdaterTemplate
+.. doxygenclass:: ConfigDB::OuterObjectTemplate
+.. doxygenclass:: ConfigDB::OuterObjectUpdaterTemplate
+
 .. doxygenclass:: ConfigDB::Union
+   :members:
+
+.. doxygenclass:: ConfigDB::UnionTemplate
+.. doxygenclass:: ConfigDB::UnionUpdaterTemplate
+
+.. doxygenclass:: ConfigDB::ArrayBase
    :members:
 
 .. doxygenclass:: ConfigDB::Array
    :members:
 
+.. doxygenclass:: ConfigDB::ArrayTemplate
+.. doxygenclass:: ConfigDB::ArrayUpdaterTemplate
+.. doxygenclass:: ConfigDB::StringArrayTemplate
+.. doxygenclass:: ConfigDB::StringArrayUpdaterTemplate
+
 .. doxygenclass:: ConfigDB::ObjectArray
    :members:
 
-.. doxygenclass:: ConfigDB::Format
-   :members:
-
-.. doxygenvariable:: ConfigDB::Json::format
+.. doxygenclass:: ConfigDB::ObjectArrayTemplate
+.. doxygenclass:: ConfigDB::ObjectArrayUpdaterTemplate
 
 .. doxygenclass:: ConfigDB::Number
    :members:
@@ -626,3 +670,21 @@ API Reference
    :members:
 
 .. doxygenstruct:: ConfigDB::const_number_t
+
+
+.. doxygenclass:: ConfigDB::Format
+   :members:
+
+.. doxygenstruct:: ConfigDB::Status
+   :members:
+
+.. doxygenclass:: ConfigDB::ImportStream
+   :members:
+
+.. doxygenclass:: ConfigDB::ExportStream
+   :members:
+
+.. doxygenstruct:: ConfigDB::ExportOptions
+   :members:
+
+.. doxygennamespace:: ConfigDB::Json

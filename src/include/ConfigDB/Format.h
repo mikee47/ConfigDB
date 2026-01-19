@@ -1,4 +1,4 @@
-/**
+/****
  * ConfigDB/Format.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
@@ -29,9 +29,15 @@ class Database;
 class Store;
 class Object;
 
+/**
+ * @brief Interface for formatted import stream
+ */
 class ImportStream : public ReadWriteStream
 {
 public:
+	/**
+	 * @brief Get current status of import
+	 */
 	virtual Status getStatus() const = 0;
 };
 
@@ -63,6 +69,9 @@ struct ExportOptions {
 class ExportStream : public IDataSourceStream
 {
 public:
+	/**
+	 * @brief Get current status of export
+	 */
 	virtual Status getStatus() const = 0;
 };
 

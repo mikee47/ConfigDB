@@ -1,4 +1,4 @@
-/**
+/****
  * ConfigDB/Property.h
  *
  * Copyright 2024 mikee47 <mike@sillyhouse.net>
@@ -26,7 +26,7 @@ namespace ConfigDB
 class Store;
 
 /**
- * @brief Manages a key/value pair stored in an object, or a simple array value
+ * @brief Read-only access to a key/value pair stored in an object, or a simple array value
  */
 class PropertyConst
 {
@@ -43,6 +43,9 @@ public:
 	{
 	}
 
+	/**
+	 * @brief Retrieve the property value as a string
+	 */
 	String getValue() const;
 
 	explicit operator bool() const
@@ -50,8 +53,15 @@ public:
 		return store;
 	}
 
+	/**
+	 * @brief Get property value as a valid JSON string
+	 * @retval String Can return "null", numeric, boolean or *quoted* string
+	 */
 	String getJsonValue() const;
 
+	/**
+	 * @brief Access property type information
+	 */
 	const PropertyInfo& info() const
 	{
 		return *propinfo;
@@ -63,6 +73,9 @@ protected:
 	const PropertyData* data{};
 };
 
+/**
+ * @brief Adds write access for a key/value pair stored in an object, or a simple array value
+ */
 class Property : public PropertyConst
 {
 public:
@@ -79,6 +92,12 @@ public:
 	{
 	}
 
+	/**
+	 * @brief Set property value given its JSON string representation
+	 * @param value String values must be *unquoted*
+	 * @param valueLength Length of value in characters
+	 * @retval bool Return false if this property instance or the given value are invalid
+	 */
 	bool setJsonValue(const char* value, size_t valueLength);
 
 	bool setJsonValue(const String& value)
