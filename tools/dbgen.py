@@ -265,6 +265,13 @@ class Property:
         return self.ctype_override or self.ctype
 
     @property
+    def ctype_set(self):
+        '''Type to use for updater value'''
+        if self.ptype == 'integer' and not self.enum:
+            return f'ConfigDB::{self.property_type}'
+        return self.ctype_ret
+
+    @property
     def propdata_id(self):
         return 'uint8' if self.enum else self.property_type.lower()
 
@@ -1228,15 +1235,6 @@ def generate_property_write_accessors(obj: Object) -> list:
             return 'value' if stype == 'String' else f'String(value)'
         return '&value'
 
-    def get_ctype_set(prop):
-        if prop.ctype_override:
-            return prop.ctype_override if prop.enum else f'const {prop.ctype_override}&'
-        if prop.ptype == 'string':
-            return 'const String&'
-        if prop.ptype == 'integer' and not prop.enum:
-            return f'ConfigDB::{prop.property_type}'
-        return prop.ctype
-
     if obj.is_union:
         return [
             [
@@ -1262,7 +1260,7 @@ def generate_property_write_accessors(obj: Object) -> list:
 
     return [*((
         '',
-        f'void set{prop.typename}({get_ctype_set(prop)} value)',
+        f'void set{prop.typename}(const {prop.ctype_set}& value)',
         '{',
         [f'setPropertyValue({index}, {get_value_expr(prop)});'],
         '}',
@@ -1391,12 +1389,8 @@ def generate_updater(object_prop: Property) -> list:
         ]
 
     if obj.is_array:
-        def get_ctype_set(prop):
-            if prop.ptype == 'integer' and not prop.enum:
-                return f'ConfigDB::{prop.property_type}'
-            return prop.ctype_ret
         return [
-            *declare_templated_class(obj, [obj.items.ctype_ret, get_ctype_set(obj.items)], True),
+            *declare_templated_class(obj, [obj.items.ctype_ret, obj.items.ctype_set], True),
             constructors,
             '};',
         ]
