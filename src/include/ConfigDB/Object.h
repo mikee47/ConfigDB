@@ -292,8 +292,9 @@ protected:
 
 	int findStringId(const char* value, uint16_t valueLength) const;
 
-	void setPropertyValue(unsigned index, const void* value);
+	void resetPropertyValue(unsigned index);
 	void setPropertyValue(unsigned index, const int64_t& value);
+	void setPropertyValue(unsigned index, const Number& value);
 	void setPropertyValue(unsigned index, const String& value);
 
 	const PropertyInfo* propinfoPtr;

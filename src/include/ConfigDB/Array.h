@@ -73,24 +73,24 @@ protected:
 		return ArrayBase::getStringId(getItemType(), value);
 	}
 
-	void addItem(const void* value)
+	template <typename T> void addItem(const T& value)
 	{
 		PropertyData dst{};
-		dst.setValue(getItemType(), *static_cast<const PropertyData*>(value));
+		dst.setValue(getItemType(), value);
 		this->getArray().add(&dst);
 	}
 
-	void insertItem(unsigned index, const void* value)
+	template <typename T> void insertItem(unsigned index, const T& value)
 	{
 		PropertyData dst{};
-		dst.setValue(getItemType(), *static_cast<const PropertyData*>(value));
+		dst.setValue(getItemType(), value);
 		this->getArray().insert(index, &dst);
 	}
 
-	void setItem(unsigned index, const void* value)
+	template <typename T> void setItem(unsigned index, const T& value)
 	{
 		auto dst = static_cast<PropertyData*>(ArrayBase::getItem(index));
-		dst->setValue(getItemType(), *static_cast<const PropertyData*>(value));
+		dst->setValue(getItemType(), value);
 	}
 
 	int indexOf(const void* value) const
@@ -164,9 +164,11 @@ public:
  * @brief Used by code generator for integral-typed arrays
  * @tparam UpdaterType
  * @tparam ClassType Contained class with type information
- * @tparam ItemType Updater item type
+ * @tparam ItemType Updater item type for returning
+ * @tparam ItemSetType Updater item type for set methods
+ * @tparam ItemCastType Integral type for setting item
  */
-template <class UpdaterType, class ClassType, typename ItemType, typename ItemSetType>
+template <class UpdaterType, class ClassType, typename ItemType, typename ItemSetType, typename ItemCastType>
 class ArrayUpdaterTemplate : public ClassType
 {
 public:
@@ -181,7 +183,7 @@ public:
 
 		ItemRef& operator=(const ItemSetType& value)
 		{
-			static_cast<UpdaterType&>(array).setItem(index, value);
+			static_cast<UpdaterType&>(array).setItem(index, ItemCastType(value));
 			return *this;
 		}
 	};
@@ -190,26 +192,19 @@ public:
 
 	using ClassType::ClassType;
 
-	template <typename T = ItemSetType>
-	typename std::enable_if<!std::is_same<T, int64_t>::value, void>::type setItem(unsigned index, T value)
+	void setItem(unsigned index, const ItemSetType& value)
 	{
-		Array::setItem(index, &value);
+		Array::setItem(index, ItemCastType(value));
 	}
 
-	void setItem(unsigned index, const int64_t& value)
+	void addItem(const ItemSetType& value)
 	{
-		auto dst = static_cast<PropertyData*>(Array::getItem(index));
-		dst->setValue(Array::getItemType(), value);
+		Array::addItem(ItemCastType(value));
 	}
 
-	void addItem(ItemType value)
+	void insertItem(unsigned index, const ItemSetType& value)
 	{
-		Array::addItem(&value);
-	}
-
-	void insertItem(unsigned index, ItemSetType value)
-	{
-		Array::insertItem(index, &value);
+		Array::insertItem(index, ItemCastType(value));
 	}
 
 	ItemRef operator[](unsigned index)
@@ -262,28 +257,29 @@ public:
  * @tparam ClassType Contained class with type information
  * @tparam ItemType always String, but could support string-like objects if we want
  */
-template <class UpdaterType, class ClassType, typename ItemType, typename ItemSetType>
-class StringArrayUpdaterTemplate : public ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType, ItemSetType>
+template <class UpdaterType, class ClassType, typename ItemType, typename ItemSetType, typename ItemCastType>
+class StringArrayUpdaterTemplate
+	: public ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType, ItemSetType, ItemCastType>
 {
 public:
-	using ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType, ItemSetType>::ArrayUpdaterTemplate;
+	using ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType, ItemSetType, ItemCastType>::ArrayUpdaterTemplate;
 
-	void setItem(unsigned index, const ItemSetType& value)
+	void setItem(unsigned index, const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
-		Array::setItem(index, &stringId);
+		Array::setItem(index, stringId);
 	}
 
-	void addItem(const ItemSetType& value)
+	void addItem(const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
-		Array::addItem(&stringId);
+		Array::addItem(stringId);
 	}
 
-	void insertItem(unsigned index, const ItemSetType& value)
+	void insertItem(unsigned index, const ItemType& value)
 	{
 		auto stringId = this->getStringId(value);
-		Array::insertItem(index, &stringId);
+		Array::insertItem(index, stringId);
 	}
 };
 

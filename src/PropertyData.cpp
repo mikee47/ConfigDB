@@ -55,52 +55,6 @@ String PropertyData::getString(const PropertyInfo& info) const
 	return nullptr;
 }
 
-void PropertyData::setValue(const PropertyInfo& prop, const PropertyData& src)
-{
-	switch(prop.type) {
-	case PropertyType::Boolean:
-		boolean = src.boolean;
-		break;
-	case PropertyType::Enum:
-		uint8 = std::min(unsigned(src.uint8), prop.variant.enuminfo->length() - 1);
-		break;
-	case PropertyType::Int8:
-		int8 = PropertyInfo::RangeInt8::clip(prop.variant.int8, src.int8);
-		break;
-	case PropertyType::Int16:
-		int16 = PropertyInfo::RangeInt16::clip(prop.variant.int16, src.int16);
-		break;
-	case PropertyType::Int32:
-		int32 = PropertyInfo::RangeInt32::clip(prop.variant.int32, src.int32);
-		break;
-	case PropertyType::Int64:
-		int64 = PropertyInfo::RangeInt64::clip(prop.variant.int64, src.int64);
-		break;
-	case PropertyType::UInt8:
-		uint8 = PropertyInfo::RangeUInt8::clip(prop.variant.uint8, src.uint8);
-		break;
-	case PropertyType::UInt16:
-		uint16 = PropertyInfo::RangeUInt16::clip(prop.variant.uint16, src.uint16);
-		break;
-	case PropertyType::UInt32:
-		uint32 = PropertyInfo::RangeUInt32::clip(prop.variant.uint32, src.uint32);
-		break;
-	case PropertyType::UInt64:
-		uint64 = PropertyInfo::RangeUInt64::clip(prop.variant.uint64, src.uint64);
-		break;
-	case PropertyType::Number:
-		number = PropertyInfo::RangeNumber::clip(prop.variant.number, src.number);
-		break;
-	case PropertyType::String:
-		string = src.string;
-		break;
-	case PropertyType::Object:
-	case PropertyType::Alias:
-		assert(false);
-		break;
-	}
-}
-
 void PropertyData::setValue(const PropertyInfo& prop, const int64_t& value)
 {
 	switch(prop.type) {
@@ -138,11 +92,23 @@ void PropertyData::setValue(const PropertyInfo& prop, const int64_t& value)
 		number = PropertyInfo::RangeNumber::clip(prop.variant.number, Number{value});
 		break;
 	case PropertyType::String:
+		string = value;
+		break;
 	case PropertyType::Object:
 	case PropertyType::Alias:
 		assert(false);
 		break;
 	}
+}
+
+void PropertyData::setValue(const PropertyInfo& prop, const Number& value)
+{
+	if(prop.type == PropertyType::Number) {
+		number = PropertyInfo::RangeNumber::clip(prop.variant.number, value);
+		return;
+	}
+
+	assert(false);
 }
 
 bool PropertyData::setValue(const PropertyInfo& prop, const char* value, unsigned valueLength)

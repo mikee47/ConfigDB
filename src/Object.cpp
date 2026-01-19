@@ -338,17 +338,10 @@ int Object::findStringId(const char* value, uint16_t valueLength) const
 	return getStore().stringPool.find({value, valueLength});
 }
 
-void Object::setPropertyValue(unsigned index, const void* value)
+void Object::resetPropertyValue(unsigned index)
 {
 	auto& prop = typeinfo().getProperty(index);
-	auto data = PropertyData::fromStruct(prop, getDataPtr());
-	if(!data) {
-		return;
-	}
-	if(value) {
-		auto src = static_cast<const PropertyData*>(value);
-		data->setValue(prop, *src);
-	} else {
+	if(auto data = PropertyData::fromStruct(prop, getDataPtr())) {
 		auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
 		memcpy_P(data, defaultData, prop.getSize());
 	}
@@ -357,18 +350,23 @@ void Object::setPropertyValue(unsigned index, const void* value)
 void Object::setPropertyValue(unsigned index, const int64_t& value)
 {
 	auto& prop = typeinfo().getProperty(index);
-	auto data = PropertyData::fromStruct(prop, getDataPtr());
-	if(!data) {
-		return;
+	if(auto data = PropertyData::fromStruct(prop, getDataPtr())) {
+		data->setValue(prop, value);
 	}
-	data->setValue(prop, value);
+}
+
+void Object::setPropertyValue(unsigned index, const Number& value)
+{
+	auto& prop = typeinfo().getProperty(index);
+	if(auto data = PropertyData::fromStruct(prop, getDataPtr())) {
+		data->setValue(prop, value);
+	}
 }
 
 void Object::setPropertyValue(unsigned index, const String& value)
 {
 	auto& prop = typeinfo().getProperty(index);
-	auto data = PropertyData::fromStruct(prop, getDataPtr());
-	if(data) {
+	if(auto data = PropertyData::fromStruct(prop, getDataPtr())) {
 		data->string = getStringId(prop, value);
 	}
 }

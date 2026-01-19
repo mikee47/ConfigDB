@@ -57,12 +57,9 @@ union __attribute__((packed)) PropertyData {
 
 	String getString(const PropertyInfo& info) const;
 
-	/**
-	 * @brief Range-check raw binary value. Do not use with Strings.
-	 */
-	void setValue(const PropertyInfo& prop, const PropertyData& src);
-
 	void setValue(const PropertyInfo& prop, const int64_t& value);
+
+	void setValue(const PropertyInfo& prop, const Number& value);
 
 	bool setValue(const PropertyInfo& prop, const char* value, unsigned valueLength);
 

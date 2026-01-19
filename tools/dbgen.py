@@ -272,6 +272,13 @@ class Property:
         return self.ctype_ret
 
     @property
+    def ctype_cast(self):
+        '''Integral type for cast when setting'''
+        if self.ptype in ['integer', 'enum']:
+            return 'int64_t'
+        return self.ctype
+
+    @property
     def propdata_id(self):
         return 'uint8' if self.enum else self.property_type.lower()
 
@@ -1233,9 +1240,9 @@ def generate_property_write_accessors(obj: Object) -> list:
         if prop.ptype == 'string':
             stype = prop.ctype_ret
             return 'value' if stype == 'String' else f'String(value)'
-        if prop.ptype == 'integer' and not prop.enum:
+        if prop.ptype in ['integer', 'bool']:
             return 'int64_t(value)'
-        return '&value'
+        return 'value'
 
     if obj.is_union:
         return [
@@ -1269,7 +1276,7 @@ def generate_property_write_accessors(obj: Object) -> list:
         '',
         f'void reset{prop.typename}()',
         '{',
-        [f'setPropertyValue({index}, nullptr);'],
+        [f'resetPropertyValue({index});'],
         '}'
         ) for index, prop in enumerate(obj.properties))]
 
@@ -1392,7 +1399,7 @@ def generate_updater(object_prop: Property) -> list:
 
     if obj.is_array:
         return [
-            *declare_templated_class(obj, [obj.items.ctype_ret, obj.items.ctype_set], True),
+            *declare_templated_class(obj, [obj.items.ctype_ret, obj.items.ctype_set, obj.items.ctype_cast], True),
             constructors,
             '};',
         ]
