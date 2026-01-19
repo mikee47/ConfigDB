@@ -110,35 +110,17 @@ struct EnumInfo {
  * @brief Clamp an integer to the range of a specific storage type
  * @tparam T Type of integer value is to be clamped to
  */
-template <typename T> constexpr T clamp(const int64_t& value)
+template <typename T, typename U> constexpr T clamp(U value)
 {
 	using L = std::numeric_limits<T>;
-	return TRange<int64_t>{L::min(), L::max()}.clip(value);
+	return TRange<U>{L::min(), L::max()}.clip(value);
 }
-
-/**
- * @brief Used to set integer property values clamped to their storage type without truncation
- */
-template <typename T, int64_t minimum = std::numeric_limits<T>::minimum(),
-		  int64_t maximum = std::numeric_limits<T>::maximum()>
-struct IntClamped {
-	int64_t value;
-
-	constexpr IntClamped(const int64_t& v) : value(v)
-	{
-	}
-
-	T clamped() const
-	{
-		return T(TRange(minimum, maximum).clip(value));
-	}
-};
 
 /**
  * @brief Property metadata
  */
 struct PropertyInfo {
-	template <typename T, typename U = T> struct RangeTemplate {
+	template <typename T, typename U> struct RangeTemplate {
 		T minimum;
 		T maximum;
 
@@ -149,18 +131,19 @@ struct PropertyInfo {
 
 		static U clip(const RangeTemplate<T, U>* range, U value)
 		{
-			return range ? range->clip(value) : value;
+			return range ? range->clip(value) : clamp<U>(value);
 		}
 	};
 	using RangeNumber = RangeTemplate<const_number_t, number_t>;
-	using RangeInt8 = RangeTemplate<int32_t, int8_t>;
-	using RangeInt16 = RangeTemplate<int32_t, int16_t>;
-	using RangeInt32 = RangeTemplate<int32_t>;
-	using RangeInt64 = RangeTemplate<int64_t>;
-	using RangeUInt8 = RangeTemplate<uint32_t, uint8_t>;
-	using RangeUInt16 = RangeTemplate<uint32_t, uint16_t>;
-	using RangeUInt32 = RangeTemplate<uint32_t>;
-	using RangeUInt64 = RangeTemplate<uint64_t>;
+	using RangeInt8 = RangeTemplate<int32_t, int64_t>;
+	using RangeInt16 = RangeTemplate<int32_t, int64_t>;
+	using RangeInt32 = RangeTemplate<int32_t, int64_t>;
+	using RangeInt64 = RangeTemplate<int64_t, int64_t>;
+	using RangeUInt8 = RangeTemplate<uint32_t, int64_t>;
+	using RangeUInt16 = RangeTemplate<uint32_t, int64_t>;
+	using RangeUInt32 = RangeTemplate<uint32_t, int64_t>;
+	using RangeUInt64 = RangeTemplate<uint64_t, int64_t>;
+
 	// Variant property information depends on type
 	union Variant {
 		const FlashString* defaultString;

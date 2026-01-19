@@ -190,9 +190,16 @@ public:
 
 	using ClassType::ClassType;
 
-	void setItem(unsigned index, ItemSetType value)
+	template <typename T = ItemSetType>
+	typename std::enable_if<!std::is_same<T, int64_t>::value, void>::type setItem(unsigned index, T value)
 	{
 		Array::setItem(index, &value);
+	}
+
+	void setItem(unsigned index, const int64_t& value)
+	{
+		auto dst = static_cast<PropertyData*>(Array::getItem(index));
+		dst->setValue(Array::getItemType(), value);
 	}
 
 	void addItem(ItemType value)

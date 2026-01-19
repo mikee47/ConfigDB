@@ -293,13 +293,8 @@ protected:
 	int findStringId(const char* value, uint16_t valueLength) const;
 
 	void setPropertyValue(unsigned index, const void* value);
+	void setPropertyValue(unsigned index, const int64_t& value);
 	void setPropertyValue(unsigned index, const String& value);
-
-	template <typename T, int64_t min, int64_t max> void setPropertyValue(unsigned index, IntClamped<T, min, max> value)
-	{
-		T clampedValue = value.clamped();
-		setPropertyValue(index, &clampedValue);
-	}
 
 	const PropertyInfo* propinfoPtr;
 	Object* parent{};

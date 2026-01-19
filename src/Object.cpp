@@ -354,6 +354,16 @@ void Object::setPropertyValue(unsigned index, const void* value)
 	}
 }
 
+void Object::setPropertyValue(unsigned index, const int64_t& value)
+{
+	auto& prop = typeinfo().getProperty(index);
+	auto data = PropertyData::fromStruct(prop, getDataPtr());
+	if(!data) {
+		return;
+	}
+	data->setValue(prop, value);
+}
+
 void Object::setPropertyValue(unsigned index, const String& value)
 {
 	auto& prop = typeinfo().getProperty(index);

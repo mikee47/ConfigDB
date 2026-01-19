@@ -1234,7 +1234,7 @@ def generate_property_write_accessors(obj: Object) -> list:
             stype = prop.ctype_ret
             return 'value' if stype == 'String' else f'String(value)'
         if prop.ptype == 'integer' and not prop.enum:
-            return f'ConfigDB::IntClamped<{prop.ctype_ret}, {prop.intrange.minimum}, {prop.intrange.maximum}>{{value}}'
+            return 'int64_t(value)'
         return '&value'
 
     if obj.is_union:
