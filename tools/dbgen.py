@@ -267,9 +267,11 @@ class Property:
     @property
     def ctype_set(self):
         '''Type to use for updater value'''
-        if self.ptype == 'integer' and not self.enum:
+        if self.ptype == 'integer':
             return self.ctype_override or 'int64_t'
-        return self.ctype_ret
+        if self.ptype in ['number', 'boolean']:
+            return self.ctype_ret
+        return f'const {self.ctype_ret}&'
 
     @property
     def ctype_cast(self):
@@ -1222,13 +1224,19 @@ def generate_property_accessors(obj: Object) -> list:
                 ) for index, prop in enumerate(obj.object_properties))
             ]
 
+    def get_value_expr(index: int, prop: Property) -> str:
+        value = f'getPropertyData({index})->{prop.propdata_id}'
+        if prop.ctype_override:
+            return f'{prop.ctype_override}({value})'
+        return value
+
     return [*((
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
         [f'return getPropertyString({index});']
         if prop.ptype == 'string' else
-        [f'return {prop.ctype_ret}(getPropertyData({index})->{prop.propdata_id});'],
+        [f'return {get_value_expr(index, prop)};'],
         '}',
         ) for index, prop in enumerate(obj.properties))]
 
@@ -1237,11 +1245,11 @@ def generate_property_write_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
     def get_value_expr(prop: Property) -> str:
-        if prop.ptype == 'string':
-            stype = prop.ctype_ret
-            return 'value' if stype == 'String' else f'String(value)'
-        if prop.ptype in ['integer', 'bool']:
-            return 'int64_t(value)'
+        if prop.ctype_override:
+            if prop.ptype == 'string':
+                return f'String(value)'
+            if prop.ptype == 'integer':
+                return 'int64_t(value)'
         return 'value'
 
     if obj.is_union:
@@ -1269,7 +1277,7 @@ def generate_property_write_accessors(obj: Object) -> list:
 
     return [*((
         '',
-        f'void set{prop.typename}(const {prop.ctype_set}& value)',
+        f'void set{prop.typename}({prop.ctype_set} value)',
         '{',
         [f'setPropertyValue({index}, {get_value_expr(prop)});'],
         '}',
