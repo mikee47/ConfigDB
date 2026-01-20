@@ -101,6 +101,13 @@ class Range:
     def is_constrained(self):
         return (self.minimum, self.maximum) != (NUMBER_MIN, NUMBER_MAX)
 
+    def __str__(self):
+        min, max = self.minimum, self.maximum
+        if min == NUMBER_MIN:
+            min = 'number_t::lowest()'
+        if max == NUMBER_MAX:
+            max = 'number_t::max()'
+        return f'{min}, {max}'
 
 @dataclass
 class IntRange(Range):
@@ -1060,7 +1067,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
         if prop.ptype in ['number', 'integer']:
             r = prop.range
             lines.header += [
-                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}Range PROGMEM {{{r.minimum}, {r.maximum}}};'
+                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}Range PROGMEM {{{r}}};'
             ]
             if r.is_constrained():
                 tag = r.property_type.lower()
