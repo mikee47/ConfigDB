@@ -89,6 +89,16 @@ public:
 			TestConfigRange::Root root(db);
 			REQUIRE_EQ(root.getInt64val(), -1);
 			if(auto update = root.update()) {
+				update.setUint8val(0x10000000000);
+				REQUIRE_EQ(root.getUint8val(), 255);
+				update.setUint8val(-100);
+				REQUIRE_EQ(root.getUint8val(), 0);
+
+				update.setInt32val(0x100000000);
+				REQUIRE_EQ(root.getInt32val(), 0x7fffffff);
+				update.setInt32val(-0x100000000);
+				REQUIRE_EQ(root.getInt32val(), -0x80000000);
+
 				update.setInt64val(-100000000001LL);
 				REQUIRE_EQ(root.getInt64val(), -100000000000LL);
 				update.setInt64val(100000000001LL);

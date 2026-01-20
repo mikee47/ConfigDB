@@ -1059,11 +1059,11 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype in ['number', 'integer']:
             r = prop.range
+            lines.header += [
+                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}Range PROGMEM {{{r.minimum}, {r.maximum}}};'
+            ]
             if r.is_constrained():
                 tag = r.property_type.lower()
-                lines.header += [
-                    f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}Range PROGMEM {{{r.minimum}, {r.maximum}}};'
-                ]
                 return f'.{tag} = &{prop.id}Range'
         return ''
 

@@ -129,6 +129,11 @@ struct PropertyInfo {
 			return TRange(U(minimum), U(maximum)).clip(value);
 		}
 
+		bool contains(U value) const
+		{
+			return TRange(U(minimum), U(maximum)).contains(value);
+		}
+
 		static U clip(const RangeTemplate<T, U>* range, U value)
 		{
 			return range ? range->clip(value) : clamp<U>(value);
