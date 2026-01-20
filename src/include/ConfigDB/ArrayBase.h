@@ -42,26 +42,13 @@ public:
 		return getArray().remove(index);
 	}
 
-	void* getItem(unsigned index)
-	{
-		return getArray()[index];
-	}
-
-	const void* getItem(unsigned index) const
-	{
-		return getArray()[index];
-	}
-
-	void addItem(const void* value)
-	{
-		getArray().add(value);
-	}
-
 	void clear();
 
 	void dispose();
 
 protected:
+	friend class Object;
+
 	ArrayId& getId()
 	{
 		return static_cast<PropertyData*>(getDataPtr())->array;
@@ -70,6 +57,16 @@ protected:
 	ArrayId getId() const
 	{
 		return static_cast<const PropertyData*>(getDataPtr())->array;
+	}
+
+	void* getItem(unsigned index)
+	{
+		return getArray()[index];
+	}
+
+	const void* getItem(unsigned index) const
+	{
+		return getArray()[index];
 	}
 
 	ArrayData& getArray();
