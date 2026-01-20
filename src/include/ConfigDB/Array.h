@@ -73,21 +73,21 @@ protected:
 		return ArrayBase::getStringId(getItemType(), value);
 	}
 
-	template <typename T> void addItem(const T& value)
+	template <typename T> void addItem(T value)
 	{
 		PropertyData dst{};
 		dst.setValue(getItemType(), value);
 		this->getArray().add(&dst);
 	}
 
-	template <typename T> void insertItem(unsigned index, const T& value)
+	template <typename T> void insertItem(unsigned index, T value)
 	{
 		PropertyData dst{};
 		dst.setValue(getItemType(), value);
 		this->getArray().insert(index, &dst);
 	}
 
-	template <typename T> void setItem(unsigned index, const T& value)
+	template <typename T> void setItem(unsigned index, T value)
 	{
 		auto dst = static_cast<PropertyData*>(ArrayBase::getItem(index));
 		dst->setValue(getItemType(), value);
@@ -181,7 +181,7 @@ public:
 			return static_cast<UpdaterType&>(array).getItem(index);
 		}
 
-		ItemRef& operator=(const ItemSetType& value)
+		ItemRef& operator=(ItemSetType value)
 		{
 			static_cast<UpdaterType&>(array).setItem(index, ItemCastType(value));
 			return *this;
@@ -192,17 +192,17 @@ public:
 
 	using ClassType::ClassType;
 
-	void setItem(unsigned index, const ItemSetType& value)
+	void setItem(unsigned index, ItemSetType value)
 	{
 		Array::setItem(index, ItemCastType(value));
 	}
 
-	void addItem(const ItemSetType& value)
+	void addItem(ItemSetType value)
 	{
 		Array::addItem(ItemCastType(value));
 	}
 
-	void insertItem(unsigned index, const ItemSetType& value)
+	void insertItem(unsigned index, ItemSetType value)
 	{
 		Array::insertItem(index, ItemCastType(value));
 	}
@@ -264,22 +264,19 @@ class StringArrayUpdaterTemplate
 public:
 	using ArrayUpdaterTemplate<UpdaterType, ClassType, ItemType, ItemSetType, ItemCastType>::ArrayUpdaterTemplate;
 
-	void setItem(unsigned index, const ItemType& value)
+	void setItem(unsigned index, ItemType value)
 	{
-		auto stringId = this->getStringId(value);
-		Array::setItem(index, stringId);
+		Array::setItem(index, this->getStringId(value));
 	}
 
-	void addItem(const ItemType& value)
+	void addItem(ItemSetType value)
 	{
-		auto stringId = this->getStringId(value);
-		Array::addItem(stringId);
+		Array::addItem(this->getStringId(value));
 	}
 
-	void insertItem(unsigned index, const ItemType& value)
+	void insertItem(unsigned index, ItemSetType value)
 	{
-		auto stringId = this->getStringId(value);
-		Array::insertItem(index, stringId);
+		Array::insertItem(index, this->getStringId(value));
 	}
 };
 

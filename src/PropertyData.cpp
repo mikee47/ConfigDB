@@ -55,7 +55,7 @@ String PropertyData::getString(const PropertyInfo& info) const
 	return nullptr;
 }
 
-void PropertyData::setValue(const PropertyInfo& prop, const int64_t& value)
+void PropertyData::setValue(const PropertyInfo& prop, int64_t value)
 {
 	switch(prop.type) {
 	case PropertyType::Boolean:
@@ -101,7 +101,7 @@ void PropertyData::setValue(const PropertyInfo& prop, const int64_t& value)
 	}
 }
 
-void PropertyData::setValue(const PropertyInfo& prop, const Number& value)
+void PropertyData::setValue(const PropertyInfo& prop, Number value)
 {
 	if(prop.type == PropertyType::Number) {
 		number = PropertyInfo::RangeNumber::clip(prop.variant.number, value);

@@ -347,7 +347,7 @@ void Object::resetPropertyValue(unsigned index)
 	}
 }
 
-void Object::setPropertyValue(unsigned index, const int64_t& value)
+void Object::setPropertyValue(unsigned index, int64_t value)
 {
 	auto& prop = typeinfo().getProperty(index);
 	if(auto data = PropertyData::fromStruct(prop, getDataPtr())) {
@@ -355,7 +355,7 @@ void Object::setPropertyValue(unsigned index, const int64_t& value)
 	}
 }
 
-void Object::setPropertyValue(unsigned index, const Number& value)
+void Object::setPropertyValue(unsigned index, Number value)
 {
 	auto& prop = typeinfo().getProperty(index);
 	if(auto data = PropertyData::fromStruct(prop, getDataPtr())) {
