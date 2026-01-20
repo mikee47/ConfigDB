@@ -136,17 +136,25 @@ struct PropertyInfo {
 
 		static U clip(const RangeTemplate<T, U>* range, U value)
 		{
-			return range ? range->clip(value) : clamp<U>(value);
+			return range ? U(range->clip(value)) : value;
 		}
 	};
+
+	template <typename T, typename U, typename V> struct ClampedRangeTemplate : public RangeTemplate<T, U> {
+		static U clip(const RangeTemplate<T, U>* range, U value)
+		{
+			return range ? U(range->clip(value)) : clamp<V>(value);
+		}
+	};
+
 	using RangeNumber = RangeTemplate<const_number_t, number_t>;
-	using RangeInt8 = RangeTemplate<int32_t, int64_t>;
-	using RangeInt16 = RangeTemplate<int32_t, int64_t>;
-	using RangeInt32 = RangeTemplate<int32_t, int64_t>;
+	using RangeInt8 = ClampedRangeTemplate<int32_t, int64_t, int8_t>;
+	using RangeInt16 = ClampedRangeTemplate<int32_t, int64_t, int16_t>;
+	using RangeInt32 = ClampedRangeTemplate<int32_t, int64_t, int32_t>;
 	using RangeInt64 = RangeTemplate<int64_t, int64_t>;
-	using RangeUInt8 = RangeTemplate<uint32_t, int64_t>;
-	using RangeUInt16 = RangeTemplate<uint32_t, int64_t>;
-	using RangeUInt32 = RangeTemplate<uint32_t, int64_t>;
+	using RangeUInt8 = ClampedRangeTemplate<uint32_t, int64_t, uint8_t>;
+	using RangeUInt16 = ClampedRangeTemplate<uint32_t, int64_t, uint16_t>;
+	using RangeUInt32 = ClampedRangeTemplate<uint32_t, int64_t, uint32_t>;
 	using RangeUInt64 = RangeTemplate<uint64_t, int64_t>;
 
 	// Variant property information depends on type
