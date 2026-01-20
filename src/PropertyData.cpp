@@ -55,60 +55,63 @@ String PropertyData::getString(const PropertyInfo& info) const
 	return nullptr;
 }
 
-void PropertyData::setValue(const PropertyInfo& prop, int64_t value)
+bool PropertyData::setValue(const PropertyInfo& prop, int64_t value)
 {
 	switch(prop.type) {
 	case PropertyType::Boolean:
 		boolean = (value != 0);
-		break;
+		return true;
 	case PropertyType::Enum:
 		uint8 = TRange<int64_t>(0, prop.variant.enuminfo->length() - 1).clip(value);
-		break;
+		return true;
 	case PropertyType::Int8:
 		int8 = PropertyInfo::RangeInt8::clip(prop.variant.int8, value);
-		break;
+		return true;
 	case PropertyType::Int16:
 		int16 = PropertyInfo::RangeInt16::clip(prop.variant.int16, value);
-		break;
+		return true;
 	case PropertyType::Int32:
 		int32 = PropertyInfo::RangeInt32::clip(prop.variant.int32, value);
-		break;
+		return true;
 	case PropertyType::Int64:
 		int64 = PropertyInfo::RangeInt64::clip(prop.variant.int64, value);
-		break;
+		return true;
 	case PropertyType::UInt8:
 		uint8 = PropertyInfo::RangeUInt8::clip(prop.variant.uint8, value);
-		break;
+		return true;
 	case PropertyType::UInt16:
 		uint16 = PropertyInfo::RangeUInt16::clip(prop.variant.uint16, value);
-		break;
+		return true;
 	case PropertyType::UInt32:
 		uint32 = PropertyInfo::RangeUInt32::clip(prop.variant.uint32, value);
-		break;
+		return true;
 	case PropertyType::UInt64:
 		uint64 = PropertyInfo::RangeUInt64::clip(prop.variant.uint64, value);
-		break;
+		return true;
 	case PropertyType::Number:
 		number = PropertyInfo::RangeNumber::clip(prop.variant.number, Number{value});
-		break;
+		return true;
 	case PropertyType::String:
 		string = value;
-		break;
+		return true;
 	case PropertyType::Object:
 	case PropertyType::Alias:
-		assert(false);
 		break;
-	}
-}
-
-void PropertyData::setValue(const PropertyInfo& prop, Number value)
-{
-	if(prop.type == PropertyType::Number) {
-		number = PropertyInfo::RangeNumber::clip(prop.variant.number, value);
-		return;
 	}
 
 	assert(false);
+	return false;
+}
+
+bool PropertyData::setValue(const PropertyInfo& prop, Number value)
+{
+	if(prop.type == PropertyType::Number) {
+		number = PropertyInfo::RangeNumber::clip(prop.variant.number, value);
+		return true;
+	}
+
+	assert(false);
+	return false;
 }
 
 bool PropertyData::setValue(const PropertyInfo& prop, const char* value, unsigned valueLength)
@@ -125,8 +128,7 @@ bool PropertyData::setValue(const PropertyInfo& prop, const char* value, unsigne
 	case PropertyType::UInt16:
 	case PropertyType::UInt32:
 	case PropertyType::UInt64:
-		setValue(prop, strtoll(value, nullptr, 0));
-		return true;
+		return setValue(prop, strtoll(value, nullptr, 0));
 	case PropertyType::Number: {
 		number_t num{};
 		if(number_t::parse(value, valueLength, num)) {
@@ -152,6 +154,7 @@ bool PropertyData::setValue(const PropertyInfo& prop, const char* value, unsigne
 	case PropertyType::Alias:
 		break;
 	}
+
 	assert(false);
 	return false;
 }

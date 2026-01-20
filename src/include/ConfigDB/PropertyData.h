@@ -57,9 +57,9 @@ union __attribute__((packed)) PropertyData {
 
 	String getString(const PropertyInfo& info) const;
 
-	void setValue(const PropertyInfo& prop, int64_t value);
+	bool setValue(const PropertyInfo& prop, int64_t value);
 
-	void setValue(const PropertyInfo& prop, Number value);
+	bool setValue(const PropertyInfo& prop, Number value);
 
 	bool setValue(const PropertyInfo& prop, const char* value, unsigned valueLength);
 
