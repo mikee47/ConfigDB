@@ -1064,13 +1064,14 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype in ['number', 'integer']:
+            range_tag = 'item' if prop.is_item else prop.id
             r = prop.range
             lines.header += [
-                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}Range PROGMEM {{{r}}};'
+                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {range_tag}Range PROGMEM {{{r}}};'
             ]
             if r.is_constrained():
                 tag = r.property_type.lower()
-                return f'.{tag} = &{prop.id}Range'
+                return f'.{tag} = &{range_tag}Range'
         return ''
 
     proplist = []
