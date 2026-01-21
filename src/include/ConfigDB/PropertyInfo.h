@@ -107,55 +107,18 @@ struct EnumInfo {
 };
 
 /**
- * @brief Clamp an integer to the range of a specific storage type
- * @tparam T Type of integer value is to be clamped to
- */
-template <typename T, typename U> constexpr T clamp(U value)
-{
-	using L = std::numeric_limits<T>;
-	return TRange<U>{L::min(), L::max()}.clip(value);
-}
-
-/**
  * @brief Property metadata
  */
 struct PropertyInfo {
-	template <typename T, typename U> struct RangeTemplate {
-		T minimum;
-		T maximum;
-
-		U clip(U value) const
-		{
-			return TRange(U(minimum), U(maximum)).clip(value);
-		}
-
-		bool contains(U value) const
-		{
-			return TRange(U(minimum), U(maximum)).contains(value);
-		}
-
-		static U clip(const RangeTemplate<T, U>* range, U value)
-		{
-			return range ? U(range->clip(value)) : value;
-		}
-	};
-
-	template <typename T, typename U, typename V> struct ClampedRangeTemplate : public RangeTemplate<T, U> {
-		static U clip(const RangeTemplate<T, U>* range, U value)
-		{
-			return range ? U(range->clip(value)) : clamp<V>(value);
-		}
-	};
-
-	using RangeNumber = RangeTemplate<const_number_t, number_t>;
-	using RangeInt8 = ClampedRangeTemplate<int32_t, int64_t, int8_t>;
-	using RangeInt16 = ClampedRangeTemplate<int32_t, int64_t, int16_t>;
-	using RangeInt32 = ClampedRangeTemplate<int32_t, int64_t, int32_t>;
-	using RangeInt64 = RangeTemplate<int64_t, int64_t>;
-	using RangeUInt8 = ClampedRangeTemplate<uint32_t, int64_t, uint8_t>;
-	using RangeUInt16 = ClampedRangeTemplate<uint32_t, int64_t, uint16_t>;
-	using RangeUInt32 = ClampedRangeTemplate<uint32_t, int64_t, uint32_t>;
-	using RangeUInt64 = RangeTemplate<uint64_t, int64_t>;
+	using RangeNumber = TRange<const_number_t>;
+	using RangeInt8 = TRange<int32_t>;
+	using RangeInt16 = TRange<int32_t>;
+	using RangeInt32 = TRange<int32_t>;
+	using RangeInt64 = TRange<int64_t>;
+	using RangeUInt8 = TRange<uint32_t>;
+	using RangeUInt16 = TRange<uint32_t>;
+	using RangeUInt32 = TRange<uint32_t>;
+	using RangeUInt64 = TRange<uint64_t>;
 
 	// Variant property information depends on type
 	union Variant {
