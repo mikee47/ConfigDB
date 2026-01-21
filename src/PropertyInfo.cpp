@@ -54,8 +54,6 @@ String EnumInfo::getString(uint8_t index) const
 		return String(getValue<uint16_t>(index));
 	case PropertyType::UInt32:
 		return String(getValue<uint32_t>(index));
-	case PropertyType::UInt64:
-		return String(getValue<uint64_t>(index));
 	case PropertyType::Number:
 		return toString(getValue<number_t>(index));
 	case PropertyType::String:
@@ -84,11 +82,6 @@ int EnumInfo::find(const char* value, unsigned length) const
 		return getArray<number_t>().indexOf(num);
 	}
 
-	if(type == PropertyType::UInt64) {
-		uint64_t intval = strtoull(value, nullptr, 0);
-		return getArray<uint64_t>().indexOf(intval);
-	}
-
 	int64_t intval = strtoll(value, nullptr, 0);
 	switch(type) {
 	case PropertyType::Int8:
@@ -105,7 +98,6 @@ int EnumInfo::find(const char* value, unsigned length) const
 		return getArray<uint16_t>().indexOf(intval);
 	case PropertyType::UInt32:
 		return getArray<uint32_t>().indexOf(intval);
-	case PropertyType::UInt64:
 	case PropertyType::Number:
 	case PropertyType::String:
 	case PropertyType::Boolean:

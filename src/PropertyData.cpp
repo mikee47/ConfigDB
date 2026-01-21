@@ -52,8 +52,6 @@ String PropertyData::getString(const PropertyInfo& info) const
 		return String(uint16);
 	case PropertyType::UInt32:
 		return String(uint32);
-	case PropertyType::UInt64:
-		return String(uint64);
 	case PropertyType::Number:
 		return String(number);
 	case PropertyType::String:
@@ -94,9 +92,6 @@ bool PropertyData::setValue(const PropertyInfo& prop, int64_t value)
 		return true;
 	case PropertyType::UInt32:
 		uint32 = prop.variant.uint32 ? prop.variant.uint32->clip(value) : clamp<uint32_t>(value);
-		return true;
-	case PropertyType::UInt64:
-		uint64 = prop.variant.uint64 ? prop.variant.uint64->clip(value) : std::max(0LL, value);
 		return true;
 	case PropertyType::Number: {
 		number_t num = Number{value};
@@ -140,7 +135,6 @@ bool PropertyData::setValue(const PropertyInfo& prop, const char* value, unsigne
 	case PropertyType::UInt8:
 	case PropertyType::UInt16:
 	case PropertyType::UInt32:
-	case PropertyType::UInt64:
 		return setValue(prop, strtoll(value, nullptr, 0));
 	case PropertyType::Number: {
 		number_t num{};

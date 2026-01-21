@@ -35,7 +35,6 @@ CPP_TYPESIZES = {
     'uint8_t': 1,
     'uint16_t': 2,
     'uint32_t': 4,
-    'uint64_t': 8,
     'ConfigDB::Number': 4,
     'String': STRING_ID_SIZE,
 }
@@ -116,7 +115,7 @@ class IntRange(Range):
 
     @staticmethod
     def deduce(minval: int, maxval: int) -> IntRange:
-        r = IntRange(minval, maxval, minval < 0, 8)
+        r = IntRange(minval, maxval, minval < 0 or maxval > 0xffffffff, 8)
         while minval < r.typemin or maxval > r.typemax:
             r.bits *= 2
         return r

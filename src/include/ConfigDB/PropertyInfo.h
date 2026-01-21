@@ -38,7 +38,6 @@
 	XX(UInt8, 1)                                                                                                       \
 	XX(UInt16, 2)                                                                                                      \
 	XX(UInt32, 4)                                                                                                      \
-	XX(UInt64, 8)                                                                                                      \
 	XX(Number, 4)                                                                                                      \
 	XX(String, sizeof(StringId))                                                                                       \
 	XX(Object, sizeof(ObjectInfo*))                                                                                    \
@@ -118,7 +117,6 @@ struct PropertyInfo {
 	using RangeUInt8 = TRange<uint32_t>;
 	using RangeUInt16 = TRange<uint32_t>;
 	using RangeUInt32 = TRange<uint32_t>;
-	using RangeUInt64 = TRange<uint64_t>;
 
 	// Variant property information depends on type
 	union Variant {
@@ -133,7 +131,6 @@ struct PropertyInfo {
 		const RangeUInt8* uint8;
 		const RangeUInt16* uint16;
 		const RangeUInt32* uint32;
-		const RangeUInt64* uint64;
 	};
 
 	PropertyType type;
