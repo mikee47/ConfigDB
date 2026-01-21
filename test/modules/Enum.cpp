@@ -29,6 +29,9 @@ public:
 		Serial << "smallMap[" << smallMapType.values().length() << "]: " << smallMapType.values() << endl;
 		Serial << "numberMap[" << numberMapType.values().length() << "]: " << numberMapType.values() << endl;
 
+		// Verify `toString()` functions
+		Serial << _F("toString(Color::blue): ") << TestConfigEnum::Color::blue << endl;
+
 		TestConfigEnum::Root root(db);
 
 		DEFINE_FSTR_LOCAL(quotientsDefault, "[37,15,2500]")
@@ -41,16 +44,16 @@ public:
 			update.colors.addItem(Root::Color(100));
 			REQUIRE(update.colors[0] == Root::Color::blue);
 			for(unsigned i = 0; i < 10; ++i) {
-				update.colors.addItem(Root::Color(os_random() % colorType.values().length()));
+				update.colors.addItem(Root::colorRange.random());
 			}
 			for(unsigned i = 0; i < 20; ++i) {
-				update.quotients.addItem(Root::Quotient(os_random() % quotientType.values().length()));
+				update.quotients.addItem(Root::Quotients::itemRange.random());
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.smallMap.addItem(os_random() % smallMapType.values().length());
+				update.smallMap.addItem(root.smallMap.itemRange.random());
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.numberMap.addItem(os_random() % numberMapType.values().length());
+				update.numberMap.addItem(root.numberMap.itemRange.random());
 			}
 		}
 

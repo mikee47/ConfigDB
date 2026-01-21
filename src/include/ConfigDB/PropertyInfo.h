@@ -106,6 +106,21 @@ struct EnumInfo {
 };
 
 /**
+ * @brief Support random() for ranges of enumerated types
+ */
+template <typename T> class EnumRange : public TRange<T>
+{
+public:
+	using TRange<T>::TRange;
+
+	T random() const
+	{
+		TRange<uint8_t> range{uint8_t(this->min), uint8_t(this->max)};
+		return T(range.random());
+	}
+};
+
+/**
  * @brief Property metadata
  */
 struct PropertyInfo {

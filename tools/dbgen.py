@@ -213,13 +213,12 @@ class Property:
             if self.ptype == 'string':
                 pass
             elif self.ptype == 'integer':
-                minval, maxval = min(self.enum), max(self.enum)
-                self.range = r = IntRange.deduce(minval, maxval)
+                r = IntRange.deduce(min(self.enum), max(self.enum))
                 r.check(self.enum)
                 self.enum_type = r.property_type
                 self.enum_ctype = r.ctype
             elif self.ptype == 'number':
-                self.range = r = Range(NUMBER_MIN, NUMBER_MAX)
+                r = Range(NUMBER_MIN, NUMBER_MAX)
                 r.check(self.enum)
                 self.enum_ctype = 'const_number_t'
             else:
@@ -1044,7 +1043,9 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             # but make an exception for array items since there is only one definition
             enumtype = 'ItemType' if prop.is_item else f'{make_typename(prop.name)}Type'
             enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
+            enumtype_range = 'item' if prop.is_item else prop.id
             lines.header += [
+                f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> {enumtype_range}Range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};'
                 '',
                 f'struct {enumtype} {{',
                 [
@@ -1252,6 +1253,8 @@ def generate_property_accessors(obj: Object) -> list:
             ]
 
     def get_value_expr(index: int, prop: Property) -> str:
+        if prop.ptype == 'string':
+            return f'getPropertyString({index})'
         value = f'getPropertyData({index})->{prop.propdata_id}'
         if prop.ctype_override:
             return f'{prop.ctype_override}({value})'
@@ -1261,8 +1264,6 @@ def generate_property_accessors(obj: Object) -> list:
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
-        [f'return getPropertyString({index});']
-        if prop.ptype == 'string' else
         [f'return {get_value_expr(index, prop)};'],
         '}',
         ) for index, prop in enumerate(obj.properties))]

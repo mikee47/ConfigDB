@@ -66,6 +66,13 @@ public:
 		{
 			REQUIRE_EQ(root.getSimpleInt(), -1);
 
+			int myNewValue = 1234;
+			if(root.simpleIntRange.contains(myNewValue)) {
+				// Proposed new value is OK
+			} else {
+				// Value is out of range
+			}
+
 			// Change value
 			if(auto updater = root.update()) {
 				// Check clipping
