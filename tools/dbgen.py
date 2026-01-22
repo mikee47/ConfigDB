@@ -202,24 +202,6 @@ class Property:
         maxval = fields.get('maximum')
         self.validate_type(maxval, 'maximum')
 
-        if self.ptype == 'integer':
-            int32 = IntRange(0, 0, True, 32)
-            if minval is None:
-                minval = int32.typemin
-            if maxval is None:
-                maxval = int32.typemax
-            self.range = r = IntRange.deduce(minval, maxval)
-            r.check(self.default or 0)
-            self.ctype = r.ctype
-            self.property_type = r.property_type
-        elif self.ptype == 'number':
-            if minval is None:
-                minval = NUMBER_MIN
-            if maxval is None:
-                maxval = NUMBER_MAX
-            self.range = r = Range(minval, maxval)
-            r.check(self.default or 0)
-
         if not self.ctype:
             error(f'Invalid property type "{self.ptype}"')
 
@@ -251,6 +233,23 @@ class Property:
             self.ptype = 'integer'
             self.property_type = 'Enum'
             self.ctype = 'uint8_t'
+        elif self.ptype == 'integer':
+            int32 = IntRange(0, 0, True, 32)
+            if minval is None:
+                minval = int32.typemin
+            if maxval is None:
+                maxval = int32.typemax
+            self.range = r = IntRange.deduce(minval, maxval)
+            r.check(self.default or 0)
+            self.ctype = r.ctype
+            self.property_type = r.property_type
+        elif self.ptype == 'number':
+            if minval is None:
+                minval = NUMBER_MIN
+            if maxval is None:
+                maxval = NUMBER_MAX
+            self.range = r = Range(minval, maxval)
+            r.check(self.default or 0)
 
         self.validate_type(self.default, 'default')
 
