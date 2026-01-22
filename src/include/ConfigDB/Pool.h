@@ -132,9 +132,12 @@ public:
 		return length == other.length && memcmp(value, other.value, length) == 0;
 	}
 
+	/**
+	 * @brief Valid contents include empty string, but not null string
+	 */
 	explicit operator bool() const
 	{
-		return value && length;
+		return value;
 	}
 
 	explicit operator String() const

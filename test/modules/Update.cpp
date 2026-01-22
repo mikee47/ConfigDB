@@ -34,6 +34,29 @@ public:
 				REQUIRE_EQ(updater.getSimpleString(), banana);
 				updater.setSimpleString(nullptr);
 				REQUIRE_EQ(updater.getSimpleString(), donkey);
+				updater.setSimpleString(banana);
+				REQUIRE_EQ(updater.getSimpleString(), banana);
+				updater.resetSimpleString();
+				REQUIRE_EQ(updater.getSimpleString(), donkey);
+
+				/*
+				 * Check zero-length string is handled correctly.
+				 * Jan 2026 bug found in `CountedString` which caused multiple
+				 * copies of empty string to be stored in pool.
+				 */
+				TEST_CASE("Empty string")
+				{
+					auto& store = updater.getStore();
+					auto& pool = store.getStringPool();
+					updater.setSimpleString("");
+					auto startCount = pool.getCount();
+					for(unsigned i = 0; i < 10; ++i) {
+						updater.setSimpleString("");
+						CHECK_EQ(updater.getSimpleString(), "");
+						auto count = pool.getCount();
+						CHECK_EQ(count, startCount);
+					}
+				}
 			} else {
 				TEST_ASSERT(false);
 			}
