@@ -1330,17 +1330,43 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
         f'class {obj.typename_updater};'
     ]
 
+    def find_in_parent(enum_prop: Property) -> Property | None:
+        # print(f'@ {enum_prop.name}')
+        parent_prop = object_prop.parent
+        while not isinstance(parent_prop, Database):
+            # print(f'  {parent_prop.property_type=}, {parent_prop.name=}, {parent_prop.obj.name=}, {parent_prop.namespace=}')
+            for prop in parent_prop.obj.properties:
+                if prop.enum and prop.ctype_override and prop.ctype_override == enum_prop.ctype_override:
+                    return parent_prop
+            parent_prop = parent_prop.parent
+        return None
+
+
     def generate_enum_class(properties: list[Property]):
         enumlist = []
         for prop in properties:
-            if prop.enum and prop.ctype_override:
-                tag_prefix = '' if prop.enum_type == 'String' else  'N'
-                enumlist += [
-                    '',
-                    f'enum class {prop.ctype_override}: uint8_t {{',
-                    [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
-                    '};'
-                ]
+            if not (prop.enum and prop.ctype_override):
+                continue
+            orig_prop = find_in_parent(prop)
+            if orig_prop:
+                # enumlist += [
+                #     f'using {prop.ctype_override} = {orig_prop.namespace}::{prop.ctype_override};'
+                # ]
+                continue
+            # print(prop.name)
+            # for k, v in vars(prop).items():
+            #     if k == 'parent':
+            #         # v = f'{id(v):x}, {v.name}, {v.obj.name}, {v.obj.namespace}, {vars(v).keys()}'
+            #         v = f'{id(v):x}, {type(v.parent)=}, {v.name=}, {v.obj.name=}, {v.obj.namespace=}, {v.obj.ref=}, {vars(v.obj).keys()}'
+            #     print(f'  {k}: {v}')
+            # exit(1)
+            tag_prefix = '' if prop.enum_type == 'String' else  'N'
+            enumlist += [
+                '',
+                f'enum class {prop.ctype_override}: uint8_t {{',
+                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+                '};'
+            ]
         return enumlist
 
     if obj.is_object_array:
@@ -1373,9 +1399,9 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
     lines = CodeLines(
         [
             *forward_decls,
-            *generate_enum_class(obj.properties),
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
+            generate_enum_class(obj.properties),
             typeinfo.header,
         ])
 
