@@ -2,6 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "uint8val": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "int32val": {
+      "type": "integer"
+    },
     "intval": {
       "type": "integer",
       "minimum": -5,

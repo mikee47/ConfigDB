@@ -54,8 +54,6 @@ String EnumInfo::getString(uint8_t index) const
 		return String(getValue<uint16_t>(index));
 	case PropertyType::UInt32:
 		return String(getValue<uint32_t>(index));
-	case PropertyType::UInt64:
-		return String(getValue<uint64_t>(index));
 	case PropertyType::Number:
 		return toString(getValue<number_t>(index));
 	case PropertyType::String:
@@ -76,27 +74,31 @@ int EnumInfo::find(const char* value, unsigned length) const
 		return getStrings().indexOf(value, length);
 	}
 
-	PropertyData d{};
-	d.setValue(type, value, length);
+	if(type == PropertyType::Number) {
+		number_t num{};
+		if(!number_t::parse(value, length, num)) {
+			return -1;
+		}
+		return getArray<number_t>().indexOf(num);
+	}
+
+	int64_t intval = strtoll(value, nullptr, 0);
 	switch(type) {
 	case PropertyType::Int8:
-		return getArray<int8_t>().indexOf(d.int8);
+		return getArray<int8_t>().indexOf(intval);
 	case PropertyType::Int16:
-		return getArray<int16_t>().indexOf(d.int16);
+		return getArray<int16_t>().indexOf(intval);
 	case PropertyType::Int32:
-		return getArray<int32_t>().indexOf(d.int32);
+		return getArray<int32_t>().indexOf(intval);
 	case PropertyType::Int64:
-		return getArray<int64_t>().indexOf(d.int64);
+		return getArray<int64_t>().indexOf(intval);
 	case PropertyType::UInt8:
-		return getArray<uint8_t>().indexOf(d.uint8);
+		return getArray<uint8_t>().indexOf(intval);
 	case PropertyType::UInt16:
-		return getArray<uint16_t>().indexOf(d.uint16);
+		return getArray<uint16_t>().indexOf(intval);
 	case PropertyType::UInt32:
-		return getArray<uint32_t>().indexOf(d.uint32);
-	case PropertyType::UInt64:
-		return getArray<uint64_t>().indexOf(d.uint64);
+		return getArray<uint32_t>().indexOf(intval);
 	case PropertyType::Number:
-		return getArray<number_t>().indexOf(d.number);
 	case PropertyType::String:
 	case PropertyType::Boolean:
 	case PropertyType::Enum:

@@ -45,7 +45,6 @@ union __attribute__((packed)) PropertyData {
 	uint8_t uint8;
 	uint16_t uint16;
 	uint32_t uint32;
-	uint64_t uint64;
 	int8_t int8;
 	int16_t int16;
 	int32_t int32;
@@ -57,12 +56,10 @@ union __attribute__((packed)) PropertyData {
 
 	String getString(const PropertyInfo& info) const;
 
-	/**
-	 * @brief Range-check raw binary value. Do not use with Strings.
-	 */
-	void setValue(const PropertyInfo& prop, const PropertyData& src);
+	bool setValue(const PropertyInfo& prop, int64_t value);
 
-	bool setValue(PropertyType type, const char* value, unsigned valueLength);
+	bool setValue(const PropertyInfo& prop, Number value);
+
 	bool setValue(const PropertyInfo& prop, const char* value, unsigned valueLength);
 
 	static PropertyData* fromStruct(const PropertyInfo& prop, void* data)

@@ -38,7 +38,6 @@
 	XX(UInt8, 1)                                                                                                       \
 	XX(UInt16, 2)                                                                                                      \
 	XX(UInt32, 4)                                                                                                      \
-	XX(UInt64, 8)                                                                                                      \
 	XX(Number, 4)                                                                                                      \
 	XX(String, sizeof(StringId))                                                                                       \
 	XX(Object, sizeof(ObjectInfo*))                                                                                    \
@@ -110,29 +109,15 @@ struct EnumInfo {
  * @brief Property metadata
  */
 struct PropertyInfo {
-	template <typename T, typename U = T> struct RangeTemplate {
-		T minimum;
-		T maximum;
+	using RangeNumber = TRange<const_number_t>;
+	using RangeInt8 = TRange<int32_t>;
+	using RangeInt16 = TRange<int32_t>;
+	using RangeInt32 = TRange<int32_t>;
+	using RangeInt64 = TRange<int64_t>;
+	using RangeUInt8 = TRange<uint32_t>;
+	using RangeUInt16 = TRange<uint32_t>;
+	using RangeUInt32 = TRange<uint32_t>;
 
-		U clip(U value) const
-		{
-			return TRange(U(minimum), U(maximum)).clip(value);
-		}
-
-		static U clip(const RangeTemplate<T, U>* range, U value)
-		{
-			return range ? range->clip(value) : value;
-		}
-	};
-	using RangeNumber = RangeTemplate<const_number_t, number_t>;
-	using RangeInt8 = RangeTemplate<int32_t, int8_t>;
-	using RangeInt16 = RangeTemplate<int32_t, int16_t>;
-	using RangeInt32 = RangeTemplate<int32_t>;
-	using RangeInt64 = RangeTemplate<int64_t>;
-	using RangeUInt8 = RangeTemplate<uint32_t, uint8_t>;
-	using RangeUInt16 = RangeTemplate<uint32_t, uint16_t>;
-	using RangeUInt32 = RangeTemplate<uint32_t>;
-	using RangeUInt64 = RangeTemplate<uint64_t>;
 	// Variant property information depends on type
 	union Variant {
 		const FlashString* defaultString;
@@ -146,7 +131,6 @@ struct PropertyInfo {
 		const RangeUInt8* uint8;
 		const RangeUInt16* uint16;
 		const RangeUInt32* uint32;
-		const RangeUInt64* uint64;
 	};
 
 	PropertyType type;

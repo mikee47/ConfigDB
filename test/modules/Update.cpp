@@ -69,8 +69,10 @@ public:
 			// Change value
 			if(auto updater = root.update()) {
 				// Check clipping
-				updater.setSimpleInt(101);
+				updater.setSimpleInt(11111111111101000ULL);
 				REQUIRE_EQ(root.getSimpleInt(), 100);
+				updater.setSimpleInt(-11111111111101000LL);
+				REQUIRE_EQ(root.getSimpleInt(), -5);
 				updater.resetSimpleInt();
 				REQUIRE_EQ(root.getSimpleInt(), -1);
 				updater.setSimpleInt(-6);
@@ -87,6 +89,16 @@ public:
 			TestConfigRange::Root root(db);
 			REQUIRE_EQ(root.getInt64val(), -1);
 			if(auto update = root.update()) {
+				update.setUint8val(0x10000000000);
+				REQUIRE_EQ(root.getUint8val(), 255);
+				update.setUint8val(-100);
+				REQUIRE_EQ(root.getUint8val(), 0);
+
+				update.setInt32val(0x100000000);
+				REQUIRE_EQ(root.getInt32val(), 0x7fffffff);
+				update.setInt32val(-0x100000000);
+				REQUIRE_EQ(root.getInt32val(), -0x80000000);
+
 				update.setInt64val(-100000000001LL);
 				REQUIRE_EQ(root.getInt64val(), -100000000000LL);
 				update.setInt64val(100000000001LL);
@@ -140,6 +152,11 @@ public:
 				upd.loadArrayDefaults();
 				REQUIRE_EQ(exportObject(upd.intArray), intArrayDefaults);
 				REQUIRE_EQ(exportObject(root.stringArray), stringArrayDefaults);
+
+				upd.intArray[0] = 12345U;
+				REQUIRE_EQ(100, upd.intArray[0]);
+				upd.intArray[0] = -12345;
+				REQUIRE_EQ(0, upd.intArray[0]);
 			}
 		}
 

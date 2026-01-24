@@ -35,7 +35,6 @@ CPP_TYPESIZES = {
     'uint8_t': 1,
     'uint16_t': 2,
     'uint32_t': 4,
-    'uint64_t': 8,
     'ConfigDB::Number': 4,
     'String': STRING_ID_SIZE,
 }
@@ -101,6 +100,13 @@ class Range:
     def is_constrained(self):
         return (self.minimum, self.maximum) != (NUMBER_MIN, NUMBER_MAX)
 
+    def __str__(self):
+        min, max = self.minimum, self.maximum
+        if min == NUMBER_MIN:
+            min = 'number_t::lowest()'
+        if max == NUMBER_MAX:
+            max = 'number_t::max()'
+        return f'{min}, {max}'
 
 @dataclass
 class IntRange(Range):
@@ -109,9 +115,13 @@ class IntRange(Range):
 
     @staticmethod
     def deduce(minval: int, maxval: int) -> IntRange:
-        r = IntRange(minval, maxval, minval < 0, 8)
+        if maxval < minval:
+            raise ValueError('Maximum cannot be less than minimum')
+        r = IntRange(minval, maxval, minval < 0 or maxval > 0xffffffff, 8)
         while minval < r.typemin or maxval > r.typemax:
             r.bits *= 2
+        if r.bits > 64:
+            raise ValueError(f'Minimum/Maxiomum too large: ({minval}, {maxval})')
         return r
 
     @property
@@ -263,6 +273,22 @@ class Property:
     def ctype_ret(self):
         '''Type to use for accessor return value'''
         return self.ctype_override or self.ctype
+
+    @property
+    def ctype_set(self):
+        '''Type to use for updater value'''
+        if self.ptype == 'integer':
+            return self.ctype_override or 'int64_t'
+        if self.ptype in ['number', 'boolean']:
+            return self.ctype_ret
+        return f'const {self.ctype_ret}&'
+
+    @property
+    def ctype_cast(self):
+        '''Integral type for cast when setting'''
+        if self.ptype in ['integer', 'enum']:
+            return 'int64_t'
+        return self.ctype
 
     @property
     def propdata_id(self):
@@ -1042,13 +1068,14 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype in ['number', 'integer']:
+            range_tag = 'item' if prop.is_item else prop.id
             r = prop.range
+            lines.header += [
+                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {range_tag}Range PROGMEM {{{r}}};'
+            ]
             if r.is_constrained():
                 tag = r.property_type.lower()
-                lines.header += [
-                    f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {prop.id}_range PROGMEM {{{r.minimum}, {r.maximum}}};'
-                ]
-                return f'.{tag} = &{prop.id}_range'
+                return f'.{tag} = &{range_tag}Range'
         return ''
 
     proplist = []
@@ -1208,13 +1235,19 @@ def generate_property_accessors(obj: Object) -> list:
                 ) for index, prop in enumerate(obj.object_properties))
             ]
 
+    def get_value_expr(index: int, prop: Property) -> str:
+        value = f'getPropertyData({index})->{prop.propdata_id}'
+        if prop.ctype_override:
+            return f'{prop.ctype_override}({value})'
+        return value
+
     return [*((
         '',
         f'{prop.ctype_ret} get{prop.typename}() const',
         '{',
         [f'return getPropertyString({index});']
         if prop.ptype == 'string' else
-        [f'return {prop.ctype_ret}(getPropertyData({index})->{prop.propdata_id});'],
+        [f'return {get_value_expr(index, prop)};'],
         '}',
         ) for index, prop in enumerate(obj.properties))]
 
@@ -1223,15 +1256,12 @@ def generate_property_write_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
     def get_value_expr(prop: Property) -> str:
-        if prop.ptype == 'string':
-            stype = prop.ctype_ret
-            return 'value' if stype == 'String' else f'String(value)'
-        return '&value'
-
-    def get_ctype(prop):
         if prop.ctype_override:
-            return prop.ctype_override if prop.enum else f'const {prop.ctype_override}&'
-        return 'const String&' if prop.ptype == 'string' else prop.ctype
+            if prop.ptype == 'string':
+                return f'String(value)'
+            if prop.ptype == 'integer':
+                return 'int64_t(value)'
+        return 'value'
 
     if obj.is_union:
         return [
@@ -1258,14 +1288,14 @@ def generate_property_write_accessors(obj: Object) -> list:
 
     return [*((
         '',
-        f'void set{prop.typename}({get_ctype(prop)} value)',
+        f'void set{prop.typename}({prop.ctype_set} value)',
         '{',
         [f'setPropertyValue({index}, {get_value_expr(prop)});'],
         '}',
         '',
         f'void reset{prop.typename}()',
         '{',
-        [f'setPropertyValue({index}, nullptr);'],
+        [f'resetPropertyValue({index});'],
         '}'
         ) for index, prop in enumerate(obj.properties))]
 
@@ -1388,7 +1418,7 @@ def generate_updater(object_prop: Property) -> list:
 
     if obj.is_array:
         return [
-            *declare_templated_class(obj, [obj.items.ctype_ret], True),
+            *declare_templated_class(obj, [obj.items.ctype_ret, obj.items.ctype_set, obj.items.ctype_cast], True),
             constructors,
             '};',
         ]

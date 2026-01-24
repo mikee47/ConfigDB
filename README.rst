@@ -114,6 +114,8 @@ Integers
 
 Items with **integer** type default to a regular signed 32-bit :cpp:type:`int32_t`. This can be changed by setting a *minimum* and or *maximum* attribute. The database will then use the smallest C++ type appropriate for that range. If the range excludes negative values then an unsigned value will be used.
 
+The maximum supported integer range is for a signed 64-bit integer.
+
 Note that when setting values via *setXXX* methods, streaming updates or inside arrays, integers will be **clipped** to the defined range, never truncated. For example::
 
   "properties": {
@@ -124,7 +126,7 @@ Note that when setting values via *setXXX* methods, streaming updates or inside 
     }
   }
 
-This creates a *pin* property of type :cpp:type:`uint8_t`. The updater will have a *setPin()* method, which if called with values outside of the range 0-63 will be clamped.
+This creates a *pin* property of type :cpp:type:`uint8_t`. The updater will have a *setPin(int64_t)* method, which if called with values outside of the range 0-63 will be clamped.
 
 
 Floating-point numbers

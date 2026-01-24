@@ -319,6 +319,10 @@ static_assert(sizeof(number_t) == 4, "Bad number_t size");
 struct const_number_t : public number_t {
 	const_number_t() = default;
 
+	constexpr const_number_t(const number_t& value) : number_t(value)
+	{
+	}
+
 	/**
 	 * @brief Computer number from a compile-time constant value
 	 */
