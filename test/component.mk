@@ -29,5 +29,7 @@ endif
 endif
 APP_CFLAGS += -DRESTART_DELAY=$(RESTART_DELAY)
 
+export SIMPLE_STRING ?= donkey
+
 .PHONY: execute
 execute: flash run

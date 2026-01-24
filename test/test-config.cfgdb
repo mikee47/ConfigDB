@@ -17,7 +17,7 @@
     "simple-string": {
       "type": "string",
       "alias": "basic-string",
-      "@default": "os.environ.get('SIMPLE_STRING', 'donkey')"
+      "@default": "SIMPLE_STRING"
     },
     "simple-int": {
       "type": "integer",

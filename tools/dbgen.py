@@ -8,6 +8,11 @@ import json
 import re
 from dataclasses import dataclass, field
 
+sys.path.insert(1, os.path.expandvars('${SMING_HOME}/../Tools/Python'))
+from evaluator import Evaluator
+
+evaluator = Evaluator()
+
 MAX_STRINGID_LEN = 32
 
 CPP_TYPENAMES = {
@@ -623,12 +628,9 @@ def load_schema(filename: str) -> Database:
     def evaluate(expr: Any) -> Any:
         if isinstance(expr, list):
             return [evaluate(v) for v in expr]
-        if not isinstance(expr, str):
-            return expr
-        expr = re.sub(r"\$(\w+)", r"{\1}", expr)
-        expr = expr.format(**os.environ)
-        return eval(expr)
-
+        if isinstance(expr, str):
+            return evaluator.run(expr)
+        return expr
 
     '''Load JSON configuration schema and validate
     '''
