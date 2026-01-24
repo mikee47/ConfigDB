@@ -115,9 +115,13 @@ class IntRange(Range):
 
     @staticmethod
     def deduce(minval: int, maxval: int) -> IntRange:
+        if maxval < minval:
+            raise ValueError('Maximum cannot be less than minimum')
         r = IntRange(minval, maxval, minval < 0 or maxval > 0xffffffff, 8)
         while minval < r.typemin or maxval > r.typemax:
             r.bits *= 2
+        if r.bits > 64:
+            raise ValueError(f'Minimum/Maxiomum too large: ({minval}, {maxval})')
         return r
 
     @property
