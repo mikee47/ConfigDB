@@ -1364,7 +1364,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
 
     # Append child object definitions
     for prop in obj.object_properties:
-        if not prop.obj.ref:
+        if not prop.obj.ref and prop.obj.namespace.startswith(db.namespace):
             lines.append(generate_object(db, prop))
 
     lines.append(generate_object_struct(object_prop))
