@@ -841,7 +841,7 @@ def generate_database(db: Database) -> CodeLines:
             'public:',
             [
                 *external_defs,
-                *(f'class {name};' for name in db.forward_decls),
+                *(f'class {name};' for name in sorted(db.forward_decls)),
                 '',
                 'static const ConfigDB::DatabaseInfo typeinfo;',
                 '',
