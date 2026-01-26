@@ -8,6 +8,11 @@ import json
 import re
 from dataclasses import dataclass, field
 
+sys.path.insert(1, os.path.expandvars('${SMING_HOME}/../Tools/Python'))
+from evaluator import Evaluator
+
+evaluator = Evaluator()
+
 MAX_STRINGID_LEN = 32
 
 CPP_TYPENAMES = {
@@ -620,12 +625,22 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
 
 
 def load_schema(filename: str) -> Database:
+    def evaluate(expr: Any) -> Any:
+        if isinstance(expr, list):
+            return [evaluate(v) for v in expr]
+        if isinstance(expr, str):
+            return evaluator.run(expr)
+        return expr
+
     '''Load JSON configuration schema and validate
     '''
     def parse_object_pairs(pairs):
         d = {}
         identifiers = set()
         for k, v in pairs:
+            if k.startswith('@'):
+                v = evaluate(v)
+                k = k[1:]
             id = make_identifier(k)
             if not id:
                 raise ValueError(f'Invalid key "{k}"')
@@ -647,7 +662,9 @@ def load_schema(filename: str) -> Database:
     except ImportError as err:
         print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
     schema_id = os.path.splitext(os.path.basename(filename))[0]
-    databases[schema_id] = Database(None, schema_id, None, schema_id=schema_id, schema=schema)
+    db = Database(None, schema_id, None, schema_id=schema_id, schema=schema)
+    databases[schema_id] = db
+    return db
 
 
 def parse_properties(path: str, parent_prop: Property, properties: dict):
@@ -1522,9 +1539,15 @@ def main():
 
     args = parser.parse_args()
 
+    schema_out_dir = os.path.join(args.outdir, 'schema')
+    os.makedirs(schema_out_dir, exist_ok=True)
+
     for f in args.cfgfiles:
         print(f'Loading "{f}"')
-        load_schema(f)
+        db = load_schema(f)
+        filename = os.path.join(schema_out_dir, f'{db.name}.json')
+        with open(filename, 'w') as f_schema:
+            json.dump(db.schema, f_schema, indent=2)
 
     for db in databases.values():
         print(f'Parsing "{db.name}"')
@@ -1534,7 +1557,6 @@ def main():
         lines = generate_database(db)
 
         filepath = os.path.join(args.outdir, f'{db.name}')
-        os.makedirs(args.outdir, exist_ok=True)
 
         write_file(lines.header, f'{filepath}.h')
         write_file(lines.source, f'{filepath}.cpp')
