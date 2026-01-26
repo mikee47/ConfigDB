@@ -924,7 +924,8 @@ def generate_database(db: Database) -> CodeLines:
 
     enum_typeinfo = CodeLines()
     for prop, object_prop in db.enum_props:
-        enum_typeinfo.append(generate_enum_typeinfo(db, prop, object_prop))
+        if prop.ref:
+            enum_typeinfo.append(generate_enum_typeinfo(db, prop, object_prop))
 
     lines.header[:0] = [
         '/*',
@@ -1057,6 +1058,15 @@ def generate_enum_typeinfo(db: Database, prop: Property, object_prop: ObjectProp
     assert prop.enum
 
     lines = CodeLines()
+
+    if prop.ctype_override:
+        tag_prefix = '' if prop.enum_type == 'String' else  'N'
+        lines.header += [
+            '',
+            f'enum class {prop.ctype_override}: uint8_t {{',
+            [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+            '};'
+        ]
 
     values = prop.enum
     obj_type = f'{object_prop.namespace}::{object_prop.obj.typename_contained}'
@@ -1363,53 +1373,6 @@ def generate_property_write_accessors(obj: Object) -> list:
         ) for index, prop in enumerate(obj.properties))]
 
 
-def generate_enum_class(db: Database, object_prop: ObjectProperty, properties: list[Property]) -> list[str]:
-    enumlist = []
-    for prop in properties:
-        if prop.enum and prop.ctype_override:
-            tag_prefix = '' if prop.enum_type == 'String' else  'N'
-            enumlist += [
-                '',
-                f'enum class {prop.ctype_override}: uint8_t {{',
-                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
-                '};'
-            ]
-            db.enum_props.append((prop, object_prop))
-    return enumlist
-
-
-# def generate_enum_class(properties: list[Property]):
-#     enumlist = []
-#     for prop in properties:
-#         if not (prop.enum and prop.ctype_override):
-#             continue
-#         orig_prop = find_in_parent(prop)
-#         if orig_prop:
-#             # enumlist += [
-#             #     f'using {prop.ctype_override} = {orig_prop.namespace}::{prop.ctype_override};'
-#             # ]
-#             enumlist += [
-#                 '',
-#                 f'// SKIP ENUM {prop.typename=}'
-#             ]
-#             continue
-#         # print(prop.name)
-#         # for k, v in vars(prop).items():
-#         #     if k == 'parent':
-#         #         # v = f'{id(v):x}, {v.name}, {v.obj.name}, {v.obj.namespace}, {vars(v).keys()}'
-#         #         v = f'{id(v):x}, {type(v.parent)=}, {v.name=}, {v.obj.name=}, {v.obj.namespace=}, {v.obj.ref=}, {vars(v.obj).keys()}'
-#         #     print(f'  {k}: {v}')
-#         # exit(1)
-#         tag_prefix = '' if prop.enum_type == 'String' else  'N'
-#         enumlist += [
-#             '',
-#             f'// {getattr(prop, 'ref', None)=}',
-#             f'enum class {prop.ctype_override}: uint8_t {{',
-#             [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
-#             '};'
-#         ]
-#         db.enum_props.append((prop, object_prop))
-#     return enumlist
 
 def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
     '''Generate code for Object implementation'''
@@ -1436,6 +1399,17 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
         return None
 
 
+    def generate_enum_class(properties: list[Property]) -> CodeLines:
+        lines = CodeLines()
+        for prop in properties:
+            if not prop.enum:
+                continue
+            if not prop.ref:
+                lines.append(generate_enum_typeinfo(db, prop, object_prop))
+            db.enum_props.append((prop, object_prop))
+        return lines
+
+
     if obj.is_object_array:
         item_lines = CodeLines() if obj.items.obj.ref else generate_object(db, obj.items)
         return CodeLines(
@@ -1451,26 +1425,33 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
             item_lines.source + typeinfo.source)
 
     if obj.is_array:
+        enum_typeinfo = generate_enum_class([obj.items])
         return CodeLines(
             [
                 *forward_decls,
-                *generate_enum_class(db, object_prop, [obj.items]),
+                *enum_typeinfo.header,
                 *declare_templated_class(obj, [obj.items.ctype_ret]),
                 typeinfo.header,
                 constructors,
                 '};',
                 *updater,
             ],
-            typeinfo.source)
+            [
+                *typeinfo.source,
+                *enum_typeinfo.source,
+            ])
 
+    enum_typeinfo = generate_enum_class(obj.properties)
     lines = CodeLines(
         [
             *forward_decls,
-            *generate_enum_class(db, object_prop, obj.properties),
+            *enum_typeinfo.header,
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
-        ])
+        ],
+        enum_typeinfo.source
+    )
 
     # Append child object definitions
     for prop in obj.object_properties:
