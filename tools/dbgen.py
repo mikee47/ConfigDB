@@ -853,11 +853,6 @@ def generate_database(db: Database) -> CodeLines:
     for obj in db.object_defs.values():
         db.forward_decls |= {obj.typename_contained, obj.typename_updater}
 
-    enum_typeinfo = CodeLines()
-    for prop in db.enum_props:
-        if prop.ref:
-            enum_typeinfo.append(generate_enum_typeinfo(db, prop))
-
     lines = CodeLines(
         [
             '/*',
@@ -877,15 +872,6 @@ def generate_database(db: Database) -> CodeLines:
                 '',
                 'static const ConfigDB::DatabaseInfo typeinfo;',
                 '',
-            ],
-            *enum_typeinfo.header,
-            [
-                '',
-                'using DatabaseTemplate::DatabaseTemplate;',
-                '',
-                '/*',
-                ' * Contained classes are reference objects only, and do not contain the actual data.',
-                ' */'
             ]
         ],
         [
@@ -904,10 +890,22 @@ def generate_database(db: Database) -> CodeLines:
                     ], ',') for prop in db.object_properties),
                 '}'
             ],
-            '};',
-            *enum_typeinfo.source
+            '};'
         ]
     )
+
+    for prop in db.enum_props:
+        if prop.ref:
+            lines.append(generate_enum_typeinfo(db, prop))
+
+    lines.header += [[
+        '',
+        'using DatabaseTemplate::DatabaseTemplate;',
+        '',
+        '/*',
+        ' * Contained classes are reference objects only, and do not contain the actual data.',
+        ' */'
+    ]]
 
 
     for obj in sorted(db.object_defs.values()):
@@ -1399,18 +1397,6 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
         f'class {obj.typename_updater};'
     ]
 
-    def find_in_parent(enum_prop: Property) -> Property | None:
-        # print(f'@ {enum_prop.name}')
-        parent_prop = object_prop.parent
-        while not isinstance(parent_prop, Database):
-            # print(f'  {parent_prop.property_type=}, {parent_prop.name=}, {parent_prop.obj.name=}, {parent_prop.namespace=}')
-            for prop in parent_prop.obj.properties:
-                if prop.enum and prop.ctype_override and prop.ctype_override == enum_prop.ctype_override:
-                    return parent_prop
-            parent_prop = parent_prop.parent
-        return None
-
-
     def generate_enum_class(properties: list[Property]) -> CodeLines:
         lines = CodeLines()
         for prop in properties:
@@ -1436,33 +1422,24 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
             item_lines.source + typeinfo.source)
 
     if obj.is_array:
-        enum_typeinfo = generate_enum_class([obj.items])
-        return CodeLines(
-            [
-                *forward_decls,
-                *enum_typeinfo.header,
-                *declare_templated_class(obj, [obj.items.ctype_ret]),
-                typeinfo.header,
-                constructors,
-                '};',
-                *updater,
-            ],
-            [
-                *typeinfo.source,
-                *enum_typeinfo.source,
-            ])
-
-    enum_typeinfo = generate_enum_class(obj.properties)
-    lines = CodeLines(
-        [
-            *forward_decls,
-            *enum_typeinfo.header,
-            *declare_templated_class(obj),
-            [f'using Updater = {obj.typename_updater};'],
+        lines = CodeLines(forward_decls, typeinfo.source)
+        lines.append(generate_enum_class([obj.items]))
+        lines.header += [
+            *declare_templated_class(obj, [obj.items.ctype_ret]),
             typeinfo.header,
-        ],
-        enum_typeinfo.source
-    )
+            constructors,
+            '};',
+            *updater,
+        ]
+        return lines
+
+    lines = CodeLines(forward_decls)
+    lines.append(generate_enum_class(obj.properties))
+    lines.header += [
+        *declare_templated_class(obj),
+        [f'using Updater = {obj.typename_updater};'],
+        typeinfo.header,
+    ]
 
     # Append child object definitions
     for prop in obj.object_properties:
