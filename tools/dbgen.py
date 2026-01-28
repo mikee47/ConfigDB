@@ -1151,28 +1151,6 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
 
     obj = object_prop.obj
 
-    def getVariantInfo(prop: Property) -> list[str]:
-        if prop.enum:
-            if prop.is_item:
-                lines.header += [
-                    '',
-                    f'static constexpr const auto& itemType = {prop.enum_typeinfo_inst};'
-                ]
-            return f'.enuminfo = &{prop.enum_typeinfo_inst}.enuminfo'
-        if prop.ptype == 'string':
-            return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
-        if prop.ptype in ['number', 'integer']:
-            range_tag = 'item' if prop.is_item else prop.id
-            r = prop.range
-            lines.header += [
-                '',
-                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {range_tag}Range PROGMEM {{{r}}};'
-            ]
-            if r.is_constrained():
-                tag = r.property_type.lower()
-                return f'.{tag} = &{range_tag}Range'
-        return ''
-
     proplist = []
     aliaslist = []
 
@@ -1206,11 +1184,26 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
         offset += obj.max_object_size
 
     for prop in obj.properties:
+        variant_info = ''
+        if prop.enum:
+            variant_info = f'.enuminfo = &{prop.enum_typeinfo_inst}.enuminfo'
+        elif prop.ptype == 'string':
+            variant_info = f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
+        elif prop.ptype in ['number', 'integer']:
+            range_tag = 'item' if prop.is_item else prop.id
+            r = prop.range
+            lines.header += [
+                '',
+                f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {range_tag}Range PROGMEM {{{r}}};'
+            ]
+            if r.is_constrained():
+                tag = r.property_type.lower()
+                variant_info = f'.{tag} = &{range_tag}Range'
         proplist += [[
             f'.type = PropertyType::{prop.property_type}',
             '.name = ' + ('fstr_empty' if obj.is_array else db.strings[prop.name]),
             f'.offset = {offset}',
-            '.variant = {' + getVariantInfo(prop) + '}'
+            f'.variant = {{{variant_info}}}'
         ]]
         add_alias(prop.alias)
         offset += prop.data_size
@@ -1421,8 +1414,12 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
     if obj.is_array:
         lines = CodeLines(forward_decls, typeinfo.source)
         prop = obj.items
-        if prop.enum and not prop.ref:
-            lines.append(generate_enum_typeinfo(db, prop))
+        if prop.enum:
+            if not prop.ref:
+                lines.append(generate_enum_typeinfo(db, prop))
+            typeinfo.header += [
+                f'static constexpr const auto& itemType = {prop.enum_typeinfo_inst};'
+            ]
         lines.header += [
             *declare_templated_class(obj, [obj.items.ctype_ret]),
             typeinfo.header,
