@@ -317,6 +317,28 @@ class Property:
         return make_typename(self.name)
 
     @property
+    def enum_typeinfo_namespace(self):
+        '''Namespace where enum typeinfo lives'''
+        assert self.enum
+        object_prop = self.parent
+        obj_type = object_prop.parent.namespace
+        if not self.ref:
+            obj_type += f'::{object_prop.obj.parent.typename_contained}'
+        return obj_type
+
+    @property
+    def enum_typeinfo_type(self):
+        '''Enumeration type information stored in a structure with this name'''
+        assert self.enum
+        return make_identifier(self.ctype_override or self.name, True) + 'Type'
+
+    @property
+    def enum_typeinfo_inst(self):
+        '''Name of the enum typeinfo instance'''
+        enumtype = self.enum_typeinfo_type
+        return enumtype[0].lower() + enumtype[1:]
+
+    @property
     def typename_outer(self):
         assert self.obj
         return make_typename(self.name or 'Root')
@@ -897,6 +919,7 @@ def generate_database(db: Database) -> CodeLines:
         ]
     )
 
+    # Emit enum typeinfo for global definitions
     for prop in db.enum_props:
         if prop.ref:
             lines.append(generate_enum_typeinfo(db, prop))
@@ -1003,18 +1026,12 @@ def generate_database(db: Database) -> CodeLines:
     for prop in db.enum_props:
         if not prop.ctype_override:
             continue
-        enumtype = make_identifier(f'{prop.ctype_override}Type', True)
-        enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
-        object_prop = prop.parent
-        obj_type = object_prop.parent.namespace
-        if not prop.ref:
-            obj_type += f'::{object_prop.obj.parent.typename_contained}'
-
+        namespace = prop.enum_typeinfo_namespace
         lines.header += [
             '',
-            f'inline String toString({obj_type}::{prop.ctype_ret} value)',
+            f'inline String toString({namespace}::{prop.ctype_ret} value)',
             '{',
-            [f'return {obj_type}::{enumtype_inst}.enuminfo.getString(unsigned(value));' ],
+            [f'return {namespace}::{prop.enum_typeinfo_inst}.enuminfo.getString(unsigned(value));' ],
             '}',
         ]
 
@@ -1067,12 +1084,10 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
     '''Generate enum type information and return the instance name'''
     assert prop.enum
 
-    object_prop = prop.parent
-
     lines = CodeLines()
 
     if prop.ctype_override:
-        tag_prefix = '' if prop.enum_type == 'String' else  'N'
+        tag_prefix = '' if prop.enum_type == 'String' else 'N'
         lines.header += [
             '',
             f'enum class {prop.ctype_override}: uint8_t {{',
@@ -1081,15 +1096,12 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
         ]
 
     values = prop.enum
-    obj_type = object_prop.parent.namespace
-    if not prop.ref:
-        obj_type += f'::{object_prop.obj.parent.typename_contained}'
+    namespace = prop.enum_typeinfo_namespace
     item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
 
-    # Objects can contain multiple enums so use unique names,
-    # but make an exception for array items since there is only one definition
-    enumtype = make_identifier(f'{prop.ctype_override or prop.name}Type', True)
-    enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
+    # Use explicit ctype override if given, otherwise type is based on property name
+    enumtype = prop.enum_typeinfo_type
+    enumtype_inst = prop.enum_typeinfo_inst
     lines.header += [
         '',
         f'struct {enumtype} {{',
@@ -1116,7 +1128,7 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
     ]
     lines.source += [
         '',
-        f'constexpr const {obj_type}::{enumtype} {obj_type}::{enumtype_inst} PROGMEM = {{',
+        f'constexpr const {namespace}::{enumtype} {namespace}::{enumtype_inst} PROGMEM = {{',
         [
             f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
             '{',
@@ -1141,14 +1153,12 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
 
     def getVariantInfo(prop: Property) -> list[str]:
         if prop.enum:
-            enumtype = make_identifier(f'{prop.ctype_override or prop.name}Type', True)
-            enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
             if prop.is_item:
                 lines.header += [
                     '',
-                    f'static constexpr const auto& itemType = {enumtype_inst};'
+                    f'static constexpr const auto& itemType = {prop.enum_typeinfo_inst};'
                 ]
-            return f'.enuminfo = &{enumtype_inst}.enuminfo'
+            return f'.enuminfo = &{prop.enum_typeinfo_inst}.enuminfo'
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
         if prop.ptype in ['number', 'integer']:
