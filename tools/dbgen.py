@@ -198,6 +198,11 @@ class Property:
             if not isinstance(is_store, bool):
                 print(f'WARNING: bool expected for "{key}/properties/store", found "{is_store}"')
 
+        # For enum types, ensure given string is valid UpperCamelCase
+        if (s := self.ctype_override) and self.enum:
+            if not s[0].isupper():
+                print(f'WARNING: ctype `{s}` not in UpperCamelCase')
+
         minval = fields.get('minimum')
         self.validate_type(minval, 'minimum')
         maxval = fields.get('maximum')
