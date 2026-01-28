@@ -998,14 +998,12 @@ def generate_database(db: Database) -> CodeLines:
     for prop in db.enum_props:
         if not prop.ctype_override:
             continue
-        enumtype = f'{prop.typename}Type'
+        enumtype = make_identifier(f'{prop.ctype_override}Type', True)
         enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
         object_prop = prop.parent
         obj_type = object_prop.parent.namespace
         if not prop.ref:
             obj_type += f'::{object_prop.obj.parent.typename_contained}'
-        enumtype = f'{prop.typename}Type'
-        enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
 
         lines.header += [
             '',
@@ -1085,7 +1083,7 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
 
     # Objects can contain multiple enums so use unique names,
     # but make an exception for array items since there is only one definition
-    enumtype = f'{prop.typename}Type'
+    enumtype = make_identifier(f'{prop.ctype_override or prop.name}Type', True)
     enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
     lines.header += [
         '',
@@ -1138,7 +1136,7 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
 
     def getVariantInfo(prop: Property) -> list[str]:
         if prop.enum:
-            enumtype = f'{prop.typename}Type'
+            enumtype = make_identifier(f'{prop.ctype_override or prop.name}Type', True)
             enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
             if prop.is_item:
                 lines.header += [
