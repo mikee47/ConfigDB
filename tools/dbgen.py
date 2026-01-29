@@ -694,7 +694,6 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         schema_id = parent_prop.obj.schema_id or database.schema_id
 
         def create_object_property(obj: Object) -> Property:
-            # print(f'??create_object_property {obj.namespace=}, {obj.name=}, {obj.classname}')
             # Objects with 'store' annoation are managed by database, otherwise they live in root object
             if 'store' in fields:
                 if not parent_prop.is_root:
@@ -708,7 +707,6 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             return prop
 
         if object_ref := fields.get('$ref'):
-            # print('@@@', object_ref, schema_id, parent_prop.obj.namespace, parent_prop.obj.typename)
             while object_ref:
                 if object_ref.startswith('#/'):
                     ref = object_ref[2:]
@@ -770,7 +768,6 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             fields = ref_node
 
         def create_object_and_property(Class) -> Property:
-            # print(f'@@create_object_and_property {Class.__name__}, {object_ref=}, {object_name=}')
             obj = Class(database if 'store' in fields else db if object_ref else parent, object_name, object_ref, schema_id)
             if object_ref:
                 db.object_defs[object_ref] = obj
@@ -844,7 +841,6 @@ def generate_database(db: Database) -> CodeLines:
 
     external_defs = []
     for obj in db.external_objects.values():
-        print('>>>', db.name, obj.name)
         db.include.add(f'{obj.schema_id}.h')
         ns = obj.namespace
         external_defs += [
@@ -912,12 +908,10 @@ def generate_database(db: Database) -> CodeLines:
 
     for obj in sorted(db.object_defs.values()):
         prop = ObjectProperty(db, obj.name, {}, obj)
-        # print(f'GENERATE {prop.obj.ref=}, {prop.obj.namespace=}, {db.namespace=}, {prop.name=}, {prop.obj.classname=}')
         lines.append(generate_object(db, prop))
 
     for prop in reversed(db.object_properties):
         if not prop.obj.ref:
-            # print(f'GENERATE {prop.obj.ref=}, {prop.obj.namespace=}, {db.namespace=}, {prop.name=}, {prop.obj.classname=}')
             lines.append(generate_object(db, prop))
 
     lines.header += [
@@ -1001,21 +995,25 @@ def generate_database(db: Database) -> CodeLines:
         '#endif'
     ]
 
-    # for prop in db.enum_props:
-    #     obj = object_prop.obj
-    #     enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
-    #     namespace = f'{object_prop.namespace}'
-    #     # enumtype_inst = f'{namespace}::{obj.typename_contained}::{enumtype_inst}'
-    #     enumtype_inst = f'{namespace}::{enumtype_inst}'
+    for prop in db.enum_props:
+        if not prop.ctype_override:
+            continue
+        enumtype = f'{prop.typename}Type'
+        enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
+        object_prop = prop.parent
+        obj_type = object_prop.parent.namespace
+        if not prop.ref:
+            obj_type += f'::{object_prop.obj.parent.typename_contained}'
+        enumtype = f'{prop.typename}Type'
+        enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
 
-    #     lines.header += [
-    #         # '',
-    #         # f'inline String toString({namespace}::{prop.ctype_override} value)',
-    #         # '{',
-    #         # [f'return {enumtype_inst}.enuminfo.getString(unsigned(value));' ],
-    #         # '}',
-    #     ]
-    #     # print(f'>> {prop.name=}, {prop.ctype_override=}, {namespace=}')
+        lines.header += [
+            '',
+            f'inline String toString({obj_type}::{prop.ctype_ret} value)',
+            '{',
+            [f'return {obj_type}::{enumtype_inst}.enuminfo.getString(unsigned(value));' ],
+            '}',
+        ]
 
     return lines
 
@@ -1084,20 +1082,13 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
     if not prop.ref:
         obj_type += f'::{object_prop.obj.parent.typename_contained}'
     item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
-    # if prop.is_item and prop.ctype_override:
-    #     lines.header += [
-    #         '',
-    #         f'using Item = {prop.ctype_override};'
-    #     ]
 
     # Objects can contain multiple enums so use unique names,
     # but make an exception for array items since there is only one definition
     enumtype = f'{prop.typename}Type'
-    # enumtype_inst = f'{prop.id}ItemType' if prop.is_item else f'{prop.id}Type'
     enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
     lines.header += [
         '',
-        f'// ENUM {prop.ref=}, {obj_type=}, {prop.name=}',
         f'struct {enumtype} {{',
         [
             f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};',
@@ -1122,7 +1113,6 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
     ]
     lines.source += [
         '',
-        f'// {getattr(prop, 'ref', None)=}',
         f'constexpr const {obj_type}::{enumtype} {obj_type}::{enumtype_inst} PROGMEM = {{',
         [
             f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
@@ -1399,10 +1389,6 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
     typeinfo = generate_typeinfo(db, object_prop)
     constructors = generate_contained_constructors(object_prop)
     updater = generate_updater(object_prop)
-    # forward_decls = [] if obj.typename_updater in db.forward_decls else [
-    #     '',
-    #     f'class {obj.typename_updater};'
-    # ]
     forward_decls = []
 
     if obj.is_object_array:
@@ -1439,7 +1425,6 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
             lines.append(generate_enum_typeinfo(db, prop))
     lines.header += [
         *declare_templated_class(obj),
-        # [f'using Updater = {obj.typename_updater};'],
         typeinfo.header,
     ]
 
@@ -1617,10 +1602,6 @@ def main():
     for db in databases.values():
         print(f'Parsing "{db.name}"')
         parse_database(db)
-
-    print('\nExternal objects:')
-    for k, obj in db.external_objects.items():
-        print(f'  {k}, {obj.name}')
 
     for db in databases.values():
         lines = generate_database(db)

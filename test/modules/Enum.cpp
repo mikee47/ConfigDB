@@ -30,7 +30,7 @@ public:
 		Serial << "numberMap[" << numberMapType.values().length() << "]: " << numberMapType.values() << endl;
 
 		// Verify `toString()` functions
-		// Serial << _F("toString(Color::blue): ") << TestConfigEnum::Color::blue << endl;
+		Serial << _F("toString(Color::blue): ") << TestConfigEnum::Color::blue << endl;
 
 		TestConfigEnum::Root root(db);
 
