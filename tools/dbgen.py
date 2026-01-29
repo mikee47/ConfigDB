@@ -338,6 +338,13 @@ class Property:
         enumtype = self.enum_typeinfo_type
         return enumtype[0].lower() + enumtype[1:]
 
+    def get_enum_token(self, index: int) -> str:
+        '''Get the token string for an enumerated value'''
+        assert self.enum
+        prefix = '' if self.enum_type == 'String' else 'N'
+        value = self.enum[index]
+        return prefix + make_identifier(str(value))
+
     @property
     def typename_outer(self):
         assert self.obj
@@ -1093,11 +1100,10 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
     lines = CodeLines()
 
     if prop.ctype_override:
-        tag_prefix = '' if prop.enum_type == 'String' else 'N'
         lines.header += [
             '',
             f'enum class {prop.ctype_override}: uint8_t {{',
-            [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+            [f'{prop.get_enum_token(i)},' for i, _ in enumerate(prop.enum)],
             '};'
         ]
 
@@ -1108,11 +1114,17 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
     # Use explicit ctype override if given, otherwise type is based on property name
     enumtype = prop.enum_typeinfo_type
     enumtype_inst = prop.enum_typeinfo_inst
+    if prop.ctype_override:
+        emin = f'{prop.ctype_override}::{prop.get_enum_token(0)}'
+        emax = f'{prop.ctype_override}::{prop.get_enum_token(-1)}'
+    else:
+        emin = 0
+        emax = len(prop.enum) - 1
     lines.header += [
         '',
         f'struct {enumtype} {{',
         [
-            f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};',
+            f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> range{{{emin}, {emax}}};',
             'ConfigDB::EnumInfo enuminfo;',
             f'{item_type} data[{len(values)}];',
             '',
