@@ -41,8 +41,8 @@ public:
 		REQUIRE_EQ(exportObject(root.colors), colorsDefault);
 
 		if(auto update = root.update()) {
-			update.colors.addItem(Root::Color(100));
-			REQUIRE(update.colors[0] == Root::Color::blue);
+			update.colors.addItem(TestConfigEnum::Color(100));
+			REQUIRE(update.colors[0] == TestConfigEnum::Color::blue);
 			for(unsigned i = 0; i < 10; ++i) {
 				update.colors.addItem(Root::colorRange.random());
 			}

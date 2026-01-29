@@ -239,6 +239,9 @@ This generates a C++ property *fontColor* using a *FontColor* object definition 
 Simple property definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+TODO: If properties are referenced (via "$ref") and not modified then it should not generate additional variant metadata but just reference it. This applies to *enuminfo* and *range* structures. As with global objects, this property information should be declared directly in the Database instance, probably before any object definitions. For example, in *test-config-enum.h* the *colorRange*, *ColorType*, *colorType* definitions should all be placed int the parent Database alongside the *enum class Color* definition.
+
+
 References to simple (non-object) property types are handled differently. A type is *not* defined but instead used as a base definition which can be modified. For example, we can provide a general *Pin* definition::
 
   "$defs": {

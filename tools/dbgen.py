@@ -539,7 +539,7 @@ class Database(Object):
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
     include: set[str] = None
-    enum_props: list[tuple(Property, str)] = field(default_factory=list)
+    enum_props: list[tuple(Property, Object)] = field(default_factory=list)
 
     @property
     def namespace(self):
@@ -693,6 +693,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         schema_id = parent_prop.obj.schema_id or database.schema_id
 
         def create_object_property(obj: Object) -> Property:
+            # print(f'??create_object_property {obj.namespace=}, {obj.name=}, {obj.classname}')
             # Objects with 'store' annoation are managed by database, otherwise they live in root object
             if 'store' in fields:
                 if not parent_prop.is_root:
@@ -706,6 +707,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             return prop
 
         if object_ref := fields.get('$ref'):
+            # print('@@@', object_ref, schema_id, parent_prop.obj.namespace, parent_prop.obj.typename)
             while object_ref:
                 if object_ref.startswith('#/'):
                     ref = object_ref[2:]
@@ -754,6 +756,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                         fields[k] = v
 
             prop = Property(parent_prop, key, fields)
+            prop.ref = object_ref
             parent_prop.obj.properties.append(prop)
             return prop
 
@@ -761,6 +764,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             fields = ref_node
 
         def create_object_and_property(Class) -> Property:
+            # print(f'@@create_object_and_property {Class.__name__}, {object_ref=}, {object_name=}')
             obj = Class(database if 'store' in fields else db if object_ref else parent, object_name, object_ref, schema_id)
             if object_ref:
                 db.object_defs[object_ref] = obj
@@ -832,6 +836,7 @@ def generate_database(db: Database) -> CodeLines:
 
     external_defs = []
     for obj in db.external_objects.values():
+        print('>>>', db.name, obj.name)
         db.include.add(f'{obj.schema_id}.h')
         ns = obj.namespace
         external_defs += [
@@ -889,10 +894,12 @@ def generate_database(db: Database) -> CodeLines:
 
     for obj in sorted(db.object_defs.values()):
         prop = ObjectProperty(db, obj.name, {}, obj)
+        # print(f'GENERATE {prop.obj.ref=}, {prop.obj.namespace=}, {db.namespace=}, {prop.name=}, {prop.obj.classname=}')
         lines.append(generate_object(db, prop))
 
     for prop in reversed(db.object_properties):
         if not prop.obj.ref:
+            # print(f'GENERATE {prop.obj.ref=}, {prop.obj.namespace=}, {db.namespace=}, {prop.name=}, {prop.obj.classname=}')
             lines.append(generate_object(db, prop))
 
     lines.header += [
@@ -980,18 +987,15 @@ def generate_database(db: Database) -> CodeLines:
         obj = object_prop.obj
         enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
         namespace = f'{object_prop.namespace}'
-        if obj.is_array:
-            enumtype_inst = f'{namespace}::{obj.typename_contained}::{enumtype_inst}'
-        else:
-            namespace += f'::{obj.typename_contained}'
-            enumtype_inst = f'{namespace}::{enumtype_inst}'
+        # enumtype_inst = f'{namespace}::{obj.typename_contained}::{enumtype_inst}'
+        enumtype_inst = f'{namespace}::{enumtype_inst}'
 
         lines.header += [
-            '',
-            f'inline String toString({namespace}::{prop.ctype_override} value)',
-            '{',
-            [f'return {enumtype_inst}.enuminfo.getString(unsigned(value));' ],
-            '}',
+            # '',
+            # f'inline String toString({namespace}::{prop.ctype_override} value)',
+            # '{',
+            # [f'return {enumtype_inst}.enuminfo.getString(unsigned(value));' ],
+            # '}',
         ]
         # print(f'>> {prop.name=}, {prop.ctype_override=}, {namespace=}')
 
@@ -1067,6 +1071,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             lines.header += [
                 f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> {enumtype_range}Range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};'
                 '',
+                f'// {prop.ref=}',
                 f'struct {enumtype} {{',
                 [
                     'ConfigDB::EnumInfo enuminfo;',
@@ -1086,6 +1091,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                     ])
                 ],
                 '};',
+                '',
                 f'static const {enumtype} {enumtype_inst};',
             ]
             lines.source += [
@@ -1107,6 +1113,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
             range_tag = 'item' if prop.is_item else prop.id
             r = prop.range
             lines.header += [
+                '',
                 f'static constexpr ConfigDB::PropertyInfo::Range{r.property_type} {range_tag}Range PROGMEM {{{r}}};'
             ]
             if r.is_constrained():
@@ -1369,6 +1376,10 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
                 # enumlist += [
                 #     f'using {prop.ctype_override} = {orig_prop.namespace}::{prop.ctype_override};'
                 # ]
+                enumlist += [
+                    '',
+                    f'// SKIP ENUM {prop.typename=}'
+                ]
                 continue
             # print(prop.name)
             # for k, v in vars(prop).items():
@@ -1380,6 +1391,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
             tag_prefix = '' if prop.enum_type == 'String' else  'N'
             enumlist += [
                 '',
+                f'// {getattr(prop, 'ref', None)=}',
                 f'enum class {prop.ctype_override}: uint8_t {{',
                 [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
                 '};'
@@ -1417,9 +1429,9 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
     lines = CodeLines(
         [
             *forward_decls,
+            *generate_enum_class(obj.properties),
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
-            generate_enum_class(obj.properties),
             typeinfo.header,
         ])
 
@@ -1597,6 +1609,10 @@ def main():
     for db in databases.values():
         print(f'Parsing "{db.name}"')
         parse_database(db)
+
+    print('\nExternal objects:')
+    for k, obj in db.external_objects.items():
+        print(f'  {k}, {obj.name}')
 
     for db in databases.values():
         lines = generate_database(db)
