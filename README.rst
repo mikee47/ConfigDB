@@ -172,6 +172,16 @@ The corresponding `setColor`, `getColor` methods set or retrieve the value as a 
 The *color* value itself will be stored as a *string* with one of the given values. The *integer* and *number* types are also supported, which can be useful for generating constant lookup tables.
 
 
+Ranges
+~~~~~~
+
+All *integer* and *number* properties have a :cpp:class:`TRange` definition available should applications require it.
+Typically this is defined inside the containing object, such as 
+**BasicConfig::Color::Brightness::redRange** for a property named **red**.
+For simple arrays, it is for example **BasicConfig::General::Numbers::itemRange**.
+For enumerated types, it is defined within the associated type, for example **TestConfigEnum::ColorType::range**. Within arrays of such types, this can also be found in the array itself **TestConfigEnum::Root::Colors::itemType.range**.
+
+
 Arrays
 ~~~~~~
 
@@ -238,9 +248,6 @@ This generates a C++ property *fontColor* using a *FontColor* object definition 
 
 Simple property definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-TODO: If properties are referenced (via "$ref") and not modified then it should not generate additional variant metadata but just reference it. This applies to *enuminfo* and *range* structures. As with global objects, this property information should be declared directly in the Database instance, probably before any object definitions. For example, in *test-config-enum.h* the *colorRange*, *ColorType*, *colorType* definitions should all be placed int the parent Database alongside the *enum class Color* definition.
-
 
 References to simple (non-object) property types are handled differently. A type is *not* defined but instead used as a base definition which can be modified. For example, we can provide a general *Pin* definition::
 

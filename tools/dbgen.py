@@ -1420,7 +1420,9 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
             if not prop.ref:
                 lines.append(generate_enum_typeinfo(db, prop))
             typeinfo.header += [
-                f'static constexpr const auto& itemType = {prop.enum_typeinfo_inst};'
+                '',
+                f'using ItemType = {prop.enum_typeinfo_type};',
+                f'static constexpr const ItemType& itemType = {prop.enum_typeinfo_inst};'
             ]
         lines.header += [
             *declare_templated_class(obj, [obj.items.ctype_ret]),
