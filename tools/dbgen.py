@@ -847,50 +847,7 @@ def generate_database(db: Database) -> CodeLines:
     for obj in db.object_defs.values():
         db.forward_decls |= {obj.typename_contained, obj.typename_updater}
 
-    lines = CodeLines(
-        [
-            '/*',
-            generate_structure(db),
-            '*/',
-            '#pragma once',
-            '',
-            '#include <ConfigDB/Database.h>',
-            *(f'#include <{file}>' for file in db.include),
-            '',
-            f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
-            '{',
-            'public:',
-            [
-                *external_defs,
-                *(f'class {name};' for name in sorted(db.forward_decls)),
-                '',
-                'static const ConfigDB::DatabaseInfo typeinfo;',
-                '',
-                'using DatabaseTemplate::DatabaseTemplate;',
-                '',
-                '/*',
-                ' * Contained classes are reference objects only, and do not contain the actual data.',
-                ' */'
-            ]
-        ],
-        [
-            '',
-            f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
-            [
-                f'{db.strings[db.name]},',
-                f'{len(db.object_properties)},',
-                '{',
-                *(make_static_initializer(
-                    [
-                    '.type = PropertyType::Object',
-                    f'.name = {db.strings[prop.name]}',
-                    '.offset = 0',
-                    f'.variant = {{.object = &{prop.obj.typename_contained}::typeinfo}}'
-                    ], ',') for prop in db.object_properties),
-                '}'
-            ],
-            '};'
-        ])
+    lines = CodeLines()
 
     for obj in sorted(db.object_defs.values()):
         prop = ObjectProperty(db, obj.name, {}, obj)
@@ -912,7 +869,7 @@ def generate_database(db: Database) -> CodeLines:
             ' */'
         ]
     ]
-    def generate_outer_class(parent: Object, object_prop: Property, store_offset: int) -> list:
+    def generate_outer_class(parent: Object, object_prop: ObjectProperty, store_offset: int) -> list:
         obj = object_prop.obj
         template = f'ConfigDB::OuterObjectTemplate<{obj.typename_contained}, {obj.typename_updater}, {db.typename}, {object_prop.store_index}, {parent.typename_contained}, {parent.object_properties.index(object_prop)}, {store_offset}>'
         if not object_prop.is_store:
@@ -965,6 +922,40 @@ def generate_database(db: Database) -> CodeLines:
                 '}'
             ]
 
+    enum_typeinfo = CodeLines()
+    for prop, object_prop in db.enum_props:
+        enum_typeinfo.append(generate_enum_typeinfo(db, prop, object_prop))
+
+    lines.header[:0] = [
+        '/*',
+        generate_structure(db),
+        '*/',
+        '#pragma once',
+        '',
+        '#include <ConfigDB/Database.h>',
+        *(f'#include <{file}>' for file in db.include),
+        '',
+        f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
+        '{',
+        'public:',
+        [
+            *external_defs,
+            *(f'class {name};' for name in sorted(db.forward_decls)),
+            '',
+            'static const ConfigDB::DatabaseInfo typeinfo;',
+            '',
+        ],
+        *enum_typeinfo.header,
+        [
+            '',
+            'using DatabaseTemplate::DatabaseTemplate;',
+            '',
+            '/*',
+            ' * Contained classes are reference objects only, and do not contain the actual data.',
+            ' */'
+        ]
+    ]
+
     # Insert this at end once string table has been populated
     lines.source[:0] = [
         f'#include "{db.name}.h"',
@@ -981,6 +972,23 @@ def generate_database(db: Database) -> CodeLines:
         '#ifdef __clang__',
         '#pragma GCC diagnostic ignored "-Wc99-designator"',
         '#endif'
+        '',
+        f'const DatabaseInfo {db.typename}::typeinfo PROGMEM {{',
+        [
+            f'{db.strings[db.name]},',
+            f'{len(db.object_properties)},',
+            '{',
+            *(make_static_initializer(
+                [
+                '.type = PropertyType::Object',
+                f'.name = {db.strings[prop.name]}',
+                '.offset = 0',
+                f'.variant = {{.object = &{prop.obj.typename_contained}::typeinfo}}'
+                ], ',') for prop in db.object_properties),
+            '}'
+        ],
+        '};',
+        *enum_typeinfo.source
     ]
 
     for prop, object_prop in db.enum_props:
@@ -1004,7 +1012,7 @@ def generate_database(db: Database) -> CodeLines:
 
 def generate_structure(db: Database) -> list[str]:
     structure = []
-    def print_structure(object_prop: Property, indent: int, offset: int):
+    def print_structure(object_prop: ObjectProperty, indent: int, offset: int):
         def add(offset: int, id: str, typename: str):
             structure.append(f'{offset:4} {"".ljust(indent*3)} {id}: {typename}')
         obj = object_prop.obj
@@ -1044,7 +1052,70 @@ def declare_templated_class(obj: Object, tparams: list = None, is_updater: bool 
     ]
 
 
-def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
+def generate_enum_typeinfo(db: Database, prop: Property, object_prop: ObjectProperty) -> CodeLines:
+    '''Generate enum type information and return the instance name'''
+    assert prop.enum
+
+    lines = CodeLines()
+
+    values = prop.enum
+    obj_type = f'{object_prop.namespace}::{object_prop.obj.typename_contained}'
+    item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
+    if object_prop.obj.is_array and prop.ctype_override:
+        lines.header += [
+            '',
+            f'using Item = {prop.ctype_override};'
+        ]
+    # Objects can contain multiple enums so use unique names,
+    # but make an exception for array items since there is only one definition
+    enumtype = 'ItemType' if prop.is_item else f'{make_typename(prop.name)}Type'
+    enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
+    enumtype_range = 'item' if prop.is_item else prop.id
+    lines.header += [
+        '',
+        f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> {enumtype_range}Range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};',
+        '',
+        f'// ENUM {prop.ref=}, {obj_type=}',
+        f'struct {enumtype} {{',
+        [
+            'ConfigDB::EnumInfo enuminfo;',
+            f'{item_type} data[{len(values)}];',
+            '',
+            *([
+                'const FSTR::Vector<FSTR::String>& values() const',
+                '{',
+                ['return enuminfo.getStrings();'],
+                '}',
+            ] if prop.enum_type == "String" else
+            [
+                f'const FSTR::Array<{prop.enum_ctype}>& values() const',
+                '{',
+                [f'return enuminfo.getArray<{prop.enum_ctype}>();'],
+                '}',
+            ])
+        ],
+        '};',
+        '',
+        f'static const {enumtype} {enumtype_inst};',
+    ]
+    lines.source += [
+        '',
+        f'// {getattr(prop, 'ref', None)=}',
+        f'constexpr const {obj_type}::{enumtype} {obj_type}::{enumtype_inst} PROGMEM = {{',
+        [
+            f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
+            '{',
+            [f'&{db.strings[x]},' for x in values] if prop.enum_type == 'String' else
+            [f'{x},' for x in values],
+            '}'
+        ],
+        '};'
+    ]
+
+    return lines
+
+
+def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
     '''Generate type information'''
 
     lines = CodeLines(
@@ -1053,59 +1124,10 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
 
     obj = object_prop.obj
 
-    def getVariantInfo(prop: Property) -> list:
+    def getVariantInfo(prop: Property) -> list[str]:
         if prop.enum:
-            values = prop.enum
-            obj_type = f'{object_prop.namespace}::{obj.typename_contained}'
-            item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
-            if obj.is_array and prop.ctype_override:
-                lines.header += [
-                    '',
-                    f'using Item = {prop.ctype_override};'
-                ]
-            # Objects can contain multiple enums so use unique names,
-            # but make an exception for array items since there is only one definition
-            enumtype = 'ItemType' if prop.is_item else f'{make_typename(prop.name)}Type'
+            lines.append(generate_enum_typeinfo(db, prop, object_prop))
             enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
-            enumtype_range = 'item' if prop.is_item else prop.id
-            lines.header += [
-                f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> {enumtype_range}Range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};'
-                '',
-                f'// {prop.ref=}',
-                f'struct {enumtype} {{',
-                [
-                    'ConfigDB::EnumInfo enuminfo;',
-                    f'{item_type} data[{len(values)}];',
-                    '',
-                    *([
-                        'const FSTR::Vector<FSTR::String>& values() const',
-                        '{',
-                        ['return enuminfo.getStrings();'],
-                        '}',
-                    ] if prop.enum_type == "String" else
-                    [
-                        f'const FSTR::Array<{prop.enum_ctype}>& values() const',
-                        '{',
-                        [f'return enuminfo.getArray<{prop.enum_ctype}>();'],
-                        '}',
-                    ])
-                ],
-                '};',
-                '',
-                f'static const {enumtype} {enumtype_inst};',
-            ]
-            lines.source += [
-                '',
-                f'constexpr const {obj_type}::{enumtype} {obj_type}::{enumtype_inst} PROGMEM = {{',
-                [
-                    f'{{PropertyType::{prop.enum_type}, {{{len(values)} * sizeof({item_type})}}}},',
-                    '{',
-                    [f'&{db.strings[x]},' for x in values] if prop.enum_type == 'String' else
-                    [f'{x},' for x in values],
-                    '}'
-                ],
-                '};'
-            ]
             return f'.enuminfo = &{enumtype_inst}.enuminfo'
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
@@ -1217,7 +1239,7 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
     return lines
 
 
-def generate_object_struct(object_prop: Property) -> CodeLines:
+def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
     '''Generate struct definition for this object'''
 
     def get_ctype(prop):
@@ -1341,7 +1363,55 @@ def generate_property_write_accessors(obj: Object) -> list:
         ) for index, prop in enumerate(obj.properties))]
 
 
-def generate_object(db: Database, object_prop: Property) -> CodeLines:
+def generate_enum_class(db: Database, object_prop: ObjectProperty, properties: list[Property]) -> list[str]:
+    enumlist = []
+    for prop in properties:
+        if prop.enum and prop.ctype_override:
+            tag_prefix = '' if prop.enum_type == 'String' else  'N'
+            enumlist += [
+                '',
+                f'enum class {prop.ctype_override}: uint8_t {{',
+                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+                '};'
+            ]
+            db.enum_props.append((prop, object_prop))
+    return enumlist
+
+
+# def generate_enum_class(properties: list[Property]):
+#     enumlist = []
+#     for prop in properties:
+#         if not (prop.enum and prop.ctype_override):
+#             continue
+#         orig_prop = find_in_parent(prop)
+#         if orig_prop:
+#             # enumlist += [
+#             #     f'using {prop.ctype_override} = {orig_prop.namespace}::{prop.ctype_override};'
+#             # ]
+#             enumlist += [
+#                 '',
+#                 f'// SKIP ENUM {prop.typename=}'
+#             ]
+#             continue
+#         # print(prop.name)
+#         # for k, v in vars(prop).items():
+#         #     if k == 'parent':
+#         #         # v = f'{id(v):x}, {v.name}, {v.obj.name}, {v.obj.namespace}, {vars(v).keys()}'
+#         #         v = f'{id(v):x}, {type(v.parent)=}, {v.name=}, {v.obj.name=}, {v.obj.namespace=}, {v.obj.ref=}, {vars(v.obj).keys()}'
+#         #     print(f'  {k}: {v}')
+#         # exit(1)
+#         tag_prefix = '' if prop.enum_type == 'String' else  'N'
+#         enumlist += [
+#             '',
+#             f'// {getattr(prop, 'ref', None)=}',
+#             f'enum class {prop.ctype_override}: uint8_t {{',
+#             [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
+#             '};'
+#         ]
+#         db.enum_props.append((prop, object_prop))
+#     return enumlist
+
+def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
     '''Generate code for Object implementation'''
 
     obj = object_prop.obj
@@ -1366,39 +1436,6 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
         return None
 
 
-    def generate_enum_class(properties: list[Property]):
-        enumlist = []
-        for prop in properties:
-            if not (prop.enum and prop.ctype_override):
-                continue
-            orig_prop = find_in_parent(prop)
-            if orig_prop:
-                # enumlist += [
-                #     f'using {prop.ctype_override} = {orig_prop.namespace}::{prop.ctype_override};'
-                # ]
-                enumlist += [
-                    '',
-                    f'// SKIP ENUM {prop.typename=}'
-                ]
-                continue
-            # print(prop.name)
-            # for k, v in vars(prop).items():
-            #     if k == 'parent':
-            #         # v = f'{id(v):x}, {v.name}, {v.obj.name}, {v.obj.namespace}, {vars(v).keys()}'
-            #         v = f'{id(v):x}, {type(v.parent)=}, {v.name=}, {v.obj.name=}, {v.obj.namespace=}, {v.obj.ref=}, {vars(v.obj).keys()}'
-            #     print(f'  {k}: {v}')
-            # exit(1)
-            tag_prefix = '' if prop.enum_type == 'String' else  'N'
-            enumlist += [
-                '',
-                f'// {getattr(prop, 'ref', None)=}',
-                f'enum class {prop.ctype_override}: uint8_t {{',
-                [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
-                '};'
-            ]
-            db.enum_props.append((prop, object_prop))
-        return enumlist
-
     if obj.is_object_array:
         item_lines = CodeLines() if obj.items.obj.ref else generate_object(db, obj.items)
         return CodeLines(
@@ -1417,7 +1454,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
         return CodeLines(
             [
                 *forward_decls,
-                *generate_enum_class([obj.items]),
+                *generate_enum_class(db, object_prop, [obj.items]),
                 *declare_templated_class(obj, [obj.items.ctype_ret]),
                 typeinfo.header,
                 constructors,
@@ -1429,7 +1466,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
     lines = CodeLines(
         [
             *forward_decls,
-            *generate_enum_class(obj.properties),
+            *generate_enum_class(db, object_prop, obj.properties),
             *declare_templated_class(obj),
             [f'using Updater = {obj.typename_updater};'],
             typeinfo.header,
@@ -1460,7 +1497,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
     return lines
 
 
-def generate_updater(object_prop: Property) -> list:
+def generate_updater(object_prop: ObjectProperty) -> list:
     '''Generate code for Object Updater implementation'''
 
     constructors = generate_contained_constructors(object_prop, True)
@@ -1508,7 +1545,7 @@ def generate_updater(object_prop: Property) -> list:
     ]
 
 
-def generate_contained_constructors(object_prop: Property, is_updater = False) -> list:
+def generate_contained_constructors(object_prop: ObjectProperty, is_updater = False) -> list:
     template = 'UpdaterTemplate' if is_updater else 'Template'
 
     obj = object_prop.obj
