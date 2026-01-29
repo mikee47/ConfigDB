@@ -1086,7 +1086,6 @@ def generate_typeinfo(db: Database, object_prop: Property) -> CodeLines:
                     ])
                 ],
                 '};',
-                '',
                 f'static const {enumtype} {enumtype_inst};',
             ]
             lines.source += [
@@ -1233,9 +1232,7 @@ def generate_object_struct(object_prop: Property) -> CodeLines:
             [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(obj.object_properties)],
             '};',
         ] if obj.is_union else
-        [
-            [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in obj.object_properties],
-        ],
+        [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in obj.object_properties],
         [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties],
         '};',
         '',
@@ -1506,6 +1503,7 @@ def generate_contained_constructors(object_prop: Property, is_updater = False) -
 
     if not obj.object_properties or obj.is_union or obj.is_array:
         return [
+            '',
             f'using {obj.base_class}{template}::{obj.base_class}{template};'
         ]
 
