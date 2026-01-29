@@ -30,7 +30,7 @@ public:
 		Serial << "numberMap[" << numberMapType.values().length() << "]: " << numberMapType.values() << endl;
 
 		// Verify `toString()` functions
-		Serial << _F("toString(Color::blue): ") << TestConfigEnum::Color::blue << endl;
+		// Serial << _F("toString(Color::blue): ") << TestConfigEnum::Color::blue << endl;
 
 		TestConfigEnum::Root root(db);
 
@@ -44,16 +44,16 @@ public:
 			update.colors.addItem(TestConfigEnum::Color(100));
 			REQUIRE(update.colors[0] == TestConfigEnum::Color::blue);
 			for(unsigned i = 0; i < 10; ++i) {
-				update.colors.addItem(Root::colorRange.random());
+				update.colors.addItem(TestConfigEnum::ColorType::range.random());
 			}
 			for(unsigned i = 0; i < 20; ++i) {
-				update.quotients.addItem(Root::Quotients::itemRange.random());
+				update.quotients.addItem(Root::QuotientType::range.random());
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.smallMap.addItem(root.smallMap.itemRange.random());
+				update.smallMap.addItem(root.smallMap.itemType.range.random());
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.numberMap.addItem(root.numberMap.itemRange.random());
+				update.numberMap.addItem(root.numberMap.itemType.range.random());
 			}
 		}
 

@@ -792,6 +792,8 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                 raise ValueError(f'Missing "items" property for array')
             array_prop = create_object_and_property(Array)
             items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
+            if items_prop.ctype_override:
+                items_prop.name = make_identifier(items_prop.ctype_override)
             array_prop.obj.default = fields.get('default')
             if array_prop.obj.is_object_array:
                 if 'default' in fields:
@@ -1078,25 +1080,27 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
         ]
 
     values = prop.enum
-    obj_type = f'{object_prop.parent.namespace}::{object_prop.obj.typename_contained}'
+    obj_type = object_prop.parent.namespace
+    if not prop.ref:
+        obj_type += f'::{object_prop.obj.parent.typename_contained}'
     item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
-    if object_prop.obj.is_array and prop.ctype_override:
-        lines.header += [
-            '',
-            f'using Item = {prop.ctype_override};'
-        ]
+    # if prop.is_item and prop.ctype_override:
+    #     lines.header += [
+    #         '',
+    #         f'using Item = {prop.ctype_override};'
+    #     ]
+
     # Objects can contain multiple enums so use unique names,
     # but make an exception for array items since there is only one definition
-    enumtype = 'ItemType' if prop.is_item else f'{make_typename(prop.name)}Type'
-    enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
-    enumtype_range = 'item' if prop.is_item else prop.id
+    enumtype = f'{prop.typename}Type'
+    # enumtype_inst = f'{prop.id}ItemType' if prop.is_item else f'{prop.id}Type'
+    enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
     lines.header += [
         '',
-        f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> {enumtype_range}Range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};',
-        '',
-        f'// ENUM {prop.ref=}, {obj_type=}',
+        f'// ENUM {prop.ref=}, {obj_type=}, {prop.name=}',
         f'struct {enumtype} {{',
         [
+            f'static constexpr ConfigDB::EnumRange<{prop.ctype_ret}> range{{{prop.ctype_ret}(0), {prop.ctype_ret}({len(prop.enum)-1})}};',
             'ConfigDB::EnumInfo enuminfo;',
             f'{item_type} data[{len(values)}];',
             '',
@@ -1114,7 +1118,6 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
             ])
         ],
         '};',
-        '',
         f'static const {enumtype} {enumtype_inst};',
     ]
     lines.source += [
@@ -1145,9 +1148,13 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
 
     def getVariantInfo(prop: Property) -> list[str]:
         if prop.enum:
-            if not prop.ref:
-                lines.append(generate_enum_typeinfo(db, prop))
-            enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
+            enumtype = f'{prop.typename}Type'
+            enumtype_inst = f'{enumtype[0].lower()}{enumtype[1:]}'
+            if prop.is_item:
+                lines.header += [
+                    '',
+                    f'static constexpr const auto& itemType = {enumtype_inst};'
+                ]
             return f'.enuminfo = &{enumtype_inst}.enuminfo'
         if prop.ptype == 'string':
             return f'.defaultString = &{db.strings[str(prop.default)]}' if prop.default else ''
@@ -1392,20 +1399,11 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
     typeinfo = generate_typeinfo(db, object_prop)
     constructors = generate_contained_constructors(object_prop)
     updater = generate_updater(object_prop)
-    forward_decls = [] if obj.typename_updater in db.forward_decls else [
-        '',
-        f'class {obj.typename_updater};'
-    ]
-
-    def generate_enum_class(properties: list[Property]) -> CodeLines:
-        lines = CodeLines()
-        for prop in properties:
-            if not prop.enum:
-                continue
-            if not prop.ref:
-                lines.append(generate_enum_typeinfo(db, prop))
-        return lines
-
+    # forward_decls = [] if obj.typename_updater in db.forward_decls else [
+    #     '',
+    #     f'class {obj.typename_updater};'
+    # ]
+    forward_decls = []
 
     if obj.is_object_array:
         item_lines = CodeLines() if obj.items.obj.ref else generate_object(db, obj.items)
@@ -1423,7 +1421,9 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
 
     if obj.is_array:
         lines = CodeLines(forward_decls, typeinfo.source)
-        lines.append(generate_enum_class([obj.items]))
+        prop = obj.items
+        if prop.enum and not prop.ref:
+            lines.append(generate_enum_typeinfo(db, prop))
         lines.header += [
             *declare_templated_class(obj, [obj.items.ctype_ret]),
             typeinfo.header,
@@ -1434,10 +1434,12 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
         return lines
 
     lines = CodeLines(forward_decls)
-    lines.append(generate_enum_class(obj.properties))
+    for prop in obj.properties:
+        if prop.enum and not prop.ref:
+            lines.append(generate_enum_typeinfo(db, prop))
     lines.header += [
         *declare_templated_class(obj),
-        [f'using Updater = {obj.typename_updater};'],
+        # [f'using Updater = {obj.typename_updater};'],
         typeinfo.header,
     ]
 
