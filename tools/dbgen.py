@@ -777,6 +777,8 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
         if prop_type not in ['object', 'array', 'union']:
             if ref_node:
                 # For simple properties the definition is a template, so copy over any non-existent values
+                if 'enum' in ref_node and 'enum' in fields:
+                    raise ValueError(f'enum types may not be overridden')
                 for k, v in ref_node.items():
                     if k not in fields:
                         fields[k] = v
