@@ -539,6 +539,7 @@ class Database(Object):
     strings: StringTable = StringTable()
     forward_decls: set[str] = None
     include: set[str] = None
+    enum_props: list[tuple(Property, str)] = field(default_factory=list)
 
     @property
     def namespace(self):
@@ -975,6 +976,25 @@ def generate_database(db: Database) -> CodeLines:
         '#endif'
     ]
 
+    for prop, object_prop in db.enum_props:
+        obj = object_prop.obj
+        enumtype_inst = 'itemType' if prop.is_item else f'{prop.id}Type'
+        namespace = f'{object_prop.namespace}'
+        if obj.is_array:
+            enumtype_inst = f'{namespace}::{obj.typename_contained}::{enumtype_inst}'
+        else:
+            namespace += f'::{obj.typename_contained}'
+            enumtype_inst = f'{namespace}::{enumtype_inst}'
+
+        lines.header += [
+            '',
+            f'inline String toString({namespace}::{prop.ctype_override} value)',
+            '{',
+            [f'return {enumtype_inst}.enuminfo.getString(unsigned(value));' ],
+            '}',
+        ]
+        # print(f'>> {prop.name=}, {prop.ctype_override=}, {namespace=}')
+
     return lines
 
 
@@ -1367,6 +1387,7 @@ def generate_object(db: Database, object_prop: Property) -> CodeLines:
                 [f'{tag_prefix}{make_identifier(str(x))},' for x in prop.enum],
                 '};'
             ]
+            db.enum_props.append((prop, object_prop))
         return enumlist
 
     if obj.is_object_array:
