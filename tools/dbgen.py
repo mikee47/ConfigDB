@@ -1031,7 +1031,11 @@ def generate_database(db: Database) -> CodeLines:
         namespace = prop.enum_typeinfo_namespace
         lines.header += [
             '',
-            f'inline String toString({namespace}::{prop.ctype_ret} value)',
+            f'String toString({namespace}::{prop.ctype_ret} value);'
+        ]
+        lines.source += [
+            '',
+            f'String toString({namespace}::{prop.ctype_ret} value)',
             '{',
             [f'return {namespace}::{prop.enum_typeinfo_inst}.enuminfo.getString(unsigned(value));' ],
             '}',
