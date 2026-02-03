@@ -62,6 +62,20 @@ public:
 		TestConfigEnum::Root::OuterUpdater lock(db);
 		auto asyncUpdated = TestConfigEnum::Root(db).update([](auto) { Serial << "ASYNC UPDATE" << endl; });
 		REQUIRE(!asyncUpdated);
+
+		TEST_CASE("Ranges")
+		{
+			using Color = TestConfigEnum::Color;
+			constexpr auto& range = TestConfigEnum::ColorType::range;
+			Color badColor = Color(1000);
+			REQUIRE(!range.contains(badColor));
+			REQUIRE_EQ(range.clip(badColor), Color::blue);
+
+			// Because enums are defined using `uint8_t` storage, clipping doesn't work as expected here
+			badColor = Color(-1);
+			REQUIRE(!range.contains(badColor));
+			REQUIRE_EQ(range.clip(badColor), Color::blue);
+		}
 	}
 };
 
