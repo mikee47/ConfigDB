@@ -388,6 +388,8 @@ template <class ContainedClassType, class UpdaterType, class DatabaseClassType, 
 class OuterObjectTemplate : public ContainedClassType
 {
 public:
+	using Updater = UpdaterType;
+
 	OuterObjectTemplate(StoreRef store)
 		: ContainedClassType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{

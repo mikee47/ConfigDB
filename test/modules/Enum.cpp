@@ -29,6 +29,9 @@ public:
 		Serial << "smallMap[" << smallMapType.values().length() << "]: " << smallMapType.values() << endl;
 		Serial << "numberMap[" << numberMapType.values().length() << "]: " << numberMapType.values() << endl;
 
+		// Verify `toString()` functions
+		Serial << _F("toString(Color::blue): ") << TestConfigEnum::Color::blue << endl;
+
 		TestConfigEnum::Root root(db);
 
 		DEFINE_FSTR_LOCAL(quotientsDefault, "[37,15,2500]")
@@ -38,19 +41,19 @@ public:
 		REQUIRE_EQ(exportObject(root.colors), colorsDefault);
 
 		if(auto update = root.update()) {
-			update.colors.addItem(Root::Color(100));
-			REQUIRE(update.colors[0] == Root::Color::blue);
+			update.colors.addItem(TestConfigEnum::Color(100));
+			REQUIRE(update.colors[0] == TestConfigEnum::Color::blue);
 			for(unsigned i = 0; i < 10; ++i) {
-				update.colors.addItem(Root::Color(os_random() % colorType.values().length()));
+				update.colors.addItem(TestConfigEnum::ColorType::range.random());
 			}
 			for(unsigned i = 0; i < 20; ++i) {
-				update.quotients.addItem(Root::Quotient(os_random() % quotientType.values().length()));
+				update.quotients.addItem(Root::QuotientType::range.random());
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.smallMap.addItem(os_random() % smallMapType.values().length());
+				update.smallMap.addItem(root.smallMap.itemType.range.random());
 			}
 			for(unsigned i = 0; i < 10; ++i) {
-				update.numberMap.addItem(os_random() % numberMapType.values().length());
+				update.numberMap.addItem(root.numberMap.itemType.range.random());
 			}
 		}
 
@@ -59,6 +62,20 @@ public:
 		TestConfigEnum::Root::OuterUpdater lock(db);
 		auto asyncUpdated = TestConfigEnum::Root(db).update([](auto) { Serial << "ASYNC UPDATE" << endl; });
 		REQUIRE(!asyncUpdated);
+
+		TEST_CASE("Ranges")
+		{
+			using Color = TestConfigEnum::Color;
+			constexpr auto& range = TestConfigEnum::ColorType::range;
+			Color badColor = Color(1000);
+			REQUIRE(!range.contains(badColor));
+			REQUIRE_EQ(range.clip(badColor), Color::blue);
+
+			// Because enums are defined using `uint8_t` storage, clipping doesn't work as expected here
+			badColor = Color(-1);
+			REQUIRE(!range.contains(badColor));
+			REQUIRE_EQ(range.clip(badColor), Color::blue);
+		}
 	}
 };
 

@@ -172,6 +172,16 @@ The corresponding `setColor`, `getColor` methods set or retrieve the value as a 
 The *color* value itself will be stored as a *string* with one of the given values. The *integer* and *number* types are also supported, which can be useful for generating constant lookup tables.
 
 
+Ranges
+~~~~~~
+
+All *integer* and *number* properties have a :cpp:class:`TRange` definition available should applications require it.
+Typically this is defined inside the containing object, such as 
+**BasicConfig::Color::Brightness::redRange** for a property named **red**.
+For simple arrays, it is for example **BasicConfig::General::Numbers::itemRange**.
+For enumerated types, it is defined within the associated type, for example **TestConfigEnum::ColorType::range**. Within arrays of such types, this can also be found in the array itself **TestConfigEnum::Root::Colors::itemType.range**.
+
+
 Arrays
 ~~~~~~
 
