@@ -297,15 +297,12 @@ This example generates a `uint8_t` property value. A different type may be speci
 Calculated Values
 -----------------
 
-With ConfigDB, if an attribute name is prefixed with ``@`` then it will be evaluated as a simple expression. See https://github.com/SmingHub/Sming/blob/develop/Tools/Python/evaluator/README.md for details.
+With ConfigDB, if an attribute name is prefixed with ``@`` then it will be evaluated as a simple expression.
+Variable names correspond to environment variables.
+See https://github.com/SmingHub/Sming/blob/develop/Tools/Python/evaluator/README.md for details.
 
-Such expressions are parsed during loading of a schema. During the build process, copies are written to ``out/{SOC}/{build}/ConfigDB/schema`` to assist with debugging and development.
-
-.. note::
-
-  Variable names correspond to environment variables.
-  The build system is not aware of  variable dependencies, so it may be necessary to perform a manual `clean` or `configdb-rebuild` to pick up any changed values.
-
+The ``.cfgdb`` schema are pre-processed on every build and the source files regenerated automatically if there is a change.
+The pre-processed schema can be found in e.g. ``out/Esp8266/debug/ConfigDB/schema/``.
 
 An example is included in the test application:
 
@@ -315,16 +312,16 @@ An example is included in the test application:
     "@default": "SIMPLE_STRING"
   }
 
-During loading, the attribute value is evaluated in python and the result stored in `default`. The value `SIMPLE_STRING` must be available in the environment - an error occurs if not found.
+The pre-processed schema will contain a ``default`` attribute with the contents of the environment variable ``SIMPLE_STRING``.
+An error will be given if named variable is not present in the environment.
 
 To test this, build and run as follows:
 
 .. code-block:: bash
 
-  make clean
   SIMPLE_STRING="donkey2" make -j run
 
-The test application now fails as the value has changed - "donkey" is expected.
+The test application now fails as the schema default value has changed - "donkey" is expected.
 
 .. note::
 

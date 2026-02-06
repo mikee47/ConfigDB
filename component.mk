@@ -18,8 +18,10 @@ CONFIGDB_SCHEMA := $(wildcard *.cfgdb)
 
 CONFIGDB_JSON := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/schema/%.json,$(CONFIGDB_SCHEMA))
 
+##@ConfigDB
+
 .PHONY: configdb-preprocess
-configdb-preprocess:
+configdb-preprocess: ##Pre-process .cfgdb into .json
 	$(Q) $(CONFIGDB_GEN_CMDLINE) --preprocess --outdir $(APP_CONFIGDB_DIR) $(CONFIGDB_SCHEMA)
 
 CONFIGDB_FILES := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/%.h,$(CONFIGDB_SCHEMA))
@@ -30,15 +32,15 @@ $(CONFIGDB_FILES): $(CONFIGDB_JSON)
 	$(MAKE) configdb-build
 
 .PHONY: configdb-build
-configdb-build: $(CONFIGDB_SCHEMA)
+configdb-build: $(CONFIGDB_SCHEMA) ##Parse schema and generate source code
 	$(vecho) "CFGDB $^"
 	$(Q) $(CONFIGDB_GEN_CMDLINE) --outdir $(APP_CONFIGDB_DIR) $^
 
 .PHONY: configdb-rebuild
-configdb-rebuild: configdb-clean configdb-build
+configdb-rebuild: configdb-clean configdb-build ##Force regeneration of source code
 
 .PHONY: configdb-clean
-configdb-clean:
+configdb-clean: ##Remove generated files
 	$(Q) rm -rf $(APP_CONFIGDB_DIR)/*
 
 clean: configdb-clean
