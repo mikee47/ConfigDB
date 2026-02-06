@@ -18,13 +18,13 @@ CONFIGDB_SCHEMA := $(wildcard *.cfgdb)
 
 CONFIGDB_JSON := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/schema/%.json,$(CONFIGDB_SCHEMA))
 
-.PHONY: configdb-parse
-configdb-parse:
-	$(Q) $(CONFIGDB_GEN_CMDLINE) --parse --outdir $(APP_CONFIGDB_DIR) $(CONFIGDB_SCHEMA)
+.PHONY: configdb-preprocess
+configdb-preprocess:
+	$(Q) $(CONFIGDB_GEN_CMDLINE) --preprocess --outdir $(APP_CONFIGDB_DIR) $(CONFIGDB_SCHEMA)
 
 CONFIGDB_FILES := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/%.h,$(CONFIGDB_SCHEMA))
 CONFIGDB_FILES := $(CONFIGDB_FILES) $(CONFIGDB_FILES:.h=.cpp)
-COMPONENT_PREREQUISITES := configdb-parse $(CONFIGDB_FILES)
+COMPONENT_PREREQUISITES := configdb-preprocess $(CONFIGDB_FILES)
 
 $(CONFIGDB_FILES): $(CONFIGDB_JSON)
 	$(MAKE) configdb-build
