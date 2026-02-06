@@ -9,18 +9,26 @@ ifneq (,$(COMPONENT_RULE))
 CONFIGDB_GEN_CMDLINE := $(PYTHON) $(COMPONENT_PATH)/tools/dbgen.py
 
 COMPONENT_VARS := APP_CONFIGDB_DIR
-APP_CONFIGDB_DIR ?= $(PROJECT_DIR)/$(OUT_BASE)/ConfigDB
+APP_CONFIGDB_DIR := $(PROJECT_DIR)/$(OUT_BASE)/ConfigDB
 COMPONENT_INCDIRS += $(APP_CONFIGDB_DIR)
 COMPONENT_APPCODE := $(APP_CONFIGDB_DIR)
 
 COMPONENT_VARS += CONFIGDB_SCHEMA
 CONFIGDB_SCHEMA := $(wildcard *.cfgdb)
 
+CONFIGDB_JSON := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/schema/%.json,$(CONFIGDB_SCHEMA))
+
+$(CONFIGDB_JSON): configdb-parse
+
+.PHONY: configdb-parse
+configdb-parse:
+	$(Q) $(CONFIGDB_GEN_CMDLINE) --parse --outdir $(APP_CONFIGDB_DIR) $(CONFIGDB_SCHEMA)
+
 CONFIGDB_FILES := $(patsubst %.cfgdb,$(APP_CONFIGDB_DIR)/%.h,$(CONFIGDB_SCHEMA))
 CONFIGDB_FILES := $(CONFIGDB_FILES) $(CONFIGDB_FILES:.h=.cpp)
 COMPONENT_PREREQUISITES := $(CONFIGDB_FILES)
 
-$(CONFIGDB_FILES): $(CONFIGDB_SCHEMA)
+$(CONFIGDB_FILES): $(CONFIGDB_JSON)
 	$(MAKE) configdb-build
 
 .PHONY: configdb-build
@@ -33,7 +41,7 @@ configdb-rebuild: configdb-clean configdb-build
 
 .PHONY: configdb-clean
 configdb-clean:
-	$(Q) rm -f $(CONFIGDB_FILES)
+	$(Q) rm -rf $(APP_CONFIGDB_DIR)/*
 
 clean: configdb-clean
 

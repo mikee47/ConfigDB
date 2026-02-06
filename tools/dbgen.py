@@ -1626,6 +1626,7 @@ def main():
 
     parser.add_argument('cfgfiles', nargs='+', help='Path to configuration file(s)')
     parser.add_argument('--outdir', required=True, help='Output directory')
+    parser.add_argument('--parse', action="store_true", help='Perform evaluator parsing and generate .json only')
 
     args = parser.parse_args()
 
@@ -1633,11 +1634,23 @@ def main():
     os.makedirs(schema_out_dir, exist_ok=True)
 
     for f in args.cfgfiles:
-        print(f'Loading "{f}"')
+        if not args.parse:
+            print(f'Loading "{f}"')
         db = load_schema(f)
         filename = os.path.join(schema_out_dir, f'{db.name}.json')
-        with open(filename, 'w') as f_schema:
-            json.dump(db.schema, f_schema, indent=2)
+        try:
+            with open(filename, 'r') as f_schema:
+                old_schema_content = f_schema.read()
+        except FileNotFoundError:
+            old_schema_content = None
+        new_schema_content = json.dumps(db.schema, indent=2)
+        if new_schema_content != old_schema_content:
+            with open(filename, 'w') as f_schema:
+                json.dump(db.schema, f_schema, indent=2)
+
+    # If parse-only requested, we're done
+    if args.parse:
+        return
 
     for db in databases.values():
         print(f'Parsing "{db.name}"')
