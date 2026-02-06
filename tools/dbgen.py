@@ -1636,7 +1636,7 @@ def main():
         new_schema_content = json.dumps(db.schema, indent=2)
         if new_schema_content != old_schema_content:
             with open(filename, 'w') as f_schema:
-                json.dump(db.schema, f_schema, indent=2)
+                f_schema.write(new_schema_content)
 
     # If parse-only requested, we're done
     if args.parse:
