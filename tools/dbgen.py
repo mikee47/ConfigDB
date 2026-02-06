@@ -666,16 +666,25 @@ def load_schema(filename: str) -> Database:
             return evaluator.run(expr)
         return expr
 
+    def parse_expressions(schema, path: list[str]):
+        new_values = {}
+        for k, v in schema.items():
+            if k.startswith('@'):
+                new_values[k[1:]] = evaluate(v)
+                print(f'  {"/".join(path)}/{k[1:]}: {v}')
+        schema.update(new_values)
+        for k, v in schema.items():
+            if isinstance(v, dict):
+                parse_expressions(v, path + [k])
+
+
     '''Load JSON configuration schema and validate
     '''
     def parse_object_pairs(pairs):
         d = {}
         identifiers = set()
         for k, v in pairs:
-            if k.startswith('@'):
-                v = evaluate(v)
-                k = k[1:]
-            id = make_identifier(k)
+            id = make_identifier(k.removeprefix('@'))
             if not id:
                 raise ValueError(f'Invalid key "{k}"')
             if id in identifiers:
@@ -685,6 +694,7 @@ def load_schema(filename: str) -> Database:
         return d
     with open(filename, 'r', encoding='utf-8') as f:
         schema = json.load(f, object_pairs_hook=parse_object_pairs)
+    parse_expressions(schema, [os.path.splitext(filename)[0]])
     try:
         from jsonschema import Draft7Validator
         v = Draft7Validator(Draft7Validator.META_SCHEMA)

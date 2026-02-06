@@ -7,7 +7,7 @@
     },
     "num": {
       "type": "integer",
-      "default": 25,
+      "@default": "25 if SMING_RELEASE else 45",
       "enum": [
         15,
         37,
