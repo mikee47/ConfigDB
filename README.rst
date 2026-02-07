@@ -302,7 +302,7 @@ Variable names correspond to environment variables.
 See https://github.com/SmingHub/Sming/blob/develop/Tools/Python/evaluator/README.md for details.
 
 The ``.cfgdb`` schema are pre-processed on every build and the source files regenerated automatically if there is a change.
-The pre-processed schema can be found in e.g. ``out/Esp8266/debug/ConfigDB/schema/``.
+The pre-processed schema can be found in ``out/ConfigDB/schema/``.
 
 An example is included in the test application:
 
