@@ -661,6 +661,11 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
 
 def load_schema(filename: str) -> Database:
     def evaluate(expr: Any) -> Any:
+        if isinstance(expr, dict):
+            for k, v in expr.items():
+                if evaluate(k):
+                    return v
+            raise ValueError("No choice match")
         if isinstance(expr, list):
             return [evaluate(v) for v in expr]
         if isinstance(expr, str):
@@ -671,18 +676,26 @@ def load_schema(filename: str) -> Database:
 
     def calculate_props(props: dict, path: str):
         new_props = {}
+        keys_by_id = {}
         for key, value in props.items():
-            if not key.startswith('@'):
-                new_props[key] = value
-                continue
-            new_key = key[1:]
-            new_path = f'{path}/{new_key}'
-            try:
-                new_value = evaluate(value)
-            except Exception as e:
-                raise ValueError(f'{new_path} in "{filename}"') from e
-            new_props[new_key] = new_value
-            calc_props[new_path] = new_value
+            if key.startswith('@'):
+                new_key = key[1:]
+                new_path = f'{path}/{new_key}'
+                try:
+                    new_value = evaluate(value)
+                except Exception as e:
+                    raise ValueError(f'{new_path} in "{filename}"') from e
+                calc_props[new_path] = new_value
+                key = new_key
+                value = new_value
+            new_props[key] = value
+            id = make_identifier(key)
+            if not id:
+                raise ValueError(f'Invalid key "{key}"')
+            key_conflict = keys_by_id.get(id)
+            if key_conflict:
+                raise ValueError(f'Key "{key}" conflicts with "{key_conflict}"')
+            keys_by_id[id] = key
         props.clear()
         props.update(new_props)
         for k, v in props.items():
@@ -692,20 +705,8 @@ def load_schema(filename: str) -> Database:
 
     '''Load JSON configuration schema and validate
     '''
-    def parse_object_pairs(pairs):
-        d = {}
-        identifiers = set()
-        for k, v in pairs:
-            id = make_identifier(k.removeprefix('@'))
-            if not id:
-                raise ValueError(f'Invalid key "{k}"')
-            if id in identifiers:
-                raise ValueError(f'Key "{k}" produces duplicate identifier "{id}"')
-            identifiers.add(id)
-            d[k] = v
-        return d
     with open(filename, 'r', encoding='utf-8') as f:
-        schema = json.load(f, object_pairs_hook=parse_object_pairs)
+        schema = json.load(f)
 
     calculate_props(schema, '')
 
