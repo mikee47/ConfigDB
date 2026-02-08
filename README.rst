@@ -297,18 +297,19 @@ This example generates a `uint8_t` property value. A different type may be speci
 Calculated Values
 -----------------
 
-With ConfigDB, if an attribute name is prefixed with ``@`` then it will be evaluated as a simple expression.
-Variable names correspond to environment variables.
-See https://github.com/SmingHub/Sming/blob/develop/Tools/Python/evaluator/README.md for details.
+Within a ConfigDB schema, if an attribute name is prefixed with @ then the attribute value will be evaluated and the result used as the actual value.
+The expression must be given as a string, with variable names corresponding to environment variables.
+See :doc:`/_inc/Tools/Python/evaluator/README` for details.
 
 The ``.cfgdb`` schema are pre-processed on every build and the source files regenerated automatically if there is a change.
-The pre-processed schema can be found in ``out/ConfigDB/schema/``.
+The pre-processed schema can be found in ``out/ConfigDB/schema/``, together with a *summary.txt* file.
 
 An example is included in the test application:
 
 .. code-block:: json
 
-  "properties": {
+  "simple-string": {
+    "type": "string",
     "@default": "SIMPLE_STRING"
   }
 
@@ -335,21 +336,28 @@ JSON does not support extended number formats, such as `0x12`, so this mechanism
 
 .. code-block:: json
 
-  "properties": {
+  "simple-int": {
+    "type": "integer",
     "@default": "8 + 27",
     "minimum": 0,
     "@maximum": "0xffff"
   }
 
 
-Array defaults
-~~~~~~~~~~~~~~
+Array values
+~~~~~~~~~~~~
 
-Array defaults may contain a mixture of types:
+If a calculated attribute value is an array, then each element is evaluated separately.
+Arrays may contain a mixture of types, but only string values will be evalulated: others will be passed through unchanged.
+
 
 .. code-block:: json
 
-  "properties": {
+  "simple-array": {
+    "type": "array",
+    "items": {
+      "type": "integer"
+    },
     "@default": [
       "0x12",
       5,
@@ -358,7 +366,34 @@ Array defaults may contain a mixture of types:
     ]
   }
 
-Only string values will be evalulated, the others will be passed through unchanged.
+
+Dictionary values
+~~~~~~~~~~~~~~~~~
+
+To conditionally select from one of a number of options, provide a dictionary as the calculated attribute value.
+The first key which evaluates as *True* is matched, and the corresponding value becomes the value for the property.
+If none of the entries matches, an error is raised.
+
+In this example, the default contents of the *pin-list* array is determined by the targetted SOC.
+The final *"True": []* ensures a value is provided if nothing else is matched.
+
+.. code-block:: json
+
+  "pin-list": {
+    "type": "array",
+    "items": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "@default": {
+      "SMING_SOC == 'esp8266'": [ 1, 2, 3, 4 ],
+      "SMING_SOC == 'esp32c3'": [ 5, 6, 7, 8 ],
+      "SMING_SOC == 'esp32s2'": [ 9, 10, 11, 12 ],
+      "SMING_SOC in ['rp2040', 'rp2350']": [ 13, 14, 15, 16 ],
+      "True": []
+    }
+  }
 
 
 Store loading / saving
@@ -372,11 +407,11 @@ This can be overridden to customise loading/saving behaviour.
 The :cpp:func:`ConfigDB::Database::getFormat` method is called to get the storage format for a given Store.
 A :cpp:class:`ConfigDB::Format` implementation provides various methods for serializing and de-serializing database and object content.
 
-Currently only **json** is implemented - see :cpp:class:`ConfigDB::Json::format`.
+Currently only **json** is implemented - see :cpp:member:`ConfigDB::Json::format`.
 Each store is contained in a separate file.
 The name of the store forms the JSONPath prefix for any contained objects and values.
 
-The :sample:`BasicConfig` sample demonstrates using the stream classes to read and write data from a web client.
+The :sample:`Basic_Config` sample demonstrates using the stream classes to read and write data from a web client.
 
 .. important::
 
