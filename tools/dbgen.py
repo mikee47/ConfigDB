@@ -569,6 +569,7 @@ class Union(Object):
 @dataclass
 class Database(Object):
     schema: dict = None
+    calcprops: dict[str, Any] = None
     object_defs: dict[Object] = field(default_factory=dict)
     external_objects: dict[Object] = field(default_factory=dict)
     strings: StringTable = StringTable()
@@ -660,31 +661,55 @@ def make_static_initializer(entries: list, term_str: str = '') -> list:
 
 def load_schema(filename: str) -> Database:
     def evaluate(expr: Any) -> Any:
+        if isinstance(expr, dict):
+            for k, v in expr.items():
+                if evaluate(k):
+                    return v
+            raise ValueError("No choice match")
         if isinstance(expr, list):
             return [evaluate(v) for v in expr]
         if isinstance(expr, str):
             return evaluator.run(expr)
         return expr
 
+    calc_props: dict[str, Any] = {}
+
+    def calculate_props(props: dict, path: str):
+        new_props = {}
+        keys_by_id = {}
+        for key, value in props.items():
+            if key.startswith('@'):
+                new_key = key[1:]
+                new_path = f'{path}/{new_key}'
+                try:
+                    new_value = evaluate(value)
+                except Exception as e:
+                    raise ValueError(f'{new_path} in "{filename}"') from e
+                calc_props[new_path] = new_value
+                key = new_key
+                value = new_value
+            new_props[key] = value
+            id = make_identifier(key)
+            if not id:
+                raise ValueError(f'Invalid key "{key}"')
+            key_conflict = keys_by_id.get(id)
+            if key_conflict:
+                raise ValueError(f'Key "{key}" conflicts with "{key_conflict}"')
+            keys_by_id[id] = key
+        props.clear()
+        props.update(new_props)
+        for k, v in props.items():
+            if isinstance(v, dict):
+                calculate_props(v, f'{path}/{k}')
+
+
     '''Load JSON configuration schema and validate
     '''
-    def parse_object_pairs(pairs):
-        d = {}
-        identifiers = set()
-        for k, v in pairs:
-            if k.startswith('@'):
-                v = evaluate(v)
-                k = k[1:]
-            id = make_identifier(k)
-            if not id:
-                raise ValueError(f'Invalid key "{k}"')
-            if id in identifiers:
-                raise ValueError(f'Key "{k}" produces duplicate identifier "{id}"')
-            identifiers.add(id)
-            d[k] = v
-        return d
     with open(filename, 'r', encoding='utf-8') as f:
-        schema = json.load(f, object_pairs_hook=parse_object_pairs)
+        schema = json.load(f)
+
+    calculate_props(schema, '')
+
     try:
         from jsonschema import Draft7Validator
         v = Draft7Validator(Draft7Validator.META_SCHEMA)
@@ -696,7 +721,7 @@ def load_schema(filename: str) -> Database:
     except ImportError as err:
         print(f'\n** WARNING! {err}: Cannot validate "{filename}", please run `make python-requirements` **\n\n')
     schema_id = os.path.splitext(os.path.basename(filename))[0]
-    db = Database(None, schema_id, None, schema_id=schema_id, schema=schema)
+    db = Database(None, schema_id, None, schema_id=schema_id, schema=schema, calcprops=calc_props)
     databases[schema_id] = db
     return db
 
@@ -1616,6 +1641,7 @@ def main():
 
     parser.add_argument('cfgfiles', nargs='+', help='Path to configuration file(s)')
     parser.add_argument('--outdir', required=True, help='Output directory')
+    parser.add_argument('--preprocess', action="store_true", help='Pre-process and generate .json only')
 
     args = parser.parse_args()
 
@@ -1623,11 +1649,38 @@ def main():
     os.makedirs(schema_out_dir, exist_ok=True)
 
     for f in args.cfgfiles:
-        print(f'Loading "{f}"')
+        if not args.preprocess:
+            print(f'Loading "{f}"')
         db = load_schema(f)
         filename = os.path.join(schema_out_dir, f'{db.name}.json')
-        with open(filename, 'w') as f_schema:
-            json.dump(db.schema, f_schema, indent=2)
+        try:
+            with open(filename, 'r') as f_schema:
+                old_schema_content = f_schema.read()
+        except FileNotFoundError:
+            old_schema_content = None
+        new_schema_content = json.dumps(db.schema, indent=2)
+        if new_schema_content != old_schema_content:
+            with open(filename, 'w') as f_schema:
+                f_schema.write(new_schema_content)
+
+    filename = os.path.join(schema_out_dir, 'summary.txt')
+    with open(filename, 'w') as f:
+        print('Calculated properties', file=f)
+        print('=====================', file=f)
+        empty = True
+        for db in databases.values():
+            if not db.calcprops:
+                continue
+            empty = False
+            print(f'\n{db.name}', file=f)
+            for k, v in db.calcprops.items():
+                print(f'  {k} = {v}', file=f)
+        if empty:
+            print('None.', file=f)
+
+    # If parse-only requested, we're done
+    if args.preprocess:
+        return
 
     for db in databases.values():
         print(f'Parsing "{db.name}"')

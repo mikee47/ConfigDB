@@ -5,9 +5,12 @@
     "color": {
       "$ref": "#/$defs/Color"
     },
+    "pin": {
+      "$ref": "#/$defs/Pin"
+    },
     "num": {
       "type": "integer",
-      "default": 25,
+      "@default": "25 if SMING_RELEASE else 45",
       "enum": [
         15,
         37,
@@ -100,6 +103,43 @@
         "green",
         "blue"
       ]
+    },
+    "TestMode": {
+      "type": "string",
+      "ctype": "Color",
+      "@enum": {
+        "SMING_RELEASE": [
+          "silent",
+          "error"
+        ],
+        "1": [
+          "silent",
+          "error",
+          "debug",
+          "info"
+        ]
+      }
+    },
+    "Pin": {
+      "comment": "Valid pin numbers depend on selected SOC",
+      "type": "integer",
+      "@enum": {
+        "SMING_SOC == 'esp8266'": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "SMING_ARCH == 'Host'": [
+          50,
+          51,
+          52,
+          55
+        ],
+        "True": [
+          0
+        ]
+      }
     }
   }
 }

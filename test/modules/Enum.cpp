@@ -76,6 +76,44 @@ public:
 			REQUIRE(!range.contains(badColor));
 			REQUIRE_EQ(range.clip(badColor), Color::blue);
 		}
+
+		/*
+		 * RAW enums without ctype override
+		 */
+		TEST_CASE("Raw enums")
+		{
+			// These properties contain a value index, not the value itself
+			auto numIndex = root.getNum();
+			int num = TestConfigEnum::numType.values()[numIndex];
+#ifdef SMING_RELEASE
+			REQUIRE_EQ(numIndex, 4);
+			REQUIRE_EQ(num, 25);
+#else
+			REQUIRE_EQ(numIndex, 5);
+			REQUIRE_EQ(num, 45);
+#endif
+
+			auto wordIndex = root.getWord();
+			String word = TestConfigEnum::wordType.values()[wordIndex];
+			REQUIRE_EQ(wordIndex, 2);
+			REQUIRE_EQ(word, "brown");
+		}
+
+		TEST_CASE("Conditional enum")
+		{
+			String s;
+			for(auto v : TestConfigEnum::pinType.values()) {
+				s += v;
+				s += ',';
+			}
+#if defined(ARCH_ESP8266)
+			REQUIRE_EQ(s, "1,2,3,4,");
+#elif defined(ARCH_HOST)
+			REQUIRE_EQ(s, "50,51,52,55,");
+#else
+			REQUIRE_EQ(s, "0,");
+#endif
+		}
 	}
 };
 
