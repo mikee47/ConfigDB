@@ -98,6 +98,22 @@ public:
 			REQUIRE_EQ(wordIndex, 2);
 			REQUIRE_EQ(word, "brown");
 		}
+
+		TEST_CASE("Conditional enum")
+		{
+			String s;
+			for(auto v : TestConfigEnum::pinType.values()) {
+				s += v;
+				s += ',';
+			}
+#if defined(ARCH_ESP8266)
+			REQUIRE_EQ(s, "1,2,3,4,");
+#elif defined(ARCH_HOST)
+			REQUIRE_EQ(s, "50,51,52,55,");
+#else
+			REQUIRE_EQ(s, "0,");
+#endif
+		}
 	}
 };
 
