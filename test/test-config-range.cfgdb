@@ -18,8 +18,8 @@
     },
     "int64val": {
       "type": "integer",
-      "minimum": -100000000000,
-      "maximum": 100000000000,
+      "minimum": -1e11,
+      "maximum": 1e11,
       "default": -1
     },
     "numval": {

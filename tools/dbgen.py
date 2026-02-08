@@ -203,10 +203,8 @@ class Property:
             if not s[0].isupper():
                 print(f'WARNING: ctype `{s}` not in UpperCamelCase')
 
-        minval = fields.get('minimum')
-        self.validate_type(minval, 'minimum')
-        maxval = fields.get('maximum')
-        self.validate_type(maxval, 'maximum')
+        minval = self.validate_type(fields.get('minimum'), 'minimum')
+        maxval = self.validate_type(fields.get('maximum'), 'maximum')
 
         if not self.ctype:
             error(f'Invalid property type "{self.ptype}"')
@@ -219,6 +217,7 @@ class Property:
             if self.ptype == 'string':
                 pass
             elif self.ptype == 'integer':
+                self.enum = [self.validate_type(x, 'enum') for x in self.enum]
                 r = IntRange.deduce(min(self.enum), max(self.enum))
                 r.check(self.enum)
                 self.enum_type = r.property_type
@@ -256,18 +255,20 @@ class Property:
             self.range = r = Range(minval, maxval)
             r.check(self.default or 0)
 
-        self.validate_type(self.default, 'default')
+        self.default = self.validate_type(self.default, 'default')
 
-    def validate_type(self, value, attr_name: str) -> None:
+    def validate_type(self, value, attr_name: str) -> Any:
         '''Verify that if value is given it is of the correct schema type'''
         if value is None:
-            return
+            return None
+        if isinstance(value, float) and self.ptype == 'integer':
+            intval = round(value)
+            if intval == value:
+                return intval
         if isinstance(value, list) and self.ptype != 'array':
-            for x in value:
-                self.validate_type(x, attr_name)
-            return
+            return [self.validate_type(x, attr_name) for x in value]
         if self.enum:
-            return
+            return value
         types = {
             'array': list,
             'string': str,
@@ -277,6 +278,7 @@ class Property:
         }
         if not isinstance(value, types[self.ptype]):
             raise ValueError(f'Attribute "{attr_name}" must be an {self.ptype}, found {type(value).__name__} ({value})')
+        return value
 
     @property
     def ctype_ret(self):
@@ -852,11 +854,10 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
             if items_prop.ctype_override:
                 items_prop.name = make_identifier(items_prop.ctype_override)
-            array_prop.obj.default = fields.get('default')
             if array_prop.obj.is_object_array:
                 if 'default' in fields:
                     raise ValueError('ObjectArray default not supported')
-            items_prop.validate_type(array_prop.obj.default, 'default[]')
+            array_prop.obj.default = items_prop.validate_type(fields.get('default'), 'default[]')
             return array_prop
 
         if prop_type == 'union':
