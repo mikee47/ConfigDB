@@ -216,11 +216,11 @@ JSON Schema describes ways to `structure complex schemas <https://json-schema.or
 Re-useable (shared) definitions are, by convention, placed under **$defs**.
 These are referenced using the **$ref** keyword with JSON pointer syntax.
 
-For example:
+For example::
 
   "$ref": "#/$defs/MyObject"
 
-Definitions from other schema may be used:
+Definitions from other schema may be used::
 
   "$ref": "other-schema/$defs/MyObject"
 
