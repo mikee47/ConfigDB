@@ -265,7 +265,7 @@ void init()
 
 	statTimer.initializeMs<5000>([]() {
 		printHeap();
-		IFS::Debug::listDirectory(Serial, *IFS::getDefaultFileSystem(), database.getPath());
+		IFS::Debug::listDirectory(Serial, *IFS::getDefaultFileSystem(), database.getFilePath());
 	});
 	statTimer.start();
 }

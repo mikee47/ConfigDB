@@ -65,7 +65,7 @@ void Store::clear()
 
 String Store::getFilePath() const
 {
-	String path = db.getPath();
+	String path = db.getFilePath();
 	path += '/';
 	path += getFileName();
 	return path;
