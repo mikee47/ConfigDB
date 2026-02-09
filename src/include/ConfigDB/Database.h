@@ -47,7 +47,7 @@ public:
 		return sep ? &sep[1] : pathstr;
 	}
 
-	String getPath() const
+	String getFilePath() const
 	{
 		return path.c_str();
 	}
