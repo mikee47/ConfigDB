@@ -300,7 +300,7 @@ String Object::getPath() const
 	}
 	String name = getName();
 	if(path && name[0] != '[') {
-		path += '.';
+		path += '/';
 	}
 	path += name;
 	return path;
