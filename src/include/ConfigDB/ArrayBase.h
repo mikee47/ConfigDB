@@ -37,6 +37,11 @@ public:
 		return getId() ? getArray().getCount() : 0;
 	}
 
+	/*
+	 * @brief Remove an item from the array.
+	 * @note Be very careful dealing with `ObjectArray` item removal as all
+	 * items after this one will be shifted and their references no longer valid.
+	 */
 	bool removeItem(unsigned index)
 	{
 		return getArray().remove(index);

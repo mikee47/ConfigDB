@@ -191,6 +191,26 @@ Simple arrays are accessed via the :cpp:class:`ConfigDB::Array` class. All eleme
 
 The :cpp:class:`ConfigDB::ObjectArray` type can be used for arrays of objects or unions. Default values are not currently supported for these.
 
+.. important::
+
+  Be very careful when removing items from an array (via :cpp:func:`Array::removeItem`).
+  Don't hold Object or Property references to items in the array during the operation as they may become invalid if the array ordering changes.
+  Do not rely on the item index for removing multiple items since indices change when removeItem is called.
+
+  Do not rely on the item index for removal, but instead use the content of the object or item as criteria. For example:
+
+  .. code-block:: c++
+
+    for(unsigned index=0; index < array.getItemCount();) {
+      auto item = array[index];
+      if (want_to_delete(item)) {
+        // This causes subsquent items to shift down one, so leave index where it is
+        array.removeItem(index);
+      } else {
+        ++index;
+      }
+    }
+
 
 Unions
 ~~~~~~
