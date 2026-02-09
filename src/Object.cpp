@@ -283,11 +283,7 @@ Database& Object::getDatabase()
 String Object::getName() const
 {
 	if(parent && parent->isArray()) {
-		String path;
-		path += '[';
-		path += dataRef; // TODO: When items are deleted index will change, so use parent->getItemIndex(*this);
-		path += ']';
-		return path;
+		return String(dataRef);
 	}
 	return propinfo().name;
 }
@@ -297,12 +293,11 @@ String Object::getPath() const
 	String path;
 	if(parent) {
 		path = parent->getPath();
+	} else if(!getName().length()) {
+		return path;
 	}
-	String name = getName();
-	if(path && name[0] != '[') {
-		path += '/';
-	}
-	path += name;
+	path += '/';
+	path += getName();
 	return path;
 }
 
