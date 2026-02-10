@@ -305,7 +305,10 @@ std::unique_ptr<ExportStream> Database::createExportStream(const Format& format,
 	CStringArray csa;
 	{
 		String tmp = path;
-		tmp.replace('.', '\0');
+		if(tmp[0] == '/') {
+			tmp.remove(0, 1);
+		}
+		tmp.replace('/', '\0');
 		csa = std::move(tmp);
 	}
 	auto it = csa.begin();
