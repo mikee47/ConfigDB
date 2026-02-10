@@ -1,7 +1,7 @@
 /****
- * ConfigDB/Database.cpp
+ * ConfigDB/Pointer.cpp
  *
- * Copyright 2024 mikee47 <mike@sillyhouse.net>
+ * Copyright 2026 mikee47 <mike@sillyhouse.net>
  *
  * This file is part of the ConfigDB Library
  *
@@ -18,15 +18,18 @@
  ****/
 
 #include "include/ConfigDB/Pointer.h"
+#include "include/ConfigDB/Database.h"
 #include <Data/CStringArray.h>
 
 namespace ConfigDB
 {
-PointerContext Pointer::resolve(Database& db)
+bool PointerContext::resolve(Database& db, const Pointer& ptr)
 {
+	clear();
+
 	CStringArray csa;
 	{
-		String tmp = string;
+		String tmp = ptr.string;
 		if(tmp[0] == '/') {
 			tmp.remove(0, 1);
 		}
@@ -35,7 +38,8 @@ PointerContext Pointer::resolve(Database& db)
 	}
 	auto it = csa.begin();
 	if(!it) {
-		return PointerContext(db);
+		database = &db;
+		return true;
 	}
 
 	int storeIndex = db.typeinfo.findStore(*it, strlen(*it));
@@ -45,24 +49,30 @@ PointerContext Pointer::resolve(Database& db)
 		storeIndex = 0;
 	}
 
-	unsigned offset{0};
-	auto prop = &db.typeinfo.stores[storeIndex];
-	for(; it; ++it) {
-		int i = prop->findObject(*it, strlen(*it));
-		if(i < 0) {
-			return PointerContext();
-		}
-		offset += prop->offset;
-		prop = &prop->getObject(i);
-	}
-
-	auto store = db.openStore(storeIndex);
+	store = db.openStore(storeIndex);
 	if(!store) {
-		return PointerContext();
+		clear();
+		return false;
 	}
 
-	Object obj(*store, *prop, offset);
-	return PointerContext(store, obj);
+	objects[0] = *store;
+	for(; it; ++it) {
+		const auto& parent = objects[nesting];
+		auto obj = parent.findObject(*it, strlen(*it));
+		if(obj) {
+			objects[++nesting] = obj;
+			continue;
+		}
+		property = parent.findProperty(*it, strlen(*it));
+		// Property must be at end of path
+		if(property && !++it) {
+			return true;
+		}
+		clear();
+		return false;
+	}
+
+	return true;
 }
 
 } // namespace ConfigDB

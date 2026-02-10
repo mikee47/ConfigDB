@@ -250,8 +250,33 @@ void gotIP(IpAddress, IpAddress, IpAddress)
 
 void testPointer()
 {
-	ConfigDB::Pointer ptr("/security");
-	auto ctx = ptr.resolve(database);
+	DEFINE_FSTR_LOCAL(paths, "/security\0"
+							 "/general/channels\0"
+							 "/general/channels/0/notes\0"
+							 "/general/channels/0/details/current-limit\0")
+
+	for(auto path : CStringArray(paths)) {
+		Serial << path << ": ";
+		ConfigDB::Pointer ptr(path);
+
+		ConfigDB::PointerContext ctx;
+		if(!ctx.resolve(database, ptr)) {
+			Serial << "Lookup failed" << endl;
+			return;
+		}
+
+		if(ctx.isProperty()) {
+			auto prop = ctx.getProperty();
+			Serial << "Property " << endl << prop.getValue() << endl;
+		} else {
+			auto obj = ctx.getObject();
+			Serial << obj.typeinfo().type << endl;
+			auto stream = ctx.createExportStream(ConfigDB::Json::format, {.pretty = true});
+			Serial.copyFrom(stream.get());
+			Serial << endl;
+		}
+		Serial << endl;
+	}
 }
 
 } // namespace

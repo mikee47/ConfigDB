@@ -22,6 +22,27 @@
 #include <Data/Stream/FileStream.h>
 #include <Data/Buffer/PrintBuffer.h>
 
+namespace
+{
+/*
+ * Get value of a positive counted decimal string.
+ * If there's a library routine to do this somewhere, please let me know!
+ */
+int parseInt(const char* s, size_t length)
+{
+	int value{0};
+	while(length--) {
+		char c = *s++;
+		if(!isdigit(c)) {
+			return -1;
+		}
+		value = (value * 10) + c - '0';
+	}
+	return value;
+}
+
+} // namespace
+
 namespace ConfigDB
 {
 void Object::clear()
@@ -232,25 +253,85 @@ Object Object::getObject(unsigned index)
 	}
 }
 
+Object Object::findObject(const char* name, size_t length) const
+{
+	switch(typeinfo().type) {
+	case ObjectType::Array:
+		return {};
+	case ObjectType::ObjectArray: {
+		unsigned index = parseInt(name, length);
+		if(index >= getObjectCount()) {
+			return {};
+		}
+		return getObject(index);
+	}
+	default:
+		int index = typeinfo().findObject(name, length);
+		if(index < 0) {
+			return {};
+		}
+		if(typeIs(ObjectType::Union)) {
+			if(index != static_cast<const Union*>(this)->getTag()) {
+				return {};
+			}
+		}
+		return Object(*this, index);
+	}
+}
+
 Object Object::findObject(const char* name, size_t length)
 {
-	if(isArray()) {
+	switch(typeinfo().type) {
+	case ObjectType::Array:
 		return {};
+	case ObjectType::ObjectArray: {
+		unsigned index = parseInt(name, length);
+		if(index >= getObjectCount()) {
+			return {};
+		}
+		return getObject(index);
 	}
-	int index = typeinfo().findObject(name, length);
-	if(index < 0) {
+	default:
+		int index = typeinfo().findObject(name, length);
+		if(index < 0) {
+			return {};
+		}
+		if(typeIs(ObjectType::Union)) {
+			static_cast<Union*>(this)->setTag(index);
+		}
+		return Object(*this, index);
+	}
+}
+
+PropertyConst Object::findProperty(const char* name, size_t length) const
+{
+	switch(typeinfo().type) {
+	case ObjectType::Array: {
+		unsigned index = parseInt(name, length);
+		if(index >= getPropertyCount()) {
+			return {};
+		}
+		return getProperty(index);
+	}
+	case ObjectType::ObjectArray:
+	case ObjectType::Union:
 		return {};
+	default:
+		int index = typeinfo().findProperty(name, length);
+		return index >= 0 ? getProperty(index) : Property();
 	}
-	if(typeIs(ObjectType::Union)) {
-		static_cast<Union*>(this)->setTag(index);
-	}
-	return Object(*this, index);
 }
 
 Property Object::findProperty(const char* name, size_t length)
 {
 	switch(typeinfo().type) {
-	case ObjectType::Array:
+	case ObjectType::Array: {
+		unsigned index = parseInt(name, length);
+		if(index >= getPropertyCount()) {
+			return {};
+		}
+		return getProperty(index);
+	}
 	case ObjectType::ObjectArray:
 	case ObjectType::Union:
 		return {};
@@ -291,7 +372,7 @@ String Object::getName() const
 String Object::getPath() const
 {
 	String path;
-	if(parent) {
+	if(parent && !parent->isStore()) {
 		path = parent->getPath();
 	} else if(!getName().length()) {
 		return path;

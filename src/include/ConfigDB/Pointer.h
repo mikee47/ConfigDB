@@ -1,7 +1,7 @@
 /****
  * ConfigDB/Pointer.h
  *
- * Copyright 2024 mikee47 <mike@sillyhouse.net>
+ * Copyright 2026 mikee47 <mike@sillyhouse.net>
  *
  * This file is part of the ConfigDB Library
  *
@@ -19,37 +19,11 @@
 
 #pragma once
 
-#include "Database.h"
+#include "Format.h"
+#include "Object.h"
 
 namespace ConfigDB
 {
-class PointerContext
-{
-public:
-	static constexpr unsigned maxNesting = 16;
-
-	// Methods here for introspection
-	// TODO
-
-// private:
-	friend class Pointer;
-
-	PointerContext() = default;
-
-	PointerContext(Database& db) : db(&db)
-	{
-	}
-
-	PointerContext(StoreRef store, Object object) : store(store), objects{object}
-	{
-	}
-
-	Database* db = nullptr;
-	StoreRef store;
-	Object objects[maxNesting];
-	uint8_t nesting{};
-};
-
 class Pointer
 {
 public:
@@ -57,10 +31,64 @@ public:
 	{
 	}
 
-	PointerContext resolve(Database& db);
+private:
+	friend class PointerContext;
+
+	String string;
+};
+
+class PointerContext
+{
+public:
+	static constexpr unsigned maxNesting = 16;
+
+	bool resolve(Database& db, const Pointer& ptr);
+
+	bool isProperty() const
+	{
+		return bool(property);
+	}
+
+	PropertyConst getProperty() const
+	{
+		return property;
+	}
+
+	Object getObject() const
+	{
+		return property ? Object() : objects[nesting];
+	}
+
+	explicit operator bool() const
+	{
+		return database || store;
+	}
+
+	std::unique_ptr<ExportStream> createExportStream(const Format& format, const ExportOptions& options = {})
+	{
+		if(database) {
+			return format.createExportStream(*database, options);
+		}
+		auto obj = getObject();
+		if(obj) {
+			return format.createExportStream(store, obj, options);
+		}
+		return nullptr;
+	}
 
 private:
-	String string;
+	void clear()
+	{
+		database = nullptr;
+		store = {};
+		nesting = 0;
+	}
+
+	Database* database = nullptr;
+	StoreRef store;
+	Object objects[maxNesting];
+	PropertyConst property;
+	uint8_t nesting{};
 };
 
 } // namespace ConfigDB
