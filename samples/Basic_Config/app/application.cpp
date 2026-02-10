@@ -5,6 +5,7 @@
 #include <ConfigDB/Json/Format.h>
 #include <ConfigDB/Network/HttpImportResource.h>
 #include <Data/Format/Json.h>
+#include <ConfigDB/Pointer.h>
 
 #ifdef ENABLE_MALLOC_COUNT
 #include <malloc_count.h>
@@ -197,9 +198,30 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 	}
 }
 
+void onApi(HttpRequest& request, HttpResponse& response)
+{
+	debug_i("%s", __PRETTY_FUNCTION__);
+	Serial << toString(request.method) << " \"" << request.uri.Path << '"' << endl;
+
+	if(request.method != HTTP_GET) {
+		response.code = HTTP_STATUS_BAD_REQUEST;
+		return;
+	}
+
+	String path = request.uri.Path.substring(4);
+	auto stream = database.createExportStream(ConfigDB::Json::format, path);
+	response.sendDataStream(stream.release(), MIME_JSON);
+}
+
 void onFile(HttpRequest& request, HttpResponse& response)
 {
+	debug_i("%s", __PRETTY_FUNCTION__);
 	Serial << toString(request.method) << " \"" << request.uri.getRelativePath() << '"' << endl;
+
+	if(request.uri.Path.startsWith("/api")) {
+		onApi(request, response);
+		return;
+	}
 
 	if(request.method != HTTP_GET) {
 		response.code = HTTP_STATUS_BAD_REQUEST;
@@ -226,6 +248,12 @@ void gotIP(IpAddress, IpAddress, IpAddress)
 	startWebServer();
 }
 
+void testPointer()
+{
+	ConfigDB::Pointer ptr("/security");
+	auto ctx = ptr.resolve(database);
+}
+
 } // namespace
 
 void init()
@@ -249,6 +277,8 @@ void init()
 
 	readWriteValues();
 
+	testPointer();
+
 	// database.exportToFile(ConfigDB::Json::format, F("out/database.json"));
 	// database.importFromFile(ConfigDB::Json::format, F("out/database.json"));
 
@@ -258,7 +288,7 @@ void init()
 
 	Serial << endl << endl;
 
-	printStoreStats(database, true);
+	// printStoreStats(database, true);
 
 	// Un-comment this line to test web client locking conflict behaviour
 	// auto dirtyLock = new BasicConfig::Root::OuterUpdater(database);
