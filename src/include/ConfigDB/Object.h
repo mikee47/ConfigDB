@@ -132,6 +132,7 @@ public:
 	 * which clears the Object to its default value.
 	 */
 	Object findObject(const char* name, size_t length);
+	Object findObject(const char* name, size_t length) const;
 
 	/**
 	 * @brief Get number of properties
@@ -146,6 +147,8 @@ public:
 	Property getProperty(unsigned index);
 
 	PropertyConst getProperty(unsigned index) const;
+
+	PropertyConst findProperty(const char* name, size_t length) const;
 
 	/**
 	 * @brief Find property by name
