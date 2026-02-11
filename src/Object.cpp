@@ -241,13 +241,13 @@ unsigned Object::getObjectCount() const
 	}
 }
 
-Object Object::getObject(unsigned index)
+Object Object::getObject(unsigned index) const
 {
 	switch(typeinfo().type) {
 	case ObjectType::ObjectArray:
-		return static_cast<ObjectArray*>(this)->getObject(index);
+		return static_cast<const ObjectArray*>(this)->getObject(index);
 	case ObjectType::Union:
-		return static_cast<Union*>(this)->getObject(index);
+		return static_cast<const Union*>(this)->getObject(index);
 	default:
 		return Object(*this, index);
 	}

@@ -80,7 +80,7 @@ public:
 		return 1;
 	}
 
-	Object getObject([[maybe_unused]] unsigned index)
+	Object getObject([[maybe_unused]] unsigned index) const
 	{
 		assert(index == 0);
 		return Object(*this, getTag());
