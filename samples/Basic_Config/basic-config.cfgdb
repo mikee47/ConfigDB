@@ -37,6 +37,51 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 65535
+    },
+    "Channel": {
+      "type": "object",
+      "properties": {
+        "pin": {
+          "$ref": "#/$defs/Pin",
+          "default": 13
+        },
+        "name": {
+          "type": "string",
+          "default": "red"
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "purpose": {
+              "type": "string",
+              "default": "general"
+            },
+            "current-limit": {
+              "type": "integer",
+              "default": 15,
+              "format": "ms"
+            },
+            "garbage": {
+              "type": "string",
+              "default": "This is potentially\na problem\nstring /* with stuff inside\b\b it */"
+            }
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        }
+      }
     }
   },
   "properties": {
@@ -64,49 +109,7 @@
         "channels": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "pin": {
-                "$ref": "#/$defs/Pin",
-                "default": 13
-              },
-              "name": {
-                "type": "string",
-                "default": "red"
-              },
-              "details": {
-                "type": "object",
-                "properties": {
-                  "purpose": {
-                    "type": "string",
-                    "default": "general"
-                  },
-                  "current-limit": {
-                    "type": "integer",
-                    "default": 15,
-                    "format": "ms"
-                  },
-                  "garbage": {
-                    "type": "string",
-                    "default": "This is potentially\na problem\nstring /* with stuff inside\b\b it */"
-                  }
-                }
-              },
-              "notes": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "values": {
-                "type": "array",
-                "items": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "maximum": 255
-                }
-              }
-            }
+            "$ref": "#/$defs/Channel"
           }
         },
         "current_pin_config_name": {
