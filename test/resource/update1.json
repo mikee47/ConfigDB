@@ -1,4 +1,9 @@
 {
     "simple-bool": true,
-    "simple-int": 11111110101010
+    "simple-int": 11111110101010,
+    "simple-union": {
+        "obj2": {
+            "value": 12
+        }
+    }
 }

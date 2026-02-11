@@ -30,6 +30,37 @@
       "default": 3.141592654,
       "maximum": 1.2e8
     },
+    "simple-union": {
+      "oneOf": [
+        {
+          "type": "object",
+          "title": "obj1",
+          "properties": {
+            "value": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "title": "obj2",
+          "properties": {
+            "value": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "title": "obj3",
+          "properties": {
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
     "int_array": {
       "type": "array",
       "items": {
