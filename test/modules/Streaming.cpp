@@ -144,7 +144,8 @@ public:
 		{
 			// An un-named root object should produce same output (i.e. options are ignored)
 			String expectedContent =
-				F("{\"int_array\":[13,28,39,40],\"string_array\":[\"a\",\"b\",\"c\"],\"object_array\":[],\"color\":"
+				F("{\"simple-union\":{\"obj2\":{\"value\":12}},\"int_array\":[13,28,39,40],\"string_array\":[\"a\","
+				  "\"b\",\"c\"],\"object_array\":[],\"color\":"
 				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
 				  "1415927}");
 			TestConfig::Root root(database);

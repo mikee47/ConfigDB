@@ -1,4 +1,9 @@
 {
+    "simple-union": {
+        "obj1": {
+            "value": 0
+        }
+    },
     "int_array": [
         1,
         2,

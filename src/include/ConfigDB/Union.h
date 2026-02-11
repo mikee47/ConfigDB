@@ -51,6 +51,9 @@ public:
 	 */
 	void setTag(Tag tag)
 	{
+		if(!writeCheck()) {
+			return;
+		}
 		assert(tag < typeinfo().objectCount);
 		disposeArrays();
 		memset(getDataPtr(), 0, typeinfo().structSize);
@@ -63,6 +66,9 @@ public:
 	 */
 	void clear()
 	{
+		if(!writeCheck()) {
+			return;
+		}
 		disposeArrays();
 		memset(getDataPtr(), 0, typeinfo().structSize);
 		getPropertyData(0)->uint8 = 0;

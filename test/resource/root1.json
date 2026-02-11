@@ -1,1 +1,1 @@
-{"int_array":[13,28,39,40],"string_array":["a","b","c"],"object_array":[],"color":"red","simple-bool":true,"simple-string":"donkey","simple-int":100,"simple-float":3.1415927}
+{"simple-union":{"obj2":{"value":12}},"int_array":[13,28,39,40],"string_array":["a","b","c"],"object_array":[],"color":"red","simple-bool":true,"simple-string":"donkey","simple-int":100,"simple-float":3.1415927}
