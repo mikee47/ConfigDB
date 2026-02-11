@@ -122,7 +122,7 @@ bool WriteStream::startElement(const Element& element)
 	}
 
 	if(element.isContainer()) {
-		obj = parent.findObject(element.key, element.keyLength);
+		obj = parent.findAndSetObject(element.key, element.keyLength);
 		if(!obj) {
 			return handleError(FormatError::NotInSchema, parent, element.getKey());
 		}
@@ -194,7 +194,7 @@ bool WriteStream::handleSelector(const Element& element, const char* sel)
 	if(*keyEnd != ']') {
 		return handleError(FormatError::BadSelector, parent, element.getKey());
 	}
-	obj = parent.findObject(element.key, sel - element.key);
+	obj = parent.findAndSetObject(element.key, sel - element.key);
 	if(!obj) {
 		return handleError(FormatError::NotInSchema, parent, element.getKey());
 	}

@@ -259,6 +259,11 @@ Object Object::findObject(const char* name, size_t length) const
 	case ObjectType::Array:
 		return {};
 	case ObjectType::ObjectArray: {
+		auto sep = strchr(name, '=');
+		if(sep) {
+			String propname(name, sep - name);
+			return reinterpret_cast<const ObjectArray*>(this)->select(propname.c_str(), sep + 1);
+		}
 		unsigned index = parseInt(name, length);
 		if(index >= getObjectCount()) {
 			return {};
@@ -279,28 +284,17 @@ Object Object::findObject(const char* name, size_t length) const
 	}
 }
 
-Object Object::findObject(const char* name, size_t length)
+Object Object::findAndSetObject(const char* name, size_t length)
 {
-	switch(typeinfo().type) {
-	case ObjectType::Array:
-		return {};
-	case ObjectType::ObjectArray: {
-		unsigned index = parseInt(name, length);
-		if(index >= getObjectCount()) {
-			return {};
-		}
-		return getObject(index);
-	}
-	default:
+	if(typeIs(ObjectType::Union)) {
 		int index = typeinfo().findObject(name, length);
 		if(index < 0) {
 			return {};
 		}
-		if(typeIs(ObjectType::Union)) {
-			static_cast<Union*>(this)->setTag(index);
-		}
+		static_cast<Union*>(this)->setTag(index);
 		return Object(*this, index);
 	}
+	return findObject(name, length);
 }
 
 PropertyConst Object::findProperty(const char* name, size_t length) const

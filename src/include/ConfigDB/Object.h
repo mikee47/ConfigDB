@@ -128,11 +128,15 @@ public:
 
 	/**
 	 * @brief Find child object by name
-	 * @note For Union objects this also sets the tag on successful match,
-	 * which clears the Object to its default value.
 	 */
-	Object findObject(const char* name, size_t length);
 	Object findObject(const char* name, size_t length) const;
+
+	/**
+	 * @brief Find child object by name, then initialise it
+	 * @note For Union objects this sets the tag and clears the Object to
+	 * its default value.
+	 */
+	Object findAndSetObject(const char* name, size_t length);
 
 	/**
 	 * @brief Get number of properties

@@ -32,12 +32,12 @@ class ObjectArray : public ArrayBase
 public:
 	using ArrayBase::ArrayBase;
 
-	Object getObject(unsigned index)
+	Object getObject(unsigned index) const
 	{
 		return Object(*this, 0, index);
 	}
 
-	Object getItem(unsigned index)
+	Object getItem(unsigned index) const
 	{
 		return getObject(index);
 	}
@@ -45,6 +45,29 @@ public:
 	unsigned getObjectCount() const
 	{
 		return getItemCount();
+	}
+
+	/**
+	 * @brief Find a child object from a property value
+	 * @param name Name of property to match
+	 * @param value Property value
+	 */
+	Object select(const char* name, const char* value) const
+	{
+		auto& propinfo = getItemType();
+		int propIndex = propinfo.findProperty(name, strlen(name));
+		if(propIndex < 0) {
+			return {};
+		}
+		auto n = getObjectCount();
+		for(unsigned i = 0; i < n; ++i) {
+			const Object obj = getObject(i);
+			auto prop = obj.getProperty(propIndex);
+			if(prop.getValue() == value) {
+				return getObject(i);
+			}
+		}
+		return {};
 	}
 
 	template <typename Item = Object> Item addItem()
