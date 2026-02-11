@@ -119,12 +119,7 @@ public:
 	/**
 	 * @brief Get child object by index
 	 */
-	Object getObject(unsigned index);
-
-	const Object getObject(unsigned index) const
-	{
-		return const_cast<Object*>(this)->getObject(index);
-	}
+	Object getObject(unsigned index) const;
 
 	/**
 	 * @brief Find child object by name
