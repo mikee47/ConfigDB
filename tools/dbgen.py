@@ -870,6 +870,8 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                     raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
                 if not prop.id or not prop.obj.typename:
                     raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
+            if union_prop.obj.max_object_size == 0:
+                raise ValueError('Union contains only empty objects')
             prop = Property(union_prop, 'tag', {
                 'type': 'integer',
                 'minimum': 0,
