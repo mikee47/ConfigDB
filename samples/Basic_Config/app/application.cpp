@@ -253,7 +253,8 @@ void testPointer()
 	DEFINE_FSTR_LOCAL(paths, "/security\0"
 							 "/general/channels\0"
 							 "/general/channels/0/notes\0"
-							 "/general/channels/0/details/current-limit\0")
+							 "/general/channels/0/details/current-limit\0"
+							 "/general/channels[pin=12]\0")
 
 	for(auto path : CStringArray(paths)) {
 		Serial << path << ": ";

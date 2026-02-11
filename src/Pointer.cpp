@@ -58,9 +58,32 @@ bool PointerContext::resolve(Database& db, const Pointer& ptr)
 	objects[0] = *store;
 	for(; it; ++it) {
 		const auto& parent = objects[nesting];
-		auto obj = parent.findObject(*it, strlen(*it));
+		const char* key = *it;
+		auto keylen = strlen(key);
+		String sel;
+
+		char* brace = const_cast<char*>(strchr(key, '['));
+		if(brace) {
+			auto braceLen = strlen(brace);
+			if(brace[braceLen - 1] != ']') {
+				clear();
+				return false;
+			}
+			sel.setString(brace + 1, braceLen - 2);
+			keylen = brace - key;
+		}
+		auto obj = parent.findObject(key, keylen);
 		if(obj) {
 			objects[++nesting] = obj;
+			const auto& array = objects[nesting];
+			if(sel) {
+				obj = array.findObject(sel.c_str(), sel.length());
+				if(!obj) {
+					clear();
+					return false;
+				}
+				objects[++nesting] = obj;
+			}
 			continue;
 		}
 		property = parent.findProperty(*it, strlen(*it));
