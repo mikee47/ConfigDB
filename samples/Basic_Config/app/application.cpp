@@ -93,7 +93,7 @@ SimpleTimer statTimer;
 		BasicConfig::General::Channels::OuterUpdater channels(database);
 		auto item = channels.addItem();
 		item.setName(F("Channel #") + os_random());
-		item.setPin(12);
+		item.setPin(11 + channels.getObjectCount());
 		item.details.setCurrentLimit(400);
 		item.notes.addItem(_F("This is a nice pin"));
 		item.notes.addItem(_F("It is useful"));
@@ -251,6 +251,7 @@ void gotIP(IpAddress, IpAddress, IpAddress)
 void testPointer()
 {
 	DEFINE_FSTR_LOCAL(paths, "/security\0"
+							 "/security/api_secured\0"
 							 "/general/channels\0"
 							 "/general/channels/0/notes\0"
 							 "/general/channels/0/details/current-limit\0"
@@ -268,10 +269,15 @@ void testPointer()
 
 		if(ctx.isProperty()) {
 			auto prop = ctx.getProperty();
-			Serial << "Property " << endl << prop.getValue() << endl;
+			Serial << prop.info().type << endl << prop.getValue() << endl;
 		} else {
 			auto obj = ctx.getObject();
-			Serial << obj.typeinfo().type << endl;
+			if(obj.isArray()) {
+				auto& itemtype = static_cast<ConfigDB::Array&>(obj).getItemType();
+				Serial << obj.typeinfo().type << "[" << itemtype.type << "]" << endl;
+			} else {
+				Serial << obj.typeinfo().type << endl;
+			}
 			auto stream = ctx.createExportStream(ConfigDB::Json::format, {.pretty = true});
 			Serial.copyFrom(stream.get());
 			Serial << endl;

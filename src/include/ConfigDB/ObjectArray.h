@@ -92,11 +92,6 @@ public:
 		array.insert(index, itemType.variant.object->defaultData);
 		return Item(*this, 0, index);
 	}
-
-	const PropertyInfo& getItemType() const
-	{
-		return typeinfo().propinfo[0];
-	}
 };
 
 /**

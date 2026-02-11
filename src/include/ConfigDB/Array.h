@@ -57,12 +57,6 @@ public:
 		return makeProperty(getArray()[index]);
 	}
 
-	const PropertyInfo& getItemType() const
-	{
-		assert(typeinfo().propertyCount == 1);
-		return typeinfo().propinfo[0];
-	}
-
 protected:
 	friend class Object;
 
