@@ -51,6 +51,12 @@ public:
 
 	void dispose();
 
+	const PropertyInfo& getItemType() const
+	{
+		assert(typeinfo().objectCount + typeinfo().propertyCount == 1);
+		return typeinfo().propinfo[0];
+	}
+
 protected:
 	friend class Object;
 
