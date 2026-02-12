@@ -91,7 +91,7 @@ public:
 		return 0;
 	}
 
-	PropertyConst getProperty(unsigned) const
+	const Property getProperty(unsigned) const
 	{
 		return {};
 	}

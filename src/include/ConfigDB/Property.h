@@ -26,20 +26,21 @@ namespace ConfigDB
 class Store;
 
 /**
- * @brief Read-only access to a key/value pair stored in an object, or a simple array value
+ * @brief Access to a key/value pair stored in an object, or a simple array value
  */
-class PropertyConst
+class Property
 {
 public:
-	PropertyConst() = default;
+	Property() = default;
 
 	/**
-	 * @brief Create a PropertyConst instance
+	 * @brief Create a Property instance
 	 * @param info Property information
 	 * @param data Pointer to location where value is stored
+	 * @param defaultData Pointer to default value for property (if any)
 	 */
-	PropertyConst(const Store& store, const PropertyInfo& info, const PropertyData* data)
-		: propinfo(&info), store(&store), data(data)
+	Property(const Store& store, const PropertyInfo& info, const PropertyData* data, const PropertyData* defaultData)
+		: propinfo(&info), store(&store), data(data), defaultData(defaultData)
 	{
 	}
 
@@ -67,31 +68,6 @@ public:
 		return *propinfo;
 	}
 
-protected:
-	const PropertyInfo* propinfo{&PropertyInfo::empty};
-	const Store* store{};
-	const PropertyData* data{};
-};
-
-/**
- * @brief Adds write access for a key/value pair stored in an object, or a simple array value
- */
-class Property : public PropertyConst
-{
-public:
-	Property() = default;
-
-	/**
-	 * @brief Create a Property instance
-	 * @param info Property information
-	 * @param data Pointer to location where value is stored
-	 * @param defaultData Pointer to default value for property (if any)
-	 */
-	Property(const Store& store, const PropertyInfo& info, const PropertyData* data, const PropertyData* defaultData)
-		: PropertyConst(store, info, data), defaultData(defaultData)
-	{
-	}
-
 	/**
 	 * @brief Set property value given its JSON string representation
 	 * @param value String values must be *unquoted*
@@ -106,6 +82,9 @@ public:
 	}
 
 protected:
+	const PropertyInfo* propinfo{&PropertyInfo::empty};
+	const Store* store{};
+	const PropertyData* data{};
 	const PropertyData* defaultData{};
 };
 

@@ -760,9 +760,6 @@ API Reference
 .. doxygenclass:: ConfigDB::StoreRef
    :members:
 
-.. doxygenclass:: ConfigDB::PropertyConst
-   :members:
-
 .. doxygenclass:: ConfigDB::Property
    :members:
 

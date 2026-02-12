@@ -23,7 +23,7 @@
 
 namespace ConfigDB
 {
-String PropertyConst::getValue() const
+String Property::getValue() const
 {
 	assert(propinfo && store);
 	if(!store || !data) {
@@ -32,7 +32,7 @@ String PropertyConst::getValue() const
 	return store->getValueString(*propinfo, data);
 }
 
-String PropertyConst::getJsonValue() const
+String Property::getJsonValue() const
 {
 	String value = getValue();
 	if(!value) {
