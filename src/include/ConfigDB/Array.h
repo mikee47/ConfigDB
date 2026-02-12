@@ -52,7 +52,7 @@ public:
 		return makeProperty(getArray().insert(index));
 	}
 
-	PropertyConst getProperty(unsigned index) const
+	const Property getProperty(unsigned index) const
 	{
 		return makeProperty(getArray()[index]);
 	}
@@ -105,9 +105,9 @@ private:
 		return {getStore(), getItemType(), static_cast<PropertyData*>(data), nullptr};
 	}
 
-	PropertyConst makeProperty(const void* data) const
+	const Property makeProperty(const void* data) const
 	{
-		return {getStore(), getItemType(), static_cast<const PropertyData*>(data)};
+		return {getStore(), getItemType(), static_cast<const PropertyData*>(data), nullptr};
 	}
 };
 

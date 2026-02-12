@@ -49,7 +49,7 @@ public:
 		return bool(property);
 	}
 
-	PropertyConst getProperty() const
+	const Property getProperty() const
 	{
 		return property;
 	}
@@ -87,7 +87,7 @@ private:
 	Database* database = nullptr;
 	StoreRef store;
 	Object objects[maxNesting];
-	PropertyConst property;
+	Property property;
 	uint8_t nesting{};
 };
 

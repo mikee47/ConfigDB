@@ -90,6 +90,9 @@ String Store::getValueString(const PropertyInfo& info, const void* data) const
 bool Store::parseString(const PropertyInfo& prop, PropertyData& dst, const PropertyData* defaultData, const char* value,
 						uint16_t valueLength)
 {
+	if(!writeCheck()) {
+		return false;
+	}
 	if(prop.type == PropertyType::String) {
 		if(!value) {
 			dst.string = 0;

@@ -145,9 +145,9 @@ public:
 	 */
 	Property getProperty(unsigned index);
 
-	PropertyConst getProperty(unsigned index) const;
+	const Property getProperty(unsigned index) const;
 
-	PropertyConst findProperty(const char* name, size_t length) const;
+	const Property findProperty(const char* name, size_t length) const;
 
 	/**
 	 * @brief Find property by name

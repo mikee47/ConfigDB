@@ -297,7 +297,7 @@ Object Object::findAndSetObject(const char* name, size_t length)
 	return findObject(name, length);
 }
 
-PropertyConst Object::findProperty(const char* name, size_t length) const
+const Property Object::findProperty(const char* name, size_t length) const
 {
 	switch(typeinfo().type) {
 	case ObjectType::Array: {
@@ -472,7 +472,7 @@ Property Object::getProperty(unsigned index)
 	}
 }
 
-PropertyConst Object::getProperty(unsigned index) const
+const Property Object::getProperty(unsigned index) const
 {
 	switch(typeinfo().type) {
 	case ObjectType::Array:
@@ -486,7 +486,7 @@ PropertyConst Object::getProperty(unsigned index) const
 		}
 		auto& prop = typeinfo().getProperty(index);
 		auto propData = getPropertyData(index);
-		return {getStore(), prop, propData};
+		return {getStore(), prop, propData, nullptr};
 	}
 }
 
