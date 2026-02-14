@@ -97,7 +97,7 @@ SimpleTimer statTimer;
 		item.details.setCurrentLimit(400);
 		item.notes.addItem(_F("This is a nice pin"));
 		item.notes.addItem(_F("It is useful"));
-		item.notes.addItem(SystemClock.getSystemTimeString());
+		item.notes.addItem(SystemClock.getSystemTimeString(eTZ_UTC));
 		for(unsigned i = 0; i < 16; ++i) {
 			item.values.addItem(os_random());
 		}
@@ -107,7 +107,7 @@ SimpleTimer statTimer;
 		Serial << "new note = " << item.notes[0] << endl;
 		assert(String(item.notes[0]) == F("Overwriting nice pin"));
 
-		item.notes.insertItem(0, F("Inserted at #0 on ") + SystemClock.getSystemTimeString());
+		item.notes.insertItem(0, F("Inserted at #0 on ") + SystemClock.getSystemTimeString(eTZ_UTC));
 		item.notes.insertItem(2, F("Inserted at #2"));
 
 		Serial << channels.getPath() << " = " << item << endl;
@@ -255,7 +255,8 @@ void testPointer()
 							 "/general/channels\0"
 							 "/general/channels/0/notes\0"
 							 "/general/channels/0/details/current-limit\0"
-							 "/general/channels[pin=12]\0")
+							 "/general/channels[pin=16]/notes/4\0"
+							 "/general/channels/10\0")
 
 	for(auto path : CStringArray(paths)) {
 		Serial << path << ": ";
@@ -269,7 +270,7 @@ void testPointer()
 
 		if(ctx.isProperty()) {
 			auto prop = ctx.getProperty();
-			Serial << prop.info().type << endl << prop.getValue() << endl;
+			Serial << prop.info().type << endl << prop.getJsonValue() << endl;
 		} else {
 			auto obj = ctx.getObject();
 			if(obj.isArray()) {
