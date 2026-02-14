@@ -1573,11 +1573,12 @@ def generate_contained_constructors(object_prop: ObjectProperty, is_updater = Fa
     children = [f'{prop.id}(*this, {index})' for index, prop in enumerate(obj.object_properties)]
 
     typename = obj.typename_updater if is_updater else obj.typename_contained
+    const = '' if is_updater else 'const '
     headers = [
         '',
         f'{typename}() = default;',
         '',
-        f'{typename}(ConfigDB::Object& parent, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
+        f'{typename}({const}ConfigDB::Object& parent, const ConfigDB::PropertyInfo& prop, uint16_t offset): ' + ', '.join([
             f'{obj.base_class}{template}(parent, prop, offset)',
             *children
         ]),
@@ -1588,7 +1589,7 @@ def generate_contained_constructors(object_prop: ObjectProperty, is_updater = Fa
     if not object_prop.is_store:
         headers += [
             '',
-            f'{typename}(ConfigDB::Object& parent, unsigned propIndex, uint16_t index = 0): ' + ', '.join([
+            f'{typename}({const}ConfigDB::Object& parent, unsigned propIndex, uint16_t index = 0): ' + ', '.join([
                 f'{obj.base_class}{template}(parent, propIndex, index)',
                 *children
             ]),
