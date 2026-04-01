@@ -869,7 +869,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                 prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
                 if not prop.obj:
                     raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
-                if not prop.id or not prop.obj.typename:
+                if not prop.id or not prop.name or not prop.obj.typename:
                     raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
             if union_prop.obj.max_object_size == 0:
                 raise ValueError('Union contains only empty objects')
