@@ -509,7 +509,8 @@ class Object:
                 if prop.obj in dependencies:
                     continue
                 dependencies.append(prop.obj)
-                scan(prop.obj)
+                if scan(prop.obj):
+                    return True
             return False
         return scan(self)
 
