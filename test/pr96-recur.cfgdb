@@ -1,0 +1,50 @@
+{
+  "comment": "Verify PR #96, where `oneof` contains nested definitions",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "my-color": {
+      "$ref": "#/$defs/color"
+    }
+  },
+  "$defs": {
+    "color": {
+      "oneOf": [
+        {
+          "type": "object",
+          "title": "raw-wrapper",
+          "properties": {
+            "raw": {
+              "$ref": "#/$defs/raw"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "title": "preset-wrapper",
+          "properties": {
+            "preset": {
+              "$ref": "#/$defs/preset"
+            }
+          }
+        }
+      ]
+    },
+    "raw": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "integer"
+        }
+      }
+    },
+    "preset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
