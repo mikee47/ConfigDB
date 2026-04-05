@@ -280,10 +280,18 @@ void testPointer()
 				Serial << obj.typeinfo().type << endl;
 			}
 			auto stream = ctx.createExportStream(ConfigDB::Json::format, {.pretty = true});
-			Serial.copyFrom(stream.get());
-			Serial << endl;
+			System.queueCallback(
+				[](void* param) {
+					auto stream = static_cast<IDataSourceStream*>(param);
+					Serial.copyFrom(stream);
+					delete stream;
+					Serial << endl;
+				},
+				stream.release());
 		}
 		Serial << endl;
+
+		break;
 	}
 }
 
@@ -300,6 +308,22 @@ void init()
 	lfs_mount();
 #endif
 
+	// {
+	// 	unsigned heap1 = system_get_free_heap_size();
+	// 	unsigned heap2;
+	// 	{
+	// 		BasicConfig::General gen(database);
+	// 		Serial << gen << endl;
+	// 		heap2 = system_get_free_heap_size();
+	// 	}
+	// 	System.queueCallback([heap1, heap2]() {
+	// 		unsigned heap3 = system_get_free_heap_size();
+	// 		Serial << "Heap used " << heap1 - heap2 << ", after " << heap1 - heap3 << endl;
+	// 	});
+
+	// 	return;
+	// }
+
 	WifiStation.enable(true);
 	WifiStation.config(WIFI_SSID, WIFI_PWD);
 	WifiAccessPoint.enable(false);
@@ -310,7 +334,7 @@ void init()
 
 	readWriteValues();
 
-	testPointer();
+	// testPointer();
 
 	// database.exportToFile(ConfigDB::Json::format, F("out/database.json"));
 	// database.importFromFile(ConfigDB::Json::format, F("out/database.json"));

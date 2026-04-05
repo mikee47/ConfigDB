@@ -71,6 +71,8 @@ public:
 		}
 		auto obj = getObject();
 		if(obj) {
+
+			// TODO: This won't work. We need to pass the entire context.
 			return format.createExportStream(store, obj, options);
 		}
 		return nullptr;
