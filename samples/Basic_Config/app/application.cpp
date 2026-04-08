@@ -254,7 +254,7 @@ void testPointer()
 							 "/security/api_secured\0"
 							 "/general/channels\0"
 							 "/general/channels/0/notes\0"
-							 "/general/channels/0/details/current-limit\0"
+							 "/general/channels/1/details/current-limit\0"
 							 "/general/channels[pin=16]/notes/4\0"
 							 "/general/channels/10\0")
 
@@ -265,7 +265,7 @@ void testPointer()
 		ConfigDB::PointerContext ctx;
 		if(!ctx.resolve(database, ptr)) {
 			Serial << "Lookup failed" << endl;
-			return;
+			continue;
 		}
 
 		if(ctx.isProperty()) {
@@ -280,6 +280,9 @@ void testPointer()
 				Serial << obj.typeinfo().type << endl;
 			}
 			auto stream = ctx.createExportStream(ConfigDB::Json::format, {.pretty = true});
+#if 1
+			Serial.copyFrom(stream.get());
+#else
 			System.queueCallback(
 				[](void* param) {
 					auto stream = static_cast<IDataSourceStream*>(param);
@@ -288,10 +291,9 @@ void testPointer()
 					Serial << endl;
 				},
 				stream.release());
+#endif
 		}
 		Serial << endl;
-
-		break;
 	}
 }
 
