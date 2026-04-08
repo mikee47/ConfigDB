@@ -42,6 +42,11 @@ bool PointerContext::resolve(Database& db, const Pointer& ptr)
 		return true;
 	}
 
+	objects = std::make_unique<Object[]>(csa.count());
+	if(!objects) {
+		return false;
+	}
+
 	int storeIndex = db.typeinfo.findStore(*it, strlen(*it));
 	if(storeIndex >= 0) {
 		++it;
@@ -55,41 +60,22 @@ bool PointerContext::resolve(Database& db, const Pointer& ptr)
 		return false;
 	}
 
-	objects[0] = *store;
+	const Object* parent = store.get();
 	for(; it; ++it) {
-		const auto& parent = objects[nesting];
 		const char* key = *it;
 		auto keylen = strlen(key);
-		String sel;
 
-		char* brace = const_cast<char*>(strchr(key, '['));
-		if(brace) {
-			auto braceLen = strlen(brace);
-			if(brace[braceLen - 1] != ']') {
-				clear();
-				return false;
-			}
-			sel.setString(brace + 1, braceLen - 2);
-			keylen = brace - key;
-		}
-		auto obj = parent.findObject(key, keylen);
+		auto obj = parent->findObject(key, keylen);
 		if(obj) {
-			objects[++nesting] = obj;
-			const auto& array = objects[nesting];
-			if(sel) {
-				obj = array.findObject(sel.c_str(), sel.length());
-				if(!obj) {
-					clear();
-					return false;
-				}
-				objects[++nesting] = obj;
-			}
+			parent = &objects[nesting];
+			objects[nesting++] = obj;
 			continue;
 		}
-		property = parent.findProperty(*it, strlen(*it));
+
 		// Property must be at end of path
+		property = parent->findProperty(key, keylen);
 		if(property && !++it) {
-			return true;
+			break;
 		}
 		clear();
 		return false;

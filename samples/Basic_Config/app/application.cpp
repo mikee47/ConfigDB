@@ -255,7 +255,7 @@ void testPointer()
 							 "/general/channels\0"
 							 "/general/channels/0/notes\0"
 							 "/general/channels/1/details/current-limit\0"
-							 "/general/channels[pin=16]/notes/4\0"
+							 "/general/channels/pin=14/notes/4\0"
 							 "/general/channels/10\0")
 
 	for(auto path : CStringArray(paths)) {

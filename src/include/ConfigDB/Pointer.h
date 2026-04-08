@@ -40,7 +40,7 @@ private:
 class PointerContext
 {
 public:
-	static constexpr unsigned maxNesting = 16;
+	PointerContext() = default;
 
 	bool resolve(Database& db, const Pointer& ptr);
 
@@ -56,7 +56,7 @@ public:
 
 	Object getObject() const
 	{
-		return property ? Object() : objects[nesting];
+		return nesting ? objects[nesting - 1] : Object();
 	}
 
 	explicit operator bool() const
@@ -71,7 +71,6 @@ public:
 		}
 		auto obj = getObject();
 		if(obj) {
-
 			// TODO: This won't work. We need to pass the entire context.
 			return format.createExportStream(store, obj, options);
 		}
@@ -88,7 +87,7 @@ private:
 
 	Database* database = nullptr;
 	StoreRef store;
-	Object objects[maxNesting];
+	std::unique_ptr<Object[]> objects;
 	Property property;
 	uint8_t nesting{};
 };
