@@ -28,6 +28,7 @@ namespace ConfigDB
 class Database;
 class Store;
 class Object;
+class PointerContext;
 
 /**
  * @brief Interface for formatted import stream
@@ -83,41 +84,23 @@ class Format
 public:
 	/**
 	 * @brief Create a stream to serialize the entire database
-	 * @param database The database to serialize
+	 * @param ctx What to serialize
 	 * @param options Advanced settings for adjusting output
 	 *
 	 * This is used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<ExportStream> createExportStream(Database& db, const ExportOptions& options = {}) const = 0;
-
-	/**
-	 * @brief Create a stream to serialize an Object
-	 * @param store Shared pointer to store
-	 * @param object Object to start streaming from
-	 * @param options Advanced settings for adjusting output
-	 *
-	 * Used for streaming asychronously to a web client, for example in an HttpResponse.
-	 */
-	virtual std::unique_ptr<ExportStream> createExportStream(StoreRef store, const Object& object,
+	virtual std::unique_ptr<ExportStream> createExportStream(const PointerContext& ctx,
 															 const ExportOptions& options = {}) const = 0;
 
 	/**
 	 * @brief Print object
-	 * @param object The object to serialize
+	 * @param ctx What to serialize
 	 * @param output Where to write output
 	 * @param options Advanced settings for adjusting output
 	 * @retval size_t Number of characters written
 	 */
-	virtual size_t exportToStream(const Object& object, Print& output, const ExportOptions& options = {}) const = 0;
-
-	/**
-	 * @brief Serialise entire database directly to an output stream
-	 * @param database The database to serialize
-	 * @param output Where to write output
-	 * @param options Advanced settings for adjusting output
-	 * @retval size_t Number of bytes written to the stream
-	 */
-	virtual size_t exportToStream(Database& database, Print& output, const ExportOptions& options = {}) const = 0;
+	virtual size_t exportToStream(const PointerContext& ctx, Print& output,
+								  const ExportOptions& options = {}) const = 0;
 
 	/**
 	 * @brief Create a stream for de-serialising (writing) into the database

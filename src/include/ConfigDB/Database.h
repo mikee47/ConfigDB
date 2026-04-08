@@ -123,10 +123,7 @@ public:
 	 * @param output Where to write output
 	 * @param options Options for customising output
 	 */
-	size_t exportToStream(const Format& format, Print& output, const ExportOptions& options = {})
-	{
-		return format.exportToStream(*this, output, options);
-	}
+	size_t exportToStream(const Format& format, Print& output, const ExportOptions& options = {});
 
 	/**
 	 * @brief Serialize the database to a single file

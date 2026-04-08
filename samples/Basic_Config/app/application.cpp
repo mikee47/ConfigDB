@@ -262,8 +262,8 @@ void testPointer()
 		Serial << path << ": ";
 		ConfigDB::Pointer ptr(path);
 
-		ConfigDB::PointerContext ctx;
-		if(!ctx.resolve(database, ptr)) {
+		ConfigDB::PointerContext ctx(database, ptr);
+		if(!ctx) {
 			Serial << "Lookup failed" << endl;
 			continue;
 		}
@@ -279,7 +279,7 @@ void testPointer()
 			} else {
 				Serial << obj.typeinfo().type << endl;
 			}
-			auto stream = ctx.createExportStream(ConfigDB::Json::format, {.pretty = true});
+			auto stream = ConfigDB::Json::format.createExportStream(ctx, {.pretty = true});
 #if 1
 			Serial.copyFrom(stream.get());
 #else

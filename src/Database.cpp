@@ -303,9 +303,14 @@ bool Database::save(Store& store) const
 std::unique_ptr<ExportStream> Database::createExportStream(const Format& format, const String& path,
 														   const ExportOptions& options)
 {
-	PointerContext ctx;
-	ctx.resolve(*this, path);
-	return ctx.createExportStream(format, options);
+	PointerContext ctx(*this, path);
+	return format.createExportStream(ctx, options);
+}
+
+size_t Database::exportToStream(const Format& format, Print& output, const ExportOptions& options)
+{
+	PointerContext ctx(*this);
+	return format.exportToStream(ctx, output, options);
 }
 
 bool Database::exportToFile(const Format& format, const String& filename, const ExportOptions& options)
@@ -313,7 +318,7 @@ bool Database::exportToFile(const Format& format, const String& filename, const 
 	FileStream stream;
 	if(stream.open(filename, File::WriteOnly | File::CreateNewAlways)) {
 		StaticPrintBuffer<512> buffer(stream);
-		format.exportToStream(*this, buffer, options);
+		exportToStream(format, buffer, options);
 	}
 
 	if(stream.getLastError() == FS_OK) {

@@ -19,7 +19,6 @@
 
 #pragma once
 
-#include "Format.h"
 #include "Object.h"
 
 namespace ConfigDB
@@ -42,6 +41,21 @@ class PointerContext
 public:
 	PointerContext() = default;
 
+	PointerContext(const Object& obj)
+	{
+		objects[0] = obj;
+		nesting = 1;
+	}
+
+	PointerContext(Database& db) : database(&db)
+	{
+	}
+
+	PointerContext(Database& db, const Pointer& ptr)
+	{
+		resolve(db, ptr);
+	}
+
 	bool resolve(Database& db, const Pointer& ptr);
 
 	bool isProperty() const
@@ -49,7 +63,7 @@ public:
 		return bool(property);
 	}
 
-	const Property getProperty() const
+	const Property& getProperty() const
 	{
 		return property;
 	}
@@ -59,23 +73,39 @@ public:
 		return nesting ? objects[nesting - 1] : Object();
 	}
 
+	Database* getDatabase() const
+	{
+		return database;
+	}
+
+	StoreRef getStore() const
+	{
+		return store;
+	}
+
 	explicit operator bool() const
 	{
 		return database || store;
 	}
 
-	std::unique_ptr<ExportStream> createExportStream(const Format& format, const ExportOptions& options = {})
-	{
-		if(database) {
-			return format.createExportStream(*database, options);
-		}
-		auto obj = getObject();
-		if(obj) {
-			// TODO: This won't work. We need to pass the entire context.
-			return format.createExportStream(store, obj, options);
-		}
-		return nullptr;
-	}
+	// std::unique_ptr<ExportStream> createExportStream(const Format& format, const ExportOptions& options = {})
+	// {
+	// 	if(database) {
+	// 		return format.createExportStream(*database, options);
+	// 	}
+
+	// 	if(property) {
+	// 		// TODO: Support export a single property
+	// 		return nullptr;
+	// 	}
+
+	// 	auto obj = getObject();
+	// 	if(obj) {
+	// 		// TODO: This won't work. We need to pass the entire context.
+	// 		return format.createExportStream(store, obj, options);
+	// 	}
+	// 	return nullptr;
+	// }
 
 private:
 	void clear()

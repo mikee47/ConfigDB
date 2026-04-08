@@ -19,17 +19,34 @@
 
 #include "ReadStream.h"
 #include "Data/Format/Json.h"
+#include <ConfigDB/Pointer.h>
 
 namespace ConfigDB::Json
 {
-size_t ReadStream::print(Database& db, Print& p, const ExportOptions& options)
+size_t ReadStream::print(const PointerContext& ctx, Print& p, const ExportOptions& options)
 {
-	ReadStream rs(db, options);
-	size_t n{0};
-	while(!rs.done) {
-		n += rs.fillStream(p);
+	if(auto prop = ctx.getProperty()) {
+		return p.print(prop.getJsonValue());
 	}
-	return n;
+
+	std::unique_ptr<ReadStream> rs;
+
+	if(auto obj = ctx.getObject()) {
+		StoreRef store = ctx.getStore();
+		rs = std::make_unique<ReadStream>(store, obj, options);
+	} else if(auto db = ctx.getDatabase()) {
+		rs = std::make_unique<ReadStream>(*db, options);
+	}
+
+	if(rs) {
+		size_t n{0};
+		while(!rs->done) {
+			n += rs->fillStream(p);
+		}
+		return n;
+	}
+
+	return 0;
 }
 
 size_t ReadStream::fillStream(Print& p)

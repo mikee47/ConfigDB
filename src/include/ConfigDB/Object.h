@@ -196,10 +196,7 @@ public:
 	 * @param output Where to write output
 	 * @param options Options for customising output
 	 */
-	bool exportToStream(const Format& format, Print& output, const ExportOptions& options = {}) const
-	{
-		return format.exportToStream(*this, output, options);
-	}
+	bool exportToStream(const Format& format, Print& output, const ExportOptions& options = {}) const;
 
 	/**
 	 * @brief Export object to an output stream

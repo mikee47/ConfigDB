@@ -25,6 +25,50 @@
 
 namespace ConfigDB::Json
 {
+class PropertyStream : public ExportStream
+{
+public:
+	PropertyStream(const String& value) : value(value)
+	{
+	}
+
+	uint16_t readMemoryBlock(char* data, int bufSize) override
+	{
+		if(done) {
+			return 0;
+		}
+
+		return value.getBytes(reinterpret_cast<uint8_t*>(data), bufSize);
+	}
+
+	bool seek(int len) override
+	{
+		if(len) {
+			done = true;
+		}
+		return true;
+	}
+
+	MimeType getMimeType() const override
+	{
+		return MimeType::JSON;
+	}
+
+	Status getStatus() const override
+	{
+		return Status{};
+	}
+
+	bool isFinished() override
+	{
+		return done;
+	}
+
+private:
+	String value;
+	bool done{false};
+};
+
 /**
  * @brief Forward-reading stream for serializing entire database contents
  */
@@ -44,7 +88,7 @@ public:
 	{
 	}
 
-	static size_t print(Database& db, Print& p, const ExportOptions& options);
+	static size_t print(const PointerContext& ctx, Print& p, const ExportOptions& options);
 
 	bool isValid() const override
 	{

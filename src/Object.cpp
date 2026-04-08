@@ -19,6 +19,7 @@
 
 #include "include/ConfigDB/Database.h"
 #include "include/ConfigDB/Json/Format.h"
+#include "include/ConfigDB/Pointer.h"
 #include <Data/Stream/FileStream.h>
 #include <Data/Buffer/PrintBuffer.h>
 
@@ -493,7 +494,14 @@ const Property Object::getProperty(unsigned index) const
 size_t Object::printTo(Print& p) const
 {
 	Json::Format format;
-	return format.exportToStream(*this, p, {.pretty = true});
+	PointerContext ctx(*this);
+	return format.exportToStream(ctx, p, {.pretty = true});
+}
+
+bool Object::exportToStream(const Format& format, Print& output, const ExportOptions& options) const
+{
+	PointerContext ctx(*this);
+	return format.exportToStream(ctx, output, options);
 }
 
 bool Object::exportToFile(const Format& format, const String& filename, const ExportOptions& options) const

@@ -18,6 +18,7 @@
  ****/
 
 #include <ConfigDB/Json/Format.h>
+#include <ConfigDB/Pointer.h>
 #include "ReadStream.h"
 #include "WriteStream.h"
 #include <debug_progmem.h>
@@ -26,32 +27,28 @@ namespace ConfigDB::Json
 {
 Format format;
 
-std::unique_ptr<ExportStream> Format::createExportStream(Database& db, const ExportOptions& options) const
+std::unique_ptr<ExportStream> Format::createExportStream(const PointerContext& ctx, const ExportOptions& options) const
 {
-	return std::make_unique<ReadStream>(db, options);
+	if(auto prop = ctx.getProperty()) {
+		return std::make_unique<PropertyStream>(prop.getJsonValue());
+	}
+
+	if(auto obj = ctx.getObject()) {
+		// TODO: This won't work: ReadStream requires full context
+		StoreRef store = ctx.getStore();
+		return std::make_unique<ReadStream>(store, obj, options);
+	}
+
+	if(auto db = ctx.getDatabase()) {
+		return std::make_unique<ReadStream>(*db, options);
+	}
+
+	return nullptr;
 }
 
-std::unique_ptr<ExportStream> Format::createExportStream(StoreRef store, const Object& object,
-														 const ExportOptions& options) const
+size_t Format::exportToStream(const PointerContext& ctx, Print& output, const ExportOptions& options) const
 {
-	return std::make_unique<ReadStream>(store, object, options);
-}
-
-size_t Format::exportToStream(const Object& object, Print& output, const ExportOptions& options) const
-{
-	Printer printer(output, object, options.pretty,
-					options.asObject ? Printer::RootStyle::object
-									 : options.useName ? Printer::RootStyle::name : Printer::RootStyle::braces);
-	size_t n{0};
-	do {
-		n += printer();
-	} while(!printer.isDone());
-	return n;
-}
-
-size_t Format::exportToStream(Database& database, Print& output, const ExportOptions& options) const
-{
-	return ReadStream::print(database, output, options);
+	return ReadStream::print(ctx, output, options);
 }
 
 std::unique_ptr<ImportStream> Format::createImportStream(Database& db) const
