@@ -72,6 +72,8 @@ public:
 	 */
 	void queueUpdate(Store& store, Object::UpdateCallback&& callback);
 
+	void registerCommitCallback(Store& store, Object::UpdateCallback&& callback);
+
 	/**
 	 * @brief Called by Store on completion of update so any queued updates can be started
 	 * @param store The store which has just finished updating
@@ -83,6 +85,8 @@ public:
 	 * @brief Called from Store::commit
 	 */
 	bool save(Store& store) const;
+
+	void beforeCommit(Store& store);
 
 	/**
 	 * @brief Lock a store for writing (called by Object)
@@ -233,6 +237,7 @@ private:
 	static StoreCache writeCache;
 	std::unique_ptr<WeakRef[]> updateRefs;
 	static Vector<UpdateQueueItem> updateQueue;
+	static Vector<UpdateQueueItem> commitCallbacks;
 	static bool cacheCallbackQueued;
 };
 

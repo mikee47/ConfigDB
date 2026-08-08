@@ -265,6 +265,11 @@ void Object::queueUpdate(UpdateCallback callback)
 	return getStore().queueUpdate(std::move(callback));
 }
 
+void Object::registerCommitCallback(UpdateCallback callback)
+{
+	return getStore().registerCommitCallback(std::move(callback));
+}
+
 bool Object::commit()
 {
 	return getStore().commit();

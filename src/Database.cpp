@@ -29,6 +29,7 @@ namespace ConfigDB
 Database::StoreCache Database::readCache;
 Database::StoreCache Database::writeCache;
 Vector<Database::UpdateQueueItem> Database::updateQueue;
+Vector<Database::UpdateQueueItem> Database::commitCallbacks;
 bool Database::cacheCallbackQueued;
 
 Database::~Database()
@@ -41,6 +42,14 @@ Database::~Database()
 		if(updateQueue[i].database == this) {
 			debug_d("%s() updateQueue.remove(%u)", __FUNCTION__, i);
 			updateQueue.remove(i);
+			continue;
+		}
+		++i;
+	}
+
+	for(unsigned i = 0; i < commitCallbacks.count();) {
+		if(commitCallbacks[i].database == this) {
+			commitCallbacks.remove(i);
 			continue;
 		}
 		++i;
@@ -204,6 +213,13 @@ void Database::queueUpdate(Store& store, Object::UpdateCallback&& callback)
 	updateQueue.add({this, uint8_t(storeIndex), std::move(callback)});
 }
 
+void Database::registerCommitCallback(Store& store, Object::UpdateCallback&& callback)
+{
+	int storeIndex = typeinfo.indexOf(store.propinfo());
+	assert(storeIndex >= 0);
+	commitCallbacks.add({this, uint8_t(storeIndex), std::move(callback)});
+}
+
 void Database::checkStoreRef(const StoreRef& ref)
 {
 	bool isCached = false;
@@ -281,6 +297,19 @@ void Database::checkUpdateQueue(Store& store)
 		assert(store);
 		callback(*store);
 	});
+}
+
+void Database::beforeCommit(Store& store)
+{
+	// Invoke any registered commit callbacks
+	auto storeIndex = typeinfo.indexOf(store.propinfo());
+	assert(storeIndex >= 0);
+
+	for(auto& item : commitCallbacks) {
+		if(item.database == this && item.storeIndex == storeIndex) {
+			item.callback(store);
+		}
+	}
 }
 
 bool Database::save(Store& store) const

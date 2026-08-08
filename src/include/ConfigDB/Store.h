@@ -165,6 +165,8 @@ protected:
 
 	void queueUpdate(Object::UpdateCallback&& callback);
 
+	void registerCommitCallback(Object::UpdateCallback&& callback);
+
 	void clearDirty()
 	{
 		dirty = false;

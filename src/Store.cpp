@@ -123,6 +123,11 @@ void Store::queueUpdate(Object::UpdateCallback&& callback)
 	return db.queueUpdate(*this, std::move(callback));
 }
 
+void Store::registerCommitCallback(Object::UpdateCallback&& callback)
+{
+	return db.registerCommitCallback(*this, std::move(callback));
+}
+
 void Store::checkRef(const StoreRef& ref)
 {
 	db.checkStoreRef(ref);
@@ -150,6 +155,9 @@ void Store::decUpdate()
 
 bool Store::commit()
 {
+	// Always call, even if not dirty
+	db.beforeCommit(*this);
+
 	if(!dirty) {
 		return true;
 	}

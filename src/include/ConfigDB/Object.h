@@ -257,6 +257,8 @@ public:
 	 */
 	void queueUpdate(UpdateCallback callback);
 
+	void registerCommitCallback(UpdateCallback callback);
+
 protected:
 	StoreRef openStore(Database& db, unsigned storeIndex);
 	StoreUpdateRef openStoreForUpdate(Database& db, unsigned storeIndex);
@@ -445,6 +447,17 @@ public:
 			callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
 		});
 		return false;
+	}
+
+	/**
+	 * @brief Register callback just before changes are about to be committed to this object
+	 * @param callback User callback which will receive an object instance
+	 */
+	void onCommit(Delegate<void(ContainedClassType)> callback)
+	{
+		this->registerCommitCallback([callback](Store& store) {
+			callback(ContainedClassType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
+		});
 	}
 
 private:
