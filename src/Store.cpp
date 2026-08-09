@@ -155,8 +155,9 @@ void Store::decUpdate()
 
 bool Store::commit()
 {
-	// Always call, even if not dirty
-	db.beforeCommit(*this);
+	if(dirty) {
+		db.beforeCommit(*this);
+	}
 
 	if(!dirty) {
 		return true;
