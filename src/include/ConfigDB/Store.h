@@ -163,9 +163,7 @@ protected:
 
 	void checkRef(const StoreRef& ref);
 
-	void queueUpdate(Object::UpdateCallback&& callback);
-
-	void registerCommitCallback(Object::UpdateCallback&& callback);
+	void registerCallback(Callback&& callback, CallbackType type);
 
 	void clearDirty()
 	{

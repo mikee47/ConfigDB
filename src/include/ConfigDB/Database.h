@@ -66,13 +66,11 @@ public:
 	void checkStoreRef(const StoreRef& ref);
 
 	/**
-	 * @brief Queue an asynchronous update
-	 * @param store The store to update
-	 * @param callback Callback which will be invoked when store is available for updates
+	 * @brief Register a callback
+	 * @param store The store associated with the callback
+	 * @param callback Callback provided by class template
 	 */
-	void queueUpdate(Store& store, Object::UpdateCallback&& callback);
-
-	void registerCommitCallback(Store& store, Object::UpdateCallback&& callback);
+	void registerCallback(Store& store, Callback&& callback, CallbackType type);
 
 	/**
 	 * @brief Called by Store on completion of update so any queued updates can be started
@@ -86,6 +84,9 @@ public:
 	 */
 	bool save(Store& store) const;
 
+	/**
+	 * @brief Called from Store::commit
+	 */
 	void beforeCommit(Store& store);
 
 	/**
@@ -215,16 +216,17 @@ private:
 	};
 
 	/**
-	 * @brief Information stored in a queue for asynchronous updates
+	 * @brief Information about registered callbacks
 	 */
-	struct UpdateQueueItem {
+	struct CallbackItem {
 		Database* database;
 		uint8_t storeIndex;
-		Object::UpdateCallback callback;
+		CallbackType type;
+		Callback callback;
 
-		bool operator==(const UpdateQueueItem& item) const
+		bool operator==(const CallbackItem& item) const
 		{
-			return database == item.database && storeIndex == item.storeIndex;
+			return database == item.database && storeIndex == item.storeIndex && type == item.type;
 		}
 	};
 
@@ -236,8 +238,7 @@ private:
 	static StoreCache readCache;
 	static StoreCache writeCache;
 	std::unique_ptr<WeakRef[]> updateRefs;
-	static Vector<UpdateQueueItem> updateQueue;
-	static Vector<UpdateQueueItem> commitCallbacks;
+	static Vector<CallbackItem> callbacks;
 	static bool cacheCallbackQueued;
 };
 

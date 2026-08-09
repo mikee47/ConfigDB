@@ -260,14 +260,9 @@ Property Object::findProperty(const char* name, size_t length)
 	}
 }
 
-void Object::queueUpdate(UpdateCallback callback)
+void Object::registerCallback(Callback callback, CallbackType type)
 {
-	return getStore().queueUpdate(std::move(callback));
-}
-
-void Object::registerCommitCallback(UpdateCallback callback)
-{
-	return getStore().registerCommitCallback(std::move(callback));
+	return getStore().registerCallback(std::move(callback), type);
 }
 
 bool Object::commit()

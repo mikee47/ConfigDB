@@ -28,8 +28,7 @@ namespace ConfigDB
 {
 Database::StoreCache Database::readCache;
 Database::StoreCache Database::writeCache;
-Vector<Database::UpdateQueueItem> Database::updateQueue;
-Vector<Database::UpdateQueueItem> Database::commitCallbacks;
+Vector<Database::CallbackItem> Database::callbacks;
 bool Database::cacheCallbackQueued;
 
 Database::~Database()
@@ -37,19 +36,11 @@ Database::~Database()
 	readCache.resetIf(typeinfo);
 	writeCache.resetIf(typeinfo);
 
-	// Clear any queued updates
-	for(unsigned i = 0; i < updateQueue.count();) {
-		if(updateQueue[i].database == this) {
-			debug_d("%s() updateQueue.remove(%u)", __FUNCTION__, i);
-			updateQueue.remove(i);
-			continue;
-		}
-		++i;
-	}
-
-	for(unsigned i = 0; i < commitCallbacks.count();) {
-		if(commitCallbacks[i].database == this) {
-			commitCallbacks.remove(i);
+	// Clear any callbacks
+	for(unsigned i = 0; i < callbacks.count();) {
+		if(callbacks[i].database == this) {
+			debug_d("%s() callbacks.remove(%u)", __FUNCTION__, i);
+			callbacks.remove(i);
 			continue;
 		}
 		++i;
@@ -206,18 +197,11 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 	return store;
 }
 
-void Database::queueUpdate(Store& store, Object::UpdateCallback&& callback)
+void Database::registerCallback(Store& store, Callback&& callback, CallbackType type)
 {
 	int storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
-	updateQueue.add({this, uint8_t(storeIndex), std::move(callback)});
-}
-
-void Database::registerCommitCallback(Store& store, Object::UpdateCallback&& callback)
-{
-	int storeIndex = typeinfo.indexOf(store.propinfo());
-	assert(storeIndex >= 0);
-	commitCallbacks.add({this, uint8_t(storeIndex), std::move(callback)});
+	callbacks.add({this, uint8_t(storeIndex), type, std::move(callback)});
 }
 
 void Database::checkStoreRef(const StoreRef& ref)
@@ -249,8 +233,11 @@ void Database::checkStoreRef(const StoreRef& ref)
 
 			cacheCallbackQueued = false;
 
-			if(!db->updateQueue.isEmpty()) {
-				return;
+			// Ensure there are no asynchronous updates pending
+			for(auto& item : callbacks) {
+				if(item.type == CallbackType::update) {
+					return;
+				}
 			}
 
 			if(readCache.isIdle()) {
@@ -276,24 +263,24 @@ void Database::checkUpdateQueue(Store& store)
 	}
 
 	int storeIndex = typeinfo.indexOf(storeInfo);
-	int i = updateQueue.indexOf(UpdateQueueItem{this, uint8_t(storeIndex)});
+	CallbackItem ref{this, uint8_t(storeIndex), CallbackType::update};
+	int i = callbacks.indexOf(ref);
 	if(i < 0) {
 		return;
 	}
 
 	// Take reference in case database destroyed before callback invoked
-	auto& item = updateQueue[i];
-	UpdateQueueItem ref{item.database, item.storeIndex};
+	auto& item = callbacks[i];
 	System.queueCallback([ref]() {
-		int i = updateQueue.indexOf(ref);
+		int i = callbacks.indexOf(ref);
 		if(i < 0) {
 			// Database destroyed
 			return;
 		}
-		auto& item = updateQueue[i];
+		auto& item = callbacks[i];
 		auto store = item.database->openStoreForUpdate(item.storeIndex);
 		auto callback = std::move(item.callback);
-		updateQueue.remove(i);
+		callbacks.remove(i);
 		assert(store);
 		callback(*store);
 	});
@@ -305,8 +292,9 @@ void Database::beforeCommit(Store& store)
 	auto storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
 
-	for(auto& item : commitCallbacks) {
-		if(item.database == this && item.storeIndex == storeIndex) {
+	CallbackItem ref{this, uint8_t(storeIndex), CallbackType::commit};
+	for(auto& item : callbacks) {
+		if(item == ref) {
 			item.callback(store);
 		}
 	}

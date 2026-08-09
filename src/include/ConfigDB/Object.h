@@ -30,6 +30,17 @@ class Database;
 class Store;
 
 /**
+ * @brief Callback invoked by asynchronous updater or other trigger points
+ * @param store Store instance
+ */
+using Callback = Delegate<void(Store& store)>;
+
+enum class CallbackType {
+	update, ///< Application requested a one-time asynchronous update
+	commit, ///< Invoked before committing changes to store
+};
+
+/**
  * @brief An object can contain other objects, properties and arrays
  * @note This class is the base for concrete Object, Array and ObjectArray classes
  */
@@ -245,19 +256,9 @@ public:
 	}
 
 	/**
-	 * @brief Callback invoked by asynchronous updater
-	 * @param store Updatable store instance
-	 * @note The `OuterObjectTemplate::update` method template handles this callback
-	 * so that the caller receives the appropriate Updater object.
+	 * @brief Called from `OuterObjectTemplate` methods
 	 */
-	using UpdateCallback = Delegate<void(Store& store)>;
-
-	/**
-	 * @brief Called from `OuterObjectTemplate::update` to queue an update
-	 */
-	void queueUpdate(UpdateCallback callback);
-
-	void registerCommitCallback(UpdateCallback callback);
+	void registerCallback(Callback callback, CallbackType type);
 
 protected:
 	StoreRef openStore(Database& db, unsigned storeIndex);
@@ -443,21 +444,25 @@ public:
 			callback(upd);
 			return true;
 		}
-		this->queueUpdate([callback](Store& store) {
-			callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
-		});
+		this->registerCallback(
+			[callback](Store& store) {
+				callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
+			},
+			CallbackType::update);
 		return false;
 	}
 
 	/**
 	 * @brief Register callback just before changes are about to be committed to this object
-	 * @param callback User callback which will receive an object instance
+	 * @param callback User callback which will receive an updater instance
 	 */
-	void onCommit(Delegate<void(ContainedClassType)> callback)
+	void onCommit(Delegate<void(UpdaterType)> callback)
 	{
-		this->registerCommitCallback([callback](Store& store) {
-			callback(ContainedClassType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
-		});
+		this->registerCallback(
+			[callback](Store& store) {
+				callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
+			},
+			CallbackType::commit);
 	}
 
 private:
