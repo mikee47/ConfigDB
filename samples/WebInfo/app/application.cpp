@@ -151,7 +151,18 @@ void init()
 	spiffs_mount();
 #endif
 
-	WebInfo::Root(database).onCommit([](auto root) {
+	/*
+		Use static method to configure callbacks, it's more efficient.
+		If an instance is already available then we can do this:
+
+			WebInfo::Root root(database);
+			root.onCommit([](auto root) {
+				...
+			});
+	 */
+	WebInfo::Root::onCommit(database, [](auto root) {
+		root.app.setWebappVersion("1.2.3.4 : comment here just to affect string pool storage");
+
 		Serial << _F("COMMIT CALLBACK!") << endl << root.app << endl;
 		root.clearDirty();
 	});

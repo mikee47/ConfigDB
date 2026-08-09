@@ -163,8 +163,6 @@ protected:
 
 	void checkRef(const StoreRef& ref);
 
-	void registerCallback(Callback&& callback, CallbackType type);
-
 	void clearDirty()
 	{
 		dirty = false;

@@ -201,7 +201,7 @@ void Database::registerCallback(Store& store, Callback&& callback, CallbackType 
 {
 	int storeIndex = typeinfo.indexOf(store.propinfo());
 	assert(storeIndex >= 0);
-	callbacks.add({this, uint8_t(storeIndex), type, std::move(callback)});
+	registerCallback(storeIndex, std::move(callback), type);
 }
 
 void Database::checkStoreRef(const StoreRef& ref)
@@ -270,7 +270,6 @@ void Database::checkUpdateQueue(Store& store)
 	}
 
 	// Take reference in case database destroyed before callback invoked
-	auto& item = callbacks[i];
 	System.queueCallback([ref]() {
 		int i = callbacks.indexOf(ref);
 		if(i < 0) {

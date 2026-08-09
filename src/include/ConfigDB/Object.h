@@ -258,7 +258,7 @@ public:
 	/**
 	 * @brief Called from `OuterObjectTemplate` methods
 	 */
-	void registerCallback(Callback callback, CallbackType type);
+	static void registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type);
 
 protected:
 	StoreRef openStore(Database& db, unsigned storeIndex);
@@ -433,36 +433,59 @@ public:
 		return OuterUpdater(this->lockStore(store));
 	}
 
+	using UpdateCallback = Delegate<void(UpdaterType)>;
+
+	static void registerCallback(Database& db, UpdateCallback callback, CallbackType type)
+	{
+		Object::registerCallback(
+			db, storeIndex,
+			[callback](Store& store) {
+				callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
+			},
+			type);
+	}
+
 	/**
-	 * @brief Run an update asynchronously
+	 * @brief Run an update immediately if possible, otherwise queue it
 	 * @param callback User callback which will receive an updater instance
 	 * @retval bool true if update was performed immediately, false if it's been queued
 	 */
-	bool update(Delegate<void(UpdaterType)> callback)
+	bool update(UpdateCallback callback)
 	{
 		if(auto upd = update()) {
 			callback(upd);
 			return true;
 		}
-		this->registerCallback(
-			[callback](Store& store) {
-				callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
-			},
-			CallbackType::update);
+		update(this->getDatabase(), std::move(callback));
 		return false;
+	}
+
+	/**
+	 * @brief Run an update asynchronously
+	 * @param callback User callback which will receive an updater instance
+	 */
+	static void update(Database& db, UpdateCallback callback)
+	{
+		registerCallback(db, std::move(callback), CallbackType::update);
 	}
 
 	/**
 	 * @brief Register callback just before changes are about to be committed to this object
 	 * @param callback User callback which will receive an updater instance
 	 */
-	void onCommit(Delegate<void(UpdaterType)> callback)
+	void onCommit(UpdateCallback callback)
 	{
-		this->registerCallback(
-			[callback](Store& store) {
-				callback(UpdaterType(store, ParentClassType::typeinfo.getObject(propIndex), offset));
-			},
-			CallbackType::commit);
+		onCommit(this->getDatabase(), std::move(callback));
+	}
+
+	/**
+	 * @brief Register commit callback without instantiating/loading object
+	 * @param db Database which manages this object
+	 * @param callback User callback which will receive an updater instance
+	 */
+	static void onCommit(Database& db, UpdateCallback callback)
+	{
+		registerCallback(db, std::move(callback), CallbackType::commit);
 	}
 
 private:

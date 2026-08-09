@@ -66,11 +66,21 @@ public:
 	void checkStoreRef(const StoreRef& ref);
 
 	/**
-	 * @brief Register a callback
+	 * @brief Register a callback using a store instance
 	 * @param store The store associated with the callback
 	 * @param callback Callback provided by class template
 	 */
 	void registerCallback(Store& store, Callback&& callback, CallbackType type);
+
+	/**
+	 * @brief Register a callback using the store index
+	 * @param store Index of the store associated with the callback
+	 * @param callback Callback provided by class template
+	 */
+	void registerCallback(uint8_t storeIndex, Callback&& callback, CallbackType type)
+	{
+		callbacks.add(CallbackItem{this, storeIndex, type, std::move(callback)});
+	}
 
 	/**
 	 * @brief Called by Store on completion of update so any queued updates can be started
@@ -82,12 +92,12 @@ public:
 	/**
 	 * @brief Called from Store::commit
 	 */
-	bool save(Store& store) const;
+	void beforeCommit(Store& store);
 
 	/**
 	 * @brief Called from Store::commit
 	 */
-	void beforeCommit(Store& store);
+	bool save(Store& store) const;
 
 	/**
 	 * @brief Lock a store for writing (called by Object)

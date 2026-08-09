@@ -118,11 +118,6 @@ bool Store::writeCheck() const
 	return false;
 }
 
-void Store::registerCallback(Callback&& callback, CallbackType type)
-{
-	return db.registerCallback(*this, std::move(callback), type);
-}
-
 void Store::checkRef(const StoreRef& ref)
 {
 	db.checkStoreRef(ref);

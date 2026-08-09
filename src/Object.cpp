@@ -260,9 +260,9 @@ Property Object::findProperty(const char* name, size_t length)
 	}
 }
 
-void Object::registerCallback(Callback callback, CallbackType type)
+void Object::registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type)
 {
-	return getStore().registerCallback(std::move(callback), type);
+	db.registerCallback(storeIndex, std::move(callback), type);
 }
 
 bool Object::commit()
