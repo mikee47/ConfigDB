@@ -1366,13 +1366,27 @@ def generate_property_accessors(obj: Object) -> list:
             return f'{prop.ctype_override}({value})'
         return value
 
-    return [*((
-        '',
-        f'{prop.ctype_ret} get{prop.typename}() const',
-        '{',
-        [f'return {get_value_expr(index, prop)};'],
-        '}',
-        ) for index, prop in enumerate(obj.properties))]
+    accessors = []
+    for index, prop in enumerate(obj.properties):
+        accessors += [
+            '',
+            f'{prop.ctype_ret} get{prop.typename}() const',
+            '{',
+            [f'return {get_value_expr(index, prop)};'],
+            '}'
+        ]
+        if prop.enum:
+            item_type = 'const FSTR::String&' if prop.enum_type == 'String' else prop.enum_ctype
+            value = f'getPropertyData({index})->{prop.propdata_id}'
+            accessors += [
+                '',
+                f'{item_type} get{prop.typename}Value() const',
+                '{',
+                [f'return {prop.enum_typeinfo_inst}.values()[{value}];'],
+                '}',
+            ]
+
+    return [accessors]
 
 
 def generate_property_write_accessors(obj: Object) -> list:

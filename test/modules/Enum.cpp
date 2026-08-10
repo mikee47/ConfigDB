@@ -84,7 +84,7 @@ public:
 		{
 			// These properties contain a value index, not the value itself
 			auto numIndex = root.getNum();
-			int num = TestConfigEnum::numType.values()[numIndex];
+			int num = root.getNumValue();
 #ifdef SMING_RELEASE
 			REQUIRE_EQ(numIndex, 4);
 			REQUIRE_EQ(num, 25);
@@ -94,7 +94,7 @@ public:
 #endif
 
 			auto wordIndex = root.getWord();
-			String word = TestConfigEnum::wordType.values()[wordIndex];
+			String word = root.getWordValue();
 			REQUIRE_EQ(wordIndex, 2);
 			REQUIRE_EQ(word, "brown");
 		}

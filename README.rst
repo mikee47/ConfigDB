@@ -171,6 +171,8 @@ The corresponding `setColor`, `getColor` methods set or retrieve the value as a 
 
 The *color* value itself will be stored as a *string* with one of the given values. The *integer* and *number* types are also supported, which can be useful for generating constant lookup tables.
 
+An additional method `getXXXValue` is generated to retrieve the actual string or numeric value of the enumeration. For example, `getColorValue()` will return "red", "green" or "blue" as appropriate.
+
 
 Ranges
 ~~~~~~
