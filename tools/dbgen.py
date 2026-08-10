@@ -319,16 +319,6 @@ class Property:
         return make_typename(self.name)
 
     @property
-    def enum_typeinfo_namespace(self):
-        '''Namespace where enum typeinfo lives'''
-        assert self.enum
-        object_prop = self.parent
-        obj_type = object_prop.parent.namespace
-        if not self.ref:
-            obj_type += f'::{object_prop.obj.parent.typename_contained}'
-        return obj_type
-
-    @property
     def enum_typeinfo_type(self):
         '''Enumeration type information stored in a structure with this name'''
         assert self.enum
@@ -1064,7 +1054,7 @@ def generate_database(db: Database) -> CodeLines:
     for prop in db.enum_props:
         if not prop.ctype_override:
             continue
-        namespace = prop.enum_typeinfo_namespace
+        namespace = prop.parent.namespace
         lines.header += [
             '',
             f'String toString({namespace}::{prop.ctype_ret} value);'
@@ -1137,7 +1127,7 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
         ]
 
     values = prop.enum
-    namespace = prop.enum_typeinfo_namespace
+    namespace = prop.parent.namespace
     item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
 
     # Use explicit ctype override if given, otherwise type is based on property name
