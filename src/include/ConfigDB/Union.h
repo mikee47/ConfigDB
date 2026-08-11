@@ -47,6 +47,14 @@ public:
 	}
 
 	/**
+	 * @brief Get string value for current tag
+	 */
+	String getTagString() const
+	{
+		return propinfo().variant.object->getObjectName(getPropertyData(0)->uint8);
+	}
+
+	/**
 	 * @brief Set the current tag and reset content to object default
 	 */
 	void setTag(Tag tag)
