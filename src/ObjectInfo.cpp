@@ -35,6 +35,23 @@ namespace ConfigDB
 {
 const ObjectInfo PROGMEM ObjectInfo::empty{};
 
+const PropertyInfo& ObjectInfo::getObject(unsigned index) const
+{
+	assert(index < objectCount);
+	return (index < objectCount) ? propinfo[index] : PropertyInfo::empty;
+}
+
+String ObjectInfo::getObjectName(unsigned index) const
+{
+	return getObject(index).name;
+}
+
+const PropertyInfo& ObjectInfo::getProperty(unsigned index) const
+{
+	assert(index < propertyCount);
+	return (index < propertyCount) ? propinfo[objectCount + index] : PropertyInfo::empty;
+}
+
 int ObjectInfo::findObject(const char* name, size_t length) const
 {
 	for(unsigned i = 0; i < objectCount; ++i) {

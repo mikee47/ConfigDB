@@ -57,17 +57,11 @@ struct ObjectInfo {
 
 	int findProperty(const char* name, size_t length) const;
 
-	const PropertyInfo& getObject(unsigned index) const
-	{
-		assert(index < objectCount);
-		return (index < objectCount) ? propinfo[index] : PropertyInfo::empty;
-	}
+	const PropertyInfo& getObject(unsigned index) const;
 
-	const PropertyInfo& getProperty(unsigned index) const
-	{
-		assert(index < propertyCount);
-		return (index < propertyCount) ? propinfo[objectCount + index] : PropertyInfo::empty;
-	}
+	const PropertyInfo& getProperty(unsigned index) const;
+
+	String getObjectName(unsigned index) const;
 
 private:
 	int findAlias(const char* name, size_t length) const;

@@ -1025,10 +1025,7 @@ def generate_database(db: Database) -> CodeLines:
                 decl,
                 '{',
                 [
-                    'switch(unsigned(tag)) {',
-                    [f'case {index}: return {db.strings[prop.name]};' for index, prop in enumerate(obj.object_properties)],
-                    ['default: return nullptr;'],
-                    '}'
+                    f'return {typename}::typeinfo.getObjectName(unsigned(tag));'
                 ],
                 '}'
             ]
