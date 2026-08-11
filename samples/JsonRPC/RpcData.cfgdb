@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "title": "params",
+      "oneOf": [
+        {
+          "type": "object",
+          "title": "none"
+        },
+        {
+          "$ref": "#/$defs/color_event"
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "title": "result",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "title": "error",
+      "properties": {
+        "code": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "oneOf": [
+            {
+              "type": "object",
+              "title": "none"
+            },
+            {
+              "$ref": "#/$defs/color_event"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "color_event": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "raw",
+            "hsv"
+          ]
+        },
+        "raw": {
+          "type": "object",
+          "properties": {
+            "r": {
+              "type": "integer"
+            },
+            "g": {
+              "type": "integer"
+            },
+            "b": {
+              "type": "integer"
+            },
+            "ww": {
+              "type": "integer"
+            },
+            "cw": {
+              "type": "integer"
+            }
+          }
+        },
+        "hsv": {
+          "type": "object",
+          "properties": {
+            "h": {
+              "type": "integer"
+            },
+            "s": {
+              "type": "integer"
+            },
+            "v": {
+              "type": "integer"
+            },
+            "ct": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  }
+}
