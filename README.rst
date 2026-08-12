@@ -191,7 +191,7 @@ ConfigDB uses the **array** schema keyword to implement both *simple* arrays (co
 
 Simple arrays are accessed via the :cpp:class:`ConfigDB::Array` class. All elements must be of the same type. A **default** value may be specified which is applied automatically for uninitialised stores. The :cpp:func:`ConfigDB::Object::loadArrayDefaults` method may also be used during updates to load these default definitions.
 
-The :cpp:class:`ConfigDB::ObjectArray` type can be used for arrays of objects or unions. Default values are not currently supported for these.
+The :cpp:class:`ConfigDB::ObjectArray` type can be used for arrays of objects or unions. Default values are not supported for these.
 
 .. important::
 

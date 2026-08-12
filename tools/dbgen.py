@@ -746,6 +746,19 @@ def parse_oneof(path: str, union_prop: ObjectProperty, fields: dict):
     union_prop.obj.properties.append(prop)
 
 
+def parse_array(path: str, array_prop: ObjectProperty, fields: dict):
+    items = fields.get('items')
+    if not items:
+        raise ValueError(f'Missing "items" property for array')
+    items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
+    if items_prop.ctype_override:
+        items_prop.name = make_identifier(items_prop.ctype_override)
+    if array_prop.obj.is_object_array:
+        if 'default' in fields:
+            raise ValueError('ObjectArray default not supported')
+    array_prop.obj.default = items_prop.validate_type(fields.get('default'), 'default[]')
+
+
 def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> Property:
     '''If property contains a reference, deal with it
 
@@ -860,17 +873,8 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             return object_prop
 
         if prop_type == 'array':
-            items = fields.get('items')
-            if not items:
-                raise ValueError(f'Missing "items" property for array')
             array_prop = create_object_and_property(Array)
-            items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
-            if items_prop.ctype_override:
-                items_prop.name = make_identifier(items_prop.ctype_override)
-            if array_prop.obj.is_object_array:
-                if 'default' in fields:
-                    raise ValueError('ObjectArray default not supported')
-            array_prop.obj.default = items_prop.validate_type(fields.get('default'), 'default[]')
+            parse_array(path, array_prop, fields)
             return array_prop
 
         if prop_type == 'union':
@@ -885,19 +889,23 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
 
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
-    database.include = database.schema.get('include', set())
-    ObjectType = Union if 'oneOf' in database.schema else Object
-    root_obj = ObjectType(database, '', None, database.schema_id)
-    database.schema['object'] = root_obj
-    root = ObjectProperty(database, '', {}, root_obj)
-    database.object_properties.append(root)
-    root.is_store = True
+
     path = f'/{database.name}'
     try:
-        if ObjectType is Union:
-            parse_oneof(path, root, database.schema)
-        else:
-            parse_properties(path, root, database.schema)
+        database.include = database.schema.get('include', set())
+        if {'oneOf', 'type'} & database.schema.keys():
+            ptype = get_ptype(database.schema)
+            ObjectType, parser = {
+                'union': (Union, parse_oneof),
+                'array': (Array, parse_array),
+                'object': (Object, parse_properties),
+            } [ptype]
+            root_obj = ObjectType(database, '', None, database.schema_id)
+            database.schema['object'] = root_obj
+            root = ObjectProperty(database, '', {}, root_obj)
+            database.object_properties.append(root)
+            root.is_store = True
+            parser(path, root, database.schema)
     except ValueError as e:
         raise RuntimeError(path) from e
 
