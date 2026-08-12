@@ -67,7 +67,7 @@ Schema rules
 
 See the :sample:`Basic_Config` sample schema. The test application contains further examples.
 
-- Root object is always a :cpp:class:`ConfigDB::Database`
+- Each schema is managed by a single :cpp:class:`ConfigDB::Database` instance
 - A database is always rooted in a directory
 - An optional **include** array annotation can be added to specify additional header files required for custom types used in the schema.
 - Contains one or more stores. The root (un-named) object is the primary store, with the filename **_root.json**.
@@ -228,6 +228,41 @@ Like a regular C++ *union*, a :cpp:class:`ConfigDB::Union` object has one or mor
 The code generator produces an **asXXX** method for each type of object which can be stored. The application is responsible for checking which type is present via :cpp:func:`ConfigDB::Union::getTag`; if the wrong method is called, a runtime assertion will be generated.
 
 The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object type.
+
+Note that the root database object may also be a union. For example::
+
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "oneOf": [
+      {
+        "type": "object",
+        "title": "request",
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "type": "object",
+        "title": "response",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    ]
+  }
 
 
 Re-using objects

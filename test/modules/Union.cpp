@@ -4,6 +4,7 @@
 
 #include <ConfigDBTest.h>
 #include <test-config-union.h>
+#include <test-root-union.h>
 #include <ConfigDB/Json/Format.h>
 
 namespace json
@@ -159,6 +160,20 @@ public:
 				TEST_ASSERT(false);
 			}
 			Serial << "unionStore: " << us << endl;
+		}
+
+		TEST_CASE("Root Union")
+		{
+			DEFINE_FSTR_LOCAL(expectedRequest, "{\"request\":{\"args\":[\"all\"],\"method\":\"query\"}}")
+			DEFINE_FSTR_LOCAL(expectedResponse, "{\"response\":{\"code\":-1,\"message\":\"undefined\"}}")
+			TestRootUnion db("dummy");
+			TestRootUnion::Root root(db);
+			REQUIRE_EQ(exportObject(root), expectedRequest);
+			if(auto update = root.update()) {
+				update.toResponse();
+				REQUIRE_EQ(exportObject(root), expectedResponse);
+				root.clearDirty();
+			}
 		}
 	}
 };
