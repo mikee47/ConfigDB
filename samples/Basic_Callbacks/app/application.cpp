@@ -1,25 +1,15 @@
 #include <SmingCore.h>
 #include <WebInfo.h>
 #include <ConfigDB/Json/Format.h>
-#include <ConfigDB/Network/HttpImportResource.h>
 #include <Data/Format/Json.h>
 
 #ifdef ENABLE_MALLOC_COUNT
 #include <malloc_count.h>
 #endif
 
-// If you want, you can define WiFi settings globally in Eclipse Environment Variables
-#ifndef WIFI_SSID
-#define WIFI_SSID "PleaseEnterSSID" // Put your SSID and password here
-#define WIFI_PWD "PleaseEnterPass"
-#endif
-
-extern void listProperties(ConfigDB::Database& db, Print& output);
-
 namespace
 {
 WebInfo database("test");
-HttpServer server;
 SimpleTimer statTimer;
 
 IMPORT_FSTR(sampleData, PROJECT_DIR "/WebInfo.json")
@@ -102,54 +92,12 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 		Serial << "  Total usage = " << usage << endl;
 	}
 }
-
-void onFile(HttpRequest& request, HttpResponse& response)
-{
-	Serial << toString(request.method) << " \"" << request.uri.getRelativePath() << '"' << endl;
-
-	if(request.method != HTTP_GET) {
-		response.code = HTTP_STATUS_BAD_REQUEST;
-		return;
-	}
-
-	auto stream = database.createExportStream(ConfigDB::Json::format, request.uri.getRelativePath());
-	response.sendDataStream(stream.release(), MIME_JSON);
-}
-
-void startWebServer()
-{
-	server.listen(80);
-	server.paths.setDefault(onFile);
-	server.paths.set(F("/update"), new ConfigDB::HttpImportResource(database, ConfigDB::Json::format));
-
-	Serial.println("\r\n=== WEB SERVER STARTED ===");
-	Serial.println(WifiStation.getIP());
-	Serial.println("==============================\r\n");
-}
-
-void gotIP(IpAddress, IpAddress, IpAddress)
-{
-	startWebServer();
-}
-
 } // namespace
 
 void init()
 {
 	Serial.begin(COM_SPEED_SERIAL);
 	Serial.systemDebugOutput(true);
-
-	WifiStation.enable(true);
-	WifiStation.config(WIFI_SSID, WIFI_PWD);
-	WifiAccessPoint.enable(false);
-
-	WifiEvents.onStationGotIP(gotIP);
-
-#ifdef ARCH_HOST
-	fileSetFileSystem(&IFS::Host::getFileSystem());
-#else
-	spiffs_mount();
-#endif
 
 	/*
 		Use static method to configure callbacks, it's more efficient.
@@ -170,17 +118,7 @@ void init()
 	FSTR::Stream source(sampleData);
 	database.importFromStream(ConfigDB::Json::format, source);
 
-	// ConfigDB::Json::format.setPretty(true);
-
-	// database.exportToFile(ConfigDB::Json::format, F("out/database.json"));
-	// database.importFromFile(ConfigDB::Json::format, F("out/database.json"));
-
-	// stream(database);
-
-	// listProperties(database, Serial);
-
 	Serial << endl << endl;
-
 	printStoreStats(database, true);
 
 	// Un-comment this line to test web client locking conflict behaviour

@@ -1,5 +1,5 @@
-Web Info sample
-===============
+Basic Callbacks sample
+======================
 
-Looking at potentially generating data on-the-fly.
+This sample demonstrates use of callbacks within ConfigDB to support more advanced features.
 
