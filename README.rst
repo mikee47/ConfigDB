@@ -778,9 +778,49 @@ Code can update database entries in several ways.
     If there are no other updates in progress then the update happens immediately and *completed* is *true*.
     Otherwise the update is queued and *false* is returned. The update will be executed when the store is released.
 
+    There is a *static* form of this call which just queues the update::
+
+      BasicConfig::Root::Security::update(database, [](auto update) {
+        update.setApiSecured(true);
+      });
+
+    This can be more efficient as it avoids instantiating the object and potentially accessing the filesystem.
+
+
 During an update, applications can optionally call :cpp:func:`Updater::commit` to save changes at any time.
 Changes are only saved if the Store *dirty* flag is set.
 Calling :cpp:func:`Updater::clearDirty` will prevent auto-commit, provided further changes are not made.
+
+
+Commit Callbacks
+----------------
+
+Applications may register a callback for any object, invoked just before changes are committed to the store.
+This is probably most useful where updates are processsed via streaming import.
+
+For example::
+
+    BasicConfig::Root::Security::onCommit(database, [](auto sec) {
+      /*
+        An updater is provided so data can be read and written.
+        This enables extended validation, for example.
+       */
+      if (sec.getApiSecured()) {
+        sec.setApiSecured(false);
+      }
+
+      /*
+        If data is ephemeral or invalid, we can clear the dirty flag
+        to prevent data being written to the filesystem.
+       */
+      sec.clearDirty();
+    });
+
+
+.. important::
+
+    Multiple callbacks may be registered for different objects within a store.
+    However, bear in mind that a commit applies to the entire store, so calling *clearDirty* will discard updates to other objects too.
 
 
 API Reference

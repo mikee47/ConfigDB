@@ -163,8 +163,6 @@ protected:
 
 	void checkRef(const StoreRef& ref);
 
-	void queueUpdate(Object::UpdateCallback&& callback);
-
 	void clearDirty()
 	{
 		dirty = false;

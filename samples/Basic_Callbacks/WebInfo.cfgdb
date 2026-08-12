@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "device": {
+      "type": "object",
+      "properties": {
+        "deviceid": {
+          "type": "integer"
+        },
+        "soc": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "deviceid",
+        "soc"
+      ],
+      "additionalProperties": false
+    },
+    "app": {
+      "type": "object",
+      "properties": {
+        "webapp_version": {
+          "type": "string"
+        },
+        "git_version": {
+          "type": "string"
+        },
+        "build_type": {
+          "type": "string"
+        },
+        "git_date": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "build_type",
+        "git_date",
+        "git_version",
+        "webapp_version"
+      ],
+      "additionalProperties": false
+    },
+    "sming": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "uptime": {
+          "type": "integer"
+        },
+        "heap_free": {
+          "type": "integer"
+        },
+        "minimumfreeHeapRuntime": {
+          "type": "integer"
+        },
+        "minimumfreeHeap10min": {
+          "type": "integer"
+        },
+        "heapLowErrUptime": {
+          "type": "integer"
+        },
+        "heapLowErr10min": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "heapLowErr10min",
+        "heapLowErrUptime",
+        "heap_free",
+        "minimumfreeHeap10min",
+        "minimumfreeHeapRuntime",
+        "uptime"
+      ],
+      "additionalProperties": false
+    },
+    "debug": {
+      "type": "object",
+      "properties": {
+        "syslog_pre_net_state": {
+          "type": "string"
+        },
+        "http_active_connections": {
+          "type": "integer"
+        },
+        "websocket_connections": {
+          "type": "integer"
+        },
+        "eventserver_clients": {
+          "type": "integer"
+        },
+        "syslog_pre_net_buffer_allocated": {
+          "type": "boolean"
+        },
+        "syslog_pre_net_encoder_allocated": {
+          "type": "boolean"
+        },
+        "syslog_pre_net_buffer_capacity": {
+          "type": "integer"
+        },
+        "syslog_pre_net_buffer_used": {
+          "type": "integer"
+        },
+        "syslog_pre_net_buffer_frames": {
+          "type": "integer"
+        },
+        "syslog_pre_net_buffer_evicted": {
+          "type": "integer"
+        },
+        "tcp_pcb_size": {
+          "type": "integer"
+        },
+        "tcp_active_estimated_bytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eventserver_clients",
+        "http_active_connections",
+        "syslog_pre_net_buffer_allocated",
+        "syslog_pre_net_buffer_capacity",
+        "syslog_pre_net_buffer_evicted",
+        "syslog_pre_net_buffer_frames",
+        "syslog_pre_net_buffer_used",
+        "syslog_pre_net_encoder_allocated",
+        "syslog_pre_net_state",
+        "tcp_active_estimated_bytes",
+        "tcp_pcb_size",
+        "websocket_connections"
+      ],
+      "additionalProperties": false
+    },
+    "rgbww": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "queuesize": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "queuesize",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "connection": {
+      "type": "object",
+      "properties": {
+        "connected": {
+          "type": "boolean"
+        },
+        "ssid": {
+          "type": "string"
+        },
+        "dhcp": {
+          "type": "boolean"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "netmask": {
+          "type": "string"
+        },
+        "gateway": {
+          "type": "string"
+        },
+        "mac": {
+          "type": "string"
+        },
+        "rssi": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "connected",
+        "dhcp",
+        "gateway",
+        "ip",
+        "mac",
+        "netmask",
+        "rssi",
+        "ssid"
+      ],
+      "additionalProperties": false
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "max http connections": {
+          "type": "integer"
+        },
+        "tcp_connections": {
+          "type": "integer"
+        },
+        "tcp_active": {
+          "type": "integer"
+        },
+        "tcp_established": {
+          "type": "integer"
+        },
+        "tcp_syn_sent": {
+          "type": "integer"
+        },
+        "tcp_syn_rcvd": {
+          "type": "integer"
+        },
+        "tcp_fin_wait_1": {
+          "type": "integer"
+        },
+        "tcp_fin_wait_2": {
+          "type": "integer"
+        },
+        "tcp_close_wait": {
+          "type": "integer"
+        },
+        "tcp_closing": {
+          "type": "integer"
+        },
+        "tcp_last_ack": {
+          "type": "integer"
+        },
+        "tcp_time_wait": {
+          "type": "integer"
+        },
+        "tcp_closed": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "max http connections",
+        "tcp_active",
+        "tcp_close_wait",
+        "tcp_closed",
+        "tcp_closing",
+        "tcp_connections",
+        "tcp_established",
+        "tcp_fin_wait_1",
+        "tcp_fin_wait_2",
+        "tcp_last_ack",
+        "tcp_syn_rcvd",
+        "tcp_syn_sent",
+        "tcp_time_wait"
+      ],
+      "additionalProperties": false
+    },
+    "mqtt": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "broker": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "broker",
+        "enabled",
+        "status",
+        "topic"
+      ],
+      "additionalProperties": false
+    },
+    "homeassistant": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "discovery_prefix": {
+          "type": "string"
+        },
+        "Node ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "Node ID",
+        "discovery_prefix",
+        "enabled"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "app",
+    "connection",
+    "debug",
+    "device",
+    "homeassistant",
+    "mqtt",
+    "network",
+    "rgbww",
+    "runtime",
+    "sming"
+  ],
+  "additionalProperties": false
+}

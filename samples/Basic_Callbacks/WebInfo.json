@@ -1,0 +1,77 @@
+{
+    "device": {
+        "deviceid": 3221339823,
+        "soc": "host"
+    },
+    "app": {
+        "webapp_version": "V5-pj-705-g8fbc-dirty",
+        "git_version": "V5.0-933-develop-fedora-0-dirty",
+        "build_type": "debug",
+        "git_date": "2026-07-01"
+    },
+    "sming": {
+        "version": "6.2.0"
+    },
+    "runtime": {
+        "uptime": 0,
+        "heap_free": 112509,
+        "minimumfreeHeapRuntime": 32768,
+        "minimumfreeHeap10min": 32768,
+        "heapLowErrUptime": 0,
+        "heapLowErr10min": 0
+    },
+    "debug": {
+        "syslog_pre_net_state": "done",
+        "http_active_connections": 1,
+        "websocket_connections": 0,
+        "eventserver_clients": 0,
+        "syslog_pre_net_buffer_allocated": false,
+        "syslog_pre_net_encoder_allocated": false,
+        "syslog_pre_net_buffer_capacity": 6144,
+        "syslog_pre_net_buffer_used": 0,
+        "syslog_pre_net_buffer_frames": 0,
+        "syslog_pre_net_buffer_evicted": 0,
+        "tcp_pcb_size": 0,
+        "tcp_active_estimated_bytes": 0
+    },
+    "rgbww": {
+        "version": "0.9.0",
+        "queuesize": 100
+    },
+    "connection": {
+        "connected": true,
+        "ssid": "Host WiFi",
+        "dhcp": true,
+        "ip": "192.168.13.10",
+        "netmask": "255.255.255.0",
+        "gateway": "192.168.13.1",
+        "mac": "c284cf2aedc2",
+        "rssi": -74
+    },
+    "network": {
+        "max http connections": 8,
+        "tcp_connections": 0,
+        "tcp_active": 0,
+        "tcp_established": 0,
+        "tcp_syn_sent": 0,
+        "tcp_syn_rcvd": 0,
+        "tcp_fin_wait_1": 0,
+        "tcp_fin_wait_2": 0,
+        "tcp_close_wait": 0,
+        "tcp_closing": 0,
+        "tcp_last_ack": 0,
+        "tcp_time_wait": 0,
+        "tcp_closed": 0
+    },
+    "mqtt": {
+        "status": "disabled",
+        "enabled": false,
+        "broker": "mqtt.local",
+        "topic": "home/"
+    },
+    "homeassistant": {
+        "enabled": true,
+        "discovery_prefix": "homeassistant",
+        "Node ID": ""
+    }
+}

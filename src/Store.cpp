@@ -118,11 +118,6 @@ bool Store::writeCheck() const
 	return false;
 }
 
-void Store::queueUpdate(Object::UpdateCallback&& callback)
-{
-	return db.queueUpdate(*this, std::move(callback));
-}
-
 void Store::checkRef(const StoreRef& ref)
 {
 	db.checkStoreRef(ref);
@@ -150,6 +145,13 @@ void Store::decUpdate()
 
 bool Store::commit()
 {
+	if(dirty) {
+		// Allow write access within callbacks
+		++updaterCount;
+		db.beforeCommit(*this);
+		--updaterCount;
+	}
+
 	if(!dirty) {
 		return true;
 	}
