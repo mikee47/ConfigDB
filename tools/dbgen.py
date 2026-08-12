@@ -719,9 +719,44 @@ def load_schema(filename: str) -> Database:
     return db
 
 
-def parse_properties(path: str, parent_prop: Property, properties: dict):
+def parse_properties(path: str, parent_prop: Property, parent_fields: dict):
+    properties = parent_fields.get('properties', {})
     for key, fields in properties.items():
-        parse_property(f'{path}/{key}', parent_prop, key, fields)
+        parse_property(f'{path}/properties/{key}', parent_prop, key, fields)
+
+
+def parse_oneof(path: str, union_prop: ObjectProperty, fields: dict):
+    if 'default' in fields:
+        raise ValueError('Union default not supported')
+    if 'properties' in fields:
+        raise ValueError('Union may not have properties')
+    for i, opt in enumerate(fields['oneOf']):
+        prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
+        if not prop.obj:
+            raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
+        if not prop.id or not prop.name or not prop.obj.typename:
+            raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
+    if union_prop.obj.max_object_size == 0:
+        raise ValueError('Union contains only empty objects')
+    prop = Property(union_prop, 'tag', {
+        'type': 'integer',
+        'minimum': 0,
+        'maximum': len(union_prop.obj.object_properties) - 1
+    })
+    union_prop.obj.properties.append(prop)
+
+
+def parse_array(path: str, array_prop: ObjectProperty, fields: dict):
+    items = fields.get('items')
+    if not items:
+        raise ValueError(f'Missing "items" property for array')
+    items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
+    if items_prop.ctype_override:
+        items_prop.name = make_identifier(items_prop.ctype_override)
+    if array_prop.obj.is_object_array:
+        if 'default' in fields:
+            raise ValueError('ObjectArray default not supported')
+    array_prop.obj.default = items_prop.validate_type(fields.get('default'), 'default[]')
 
 
 def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> Property:
@@ -834,41 +869,17 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
             if 'default' in fields:
                 raise ValueError('Object default not supported (use default on properties)')
             object_prop = create_object_and_property(Object)
-            parse_properties(f'{path}/properties', object_prop, fields.get('properties', {}))
+            parse_properties(path, object_prop, fields)
             return object_prop
 
         if prop_type == 'array':
-            items = fields.get('items')
-            if not items:
-                raise ValueError(f'Missing "items" property for array')
             array_prop = create_object_and_property(Array)
-            items_prop = parse_property(f'{path}/items', array_prop, f'{array_prop.typename}Item', items)
-            if items_prop.ctype_override:
-                items_prop.name = make_identifier(items_prop.ctype_override)
-            if array_prop.obj.is_object_array:
-                if 'default' in fields:
-                    raise ValueError('ObjectArray default not supported')
-            array_prop.obj.default = items_prop.validate_type(fields.get('default'), 'default[]')
+            parse_array(path, array_prop, fields)
             return array_prop
 
         if prop_type == 'union':
-            if 'default' in fields:
-                raise ValueError('Union default not supported')
             union_prop = create_object_and_property(Union)
-            for i, opt in enumerate(fields['oneOf']):
-                prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
-                if not prop.obj:
-                    raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
-                if not prop.id or not prop.name or not prop.obj.typename:
-                    raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
-            if union_prop.obj.max_object_size == 0:
-                raise ValueError('Union contains only empty objects')
-            prop = Property(union_prop, 'tag', {
-                'type': 'integer',
-                'minimum': 0,
-                'maximum': len(union_prop.obj.object_properties) - 1
-            })
-            union_prop.obj.properties.append(prop)
+            parse_oneof(path, union_prop, fields)
             return union_prop
 
         raise ValueError('Bad type ' + prop_type)
@@ -878,13 +889,26 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
 
 def parse_database(database: Database):
     '''Validate and parse schema into python objects'''
-    database.include = database.schema.get('include', set())
-    root_obj = Object(database, '', None, database.schema_id)
-    database.schema['object'] = root_obj
-    root = ObjectProperty(database, '', {}, root_obj)
-    database.object_properties.append(root)
-    root.is_store = True
-    parse_properties(f'/{database.name}/properties', root, database.schema.get('properties', {}))
+
+    path = f'/{database.name}'
+    try:
+        database.include = database.schema.get('include', set())
+        if {'oneOf', 'type'} & database.schema.keys():
+            ptype = get_ptype(database.schema)
+            ObjectType, parser = {
+                'union': (Union, parse_oneof),
+                'array': (Array, parse_array),
+                'object': (Object, parse_properties),
+            } [ptype]
+            root_obj = ObjectType(database, '', None, database.schema_id)
+            database.schema['object'] = root_obj
+            root = ObjectProperty(database, '', {}, root_obj)
+            database.object_properties.append(root)
+            root.is_store = True
+            parser(path, root, database.schema)
+    except ValueError as e:
+        raise RuntimeError(path) from e
+
 
 def generate_database(db: Database) -> CodeLines:
     '''Generate content for entire database'''

@@ -5,6 +5,7 @@
 #include <ConfigDBTest.h>
 #include <test-config-range.h>
 #include <test-config-ref.h>
+#include <test-root-array.h>
 #include <ConfigDB/Json/Format.h>
 
 class UpdateTest : public TestGroup
@@ -238,6 +239,24 @@ public:
 				TEST_ASSERT(false);
 			}
 			Serial << "arrayStore: " << arrayStore << endl;
+		}
+
+		TEST_CASE("Root Array")
+		{
+			DEFINE_FSTR_LOCAL(
+				expected, "[{\"code\":100,\"value\":\"This is for value 100\"},{\"code\":50,\"value\":\"Value 50.\"}]")
+			TestRootArray db("root-array");
+			TestRootArray::Root root(db);
+			if(auto update = root.update()) {
+				auto item = update.addItem();
+				item.setCode(100);
+				item.setValue("This is for value 100");
+				item = update.addItem();
+				item.setCode(50);
+				item.setValue("Value 50.");
+				update.clearDirty();
+			}
+			REQUIRE_EQ(exportObject(root), expected);
 		}
 	}
 };
