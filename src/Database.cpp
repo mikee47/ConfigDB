@@ -229,13 +229,11 @@ void Database::checkStoreRef(const StoreRef& ref)
 
 	System.queueCallback(
 		[](void* param) {
-			auto db = static_cast<Database*>(param);
-
 			cacheCallbackQueued = false;
 
 			// Ensure there are no asynchronous updates pending
 			for(auto& item : callbacks) {
-				if(item.type == CallbackType::update) {
+				if(item.database == param && item.type == CallbackType::update) {
 					return;
 				}
 			}
