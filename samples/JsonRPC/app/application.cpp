@@ -12,6 +12,7 @@ namespace
 namespace Message
 {
 IMPORT_FSTR(request, PROJECT_DIR "/json/request.json")
+IMPORT_FSTR(request2, PROJECT_DIR "/json/request2.json")
 IMPORT_FSTR(response, PROJECT_DIR "/json/response.json")
 IMPORT_FSTR(error, PROJECT_DIR "/json/error.json")
 } // namespace Message
@@ -77,6 +78,10 @@ void init()
 
 	Serial << endl << "IMPORT request" << endl;
 	auto msg = rpcImport(db, Message::request);
+	rpcExport(db, msg.id);
+
+	Serial << endl << "IMPORT request2" << endl;
+	msg = rpcImport(db, Message::request2);
 	rpcExport(db, msg.id);
 
 	Serial << endl << "IMPORT error" << endl;
