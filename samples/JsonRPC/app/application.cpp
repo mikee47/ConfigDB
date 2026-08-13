@@ -22,8 +22,7 @@ JsonRPC::Message rpcImport(RpcData& db, const String& jsonString)
 
 	RpcData::Root root(db);
 
-	Serial << "type " << root.getTagString() << ", id " << msg.id << ", content length " << msg.content.length << endl
-		   << root << endl;
+	Serial << "type " << root.getTagString() << ", id " << msg.id << endl << root << endl;
 
 	switch(root.getTag()) {
 	case RpcData::Root::Tag::Params: {

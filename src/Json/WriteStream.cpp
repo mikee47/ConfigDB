@@ -17,7 +17,7 @@
  *
  ****/
 
-#include "WriteStream.h"
+#include <ConfigDB/Json/WriteStream.h>
 #include <JSON/StreamingParser.h>
 
 using Element = JSON::Element;
