@@ -15,6 +15,12 @@ public:
 	{
 	}
 
+	void reset()
+	{
+		parser.reset();
+		jsonStatus = JSON::Status::Ok;
+	}
+
 protected:
 	bool startElement(const Element& element) override
 	{
@@ -23,7 +29,11 @@ protected:
 		}
 
 		if(element.level > 1) {
-			return WriteStream::startElement(element);
+			// We can only fully parse the message once the kind has been established
+			if(msg.kind != Message::Kind::none) {
+				return WriteStream::startElement(element);
+			}
+			return true;
 		}
 
 		if(element.keyIs("method")) {
@@ -37,6 +47,11 @@ protected:
 		}
 
 		if(element.keyIs("params")) {
+			if(!msg.method) {
+				// Cannot decode: we don't know what the method is yet
+				debug_w("NO METHOD FOUND YET");
+				return true;
+			}
 			msg.kind = Message::Kind::params;
 			auto& params = info[0];
 			params = root.findObject("params", 6);
@@ -107,6 +122,12 @@ Message importMessage(ConfigDB::Database& db, const String& jsonString)
 	Message msg;
 	RpcStream stream(*store, msg);
 	stream.print(jsonString);
+
+	if(msg.method && msg.kind == Message::Kind::none) {
+		// Second pass
+		stream.reset();
+		stream.print(jsonString);
+	}
 
 	auto status = stream.getStatus();
 
