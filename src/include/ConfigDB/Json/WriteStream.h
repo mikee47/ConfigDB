@@ -91,7 +91,7 @@ public:
 
 	Status getStatus() const override;
 
-private:
+protected:
 	bool startElement(const JSON::Element& element) override;
 
 	bool endElement(const JSON::Element&) override
@@ -106,7 +106,7 @@ private:
 	bool handleError(FormatError err, Object& object, const String& arg);
 	bool handleError(FormatError err, const String& arg);
 
-private:
+protected:
 	Database* database{};
 	StoreUpdateRef store;
 	Object info[JSON::StreamingParser::maxNesting]{};
