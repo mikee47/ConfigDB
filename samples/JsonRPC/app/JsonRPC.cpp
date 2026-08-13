@@ -36,7 +36,7 @@ protected:
 			return true;
 		}
 
-		if(element.keyIs("method")) {
+		if(element.keyIs(_F("method"))) {
 			msg.method = element.as<String>();
 			return true;
 		}
@@ -46,10 +46,9 @@ protected:
 			return true;
 		}
 
-		if(element.keyIs("params")) {
+		if(element.keyIs(_F("params"))) {
 			if(!msg.method) {
 				// Cannot decode: we don't know what the method is yet
-				debug_w("NO METHOD FOUND YET");
 				return true;
 			}
 			msg.kind = Message::Kind::params;
@@ -70,7 +69,7 @@ protected:
 			return true;
 		}
 
-		if(element.keyIs("result")) {
+		if(element.keyIs(_F("result"))) {
 			msg.kind = Message::Kind::result;
 			/*
 				TODO: Result content is dependent upon the method.
@@ -94,7 +93,7 @@ protected:
 			return false;
 		}
 
-		if(element.keyIs("error")) {
+		if(element.keyIs(_F("error"))) {
 			msg.kind = Message::Kind::error;
 			auto& error = info[1];
 			error = root.findObject("error", 5);
@@ -151,18 +150,21 @@ bool exportMessage(ConfigDB::Database& db, int id, Print& out)
 		return false;
 	}
 
-	out << "{" << endl << "\"jsonrpc\": \"2.0\"," << endl << "\"id\": " << id << "," << endl;
+	out << _F("{\r\n"
+			  "\"jsonrpc\": \"2.0\",\r\n"
+			  "\"id\": ")
+		<< id << ",\r\n";
 
 	auto& root = reinterpret_cast<const ConfigDB::Union&>(*store);
 	switch(root.getTag()) {
 	case 0: {
 		auto params = static_cast<const ConfigDB::Union&>(obj);
-		out << "\"method\": \"" << params.getTagString() << "\"," << endl
-			<< "\"params\": " << params.getObject(0) << endl;
+		out << _F("\"method\": \"") << params.getTagString() << "\",\r\n"
+			<< _F("\"params\": ") << params.getObject(0) << endl;
 		break;
 	}
 	case 1:
-		out << "\"result\": ";
+		out << _F("\"result\": ");
 		if(obj.typeIs(ConfigDB::ObjectType::Union)) {
 			out << obj.getObject(0) << endl;
 		} else {
@@ -170,11 +172,11 @@ bool exportMessage(ConfigDB::Database& db, int id, Print& out)
 		}
 		break;
 	case 2:
-		out << "\"error\": " << obj << endl;
+		out << _F("\"error\": ") << obj << endl;
 		break;
 	}
 
-	out << "}" << endl;
+	out << "}\r\n";
 
 	return true;
 }
