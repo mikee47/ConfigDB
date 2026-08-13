@@ -11,21 +11,9 @@ struct Message {
 		error,
 	};
 
-	struct Content {
-		const char* start;
-		unsigned length;
-
-		explicit operator bool() const
-		{
-			return start && length != 0;
-		}
-	};
-
 	int id{0};
 	String method;
 	Kind kind{};
-	Content content{};
-	bool isContainer{false};
 };
 
 Message importMessage(ConfigDB::Database& db, const String& jsonString);
