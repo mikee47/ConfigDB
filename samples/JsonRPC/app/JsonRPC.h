@@ -12,7 +12,6 @@ struct Message {
 	};
 
 	int id{0};
-	String method;
 	Kind kind{};
 };
 
