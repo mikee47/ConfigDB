@@ -15,10 +15,16 @@ public:
 	{
 	}
 
+	bool isReparseRequired() const
+	{
+		return repeatParse;
+	}
+
 	void reset()
 	{
 		parser.reset();
 		jsonStatus = JSON::Status::Ok;
+		repeatParse = false;
 	}
 
 protected:
@@ -37,7 +43,21 @@ protected:
 		}
 
 		if(element.keyIs(_F("method"))) {
-			msg.method = element.as<String>();
+			auto& params = info[0];
+			params = root.findObject("params", 6);
+			if(!params) {
+				debug_w("[JRPC] Missing params");
+				return false;
+			}
+
+			auto& paramSelection = info[1];
+			paramSelection = params.findObject(element.value, element.valueLength);
+			if(!paramSelection) {
+				debug_e("[JRPC] Missing params/%s", element.value);
+				return false;
+			}
+
+			haveMethod = true;
 			return true;
 		}
 
@@ -47,25 +67,12 @@ protected:
 		}
 
 		if(element.keyIs(_F("params"))) {
-			if(!msg.method) {
+			if(haveMethod) {
+				msg.kind = Message::Kind::params;
+			} else {
 				// Cannot decode: we don't know what the method is yet
-				return true;
+				repeatParse = true;
 			}
-			msg.kind = Message::Kind::params;
-			auto& params = info[0];
-			params = root.findObject("params", 6);
-			if(!params) {
-				debug_w("[JRPC] MISSING params");
-				return false;
-			}
-
-			auto& paramSelection = info[1];
-			paramSelection = params.findObject(msg.method.c_str(), msg.method.length());
-			if(!paramSelection) {
-				debug_e("[JRPC] MISSING %s", msg.method.c_str());
-				return false;
-			}
-
 			return true;
 		}
 
@@ -89,7 +96,7 @@ protected:
 					return true;
 				}
 			}
-			debug_e("[JRPC] MISSING result");
+			debug_e("[JRPC] Missing result");
 			return false;
 		}
 
@@ -98,7 +105,7 @@ protected:
 			auto& error = info[1];
 			error = root.findObject("error", 5);
 			if(!error) {
-				debug_e("[JRPC] MISSING error");
+				debug_e("[JRPC] Missing error");
 				return false;
 			}
 		}
@@ -108,6 +115,8 @@ protected:
 
 	ConfigDB::Object& root;
 	Message& msg;
+	bool haveMethod{false};
+	bool repeatParse{false};
 };
 
 Message importMessage(ConfigDB::Database& db, const String& jsonString)
@@ -122,7 +131,7 @@ Message importMessage(ConfigDB::Database& db, const String& jsonString)
 	RpcStream stream(*store, msg);
 	stream.print(jsonString);
 
-	if(msg.method && msg.kind == Message::Kind::none) {
+	if(stream.isReparseRequired()) {
 		// Second pass
 		stream.reset();
 		stream.print(jsonString);

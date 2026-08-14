@@ -39,6 +39,18 @@
               "title": "none"
             },
             {
+              "type": "object",
+              "title": "position",
+              "properties": {
+                "location": {
+                  "type": "integer"
+                },
+                "length": {
+                  "type": "integer"
+                }
+              }
+            },
+            {
               "$ref": "#/$defs/color_event"
             }
           ]
