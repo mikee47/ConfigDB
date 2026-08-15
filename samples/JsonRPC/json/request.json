@@ -1,1 +1,1 @@
-{"jsonrpc":"2.0","id":1,"method":"color_event","params":{"mode":"hsv","raw":{"r":1,"g":2,"b":3,"ww":4,"cw":5},"hsv":{"h":6,"s":7,"v":8,"ct":9}}}
+{"jsonrpc":"2.0","id":1,"method":"color_event","params":{"hsv":{"h":6,"s":7,"v":8,"ct":9}}}
