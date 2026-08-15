@@ -19,44 +19,50 @@ IMPORT_FSTR(error, PROJECT_DIR "/json/error.json")
 
 JsonRPC::Message rpcImport(RpcData& db, const String& jsonString)
 {
-	auto msg = JsonRPC::importMessage(db, jsonString);
+	auto getRequestTag = [](int id) -> int { return 1; };
+
+	auto msg = JsonRPC::importMessage(db, jsonString, getRequestTag);
 
 	RpcData::Root root(db);
 
-	Serial << "type " << root.getTagString() << ", id " << msg.id << endl << root << endl;
+	Serial << "RPC " << toString(msg.kind) << ": method " << root.getTagString() << ", id " << msg.id << endl;
 
+	using Tag = RpcData::Root::Tag;
 	switch(root.getTag()) {
-	case RpcData::Root::Tag::Params: {
-		auto params = root.asParams();
-
-		// m_puts("params: ");
-		// m_nputs(msg.params.start, msg.params.length);
-		// m_puts("\n");
+	case Tag::ColorEvent: {
+		auto obj = root.asColorEvent();
+		using Kind = JsonRPC::Message::Kind;
+		switch(msg.kind) {
+		case Kind::none:
+			break;
+		case Kind::params:
+			Serial << obj.params;
+			break;
+		case Kind::result:
+			Serial << obj.result;
+			break;
+		case Kind::error:
+			Serial << obj.error;
+			break;
+		}
 
 		break;
 	}
 
-	case RpcData::Root::Tag::Result:
-		// m_puts("result: ");
-		// m_nputs(msg.result.start, msg.result.length);
-		// m_puts("\n");
+	case RpcData::Root::Tag::None:
 
-		break;
-
-	case RpcData::Root::Tag::Error:
-		// m_puts("error: ");
-		// m_nputs(msg.error.start, msg.error.length);
-		// m_puts("\n");
 		break;
 	}
+
+	Serial << endl;
 
 	return msg;
 }
 
-void rpcExport(RpcData& db, int id)
+void rpcExport(RpcData& db, const JsonRPC::Message& msg)
 {
 	Serial << "EXPORT:" << endl;
-	JsonRPC::exportMessage(db, id, Serial);
+	JsonRPC::exportMessage(db, msg, Serial);
 }
 
 } // namespace
@@ -78,19 +84,19 @@ void init()
 
 	Serial << endl << "IMPORT request" << endl;
 	auto msg = rpcImport(db, Message::request);
-	rpcExport(db, msg.id);
+	rpcExport(db, msg);
 
 	Serial << endl << "IMPORT request2" << endl;
 	msg = rpcImport(db, Message::request2);
-	rpcExport(db, msg.id);
-
-	Serial << endl << "IMPORT error" << endl;
-	msg = rpcImport(db, Message::error);
-	rpcExport(db, msg.id);
+	rpcExport(db, msg);
 
 	Serial << endl << "IMPORT response" << endl;
 	msg = rpcImport(db, Message::response);
-	rpcExport(db, msg.id);
+	rpcExport(db, msg);
+
+	Serial << endl << "IMPORT error" << endl;
+	msg = rpcImport(db, Message::error);
+	rpcExport(db, msg);
 
 	Serial << endl << endl;
 }
