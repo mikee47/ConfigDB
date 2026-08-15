@@ -4,6 +4,22 @@
 #include <JSON/StreamingParser.h>
 #include <Data/Stream/LimitedMemoryStream.h>
 
+String toString(JsonRPC::Message::Kind kind)
+{
+	using Kind = JsonRPC::Message::Kind;
+	switch(kind) {
+	case Kind::none:
+		return F("none");
+	case Kind::params:
+		return F("params");
+	case Kind::result:
+		return F("result");
+	case Kind::error:
+		return F("error");
+	}
+	return nullptr;
+}
+
 namespace JsonRPC
 {
 class RpcStream : public ConfigDB::Json::WriteStream
@@ -11,8 +27,10 @@ class RpcStream : public ConfigDB::Json::WriteStream
 public:
 	using Element = JSON::Element;
 
-	RpcStream(ConfigDB::Object& obj, Message& msg) : WriteStream(obj), root(obj), msg(msg)
+	RpcStream(ConfigDB::Object& obj, Message& msg, GetRequestTag& getRequestTag)
+		: WriteStream(obj), root(static_cast<ConfigDB::Union&>(obj)), msg(msg), getRequestTag(getRequestTag)
 	{
+		assert(root.typeIs(ConfigDB::ObjectType::Union));
 	}
 
 	bool isReparseRequired() const
@@ -43,17 +61,17 @@ protected:
 		}
 
 		if(element.keyIs(_F("method"))) {
-			auto& params = info[0];
-			params = root.findObject("params", 6);
-			if(!params) {
-				debug_w("[JRPC] Missing params");
+			auto& request = info[0];
+			request = root.findObject(element.value, element.valueLength);
+			if(!request) {
+				debug_w("[JRPC] Missing %s", element.value);
 				return false;
 			}
 
-			auto& paramSelection = info[1];
-			paramSelection = params.findObject(element.value, element.valueLength);
-			if(!paramSelection) {
-				debug_e("[JRPC] Missing params/%s", element.value);
+			auto& params = info[1];
+			params = request.findObject("params", 6);
+			if(!params) {
+				debug_e("[JRPC] Missing %s/params", element.value);
 				return false;
 			}
 
@@ -63,33 +81,48 @@ protected:
 
 		if(element.keyIs("id")) {
 			msg.id = element.as<int>();
+			haveId = true;
 			return true;
 		}
 
 		if(element.keyIs(_F("params"))) {
-			if(haveMethod) {
-				msg.kind = Message::Kind::params;
-			} else {
-				// Cannot decode: we don't know what the method is yet
+			if(!haveMethod) {
+				// Cannot decode: we need id to determine request type
 				repeatParse = true;
+				return true;
 			}
+
+			msg.kind = Message::Kind::params;
 			return true;
 		}
 
 		if(element.keyIs(_F("result"))) {
+			if(!haveId) {
+				// Cannot decode: we need id to determine request type
+				repeatParse = true;
+				return true;
+			}
+
+			int tag = getRequestTag(msg.id);
+			if(tag < 0) {
+				debug_e("[JRPC] Unknown ID %d", msg.id);
+				return false;
+			}
+
+			root.setTag(tag);
+			auto& request = info[0];
+			request = root.getObject(0);
+
+			// Result could be a simple value, or an object
 			msg.kind = Message::Kind::result;
-			/*
-				TODO: Result content is dependent upon the method.
-				It could be a simple value, or an object.
-				The method *may* be recorded in the database but that won't work if
-				multiple requests have been sent out: we'd need to track id, etc. separately.
-			*/
 			if(element.isContainer()) {
 				auto& result = info[1];
-				result = root.findObject("result", 6);
-				if(result) {
-					return true;
+				result = request.findObject("result", 6);
+				if(!result) {
+					debug_e("[JRPC] Missing %s/result", root.getTagString().c_str());
+					return false;
 				}
+				return true;
 			} else {
 				auto prop = root.findProperty("result", 6);
 				if(prop && prop.setJsonValue(element.value, element.valueLength)) {
@@ -101,9 +134,25 @@ protected:
 		}
 
 		if(element.keyIs(_F("error"))) {
+			if(!haveId) {
+				// Cannot decode: we need id to determine request type
+				repeatParse = true;
+				return true;
+			}
+
+			int tag = getRequestTag(msg.id);
+			if(tag < 0) {
+				debug_e("[JRPC] Unknown ID  %d", msg.id);
+				return false;
+			}
+
+			root.setTag(tag);
+			auto& request = info[0];
+			request = root.getObject(0);
+
 			msg.kind = Message::Kind::error;
 			auto& error = info[1];
-			error = root.findObject("error", 5);
+			error = request.findObject("error", 5);
 			if(!error) {
 				debug_e("[JRPC] Missing error");
 				return false;
@@ -113,13 +162,15 @@ protected:
 		return true;
 	}
 
-	ConfigDB::Object& root;
+	ConfigDB::Union& root;
 	Message& msg;
+	GetRequestTag getRequestTag;
 	bool haveMethod{false};
+	bool haveId{false};
 	bool repeatParse{false};
 };
 
-Message importMessage(ConfigDB::Database& db, const String& jsonString)
+Message importMessage(ConfigDB::Database& db, const String& jsonString, GetRequestTag getRequestTag)
 {
 	auto store = db.openStoreForUpdate(0);
 	if(!store) {
@@ -127,8 +178,8 @@ Message importMessage(ConfigDB::Database& db, const String& jsonString)
 	}
 	store->resetToDefaults();
 
-	Message msg;
-	RpcStream stream(*store, msg);
+	Message msg{};
+	RpcStream stream(*store, msg, getRequestTag);
 	stream.print(jsonString);
 
 	if(stream.isReparseRequired()) {
@@ -147,41 +198,51 @@ Message importMessage(ConfigDB::Database& db, const String& jsonString)
 	return msg;
 }
 
-bool exportMessage(ConfigDB::Database& db, int id, Print& out)
+bool exportMessage(ConfigDB::Database& db, const Message& msg, Print& out)
 {
-	auto store = db.openStore(0);
-	if(!store) {
-		return {};
+	if(msg.kind == Message::Kind::none) {
+		return false;
 	}
 
-	auto obj = store->getObject(0);
-	if(!obj) {
+	auto store = db.openStore(0);
+	if(!store) {
 		return false;
 	}
 
 	out << _F("{\r\n"
 			  "\"jsonrpc\": \"2.0\",\r\n"
 			  "\"id\": ")
-		<< id << ",\r\n";
+		<< msg.id;
 
-	auto& root = reinterpret_cast<const ConfigDB::Union&>(*store);
-	switch(root.getTag()) {
-	case 0: {
-		auto params = static_cast<const ConfigDB::Union&>(obj);
-		out << _F("\"method\": \"") << params.getTagString() << "\",\r\n"
-			<< _F("\"params\": ") << params.getObject(0) << endl;
-		break;
-	}
-	case 1:
-		out << _F("\"result\": ");
-		if(obj.typeIs(ConfigDB::ObjectType::Union)) {
-			out << obj.getObject(0) << endl;
-		} else {
-			out << obj << endl;
+	auto& root = reinterpret_cast<ConfigDB::Union&>(*store);
+	auto request = root.getObject(0);
+	switch(msg.kind) {
+	case Message::Kind::params: {
+		if(auto params = request.findObject("params", 6)) {
+			out << _F(",\r\n"
+					  "\"method\": \"")
+				<< root.getTagString() << "\",\r\n"
+				<< _F("\"params\": ") << params << endl;
 		}
 		break;
-	case 2:
-		out << _F("\"error\": ") << obj << endl;
+	}
+	case Message::Kind::result: {
+		if(auto result = request.findObject("result", 6)) {
+			out << _F(",\r\n"
+					  "\"result\": ")
+				<< result << endl;
+		}
+		break;
+	}
+	case Message::Kind::error: {
+		if(auto error = request.findObject("error", 5)) {
+			out << _F(",\r\n"
+					  "\"error\": ")
+				<< error << endl;
+		}
+		break;
+	}
+	case Message::Kind::none:
 		break;
 	}
 
