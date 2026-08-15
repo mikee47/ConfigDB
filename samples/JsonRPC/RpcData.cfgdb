@@ -10,17 +10,10 @@
       "title": "color_event",
       "properties": {
         "params": {
-          "type": "object",
-          "properties": {
-            "mode": {
-              "type": "string",
-              "enum": [
-                "raw",
-                "hsv"
-              ]
-            },
-            "raw": {
+          "oneOf": [
+            {
               "type": "object",
+              "title": "raw",
               "properties": {
                 "r": {
                   "$ref": "#/$defs/color-value"
@@ -39,8 +32,9 @@
                 }
               }
             },
-            "hsv": {
+            {
               "type": "object",
+              "title": "hsv",
               "properties": {
                 "h": {
                   "$ref": "#/$defs/color-value"
@@ -56,7 +50,7 @@
                 }
               }
             }
-          }
+          ]
         },
         "result": {
           "$ref": "#/$defs/standard-result"
