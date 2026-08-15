@@ -4,18 +4,33 @@
 #include <JSON/StreamingParser.h>
 #include <Data/Stream/LimitedMemoryStream.h>
 
+namespace
+{
+#define STRING_MAP(XX)                                                                                                 \
+	XX(method)                                                                                                         \
+	XX(none)                                                                                                           \
+	XX(params)                                                                                                         \
+	XX(result)                                                                                                         \
+	XX(error)
+
+#define XX(tag) DEFINE_FSTR_LOCAL(FS_##tag, #tag)
+STRING_MAP(XX)
+#undef XX
+
+} // namespace
+
 String toString(JsonRPC::Message::Kind kind)
 {
 	using Kind = JsonRPC::Message::Kind;
 	switch(kind) {
 	case Kind::none:
-		return F("none");
+		return FS_none;
 	case Kind::params:
-		return F("params");
+		return FS_params;
 	case Kind::result:
-		return F("result");
+		return FS_result;
 	case Kind::error:
-		return F("error");
+		return FS_error;
 	}
 	return nullptr;
 }
@@ -60,7 +75,7 @@ protected:
 			return true;
 		}
 
-		if(element.keyIs(_F("method"))) {
+		if(element.keyIs(FS_method)) {
 			auto& request = info[0];
 			request = root.findObject(element.value, element.valueLength);
 			if(!request) {
@@ -69,9 +84,10 @@ protected:
 			}
 
 			auto& params = info[1];
-			params = request.findObject("params", 6);
+			String tag(FS_params);
+			params = request.findObject(tag.c_str(), tag.length());
 			if(!params) {
-				debug_e("[JRPC] Missing %s/params", element.value);
+				debug_e("[JRPC] Missing %s/%s", element.value, tag.c_str());
 				return false;
 			}
 
@@ -85,7 +101,7 @@ protected:
 			return true;
 		}
 
-		if(element.keyIs(_F("params"))) {
+		if(element.keyIs(FS_params)) {
 			if(!haveMethod) {
 				// Cannot decode: we need id to determine request type
 				repeatParse = true;
@@ -96,7 +112,7 @@ protected:
 			return true;
 		}
 
-		if(element.keyIs(_F("result"))) {
+		if(element.keyIs(FS_result)) {
 			if(!haveId) {
 				// Cannot decode: we need id to determine request type
 				repeatParse = true;
@@ -117,14 +133,14 @@ protected:
 			msg.kind = Message::Kind::result;
 			if(element.isContainer()) {
 				auto& result = info[1];
-				result = request.findObject("result", 6);
+				result = request.findObject(element.key, element.keyLength);
 				if(!result) {
-					debug_e("[JRPC] Missing %s/result", root.getTagString().c_str());
+					debug_e("[JRPC] Missing %s/%s", root.getTagString().c_str(), element.key);
 					return false;
 				}
 				return true;
 			} else {
-				auto prop = root.findProperty("result", 6);
+				auto prop = root.findProperty(element.key, element.keyLength);
 				if(prop && prop.setJsonValue(element.value, element.valueLength)) {
 					return true;
 				}
@@ -133,7 +149,7 @@ protected:
 			return false;
 		}
 
-		if(element.keyIs(_F("error"))) {
+		if(element.keyIs(FS_error)) {
 			if(!haveId) {
 				// Cannot decode: we need id to determine request type
 				repeatParse = true;
@@ -152,9 +168,9 @@ protected:
 
 			msg.kind = Message::Kind::error;
 			auto& error = info[1];
-			error = request.findObject("error", 5);
+			error = request.findObject(element.key, element.keyLength);
 			if(!error) {
-				debug_e("[JRPC] Missing error");
+				debug_e("[JRPC] Missing %s/%s", root.getTagString().c_str(), element.key);
 				return false;
 			}
 		}
