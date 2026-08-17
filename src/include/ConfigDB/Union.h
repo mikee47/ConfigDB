@@ -32,7 +32,7 @@ class Union : public Object
 {
 public:
 	/**
-	 * @brief A zero-based index which identifies the stored object type
+	 * @brief A zero-based index which identifies the stored object or property type
 	 */
 	using Tag = uint8_t;
 
@@ -53,6 +53,16 @@ public:
 	String getTagString() const
 	{
 		return propinfo().variant.object->propinfo[getTag()].name;
+	}
+
+	bool tagIsObject(Tag tag) const
+	{
+		return tag < typeinfo().objectCount;
+	}
+
+	bool tagIsObject() const
+	{
+		return tagIsObject(getTag());
 	}
 
 	/**
@@ -85,7 +95,7 @@ public:
 
 	unsigned getObjectCount() const
 	{
-		return 1;
+		return tagIsObject() ? 1 : 0;
 	}
 
 	Object getObject(unsigned index)
@@ -99,17 +109,44 @@ public:
 
 	unsigned getPropertyCount() const
 	{
-		return 0;
+		return tagIsObject() ? 0 : 1;
 	}
 
-	PropertyConst getProperty(unsigned) const
+	PropertyConst getProperty(unsigned index) const
 	{
-		return {};
+		if(index != 0) {
+			assert(false);
+			return {};
+		}
+		auto tag = getTag();
+		if(tagIsObject(tag)) {
+			assert(false);
+			return {};
+		}
+		auto& ti = typeinfo();
+		tag -= ti.objectCount;
+		auto& prop = ti.getProperty(tag);
+		auto propData = getPropertyData(tag);
+		return {getStore(), prop, propData};
 	}
 
-	Property getProperty(unsigned)
+	Property getProperty(unsigned index)
 	{
-		return {};
+		if(index != 0) {
+			assert(false);
+			return {};
+		}
+		auto tag = getTag();
+		if(tagIsObject(tag)) {
+			assert(false);
+			return {};
+		}
+		auto& ti = typeinfo();
+		tag -= ti.objectCount;
+		auto& prop = ti.getProperty(tag);
+		auto propData = getPropertyData(tag);
+		auto defaultData = PropertyData::fromStruct(prop, ti.defaultData);
+		return {getStore(), prop, propData, defaultData};
 	}
 
 	/**

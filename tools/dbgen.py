@@ -1053,7 +1053,7 @@ def generate_database(db: Database) -> CodeLines:
                 decl,
                 '{',
                 [
-                    f'return {typename}::typeinfo.getObjectName(unsigned(tag));'
+                    f'return {typename}::typeinfo.getName(unsigned(tag));'
                 ],
                 '}'
             ]

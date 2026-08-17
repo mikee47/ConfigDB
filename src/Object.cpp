@@ -65,7 +65,9 @@ void Object::disposeArrays()
 		}
 		break;
 	case ObjectType::Union:
-		getObject(0).disposeArrays();
+		if(static_cast<const Union*>(this)->tagIsObject()) {
+			getObject(0).disposeArrays();
+		}
 		break;
 	case ObjectType::Array:
 	case ObjectType::ObjectArray:

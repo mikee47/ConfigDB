@@ -44,9 +44,13 @@ const PropertyInfo& ObjectInfo::getObject(unsigned index) const
 	return propinfo[index];
 }
 
-String ObjectInfo::getObjectName(unsigned index) const
+String ObjectInfo::getName(unsigned index) const
 {
-	return getObject(index).name;
+	if(index >= objectCount + propertyCount) {
+		assert(false);
+		return nullptr;
+	}
+	return propinfo[index].name;
 }
 
 const PropertyInfo& ObjectInfo::getProperty(unsigned index) const
