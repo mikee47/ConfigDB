@@ -33,12 +33,34 @@
         },
         {
           "$ref": "#/$defs/array-with-defaults"
+        },
+        {
+          "type": "string",
+          "title": "name",
+          "default": "default string"
         }
       ]
     },
     "union-store": {
       "$ref": "#/$defs/Color",
       "store": true
+    },
+    "union-props": {
+      "description": "Contains no objects, just properties",
+      "oneOf": [
+        {
+          "type": "string",
+          "title": "a"
+        },
+        {
+          "type": "integer",
+          "title": "b"
+        },
+        {
+          "type": "number",
+          "title": "c"
+        }
+      ]
     }
   },
   "$defs": {

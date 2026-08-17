@@ -733,14 +733,12 @@ def parse_oneof(path: str, union_prop: ObjectProperty, fields: dict):
     idlist = []
     for i, opt in enumerate(fields['oneOf']):
         prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
-        if not prop.obj:
-            raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
-        if not prop.id or not prop.name or not prop.obj.typename:
-            raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
+        if not prop.id or not prop.name or (prop.obj and not prop.obj.typename):
+            raise ValueError(f'Union "{union_prop.name}" option {i} requires title or $ref')
         if prop.id in idlist:
             raise ValueError(f'Entry {len(idlist)} "{prop.name}" conflicts with entry {idlist.index(prop.id)}')
         idlist.append(prop.id)
-    if union_prop.obj.max_object_size == 0:
+    if union_prop.obj.data_size == UNION_TAG_SIZE:
         raise ValueError('Union contains only empty objects')
     prop = Property(union_prop, 'tag', {
         'type': 'integer',
@@ -1338,25 +1336,43 @@ def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
     obj = object_prop.obj
 
     typename = f'{object_prop.namespace}::{obj.typename_contained}'
-    struct_props = [prop for prop in obj.object_properties if prop.obj.has_struct]
-    return CodeLines([
-        '',
-        'struct __attribute__((packed)) Struct {',
+    lines = CodeLines(
         [
+            '',
+            'struct __attribute__((packed)) Struct {',
+        ],
+        [
+            '',
+            f'const {typename}::Struct PROGMEM {typename}::defaultData{{}};'
+        ])
+
+
+    fields = [(prop.obj.typename_struct, prop.id, '') for prop in obj.object_properties if prop.obj.has_struct]
+    fields += [(get_ctype(prop), prop.id, get_default(prop)) for prop in obj.properties]
+    def field_str(tup, include_default: bool):
+        typename, propid, default = tup
+        default = f'{{{default}}}' if include_default else ''
+        return f'{typename} {propid}{default};'
+    if obj.is_union:
+        # Tag is last property so place that outside `union`
+        lines.header += [[
             'union __attribute__((packed)) {',
-            [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(struct_props)],
+            [field_str(f, index == 0) for index, f in enumerate(fields[:-1])],
             '};',
-        ] if obj.is_union else
-        [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in struct_props],
-        [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties],
+            field_str(fields[-1], True), # Tag
+        ]]
+    else:
+        lines.header += [
+            [field_str(f, True) for f in fields],
+        ]
+
+    lines.header += [
         '};',
         '',
         'static const Struct defaultData;',
-    ],
-    [
-        '',
-        f'const {typename}::Struct PROGMEM {typename}::defaultData{{}};'
-    ])
+    ]
+
+    return lines
 
 
 def generate_property_accessors(obj: Object) -> list:
