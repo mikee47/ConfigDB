@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "raw-color-fields": {
+      "type": "object",
+      "properties": {
+        "r": { "$ref": "value-types/$defs/raw-value" },
+        "g": { "$ref": "value-types/$defs/raw-value" },
+        "b": { "$ref": "value-types/$defs/raw-value" },
+        "ww": { "$ref": "value-types/$defs/raw-value" },
+        "cw": { "$ref": "value-types/$defs/raw-value" }
+      },
+      "required": ["r", "g", "b", "ww", "cw"],
+      "additionalProperties": false
+    },
+    "hsv-color-fields": {
+      "type": "object",
+      "properties": {
+        "h": { "$ref": "value-types/$defs/hue-value" },
+        "s": { "$ref": "value-types/$defs/percentage-value" },
+        "v": { "$ref": "value-types/$defs/percentage-value" },
+        "ct": { "$ref": "value-types/$defs/raw-value" }
+      },
+      "required": ["h", "s", "v", "ct"],
+      "additionalProperties": false
+    },
+    "raw-color": {
+      "type": "object",
+      "properties": {
+        "raw": { "$ref": "#/$defs/raw-color-fields" }
+      },
+      "required": ["raw"],
+      "additionalProperties": false
+    },
+    "hsv-color": {
+      "type": "object",
+      "properties": {
+        "hsv": { "$ref": "#/$defs/hsv-color-fields" }
+      },
+      "required": ["hsv"],
+      "additionalProperties": false
+    },
+    "color-params": {
+      "oneOf": [
+        { "$ref": "#/$defs/raw-color" },
+        { "$ref": "#/$defs/hsv-color" }
+      ]
+    },
+    "connection-info-v1": {
+      "type": "object",
+      "properties": {
+        "connected": { "$ref": "value-types/$defs/boolean-value" },
+        "ssid": { "$ref": "value-types/$defs/string-value" },
+        "dhcp": { "$ref": "value-types/$defs/boolean-value" },
+        "ip": { "$ref": "value-types/$defs/string-value" },
+        "netmask": { "$ref": "value-types/$defs/string-value" },
+        "gateway": { "$ref": "value-types/$defs/string-value" },
+        "mac": { "$ref": "value-types/$defs/string-value" }
+      },
+      "required": ["connected", "ssid", "dhcp", "ip", "netmask", "gateway", "mac"],
+      "additionalProperties": false
+    },
+    "connection-info-v2": {
+      "type": "object",
+      "properties": {
+        "connected": { "$ref": "value-types/$defs/boolean-value" },
+        "ssid": { "$ref": "value-types/$defs/string-value" },
+        "dhcp": { "$ref": "value-types/$defs/boolean-value" },
+        "ip": { "$ref": "value-types/$defs/string-value" },
+        "netmask": { "$ref": "value-types/$defs/string-value" },
+        "gateway": { "$ref": "value-types/$defs/string-value" },
+        "mac": { "$ref": "value-types/$defs/string-value" },
+        "rssi": { "$ref": "value-types/$defs/integer-value" }
+      },
+      "required": ["connected", "ssid", "dhcp", "ip", "netmask", "gateway", "mac", "rssi"],
+      "additionalProperties": false
+    },
+    "rgbww-info": {
+      "type": "object",
+      "properties": {
+        "version": { "$ref": "value-types/$defs/string-value" },
+        "queuesize": { "$ref": "value-types/$defs/non-negative-integer" }
+      },
+      "required": ["version", "queuesize"],
+      "additionalProperties": false
+    },
+    "device-info": {
+      "type": "object",
+      "properties": {
+        "deviceid": { "$ref": "value-types/$defs/non-negative-integer" },
+        "soc": { "$ref": "value-types/$defs/string-value" },
+        "current_rom": { "$ref": "value-types/$defs/string-value" }
+      },
+      "required": ["deviceid", "soc", "current_rom"],
+      "additionalProperties": false
+    },
+    "app-info": {
+      "type": "object",
+      "properties": {
+        "webapp_version": { "$ref": "value-types/$defs/string-value" },
+        "git_version": { "$ref": "value-types/$defs/string-value" },
+        "build_type": { "$ref": "value-types/$defs/string-value" },
+        "git_date": { "$ref": "value-types/$defs/string-value" }
+      },
+      "required": ["webapp_version", "git_version", "build_type", "git_date"],
+      "additionalProperties": false
+    },
+    "sming-info": {
+      "type": "object",
+      "properties": {
+        "version": { "$ref": "value-types/$defs/string-value" }
+      },
+      "required": ["version"],
+      "additionalProperties": false
+    },
+    "filesystem-info": {
+      "type": "object",
+      "properties": {
+        "total_bytes": { "$ref": "value-types/$defs/non-negative-integer" },
+        "free_bytes": { "$ref": "value-types/$defs/non-negative-integer" },
+        "used_bytes": { "$ref": "value-types/$defs/non-negative-integer" }
+      },
+      "required": ["total_bytes", "free_bytes", "used_bytes"],
+      "additionalProperties": false
+    },
+    "runtime-info":{
+        "type": "object",
+        "properties": {
+            "uptime": { "$ref": "value-types/$defs/non-negative-integer" },
+            "heap_free": { "$ref": "value-types/$defs/non-negative-integer" },
+            "minimumfreeHeapRuntime": { "$ref": "value-types/$defs/non-negative-integer" },
+            "minimumfreeHeap10min": { "$ref": "value-types/$defs/non-negative-integer" },
+            "heapLowErrUptime": { "$ref": "value-types/$defs/non-negative-integer" },
+            "heapLowErr10min": { "$ref": "value-types/$defs/non-negative-integer" }
+        }
+    },
+    "mqtt-info": {
+      "type": "object",
+      "properties": {
+        "status": { "$ref": "value-types/$defs/string-value" },
+        "enabled": { "$ref": "value-types/$defs/boolean-value" },
+        "broker": { "$ref": "value-types/$defs/string-value" },
+        "topic": { "$ref": "value-types/$defs/string-value" }
+      },
+      "required": ["status", "enabled", "broker", "topic"],
+      "additionalProperties": false
+    },
+    "homeassistant-info": {
+      "type": "object",
+      "properties": {
+        "enabled": { "$ref": "value-types/$defs/boolean-value" },
+        "discovery_prefix": { "$ref": "value-types/$defs/string-value" },
+        "Node ID": { "$ref": "value-types/$defs/string-value" }
+      },
+      "required": ["enabled", "discovery_prefix", "Node ID"],
+      "additionalProperties": false
+    },
+    "info-v1-params": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "const": 1,
+          "default": 1
+        },
+        "deviceid": { "$ref": "value-types/$defs/non-negative-integer" },
+        "soc": { "$ref": "value-types/$defs/string-value" },
+        "current_rom": { "$ref": "value-types/$defs/string-value" },
+        "git_version": { "$ref": "value-types/$defs/string-value" },
+        "build_type": { "$ref": "value-types/$defs/string-value" },
+        "git_date": { "$ref": "value-types/$defs/string-value" },
+        "webapp_version": { "$ref": "value-types/$defs/string-value" },
+        "sming": { "$ref": "value-types/$defs/string-value" },
+        "event_num_clients": { "$ref": "value-types/$defs/non-negative-integer" },
+        "uptime": { "$ref": "value-types/$defs/non-negative-integer" },
+        "heap_free": { "$ref": "value-types/$defs/non-negative-integer" },
+        "rgbww": { "$ref": "#/$defs/rgbww-info" },
+        "connection": { "$ref": "#/$defs/connection-info-v1" }
+      },
+      "required": ["deviceid", "soc", "current_rom", "git_version", "build_type", "git_date", "webapp_version", "sming", "event_num_clients", "uptime", "heap_free", "rgbww", "connection"],
+      "additionalProperties": false
+    },
+    "info-v2-params": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "const": 2,
+          "default": 2
+        },
+        "device": { "$ref": "#/$defs/device-info" },
+        "app": { "$ref": "#/$defs/app-info" },
+        "sming": { "$ref": "#/$defs/sming-info" },
+        "filesystem": { "$ref": "#/$defs/filesystem-info" },
+        "runtime": { "$ref": "#/$defs/runtime-info" },
+        "rgbww": { "$ref": "#/$defs/rgbww-info" },
+        "connection": { "$ref": "#/$defs/connection-info-v2" },
+        "mqtt": { "$ref": "#/$defs/mqtt-info" },
+        "homeassistant": { "$ref": "#/$defs/homeassistant-info" }
+      },
+      "required": ["version", "device", "app", "sming", "filesystem",  "rgbww", "connection", "mqtt", "homeassistant"],
+      "additionalProperties": false
+    }
+  }
+}
