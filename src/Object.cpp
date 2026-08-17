@@ -41,6 +41,8 @@ void Object::clear()
 		disposeArrays();
 		if(ti.defaultData) {
 			memcpy_P(getDataPtr(), ti.defaultData, ti.dataSize);
+		} else {
+			assert(ti.dataSize == 0);
 		}
 		break;
 	case ObjectType::Union:

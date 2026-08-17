@@ -43,7 +43,8 @@ public:
 	 */
 	Tag getTag() const
 	{
-		return getPropertyData(0)->uint8;
+		auto ptr = static_cast<const uint8_t*>(getDataPtr());
+		return ptr[typeinfo().dataSize - 1];
 	}
 
 	/**
@@ -51,7 +52,7 @@ public:
 	 */
 	String getTagString() const
 	{
-		return propinfo().variant.object->getObjectName(getPropertyData(0)->uint8);
+		return propinfo().variant.object->propinfo[getTag()].name;
 	}
 
 	/**
@@ -68,8 +69,9 @@ public:
 			return;
 		}
 		disposeArrays();
-		memset(getDataPtr(), 0, ti.dataSize);
-		getPropertyData(0)->uint8 = tag;
+		auto ptr = static_cast<uint8_t*>(getDataPtr());
+		memset(ptr, 0, ti.dataSize);
+		ptr[ti.dataSize - 1] = tag;
 		Object(*this, tag).clear();
 	}
 

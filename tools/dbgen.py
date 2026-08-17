@@ -27,6 +27,7 @@ CPP_TYPENAMES = {
 
 STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
+UNION_TAG_SIZE = 1
 # These values get truncated by ConstNumber during C++ compilation
 NUMBER_MIN = -1e100
 NUMBER_MAX = 1e100
@@ -275,6 +276,7 @@ class Property:
             'integer': int,
             'boolean': bool,
             'number': (float, int),
+            'union': str,
         }
         if not isinstance(value, types[self.ptype]):
             raise ValueError(f'Attribute "{attr_name}" must be an {self.ptype}, found {type(value).__name__} ({value})')
@@ -423,6 +425,10 @@ class Object:
     properties: list[Property] = field(default_factory=list)
 
     @property
+    def all_properties(self):
+        return self.object_properties + self.properties
+
+    @property
     def namespace(self):
         ns = []
         obj = self.parent
@@ -541,22 +547,24 @@ class Array(Object):
 
 @dataclass
 class Union(Object):
+    tag: int = 0
+
     @property
     def is_union(self):
         return True
 
     @property
     def max_object_size(self):
-        return max(prop.data_size for prop in self.object_properties)
+        return max(prop.data_size for prop in self.object_properties) if self.object_properties else 0
 
     @property
     def max_property_size(self):
-        return max(prop.data_size for prop in self.properties)
+        return max(prop.data_size for prop in self.properties) if self.properties else 0
 
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return self.max_object_size + self.max_property_size
+        return max(self.max_object_size, self.max_property_size) + UNION_TAG_SIZE
 
 
 @dataclass
@@ -726,8 +734,6 @@ def parse_properties(path: str, parent_prop: Property, parent_fields: dict):
 
 
 def parse_oneof(path: str, union_prop: ObjectProperty, fields: dict):
-    if 'default' in fields:
-        raise ValueError('Union default not supported')
     if 'properties' in fields:
         raise ValueError('Union may not have properties')
     idlist = []
@@ -740,12 +746,8 @@ def parse_oneof(path: str, union_prop: ObjectProperty, fields: dict):
         idlist.append(prop.id)
     if union_prop.obj.data_size == UNION_TAG_SIZE:
         raise ValueError('Union contains only empty objects')
-    prop = Property(union_prop, 'tag', {
-        'type': 'integer',
-        'minimum': 0,
-        'maximum': len(union_prop.obj.object_properties) - 1
-    })
-    union_prop.obj.properties.append(prop)
+    if default := fields.get('default'):
+        union_prop.obj.tag = [prop.name for prop in union_prop.obj.all_properties].index(default)
 
 
 def parse_array(path: str, array_prop: ObjectProperty, fields: dict):
@@ -1354,12 +1356,11 @@ def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
         default = f'{{{default}}}' if include_default else ''
         return f'{typename} {propid}{default};'
     if obj.is_union:
-        # Tag is last property so place that outside `union`
         lines.header += [[
             'union __attribute__((packed)) {',
-            [field_str(f, index == 0) for index, f in enumerate(fields[:-1])],
+            [field_str(f, index == obj.tag) for index, f in enumerate(fields)],
             '};',
-            field_str(fields[-1], True), # Tag
+            f'uint8_t tag{{{obj.tag}}};'
         ]]
     else:
         lines.header += [
