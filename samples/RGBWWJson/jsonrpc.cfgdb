@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "title": "color",
+      "properties": {
+        "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
+        "id": { "$ref": "value-types/$defs/jsonrpc-id" },
+        "method": { "$ref": "value-types/$defs/color-method" },
+        "params": { "$ref": "params/$defs/color-params" }
+      },
+      "required": ["jsonrpc", "id", "method", "params"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "infov1",
+      "properties": {
+        "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
+        "id": { "$ref": "value-types/$defs/jsonrpc-id" },
+        "method": { "$ref": "value-types/$defs/infov1-method" },
+        "params": { "$ref": "params/$defs/info-v1-params" }
+      },
+      "required": ["jsonrpc", "id", "method", "params"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "infov2",
+      "properties": {
+        "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
+        "id": { "$ref": "value-types/$defs/jsonrpc-id" },
+        "method": { "$ref": "value-types/$defs/infov2-method" },
+        "params": { "$ref": "params/$defs/info-v2-params" }
+      },
+      "required": ["jsonrpc", "id", "method", "params"],
+      "additionalProperties": false
+    }
+  ]
+}
