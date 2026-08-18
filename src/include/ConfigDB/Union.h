@@ -74,7 +74,7 @@ public:
 			return;
 		}
 		auto& ti = typeinfo();
-		if(tag >= ti.objectCount) {
+		if(tag >= ti.objectCount + ti.propertyCount) {
 			assert(false);
 			return;
 		}
@@ -82,7 +82,9 @@ public:
 		auto ptr = static_cast<uint8_t*>(getDataPtr());
 		memset(ptr, 0, ti.dataSize);
 		ptr[ti.dataSize - 1] = tag;
-		Object(*this, tag).clear();
+		if(tag < ti.objectCount) {
+			Object(*this, tag).clear();
+		}
 	}
 
 	/**

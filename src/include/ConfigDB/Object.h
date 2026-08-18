@@ -261,6 +261,8 @@ public:
 	static void registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type);
 
 protected:
+	friend class Accessor;
+
 	StoreRef openStore(Database& db, unsigned storeIndex);
 	StoreUpdateRef openStoreForUpdate(Database& db, unsigned storeIndex);
 

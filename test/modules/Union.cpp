@@ -118,6 +118,31 @@ public:
 			color.toRAW().setWarmWhite(234);
 		}
 
+		TEST_CASE("Union with properties")
+		{
+			TestConfigUnion::Root::Color3::OuterUpdater color3(db);
+			color3.toName();
+			Serial << "Name " << color3.asName() << endl;
+			color3.toName() = "abc";
+			Serial << "Name " << color3.asName() << endl;
+
+			color3.toValue();
+			Serial << "Value " << color3.asValue() << endl;
+			color3.resetValue();
+			Serial << "Value " << color3.asValue() << endl;
+			color3.toValue() = 1000;
+			Serial << "Value " << color3.asValue() << endl;
+
+			color3.toId() = Uuid("bad value");
+			Serial << "id " << Uuid(color3.asId()) << endl;
+
+			Serial << "enumval " << *color3.toEnumval() << endl;
+			color3.asEnumval() = TestConfigUnion::EnumValue::three;
+			Serial << "enumval " << *color3.asEnumval() << endl;
+
+			color3.toColor().toRAW().setWarmWhite(234);
+		}
+
 		TestConfigUnion::Root root(db);
 		String json = exportObject(root);
 		CHECK_EQ(json, json::union_test_root_json);

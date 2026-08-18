@@ -308,6 +308,11 @@ class Property:
         return 'uint8' if self.enum else self.property_type.lower()
 
     @property
+    def accessor(self):
+        '''Get templated Accessor type for union properties'''
+        return f'ConfigDB::AccessorTemplate<{self.ctype}, {self.ctype_ret}>'
+
+    @property
     def data_size(self):
         '''Size of the corresponding C++ storage type'''
         return self.obj.data_size if self.obj else CPP_TYPESIZES[self.ctype]
@@ -942,6 +947,7 @@ def generate_database(db: Database) -> CodeLines:
             '#pragma once',
             '',
             '#include <ConfigDB/Database.h>',
+            '#include <ConfigDB/Accessor.h>',
             *(f'#include <{file}>' for file in db.include),
             '',
             f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
@@ -1108,8 +1114,6 @@ def generate_structure(db: Database) -> list[str]:
             print_structure(prop, indent+1, offset)
             if not obj.is_union:
                 offset += prop.data_size
-        if obj.is_union:
-            offset += obj.max_object_size
         indent += 1
         for prop in obj.properties:
             add(offset, prop.id, prop.ctype)
@@ -1242,9 +1246,6 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
         if not obj.is_union:
             offset += prop.data_size
 
-    if obj.is_union:
-        offset += obj.max_object_size
-
     for prop in obj.properties:
         variant_info = ''
         if prop.enum:
@@ -1268,7 +1269,8 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
             f'.variant = {{{variant_info}}}'
         ]]
         add_alias(prop.alias)
-        offset += prop.data_size
+        if not obj.is_union:
+            offset += prop.data_size
 
     # Generate array default data
     defaultData = 'nullptr'
@@ -1379,12 +1381,19 @@ def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
 def generate_property_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
 
+    def get_value_expr(index: int, prop: Property) -> str:
+        if prop.ptype == 'string':
+            value = f'getPropertyString({index})'
+        else:
+            value = f'getPropertyData({index})->{prop.propdata_id}'
+        return f'{prop.ctype_override}({value})' if prop.ctype_override else value
+
     if obj.is_union:
         return [
             '',
             [
                 'enum class Tag {',
-                [f'{prop.obj.typename},' for prop in obj.object_properties],
+                [f'{prop.typename},' for prop in obj.all_properties],
                 '};',
                 '',
                 'Tag getTag() const',
@@ -1398,16 +1407,17 @@ def generate_property_accessors(obj: Object) -> list:
                 '{',
                 [f'return Union::as<{prop.obj.typename_contained}>({index});'],
                 '}',
-                ) for index, prop in enumerate(obj.object_properties))
-            ]
-
-    def get_value_expr(index: int, prop: Property) -> str:
-        if prop.ptype == 'string':
-            return f'getPropertyString({index})'
-        value = f'getPropertyData({index})->{prop.propdata_id}'
-        if prop.ctype_override:
-            return f'{prop.ctype_override}({value})'
-        return value
+                ) for index, prop in enumerate(obj.object_properties)),
+            *((
+                '',
+                f'{prop.ctype_ret} as{prop.typename}() const',
+                '{',
+                [
+                    f'return {get_value_expr(index, prop)};',
+                ],
+                '}',
+                ) for index, prop in enumerate(obj.properties)),
+        ]
 
     accessors = []
     for index, prop in enumerate(obj.properties):
@@ -1444,12 +1454,15 @@ def generate_property_write_accessors(obj: Object) -> list:
         return 'value'
 
     if obj.is_union:
+        def get_tag(index: int, prop: Property) -> int:
+            return len(prop.parent.obj.object_properties) + index
+
         return [
             [
                 '',
                 'void setTag(Tag tag)',
                 '{',
-                ['Union::setTag(unsigned(tag));'],
+                ['Union::setTag(uint8_t(tag));'],
                 '}',
             ],
             *((
@@ -1463,7 +1476,27 @@ def generate_property_write_accessors(obj: Object) -> list:
                 '{',
                 [f'return Union::to<{prop.obj.typename_updater}>({index});'],
                 '}',
-                ) for index, prop in enumerate(obj.object_properties))
+                ) for index, prop in enumerate(obj.object_properties)),
+            *((
+                '',
+                f'{prop.accessor} as{prop.typename}()',
+                '{',
+                [f'return {prop.accessor}(*this, {index});'],
+                '}',
+                '',
+                f'{prop.accessor} to{prop.typename}()',
+                '{',
+                [
+                    f'Union::setTag({get_tag(index, prop)});',
+                    f'return {prop.accessor}(*this, {index});'
+                ],
+                '}',
+                '',
+                f'void reset{prop.typename}()',
+                '{',
+                [f'resetPropertyValue({index});'],
+                '}'
+                ) for index, prop in enumerate(obj.properties)),
         ]
 
     return [*((
