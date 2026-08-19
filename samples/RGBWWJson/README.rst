@@ -1,7 +1,8 @@
 JSON RPC Sample
 ===============
 
-Demonstrates how to process JSON RPC messages using ConfigDB.
+Demonstrates how to generate JSON-RPC 2.0 messages with ConfigDB while
+reusing the same parameter objects for an HTTP API.
 
 See https://www.jsonrpc.org/specification.
 
@@ -10,19 +11,12 @@ Schema layout
 
 The schema is split into three layers:
 
-* ``value-types.cfgdb`` contains reusable scalar definitions and constraints.
-* ``params.cfgdb`` contains the ``color``, ``infov1`` and ``infov2`` payload objects.
-* ``color.cfgdb`` contains the tagged JSON-RPC message envelopes.
+* ``value-types.cfgdb`` contains reusable scalar definitions, constants and
+	constraints. This includes the constant JSON-RPC version ``"2.0"`` and the
+	three method names.
+* ``params.cfgdb`` contains the reusable parameter objects for ``color``,
+	``infov1`` and ``infov2``. These objects are independent of any transport.
+* ``jsonrpc.cfgdb`` adds the JSON-RPC envelope around those parameter objects.
 
-ConfigDB loads all project schemas as one set. The generated ``Params`` class owns
-the payload types, while ``Color`` imports aliases for use by the JSON-RPC
-envelopes.
 
-HTTP handlers can import or export the contained ``params`` object directly, so
-the HTTP request or response body has no JSON-RPC wrapper. JSON-RPC handlers use
-the same object through the selected ``Color`` root variant and serialize the
-complete envelope.
-
-The top-level ``oneOf`` defines the ``color``, ``infov1`` and ``infov2`` message
-tags. Each envelope requires ``jsonrpc``, ``id``, ``method`` and ``params``.
 
