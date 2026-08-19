@@ -12,44 +12,137 @@ template <typename Object> void printMessage(const Object& object)
 	Serial << object << _F("\r\n");
 }
 
-bool generateRawColorRequest(Jsonrpc& db, int id)
+[[maybe_unused]] bool generateRawColorRequest(Jsonrpc& db, int id)
 {
 	{
 		Jsonrpc::Root root(db);
 		if(auto update = root.update()) {
-			auto request = update.toColor();
-			request.setId(id);
-			request.setMethod("color");
+			auto colorRequest = update.toColorRequest();
+			colorRequest.setId(id);
+			colorRequest.setMethod("color");
 
-			auto raw = request.params.toRawColor();
-			raw.raw.setR(1023);
-			raw.raw.setG(512);
-			raw.raw.setB(128);
-			raw.raw.setWw(64);
-			raw.raw.setCw(32);
-			printMessage(request);
-			root.clearDirty();
-		} else {
-			return false;
-		}
+			auto rawRequest = colorRequest.params.toRawColor(); // make this a color request
+			rawRequest.raw.setR(1023);
+			rawRequest.raw.setG(512);
+			rawRequest.raw.setB(128);
+			rawRequest.raw.setWw(64);
+			rawRequest.raw.setCw(32);
+			printMessage(colorRequest);
+			colorRequest.clearDirty();
+		} else 
+			return false;	
 	}
 	return true;
 }
-
-bool generateHsvColorRequest(Jsonrpc& db, int id)
+[[maybe_unused]] bool generateRawColorResponse(Jsonrpc& db, int id)
 {
 	{
 		Jsonrpc::Root root(db);
 		if(auto update = root.update()) {
-			auto request = update.toColor();
-			request.setId(id);
-			request.setMethod("color");
+			auto colorResponse = update.toColorResponse(); // make this a color response
+			int id_ = colorResponse.getId();
+			auto rawResponse = colorResponse.result.toRawColor();
+			rawResponse.raw.setR(1023);
+			rawResponse.raw.setG(512);
+			rawResponse.raw.setB(128);
+			rawResponse.raw.setWw(64);
+			rawResponse.raw.setCw(32);
+			printMessage(colorResponse);
+			root.clearDirty();
+		} else 
+			return false;	
+	}
+	return true;
+}
+[[maybe_unused]] bool generateRawColorNotification(Jsonrpc& db)
+{
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto notification = update.toColorEvent(); // make this a color notification
+			notification.setMethod("color");
+			auto rawEvent = notification.params.toRawColor();
+			rawEvent.raw.setR(1023);
+			rawEvent.raw.setG(512);
+			rawEvent.raw.setB(128);
+			rawEvent.raw.setWw(64);
+			rawEvent.raw.setCw(32);
+			printMessage(notification);
+			root.clearDirty();
+		} else 
+			return false;	
+	}
+	return true;
+}
+[[maybe_unused]] bool generateHsvColorRequest(Jsonrpc& db, int id)
+{
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto colorRequest = update.toColorRequest(); // make this a color request
+			colorRequest.setId(id);
+			colorRequest.setMethod("color");
+			auto hsvRequest = colorRequest.params.toHsvColor();
+			hsvRequest.hsv.setH(210);
+			hsvRequest.hsv.setS(75);
+			hsvRequest.hsv.setV(60);
+			hsvRequest.hsv.setCt(3500);
+			printMessage(colorRequest);
+			root.clearDirty();
+		} else 
+			return false;	
+	}
+	return true;
+}
+[[maybe_unused]] bool generateHsvColorResponse(Jsonrpc& db, int id)
+{
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto colorResponse = update.asColorResponse(); // make this a color response
+			int id_ = colorResponse.getId();
+			auto hsvResponse = colorResponse.result.toHsvColor();
+			hsvResponse.hsv.setH(210);
+			hsvResponse.hsv.setS(75);
+			hsvResponse.hsv.setV(60);
+			hsvResponse.hsv.setCt(3500);
+			printMessage(colorResponse);
+			root.clearDirty();
+		} else 
+			return false;	
+	}
+	return true;
+}
+[[maybe_unused]] bool generateHsvColorNotification(Jsonrpc& db)
+{
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto notification = update.toColorEvent(); // make this a color notification
+			notification.setMethod("color");
 
-			auto hsv = request.params.toHsvColor();
+			auto hsv = notification.params.toHsvColor();
 			hsv.hsv.setH(210);
 			hsv.hsv.setS(75);
 			hsv.hsv.setV(60);
-			hsv.hsv.setCt(350);
+			hsv.hsv.setCt(3500);
+			printMessage(notification);
+			root.clearDirty();
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
+[[maybe_unused]] bool generateInfoRequest(Jsonrpc& db, int id)
+{
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto request = update.toInfoRequest();
+			request.setId(id);
+			request.setMethod("info");
 			printMessage(request);
 			root.clearDirty();
 		} else {
@@ -59,17 +152,16 @@ bool generateHsvColorRequest(Jsonrpc& db, int id)
 	return true;
 }
 
-bool generateInfoV1Message(Jsonrpc& db, int id)
+[[maybe_unused]] bool generateInfoV1Response(Jsonrpc& db, int id)
 {
 	int free=system_get_free_heap_size();	
 	{
 		Jsonrpc::Root root(db);
 		if(auto update = root.update()) {
-			auto message = update.toInfov1();
+			auto message = update.asInfoResponse();
 			message.setId(id);
-			message.setMethod("infov1");
 
-			auto& result = message.params;
+			auto result = message.result.toInfoV1Params();
 			result.setDeviceid(10964360);
 			result.setSoc("esp8266");
 			result.setCurrentRom("rom0");
@@ -90,7 +182,7 @@ bool generateInfoV1Message(Jsonrpc& db, int id)
 			result.connection.setNetmask("255.255.255.0");
 			result.connection.setGateway("192.168.29.1");
 			result.connection.setMac("840d8ea74d88");
-			Serial << "heap used: " << (free-system_get_free_heap_size()) << " bytes" << endl;
+			Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
 			printMessage(message);
 			root.clearDirty();
 		} else {
@@ -100,17 +192,55 @@ bool generateInfoV1Message(Jsonrpc& db, int id)
 	return true;
 }
 
-bool generateInfoV2Message(Jsonrpc& db, int id)
+[[maybe_unused]] bool generateInfoV1Notification(Jsonrpc& db)
 {
 	int free=system_get_free_heap_size();
 	{
 		Jsonrpc::Root root(db);
 		if(auto update = root.update()) {
-			auto message = update.toInfov2();
-			message.setId(id);
-			message.setMethod("infov2");
+			auto notification = update.toInfoEvent();
+			notification.setMethod("info");
 
-			auto& result = message.params;
+			auto params = notification.params.toInfoV1Params();
+			params.setDeviceid(10964360);
+			params.setSoc("esp8266");
+			params.setCurrentRom("rom0");
+			params.setGitVersion("V5.0.0-965-experimental");
+			params.setBuildType("debug");
+			params.setGitDate("2026-08-06");
+			params.setWebappVersion("V5.0-365-experimental");
+			params.setSming("6.2.0");
+			params.setEventNumClients(1);
+			params.setUptime(358620);
+			params.setHeapFree(16912);
+			params.rgbww.setVersion("0.10.0");
+			params.rgbww.setQueuesize(20);
+			params.connection.setConnected(true);
+			params.connection.setSsid("IoT");
+			params.connection.setDhcp(true);
+			params.connection.setIp("192.168.29.101");
+			params.connection.setNetmask("255.255.255.0");
+			params.connection.setGateway("192.168.29.1");
+			params.connection.setMac("840d8ea74d88");
+			Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
+			
+			printMessage(notification);
+			root.clearDirty();
+		}
+	}
+	return true;
+}
+
+[[maybe_unused]] bool generateInfoV2Message(Jsonrpc& db, int id)
+{
+	int free=system_get_free_heap_size();
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto message = update.toInfoResponse();
+			message.setId(id);
+			
+			auto result = message.result.toInfoV2Params();
 			result.device.setDeviceid(10964360);
 			result.device.setSoc("esp8266");
 			result.device.setCurrentRom("rom0");
@@ -145,7 +275,7 @@ bool generateInfoV2Message(Jsonrpc& db, int id)
 			result.runtime.setMinimumfreeHeap10min(19216);
 			result.runtime.setHeapLowErrUptime(0);
 			result.runtime.setHeapLowErr10min(0);
-			Serial << "heap used: " << (free-system_get_free_heap_size()) << " bytes" << endl;
+			Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
 
 			printMessage(message);
 			
@@ -156,16 +286,60 @@ bool generateInfoV2Message(Jsonrpc& db, int id)
 	}
 	return true;
 }
-
-bool generateInfoMessage(Jsonrpc& db, int version, int id)
+[[maybe_unused]] bool generateInfoV2Notification(Jsonrpc& db)
 {
-	if(version == 1) {
-		return generateInfoV1Message(db, id);
+	int free=system_get_free_heap_size();
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto notification = update.toInfoEvent();
+			notification.setMethod("info");
+
+			auto params = notification.params.toInfoV2Params();
+			params.device.setDeviceid(10964360);
+			params.device.setSoc("esp8266");
+			params.device.setCurrentRom("rom0");
+			params.app.setWebappVersion("V5.0-365-experimental");
+			params.app.setGitVersion("V5.0.0-965-experimental");
+			params.app.setBuildType("debug");
+			params.app.setGitDate("2026-08-06");
+			params.sming.setVersion("6.2.0");
+			params.filesystem.setTotalBytes(1015808);
+			params.filesystem.setFreeBytes(516096);
+			params.filesystem.setUsedBytes(499712);
+			params.rgbww.setVersion("0.10.0");
+			params.rgbww.setQueuesize(20);
+			params.connection.setConnected(true);
+			params.connection.setSsid("IoT");
+			params.connection.setDhcp(true);
+			params.connection.setIp("192.168.29.101");
+			params.connection.setNetmask("255.255.255.0");
+			params.connection.setGateway("192.168.29.1");
+			params.connection.setMac("840d8ea74d88");
+			params.connection.setRssi(-63);
+			params.mqtt.setStatus("disabled");
+			params.mqtt.setEnabled(false);
+			params.mqtt.setBroker("mqtt.local");
+			params.mqtt.setTopic("home/");
+			params.homeassistant.setEnabled(true);
+			params.homeassistant.setDiscoveryPrefix("homeassistant");
+			params.homeassistant.setNodeID("");
+			params.runtime.setUptime(941760);
+			params.runtime.setHeapFree(system_get_free_heap_size());
+			params.runtime.setMinimumfreeHeapRuntime(5528);
+			params.runtime.setMinimumfreeHeap10min(19216);
+			params.runtime.setHeapLowErrUptime(0);
+			params.runtime.setHeapLowErr10min(0);
+			Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
+
+			printMessage(notification);
+
+			root.clearDirty();
+		} else {
+			return false;
+		}
 	}
-	if(version == 2) {
-		return generateInfoV2Message(db, id);
-	}
-	return false;
+	return true;
 }
 
 } // namespace
@@ -188,20 +362,21 @@ void init()
 		Serial << "Failed to update color database" << endl;
 	}
 
-	Serial << endl << "HSV COLOR REQUEST" << endl;
-	if(!generateHsvColorRequest(db, 2)) {
+	if(!generateRawColorResponse(db, 1)) {
 		Serial << "Failed to update color database" << endl;
 	}
 
-	Serial << endl << "INFO V1 MESSAGE" << endl;
-	if(!generateInfoMessage(db, 1, 3)) {
-		Serial << "Failed to generate info v1 message" << endl;
+	if(!generateInfoV2Notification(db)) {
+		Serial << "Failed to generate info v2 notification" << endl;
 	}
 
-	Serial << endl << "INFO V2 MESSAGE" << endl;
-	if(!generateInfoMessage(db, 2, 4)) {
-		Serial << "Failed to generate info v2 message" << endl;
+	if(!generateInfoV2Notification(db)) {
+		Serial << "Failed to generate info v2 notification" << endl;
 	}
 
+	if(!generateInfoRequest(db, 1)) {
+		Serial << "Failed to generate info request" << endl;
+	}
+	
 	Serial << endl << endl;
 }
