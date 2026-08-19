@@ -28,25 +28,6 @@
       "type": "number",
       "minimum": 0,
       "maximum": 100
-    },
-    "jsonrpc-version": {
-      "type": "string",
-      "const": "2.0",
-      "default": "2.0"
-    },
-    "jsonrpc-id": {
-      "type": "integer"
-    },
-    "error-code": {
-      "type": "integer"
-    },
-    "color-method": {
-      "type": "string",
-      "const": "color"
-    },
-    "info-method": {
-      "type": "string",
-      "const": "info"
     }
   }
 }

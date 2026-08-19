@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "raw-color-fields": {
+    "raw": {
       "type": "object",
       "properties": {
         "r": { "$ref": "value-types/$defs/raw-value" },
@@ -9,39 +9,21 @@
         "b": { "$ref": "value-types/$defs/raw-value" },
         "ww": { "$ref": "value-types/$defs/raw-value" },
         "cw": { "$ref": "value-types/$defs/raw-value" }
-      },
-      "additionalProperties": false
+      }
     },
-    "hsv-color-fields": {
+    "hsv": {
       "type": "object",
       "properties": {
         "h": { "$ref": "value-types/$defs/hue-value" },
         "s": { "$ref": "value-types/$defs/percentage-value" },
         "v": { "$ref": "value-types/$defs/percentage-value" },
         "ct": { "$ref": "value-types/$defs/raw-value" }
-      },
-      "additionalProperties": false
-    },
-    "raw-color": {
-      "type": "object",
-      "properties": {
-        "raw": { "$ref": "#/$defs/raw-color-fields" }
-      },
-      "required": ["raw"],
-      "additionalProperties": false
-    },
-    "hsv-color": {
-      "type": "object",
-      "properties": {
-        "hsv": { "$ref": "#/$defs/hsv-color-fields" }
-      },
-      "required": ["hsv"],
-      "additionalProperties": false
+      }
     },
     "color-params": {
       "oneOf": [
-        { "$ref": "#/$defs/raw-color" },
-        { "$ref": "#/$defs/hsv-color" }
+        { "$ref": "#/$defs/raw" },
+        { "$ref": "#/$defs/hsv" }
       ]
     },
     "connection-info-v1": {
