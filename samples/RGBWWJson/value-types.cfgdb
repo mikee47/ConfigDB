@@ -41,13 +41,9 @@
       "type": "string",
       "const": "color"
     },
-    "infov1-method": {
+    "info-method": {
       "type": "string",
-      "const": "infov1"
-    },
-    "infov2-method": {
-      "type": "string",
-      "const": "infov2"
+      "const": "info"
     }
   }
 }
