@@ -5,6 +5,17 @@
 #include <malloc_count.h>
 #endif
 
+enum ErrorType {
+	ParseError = -32700,
+	InvalidRequest = -32600,
+	MethodNotFound = -32601,
+	InvalidParams = -32602,
+	InternalError = -32603,
+	ApplicationError1 = -32000,
+	ApplicationError2 = -32001,
+	ApplicationError3 = -32002,
+};
+
 namespace
 {
 template <typename Object> void printMessage(const Object& object)
@@ -341,7 +352,56 @@ template <typename Object> void printMessage(const Object& object)
 	}
 	return true;
 }
-
+[[maybe_unused]] bool generateErrorResponse(Jsonrpc& db, int id, const ErrorType error)
+{
+	{
+		Jsonrpc::Root root(db);
+		if(auto update = root.update()) {
+			auto message = update.toErrorResponse();
+			message.setId(id);
+			auto result = message.error;
+			switch(error) {
+				case ParseError:
+					result.setCode(-32700);
+					result.setMessage("Parse error");
+					break;
+				case InvalidRequest:
+					result.setCode(-32600);
+					result.setMessage("Invalid Request");
+					break;
+				case MethodNotFound:
+					result.setCode(-32601);
+					result.setMessage("Method not found");
+					break;
+				case InvalidParams:
+					result.setCode(-32602);
+					result.setMessage("Invalid params");
+					break;
+				case InternalError:
+					result.setCode(-32603);
+					result.setMessage("Internal error");
+					break;
+				case ApplicationError1:
+					result.setCode(-32000);
+					result.setMessage("Application error 1");
+					break;
+				case ApplicationError2:
+					result.setCode(-32001);
+					result.setMessage("Application error 2");
+					break;
+				case ApplicationError3:
+					result.setCode(-32002);
+					result.setMessage("Application error 3");
+					break;
+			}
+			printMessage(message);
+			root.clearDirty();
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
 } // namespace
 
 void init()
@@ -365,7 +425,6 @@ void init()
 	if(!generateRawColorResponse(db, 1)) {
 		Serial << "Failed to update color database" << endl;
 	}
-
 	if(!generateInfoV2Notification(db)) {
 		Serial << "Failed to generate info v2 notification" << endl;
 	}
@@ -377,6 +436,13 @@ void init()
 	if(!generateInfoRequest(db, 1)) {
 		Serial << "Failed to generate info request" << endl;
 	}
+
+	if(!generateErrorResponse(db, 1, ErrorType::InvalidRequest)) {
+		Serial << "Failed to generate error response" << endl;
+	}
 	
+	if(!generateErrorResponse(db, 2, ErrorType::ApplicationError2)) {
+		Serial << "Failed to generate error response" << endl;
+	}
 	Serial << endl << endl;
 }
