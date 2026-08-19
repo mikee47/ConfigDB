@@ -9,7 +9,9 @@ namespace
 	XX(method)                                                                                                         \
 	XX(none)                                                                                                           \
 	XX(params)                                                                                                         \
+	XX(request)                                                                                                        \
 	XX(result)                                                                                                         \
+	XX(notification)                                                                                                   \
 	XX(error)
 
 #define XX(tag) DEFINE_FSTR_LOCAL(FS_##tag, #tag)
@@ -24,8 +26,10 @@ String toString(JsonRPC::Message::Kind kind)
 	switch(kind) {
 	case Kind::none:
 		return FS_none;
-	case Kind::params:
-		return FS_params;
+	case Kind::request:
+		return FS_request;
+	case Kind::notification:
+		return FS_notification;
 	case Kind::result:
 		return FS_result;
 	case Kind::error:
@@ -107,7 +111,7 @@ protected:
 				return true;
 			}
 
-			msg.kind = Message::Kind::params;
+			msg.kind = haveId ? Message::Kind::request : Message::Kind::notification;
 			return true;
 		}
 
@@ -225,27 +229,32 @@ bool exportMessage(ConfigDB::Database& db, const Message& msg, Print& out)
 	}
 
 	out << _F("{\r\n"
-			  "\"jsonrpc\": \"2.0\",\r\n"
-			  "\"id\": ")
-		<< msg.id;
+			  "\"jsonrpc\": \"2.0\"");
+
+	if(msg.kind != Message::Kind::notification) {
+		out << _F(",\r\n"
+				  "\"id\": ")
+			<< msg.id;
+	}
 
 	auto& root = reinterpret_cast<ConfigDB::Union&>(*store);
 	auto request = root.getObject(0);
 	switch(msg.kind) {
-	case Message::Kind::params: {
+	case Message::Kind::request: {
+		out << _F(",\r\n"
+				  "\"method\": \"")
+			<< root.getTagString() << '"';
 		if(auto params = request.findObject("params", 6)) {
-			out << _F(",\r\n"
-					  "\"method\": \"")
-				<< root.getTagString() << "\",\r\n"
-				<< _F("\"params\": ") << params << endl;
+			out << ",\r\n" << _F("\"params\": ") << params;
 		}
 		break;
 	}
-	case Message::Kind::result: {
+	case Message::Kind::result:
+	case Message::Kind::notification: {
 		if(auto result = request.findObject("result", 6)) {
 			out << _F(",\r\n"
 					  "\"result\": ")
-				<< result << endl;
+				<< result;
 		}
 		break;
 	}
@@ -253,7 +262,7 @@ bool exportMessage(ConfigDB::Database& db, const Message& msg, Print& out)
 		if(auto error = request.findObject("error", 5)) {
 			out << _F(",\r\n"
 					  "\"error\": ")
-				<< error << endl;
+				<< error;
 		}
 		break;
 	}
@@ -261,7 +270,7 @@ bool exportMessage(ConfigDB::Database& db, const Message& msg, Print& out)
 		break;
 	}
 
-	out << "}\r\n";
+	out << _F("\r\n}\r\n");
 
 	return true;
 }
