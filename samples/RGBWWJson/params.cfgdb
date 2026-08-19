@@ -201,7 +201,8 @@
         "type": "object",
         "properties": {
             "code": { "$ref": "value-types/$defs/error-code" },
-            "message": { "$ref": "value-types/$defs/string-value" }
+            "message": { "$ref": "value-types/$defs/string-value" },
+	    "data": { "$ref": "value-types/$defs/string-value" }
         },
         "required": ["code", "message"],
         "additionalProperties": false

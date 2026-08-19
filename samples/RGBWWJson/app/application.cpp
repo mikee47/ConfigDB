@@ -352,7 +352,7 @@ template <typename Object> void printMessage(const Object& object)
 	}
 	return true;
 }
-[[maybe_unused]] bool generateErrorResponse(Jsonrpc& db, int id, const ErrorType error)
+[[maybe_unused]] bool generateErrorResponse(Jsonrpc& db, int id, const ErrorType error, String data="")
 {
 	{
 		Jsonrpc::Root root(db);
@@ -384,14 +384,20 @@ template <typename Object> void printMessage(const Object& object)
 				case ApplicationError1:
 					result.setCode(-32000);
 					result.setMessage("Application error 1");
+					if(data!="")
+						result.setData(data);
 					break;
 				case ApplicationError2:
 					result.setCode(-32001);
 					result.setMessage("Application error 2");
+					if(data!="")
+						result.setData(data);
 					break;
 				case ApplicationError3:
 					result.setCode(-32002);
 					result.setMessage("Application error 3");
+					if(data!="")
+						result.setData(data);
 					break;
 			}
 			printMessage(message);
@@ -441,7 +447,10 @@ void init()
 		Serial << "Failed to generate error response" << endl;
 	}
 	
-	if(!generateErrorResponse(db, 2, ErrorType::ApplicationError2)) {
+	if(!generateErrorResponse(db, 2, ErrorType::ApplicationError2, "something went horribly wrong")) {
+		Serial << "Failed to generate error response" << endl;
+	}
+	if(!generateErrorResponse(db, 2, ErrorType::MethodNotFound)) {
 		Serial << "Failed to generate error response" << endl;
 	}
 	Serial << endl << endl;
