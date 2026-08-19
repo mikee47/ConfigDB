@@ -10,7 +10,6 @@
         "ww": { "$ref": "value-types/$defs/raw-value" },
         "cw": { "$ref": "value-types/$defs/raw-value" }
       },
-      "required": ["r", "g", "b", "ww", "cw"],
       "additionalProperties": false
     },
     "hsv-color-fields": {
@@ -21,7 +20,6 @@
         "v": { "$ref": "value-types/$defs/percentage-value" },
         "ct": { "$ref": "value-types/$defs/raw-value" }
       },
-      "required": ["h", "s", "v", "ct"],
       "additionalProperties": false
     },
     "raw-color": {
@@ -57,7 +55,6 @@
         "gateway": { "$ref": "value-types/$defs/string-value" },
         "mac": { "$ref": "value-types/$defs/string-value" }
       },
-      "required": ["connected", "ssid", "dhcp", "ip", "netmask", "gateway", "mac"],
       "additionalProperties": false
     },
     "connection-info-v2": {
@@ -72,7 +69,6 @@
         "mac": { "$ref": "value-types/$defs/string-value" },
         "rssi": { "$ref": "value-types/$defs/integer-value" }
       },
-      "required": ["connected", "ssid", "dhcp", "ip", "netmask", "gateway", "mac", "rssi"],
       "additionalProperties": false
     },
     "rgbww-info": {
@@ -200,6 +196,15 @@
       },
       "required": ["version", "device", "app", "sming", "filesystem",  "rgbww", "connection", "mqtt", "homeassistant"],
       "additionalProperties": false
+    },
+    "error":{
+        "type": "object",
+        "properties": {
+            "code": { "$ref": "value-types/$defs/error-code" },
+            "message": { "$ref": "value-types/$defs/string-value" }
+        },
+        "required": ["code", "message"],
+        "additionalProperties": false
     }
   }
 }

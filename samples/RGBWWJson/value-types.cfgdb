@@ -37,6 +37,9 @@
     "jsonrpc-id": {
       "type": "integer"
     },
+    "error-code": {
+      "type": "integer"
+    },
     "color-method": {
       "type": "string",
       "const": "color"
