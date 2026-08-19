@@ -1334,15 +1334,16 @@ def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
     obj = object_prop.obj
 
     typename = f'{object_prop.namespace}::{obj.typename_contained}'
+    struct_props = [prop for prop in obj.object_properties if prop.obj.has_struct]
     return CodeLines([
         '',
         'struct __attribute__((packed)) Struct {',
         [
             'union __attribute__((packed)) {',
-            [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(obj.object_properties)],
+            [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(struct_props)],
             '};',
         ] if obj.is_union else
-        [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in obj.object_properties],
+        [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in struct_props],
         [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties],
         '};',
         '',
@@ -1517,7 +1518,8 @@ def generate_object(db: Database, object_prop: ObjectProperty) -> CodeLines:
         if not prop.obj.ref and prop.obj.namespace.startswith(db.namespace):
             lines.append(generate_object(db, prop))
 
-    lines.append(generate_object_struct(object_prop))
+    if object_prop.obj.has_struct:
+        lines.append(generate_object_struct(object_prop))
     lines.header += [
         constructors,
         *generate_property_accessors(obj)
