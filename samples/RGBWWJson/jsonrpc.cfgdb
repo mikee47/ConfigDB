@@ -1,90 +1,63 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "oneOf": [
-    {
-        "type": "object",
-        "title": "color-request",
-        "properties": {
-            "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
-            "id": { "$ref": "value-types/$defs/jsonrpc-id" },
-            "method": { "$ref": "value-types/$defs/color-method" },
-            "params": { "$ref": "params/$defs/color-params" }
-        },
-        "required": ["jsonrpc", "id", "method", "params"],
-        "additionalProperties": false
-    },
-    {
-        "type": "object",
-        "title": "color-response",
-        "properties": {
-            "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
-            "id": { "$ref": "value-types/$defs/jsonrpc-id" },
-            "result": { "$ref": "params/$defs/color-params" }
-        },
-        "required": ["jsonrpc", "id", "result"]
-    },
-    {
-        "type": "object",
-        "title": "color-event",
-        "properties": {
-            "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
-            "method": { "$ref": "value-types/$defs/color-method" },
-            "params": { "$ref": "params/$defs/color-params" }
-        },
-        "required": ["jsonrpc", "method", "params"]
-    },
-    {
-      "type": "object",
-      "title": "info-request",
-      "properties": {
-        "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
-        "id": { "$ref": "value-types/$defs/jsonrpc-id" },
-        "method": { "$ref": "value-types/$defs/info-method" }
-      },
-      "required": ["jsonrpc", "id", "method"],
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "title": "info-response",
-      "properties": {
-        "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
-        "id": { "$ref": "value-types/$defs/jsonrpc-id" },
-        "result": {
-            "oneOf": [ 
-                { "$ref": "params/$defs/info-v1-params" } ,
-                { "$ref": "params/$defs/info-v2-params" }
-                ] }
-      },
-      "required": ["jsonrpc", "id", "result"],
-      "additionalProperties": false
-    },
-    {
-        "type":"object",
-        "title":"info-event",
-        "properties": {
-            "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
-            "method": { "$ref": "value-types/$defs/info-method" },
-            "params": {
-                "oneOf": [
-                    { "$ref": "params/$defs/info-v1-params" } ,
-                    { "$ref": "params/$defs/info-v2-params" }
-                ]
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+        {
+            "type": "object",
+            "title": "color",
+            "properties": {
+                "params": {
+                    "$ref": "params/$defs/color-params"
+                },
+                "result": {
+                    "$ref": "params/$defs/color-params"
+                }
             }
         },
-        "required": ["jsonrpc", "method", "params"],
-        "additionalProperties": false
-    },
-    {
-        "type":"object",
-        "title":"error-response",
-        "properties": {
-            "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
-            "id": { "$ref": "value-types/$defs/jsonrpc-id" },
-            "error": { "$ref": "params/$defs/error" }
+        {
+            "type": "object",
+            "title": "info",
+            "properties": {
+                "result": {
+                    "oneOf": [
+                        {
+                            "$ref": "params/$defs/info-v1-params"
+                        },
+                        {
+                            "$ref": "params/$defs/info-v2-params"
+                        }
+                    ]
+                }
+            }
         },
-        "required": ["jsonrpc", "id", "error"],
-        "additionalProperties": false
+        {
+            "type": "object",
+            "title": "error",
+            "properties": {
+                "params": {
+                    "$ref": "#/$defs/error-msg"
+                },
+                "result": {
+                    "$ref": "#/$defs/error-msg"
+                }
+            }
+        }
+    ],
+    "$defs": {
+        "error-msg": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "minimum": -32768,
+                    "maximum": 32767
+                },
+                "message": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "string"
+                }
+            }
+        }
     }
-  ]
 }
