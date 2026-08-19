@@ -74,6 +74,17 @@
         },
         "required": ["jsonrpc", "method", "params"],
         "additionalProperties": false
+    },
+    {
+        "type":"object",
+        "title":"error-response",
+        "properties": {
+            "jsonrpc": { "$ref": "value-types/$defs/jsonrpc-version" },
+            "id": { "$ref": "value-types/$defs/jsonrpc-id" },
+            "error": { "$ref": "params/$defs/error" }
+        },
+        "required": ["jsonrpc", "id", "error"],
+        "additionalProperties": false
     }
   ]
 }
