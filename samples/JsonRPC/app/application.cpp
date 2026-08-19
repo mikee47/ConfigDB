@@ -1,7 +1,6 @@
 #include <SmingCore.h>
 #include <RpcData.h>
 #include <ConfigDB/JsonRPC/JsonRPC.h>
-#include <Data/Stream/MemoryDataStream.h>
 
 #ifdef ENABLE_MALLOC_COUNT
 #include <malloc_count.h>
@@ -35,10 +34,11 @@ JsonRPC::Message rpcImport(RpcData& db, const String& jsonString)
 		switch(msg.kind) {
 		case Kind::none:
 			break;
-		case Kind::params:
+		case Kind::request:
 			Serial << obj.params;
 			break;
 		case Kind::result:
+		case Kind::notification:
 			Serial << obj.result;
 			break;
 		case Kind::error:
