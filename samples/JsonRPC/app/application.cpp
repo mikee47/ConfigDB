@@ -1,6 +1,6 @@
 #include <SmingCore.h>
 #include <RpcData.h>
-#include "JsonRPC.h"
+#include <ConfigDB/JsonRPC/JsonRPC.h>
 #include <Data/Stream/MemoryDataStream.h>
 
 #ifdef ENABLE_MALLOC_COUNT
