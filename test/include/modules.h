@@ -1,6 +1,7 @@
 // List of test modules to register
 
 #define TEST_MAP(XX)                                                                                                   \
+	XX(Bugs)                                                                                                           \
 	XX(Update)                                                                                                         \
 	XX(Sharing)                                                                                                        \
 	XX(Streaming)                                                                                                      \

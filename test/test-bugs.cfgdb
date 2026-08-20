@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "empty": {
+      "type": "object",
+      "description": "Must preceded 'guard' for checking struct alignment"
+    },
+    "guard": {
+      "type": "integer",
+      "default": 555
+    }
+  }
+}
