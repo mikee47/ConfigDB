@@ -1,8 +1,7 @@
-#include "JsonRPC.h"
+#include <ConfigDB/JsonRPC/JsonRPC.h>
 #include <ConfigDB/Database.h>
 #include <ConfigDB/Json/WriteStream.h>
 #include <JSON/StreamingParser.h>
-#include <Data/Stream/LimitedMemoryStream.h>
 
 namespace
 {
