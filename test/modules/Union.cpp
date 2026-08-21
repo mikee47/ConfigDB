@@ -143,6 +143,25 @@ public:
 			color3.toColor().toRAW().setWarmWhite(234);
 		}
 
+		TEST_CASE("Union with only properties")
+		{
+			TestConfigUnion::Root::UnionProps props(db);
+			Serial << props << endl;
+			REQUIRE_EQ(props.asA(), "value a");
+
+			if(auto update = props.update()) {
+				update.toB() = 555;
+			}
+			Serial << props << endl;
+			REQUIRE_EQ(props.asB(), 555);
+
+			if(auto update = props.update()) {
+				update.toC();
+			}
+			Serial << props << endl;
+			REQUIRE(props.asC() == const_number_t{3.14159e17});
+		}
+
 		TestConfigUnion::Root root(db);
 		String json = exportObject(root);
 		CHECK_EQ(json, json::union_test_root_json);

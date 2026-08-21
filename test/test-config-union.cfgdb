@@ -68,7 +68,8 @@
       "oneOf": [
         {
           "type": "string",
-          "title": "a"
+          "title": "a",
+          "default": "value a"
         },
         {
           "type": "integer",
@@ -76,7 +77,8 @@
         },
         {
           "type": "number",
-          "title": "c"
+          "title": "c",
+          "default": 314159e12
         }
       ]
     }

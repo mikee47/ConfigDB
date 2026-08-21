@@ -44,7 +44,8 @@ public:
 	Tag getTag() const
 	{
 		auto ptr = static_cast<const uint8_t*>(getDataPtr());
-		return ptr[typeinfo().dataSize - 1];
+		ptr += typeinfo().dataSize - 1;
+		return *ptr;
 	}
 
 	/**
@@ -78,12 +79,20 @@ public:
 			assert(false);
 			return;
 		}
-		disposeArrays();
+		auto curtag = getTag();
+		if(tagIsObject(curtag)) {
+			disposeArrays();
+		}
 		auto ptr = static_cast<uint8_t*>(getDataPtr());
 		memset(ptr, 0, ti.dataSize);
 		ptr[ti.dataSize - 1] = tag;
 		if(tag < ti.objectCount) {
 			Object(*this, tag).clear();
+		} else {
+			unsigned index = tag - ti.objectCount;
+			auto& prop = ti.getProperty(index);
+			auto defaultData = getDefaultPropertyData(index);
+			memcpy_P(ptr, defaultData, prop.getSize());
 		}
 	}
 
@@ -92,7 +101,26 @@ public:
 	 */
 	void clear()
 	{
-		setTag(0);
+		setTag(getDefaultTag());
+	}
+
+	Tag getDefaultTag() const
+	{
+		auto& ti = typeinfo();
+		auto ptr = static_cast<const uint8_t*>(ti.defaultData);
+		if(!ptr) {
+			assert(false);
+			return 0;
+		}
+		unsigned n = ti.objectCount + ti.propertyCount;
+		for(auto prop = ti.propinfo; n--; ++prop) {
+			if(prop->type == PropertyType::Object) {
+				ptr += prop->variant.object->dataSize;
+			} else {
+				ptr += prop->getSize();
+			}
+		}
+		return pgm_read_byte(ptr);
 	}
 
 	unsigned getObjectCount() const
@@ -126,9 +154,9 @@ public:
 			return {};
 		}
 		auto& ti = typeinfo();
-		tag -= ti.objectCount;
-		auto& prop = ti.getProperty(tag);
-		auto propData = getPropertyData(tag);
+		index = tag - ti.objectCount;
+		auto& prop = ti.getProperty(index);
+		auto propData = getPropertyData(index);
 		return {getStore(), prop, propData};
 	}
 
@@ -144,10 +172,10 @@ public:
 			return {};
 		}
 		auto& ti = typeinfo();
-		tag -= ti.objectCount;
-		auto& prop = ti.getProperty(tag);
-		auto propData = getPropertyData(tag);
-		auto defaultData = PropertyData::fromStruct(prop, ti.defaultData);
+		index = tag - ti.objectCount;
+		auto& prop = ti.getProperty(index);
+		auto propData = getPropertyData(index);
+		auto defaultData = getDefaultPropertyData(index);
 		return {getStore(), prop, propData, defaultData};
 	}
 

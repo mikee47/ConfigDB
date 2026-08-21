@@ -255,6 +255,30 @@ public:
 		return PropertyData::fromStruct(typeinfo().getProperty(index), getDataPtr());
 	}
 
+	const PropertyData* getDefaultPropertyData(unsigned index) const
+	{
+		auto& ti = typeinfo();
+		auto& prop = ti.getProperty(index);
+		auto ptr = static_cast<const uint8_t*>(ti.defaultData);
+		if(!ptr) {
+			assert(false);
+			return nullptr;
+		}
+		if(ti.type == ObjectType::Union) {
+			unsigned n = ti.objectCount + index;
+			for(auto prop = ti.propinfo; n--; ++prop) {
+				if(prop->type == PropertyType::Object) {
+					ptr += prop->variant.object->dataSize;
+				} else {
+					ptr += prop->getSize();
+				}
+			}
+		} else {
+			ptr += prop.offset;
+		}
+		return reinterpret_cast<const PropertyData*>(ptr);
+	}
+
 	/**
 	 * @brief Called from `OuterObjectTemplate` methods
 	 */

@@ -559,6 +559,10 @@ class Union(Object):
         return True
 
     @property
+    def has_struct(self):
+        return True
+
+    @property
     def max_object_size(self):
         return max(prop.data_size for prop in self.object_properties) if self.object_properties else 0
 
@@ -1340,41 +1344,45 @@ def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
     obj = object_prop.obj
 
     typename = f'{object_prop.namespace}::{obj.typename_contained}'
-    lines = CodeLines(
-        [
-            '',
-            'struct __attribute__((packed)) Struct {',
-        ],
-        [
-            '',
-            f'const {typename}::Struct PROGMEM {typename}::defaultData{{}};'
-        ])
-
-
     fields = [(prop.obj.typename_struct, prop.id, '') for prop in obj.object_properties if prop.obj.has_struct]
     fields += [(get_ctype(prop), prop.id, get_default(prop)) for prop in obj.properties]
-    def field_str(tup, include_default: bool):
-        typename, propid, default = tup
-        default = f'{{{default}}}' if include_default else ''
-        return f'{typename} {propid}{default};'
+    lines = CodeLines()
     if obj.is_union:
-        lines.header += [[
-            'union __attribute__((packed)) {',
-            [field_str(f, index == obj.tag) for index, f in enumerate(fields)],
+        lines.header += [
+            '',
+            'struct __attribute__((packed)) Struct {',
+            [
+                'union __attribute__((packed)) {',
+                [f'{typename} {id}' + (f'{{{default}}};' if index == obj.tag else ';') for index, (typename, id, default) in enumerate(fields)],
+                '};',
+                f'uint8_t tag{{{obj.tag}}};',
+            ],
             '};',
-            f'uint8_t tag{{{obj.tag}}};'
-        ]]
+            '',
+            'struct __attribute__((packed)) DefaultData {',
+            [f'{typename} {id}{{{default}}};' for typename, id, default in fields],
+            [f'uint8_t tag{{{obj.tag}}};'],
+            '};'
+        ]
     else:
         lines.header += [
-            [field_str(f, True) for f in fields],
+            '',
+            'struct __attribute__((packed)) Struct {',
+            [f'{typename} {id}{{{default}}};' for typename, id, default in fields],
+            '};',
+            '',
+            'using DefaultData = Struct;'
         ]
-
     lines.header += [
-        '};',
         '',
-        'static const Struct defaultData;',
+        f'static_assert(sizeof(Struct) == {obj.data_size});',
+        '',
+        'static const DefaultData defaultData;',
     ]
-
+    lines.source += [
+        '',
+        f'const {typename}::DefaultData PROGMEM {typename}::defaultData{{}};'
+    ]
     return lines
 
 

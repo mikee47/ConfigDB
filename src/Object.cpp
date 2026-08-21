@@ -61,12 +61,14 @@ void Object::disposeArrays()
 	switch(ti.type) {
 	case ObjectType::Object:
 		for(unsigned i = 0; i < ti.objectCount; ++i) {
-			getObject(i).disposeArrays();
+			Object(*this, i).disposeArrays();
 		}
 		break;
-	case ObjectType::Union:
-		if(static_cast<const Union*>(this)->tagIsObject()) {
-			getObject(0).disposeArrays();
+	case ObjectType::Union: {
+		auto& u = *static_cast<const Union*>(this);
+		auto tag = u.getTag();
+		if(u.tagIsObject(tag)) {
+			Object(*this, tag).disposeArrays();
 		}
 		break;
 	case ObjectType::Array:
@@ -89,12 +91,17 @@ void Object::initArrays()
 	switch(ti.type) {
 	case ObjectType::Object:
 		for(unsigned i = 0; i < ti.objectCount; ++i) {
-			getObject(i).initArrays();
+			Object(*this, i).initArrays();
 		}
 		break;
-	case ObjectType::Union:
-		getObject(0).initArrays();
+	case ObjectType::Union: {
+		auto& u = *static_cast<const Union*>(this);
+		auto tag = u.getTag();
+		if(u.tagIsObject(tag)) {
+			Object(*this, tag).initArrays();
+		}
 		break;
+	}
 	case ObjectType::Array:
 		static_cast<Array*>(this)->loadDefaults();
 		break;
@@ -333,8 +340,7 @@ String Object::getPropertyString(unsigned index) const
 StringId Object::getStringId(const PropertyInfo& prop, const char* value, uint16_t valueLength)
 {
 	PropertyData dst{};
-	auto dataptr = isArray() ? nullptr : getDataPtr();
-	auto defaultData = PropertyData::fromStruct(prop, dataptr);
+	auto defaultData = isArray() ? nullptr : PropertyData::fromStruct(prop, getDataPtr());
 	getStore().parseString(prop, dst, defaultData, value, valueLength);
 	return dst.string;
 }
@@ -348,7 +354,7 @@ void Object::resetPropertyValue(unsigned index)
 {
 	auto& prop = typeinfo().getProperty(index);
 	if(auto data = PropertyData::fromStruct(prop, getDataPtr())) {
-		auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
+		auto defaultData = getDefaultPropertyData(index);
 		memcpy_P(data, defaultData, prop.getSize());
 	}
 }
@@ -397,13 +403,14 @@ Property Object::getProperty(unsigned index)
 	case ObjectType::Union:
 		return static_cast<Union*>(this)->getProperty(index);
 	default:
-		if(index >= typeinfo().propertyCount) {
+		auto& ti = typeinfo();
+		if(index >= ti.propertyCount) {
 			assert(false);
 			return {};
 		}
-		auto& prop = typeinfo().getProperty(index);
+		auto& prop = ti.getProperty(index);
 		auto propData = getPropertyData(index);
-		auto defaultData = PropertyData::fromStruct(prop, typeinfo().defaultData);
+		auto defaultData = getDefaultPropertyData(index);
 		return {getStore(), prop, propData, defaultData};
 	}
 }
@@ -416,11 +423,12 @@ PropertyConst Object::getProperty(unsigned index) const
 	case ObjectType::Union:
 		return static_cast<const Union*>(this)->getProperty(index);
 	default:
-		if(index >= typeinfo().propertyCount) {
+		auto& ti = typeinfo();
+		if(index >= ti.propertyCount) {
 			assert(false);
 			return {};
 		}
-		auto& prop = typeinfo().getProperty(index);
+		auto& prop = ti.getProperty(index);
 		auto propData = getPropertyData(index);
 		return {getStore(), prop, propData};
 	}
