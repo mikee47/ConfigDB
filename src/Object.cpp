@@ -253,15 +253,17 @@ Property Object::findProperty(const char* name, size_t length)
 {
 	auto& ti = typeinfo();
 
-	switch(ti.type) {
-	case ObjectType::Array:
-	case ObjectType::ObjectArray:
-	case ObjectType::Union:
+	if(ti.isArray()) {
 		return {};
-	default:
-		int index = ti.findProperty(name, length);
-		return index >= 0 ? getProperty(index) : Property();
 	}
+	int index = ti.findProperty(name, length);
+	if(index < 0) {
+		return {};
+	}
+	if(ti.type == ObjectType::Union) {
+		static_cast<Union*>(this)->setTag(index);
+	}
+	return {*this, unsigned(index)};
 }
 
 void Object::registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type)
