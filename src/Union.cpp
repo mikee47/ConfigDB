@@ -31,18 +31,18 @@ void Union::setTag(Tag tag)
 		assert(false);
 		return;
 	}
-	auto curtag = getTag();
-	if(tagIsObject(curtag)) {
+	auto ptr = static_cast<uint8_t*>(getDataPtr());
+	if(tagIsObject(*ptr)) {
 		disposeArrays();
 	}
-	auto ptr = static_cast<uint8_t*>(getDataPtr());
 	memset(ptr, 0, ti.dataSize);
-	ptr[ti.dataSize - 1] = tag;
+	*ptr = tag;
 	if(tag < ti.objectCount) {
 		Object(*this, tag).clear();
 	} else {
 		unsigned index = tag - ti.objectCount;
 		auto& prop = ti.getProperty(index);
+		ptr += prop.offset;
 		auto defaultData = getDefaultPropertyData(index);
 		memcpy_P(ptr, defaultData, prop.getSize());
 	}

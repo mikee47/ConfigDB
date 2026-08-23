@@ -190,11 +190,12 @@ void* Object::getDataPtr()
 	unsigned offset{0};
 	auto obj = this;
 	while(obj->parent) {
+		offset += obj->propinfo().offset;
 		if(obj->parent->isArray() && !obj->parent->isStore()) {
 			auto array = static_cast<ArrayBase*>(obj->parent);
 			return static_cast<uint8_t*>(array->getItem(obj->dataRef)) + offset;
 		}
-		offset += obj->dataRef + obj->propinfo().offset;
+		offset += obj->dataRef;
 		obj = obj->parent;
 	}
 	return static_cast<Store*>(obj)->getRootData() + offset;
@@ -205,11 +206,12 @@ const void* Object::getDataPtr() const
 	unsigned offset{0};
 	auto obj = this;
 	while(obj->parent) {
+		offset += obj->propinfo().offset;
 		if(obj->parent->isArray() && !obj->parent->isStore()) {
 			auto array = static_cast<const ArrayBase*>(obj->parent);
 			return static_cast<const uint8_t*>(array->getItem(obj->dataRef)) + offset;
 		}
-		offset += obj->dataRef + obj->propinfo().offset;
+		offset += obj->dataRef;
 		obj = obj->parent;
 	}
 	return static_cast<const Store*>(obj)->getRootData() + offset;

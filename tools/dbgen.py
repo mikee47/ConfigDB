@@ -1114,6 +1114,9 @@ def generate_structure(db: Database) -> list[str]:
         add(offset, object_prop.id, obj.base_class)
         if obj.is_array:
             return
+        if obj.is_union:
+            add(0, '   @tag', 'uint8_t')
+            offset = UNION_TAG_SIZE
         for prop in obj.object_properties:
             print_structure(prop, indent+1, offset)
             if not obj.is_union:
@@ -1237,7 +1240,7 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
             for x in alias:
                 add_alias(x)
 
-    offset = 0
+    offset = UNION_TAG_SIZE if obj.is_union else 0
 
     for prop in obj.object_properties:
         proplist += [[
@@ -1352,16 +1355,16 @@ def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
             '',
             'struct __attribute__((packed)) Struct {',
             [
+                f'uint8_t tag{{{obj.tag}}};',
                 'union __attribute__((packed)) {',
                 [f'{typename} {id}' + (f'{{{default}}};' if index == obj.tag else ';') for index, (typename, id, default) in enumerate(fields)],
-                '};',
-                f'uint8_t tag{{{obj.tag}}};',
+                '};'
             ],
             '};',
             '',
             'struct __attribute__((packed)) DefaultData {',
-            [f'{typename} {id}{{{default}}};' for typename, id, default in fields],
             [f'uint8_t tag{{{obj.tag}}};'],
+            [f'{typename} {id}{{{default}}};' for typename, id, default in fields],
             '};'
         ]
     else:

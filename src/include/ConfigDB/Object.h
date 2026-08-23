@@ -265,13 +265,13 @@ public:
 			return nullptr;
 		}
 		if(ti.type == ObjectType::Union) {
-			unsigned n = ti.objectCount + index;
-			for(auto prop = ti.propinfo; n--; ++prop) {
-				if(prop->type == PropertyType::Object) {
-					ptr += prop->variant.object->dataSize;
-				} else {
-					ptr += prop->getSize();
-				}
+			auto prop = ti.propinfo;
+			ptr += prop->offset;
+			for(unsigned n = ti.objectCount; n--; ++prop) {
+				ptr += prop->variant.object->dataSize;
+			}
+			for(; index--; ++prop) {
+				ptr += prop->getSize();
 			}
 		} else {
 			ptr += prop.offset;

@@ -44,7 +44,6 @@ public:
 	Tag getTag() const
 	{
 		auto ptr = static_cast<const uint8_t*>(getDataPtr());
-		ptr += typeinfo().dataSize - 1;
 		return *ptr;
 	}
 
@@ -81,20 +80,7 @@ public:
 
 	Tag getDefaultTag() const
 	{
-		auto& ti = typeinfo();
-		auto ptr = static_cast<const uint8_t*>(ti.defaultData);
-		if(!ptr) {
-			assert(false);
-			return 0;
-		}
-		unsigned n = ti.objectCount + ti.propertyCount;
-		for(auto prop = ti.propinfo; n--; ++prop) {
-			if(prop->type == PropertyType::Object) {
-				ptr += prop->variant.object->dataSize;
-			} else {
-				ptr += prop->getSize();
-			}
-		}
+		auto ptr = static_cast<const uint8_t*>(typeinfo().defaultData);
 		return pgm_read_byte(ptr);
 	}
 
