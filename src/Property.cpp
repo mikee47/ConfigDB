@@ -23,6 +23,11 @@
 
 namespace ConfigDB
 {
+PropertyConst::PropertyConst(const Object& object, unsigned index)
+	: PropertyConst(object.getStore(), object.typeinfo().getProperty(index), object.getPropertyData(index))
+{
+}
+
 String PropertyConst::getValue() const
 {
 	if(!propinfo || !store) {
@@ -46,6 +51,12 @@ String PropertyConst::getJsonValue() const
 		::Format::json.quote(value);
 	}
 	return value;
+}
+
+Property::Property(Object& object, unsigned index)
+	: Property(object.getStore(), object.typeinfo().getProperty(index), object.getPropertyData(index),
+			   object.getDefaultPropertyData(index))
+{
 }
 
 bool Property::setJsonValue(const char* value, size_t valueLength)

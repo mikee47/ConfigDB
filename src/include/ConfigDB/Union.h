@@ -134,7 +134,7 @@ public:
 			assert(false);
 			return {};
 		}
-		return Object(*this, getTag());
+		return {*this, getTag()};
 	}
 
 	unsigned getPropertyCount() const
@@ -148,16 +148,7 @@ public:
 			assert(false);
 			return {};
 		}
-		auto tag = getTag();
-		if(tagIsObject(tag)) {
-			assert(false);
-			return {};
-		}
-		auto& ti = typeinfo();
-		index = tag - ti.objectCount;
-		auto& prop = ti.getProperty(index);
-		auto propData = getPropertyData(index);
-		return {getStore(), prop, propData};
+		return {*this, getTag() - typeinfo().objectCount};
 	}
 
 	Property getProperty(unsigned index)
@@ -166,17 +157,7 @@ public:
 			assert(false);
 			return {};
 		}
-		auto tag = getTag();
-		if(tagIsObject(tag)) {
-			assert(false);
-			return {};
-		}
-		auto& ti = typeinfo();
-		index = tag - ti.objectCount;
-		auto& prop = ti.getProperty(index);
-		auto propData = getPropertyData(index);
-		auto defaultData = getDefaultPropertyData(index);
-		return {getStore(), prop, propData, defaultData};
+		return {*this, getTag() - typeinfo().objectCount};
 	}
 
 	/**

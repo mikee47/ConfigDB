@@ -235,7 +235,7 @@ Object Object::getObject(unsigned index)
 	case ObjectType::Union:
 		return static_cast<Union*>(this)->getObject(index);
 	default:
-		return Object(*this, index);
+		return {*this, index};
 	}
 }
 
@@ -253,7 +253,7 @@ Object Object::findObject(const char* name, size_t length)
 	if(ti.type == ObjectType::Union) {
 		static_cast<Union*>(this)->setTag(index);
 	}
-	return Object(*this, index);
+	return {*this, unsigned(index)};
 }
 
 Property Object::findProperty(const char* name, size_t length)
@@ -400,19 +400,15 @@ Property Object::getProperty(unsigned index)
 	switch(typeinfo().type) {
 	case ObjectType::Array:
 		return static_cast<Array*>(this)->getProperty(index);
+	case ObjectType::ObjectArray:
+		break;
 	case ObjectType::Union:
 		return static_cast<Union*>(this)->getProperty(index);
-	default:
-		auto& ti = typeinfo();
-		if(index >= ti.propertyCount) {
-			assert(false);
-			return {};
-		}
-		auto& prop = ti.getProperty(index);
-		auto propData = getPropertyData(index);
-		auto defaultData = getDefaultPropertyData(index);
-		return {getStore(), prop, propData, defaultData};
+	case ObjectType::Object:
+		return {*this, index};
 	}
+	assert(false);
+	return {};
 }
 
 PropertyConst Object::getProperty(unsigned index) const
@@ -420,18 +416,15 @@ PropertyConst Object::getProperty(unsigned index) const
 	switch(typeinfo().type) {
 	case ObjectType::Array:
 		return static_cast<const Array*>(this)->getProperty(index);
+	case ObjectType::ObjectArray:
+		break;
 	case ObjectType::Union:
 		return static_cast<const Union*>(this)->getProperty(index);
-	default:
-		auto& ti = typeinfo();
-		if(index >= ti.propertyCount) {
-			assert(false);
-			return {};
-		}
-		auto& prop = ti.getProperty(index);
-		auto propData = getPropertyData(index);
-		return {getStore(), prop, propData};
+	case ObjectType::Object:
+		return {*this, index};
 	}
+	assert(false);
+	return {};
 }
 
 size_t Object::printTo(Print& p) const
