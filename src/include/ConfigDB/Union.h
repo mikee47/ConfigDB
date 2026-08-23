@@ -69,32 +69,7 @@ public:
 	/**
 	 * @brief Set the current tag and reset content to object default
 	 */
-	void setTag(Tag tag)
-	{
-		if(!writeCheck()) {
-			return;
-		}
-		auto& ti = typeinfo();
-		if(tag >= ti.objectCount + ti.propertyCount) {
-			assert(false);
-			return;
-		}
-		auto curtag = getTag();
-		if(tagIsObject(curtag)) {
-			disposeArrays();
-		}
-		auto ptr = static_cast<uint8_t*>(getDataPtr());
-		memset(ptr, 0, ti.dataSize);
-		ptr[ti.dataSize - 1] = tag;
-		if(tag < ti.objectCount) {
-			Object(*this, tag).clear();
-		} else {
-			unsigned index = tag - ti.objectCount;
-			auto& prop = ti.getProperty(index);
-			auto defaultData = getDefaultPropertyData(index);
-			memcpy_P(ptr, defaultData, prop.getSize());
-		}
-	}
+	void setTag(Tag tag);
 
 	/**
 	 * @brief Reset tag to default and clear whatever object that corresponds to
