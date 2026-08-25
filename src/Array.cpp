@@ -25,8 +25,8 @@ void Array::loadDefaults()
 {
 	clear();
 
-	auto& info = typeinfo();
-	if(!info.defaultData) {
+	auto& ti = typeinfo();
+	if(!ti.defaultData) {
 		return;
 	}
 
@@ -34,7 +34,7 @@ void Array::loadDefaults()
 
 	auto& item = getItemType();
 	if(item.type == PropertyType::String) {
-		auto& strings = *static_cast<const FSTR::Vector<FSTR::String>*>(info.defaultData);
+		auto& strings = *static_cast<const FSTR::Vector<FSTR::String>*>(ti.defaultData);
 		array.ensureCapacity(array.getCount() + strings.length());
 		for(auto& s : strings) {
 			auto id = getStringId(s);
@@ -43,7 +43,7 @@ void Array::loadDefaults()
 		return;
 	}
 
-	auto& items = *static_cast<const FSTR::ObjectBase*>(info.defaultData);
+	auto& items = *static_cast<const FSTR::ObjectBase*>(ti.defaultData);
 	array.add(items.data(), items.length() / item.getSize());
 }
 

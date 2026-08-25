@@ -30,17 +30,17 @@ void Object::clear()
 		return;
 	}
 
-	auto& info = typeinfo();
+	auto& ti = typeinfo();
 
-	switch(info.type) {
+	switch(ti.type) {
 	case ObjectType::Array:
 	case ObjectType::ObjectArray:
 		static_cast<ArrayBase*>(this)->clear();
 		break;
 	case ObjectType::Object:
 		disposeArrays();
-		if(info.defaultData) {
-			memcpy_P(getDataPtr(), info.defaultData, info.dataSize);
+		if(ti.defaultData) {
+			memcpy_P(getDataPtr(), ti.defaultData, ti.dataSize);
 		}
 		break;
 	case ObjectType::Union:
@@ -54,16 +54,14 @@ void Object::clear()
  */
 void Object::disposeArrays()
 {
-	auto& info = typeinfo();
+	auto& ti = typeinfo();
 
-	switch(info.type) {
-	case ObjectType::Object: {
-		auto n = getObjectCount();
-		for(unsigned i = 0; i < n; ++i) {
+	switch(ti.type) {
+	case ObjectType::Object:
+		for(unsigned i = 0; i < ti.objectCount; ++i) {
 			getObject(i).disposeArrays();
 		}
 		break;
-	}
 	case ObjectType::Union:
 		getObject(0).disposeArrays();
 		break;
@@ -83,15 +81,13 @@ void Object::loadArrayDefaults()
 
 void Object::initArrays()
 {
-	auto& info = typeinfo();
-	switch(info.type) {
-	case ObjectType::Object: {
-		auto n = getObjectCount();
-		for(unsigned i = 0; i < n; ++i) {
+	auto& ti = typeinfo();
+	switch(ti.type) {
+	case ObjectType::Object:
+		for(unsigned i = 0; i < ti.objectCount; ++i) {
 			getObject(i).initArrays();
 		}
 		break;
-	}
 	case ObjectType::Union:
 		getObject(0).initArrays();
 		break;
@@ -234,14 +230,16 @@ Object Object::getObject(unsigned index)
 
 Object Object::findObject(const char* name, size_t length)
 {
-	if(isArray()) {
+	auto& ti = typeinfo();
+
+	if(ti.isArray()) {
 		return {};
 	}
-	int index = typeinfo().findObject(name, length);
+	int index = ti.findObject(name, length);
 	if(index < 0) {
 		return {};
 	}
-	if(typeIs(ObjectType::Union)) {
+	if(ti.type == ObjectType::Union) {
 		static_cast<Union*>(this)->setTag(index);
 	}
 	return Object(*this, index);
@@ -249,13 +247,15 @@ Object Object::findObject(const char* name, size_t length)
 
 Property Object::findProperty(const char* name, size_t length)
 {
-	switch(typeinfo().type) {
+	auto& ti = typeinfo();
+
+	switch(ti.type) {
 	case ObjectType::Array:
 	case ObjectType::ObjectArray:
 	case ObjectType::Union:
 		return {};
 	default:
-		int index = typeinfo().findProperty(name, length);
+		int index = ti.findProperty(name, length);
 		return index >= 0 ? getProperty(index) : Property();
 	}
 }
