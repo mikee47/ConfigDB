@@ -40,7 +40,7 @@ void Object::clear()
 	case ObjectType::Object:
 		disposeArrays();
 		if(info.defaultData) {
-			memcpy_P(getDataPtr(), info.defaultData, info.structSize);
+			memcpy_P(getDataPtr(), info.defaultData, info.dataSize);
 		}
 		break;
 	case ObjectType::Union:

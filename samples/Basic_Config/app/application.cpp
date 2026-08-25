@@ -188,7 +188,7 @@ void printStoreStats(ConfigDB::Database& db, bool detailed)
 	for(unsigned i = 0; i < db.typeinfo.storeCount; ++i) {
 		auto store = db.openStore(i);
 		Serial << F("Store '") << store->getName() << "':" << endl;
-		Serial << F("  Root: ") << store->typeinfo().structSize << endl;
+		Serial << F("  Root: ") << store->typeinfo().dataSize << endl;
 		printStringPool(store->getStringPool(), detailed);
 		printArrayPool(store->getArrayPool(), detailed);
 

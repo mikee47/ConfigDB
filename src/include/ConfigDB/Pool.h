@@ -272,7 +272,7 @@ public:
 
 	ArrayId add(const ObjectInfo& object)
 	{
-		return add(object.structSize);
+		return add(object.dataSize);
 	}
 
 	ArrayId add(const PropertyInfo& prop)

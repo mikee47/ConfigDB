@@ -1304,7 +1304,7 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
         *([str(e) + ','] for e in [
             f'.type = ObjectType::{obj.classname}',
             f'.defaultData = {defaultData}',
-            '.structSize = ' + ('sizeof(ArrayId)' if obj.is_array else 'sizeof(Struct)' if obj.has_struct else '0'),
+            f'.dataSize = {obj.data_size}',
             f'.objectCount = {len(obj.object_properties)}',
             f'.propertyCount = {len(obj.properties)}',
             f'.aliasCount = {len(aliaslist)}'

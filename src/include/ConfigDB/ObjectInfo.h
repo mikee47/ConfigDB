@@ -37,12 +37,12 @@ enum class ObjectType : uint32_t {
 
 struct ObjectInfo {
 	ObjectType type;
-	PGM_VOID_P defaultData;
-	uint32_t structSize;
+	PGM_VOID_P defaultData; ///< Optional pointer to default values for regular (non-object) properties
+	uint32_t dataSize;		///< Bytes required for RAM structure
 	uint32_t objectCount;
 	uint32_t propertyCount;
 	uint32_t aliasCount;
-	const PropertyInfo propinfo[];
+	const PropertyInfo propinfo[]; ///< Property information: objects first, then regular and lastly aliases
 
 	static const ObjectInfo empty;
 
