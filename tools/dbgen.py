@@ -395,7 +395,7 @@ class Property:
     def namespace(self):
         assert self.obj
         if self.obj.ref or (self.is_item and self.parent.obj.ref):
-            return self.database.typename
+            return self.database.namespace
         prop = self.parent
         ns = []
         while prop:
@@ -1075,7 +1075,7 @@ def generate_database(db: Database) -> CodeLines:
     for prop in db.enum_props:
         if not prop.ctype_override:
             continue
-        namespace = prop.parent.namespace
+        namespace = db.namespace if prop.ref else prop.parent.namespace
         lines.header += [
             '',
             f'String toString({namespace}::{prop.ctype_ret} value);'
@@ -1148,7 +1148,7 @@ def generate_enum_typeinfo(db: Database, prop: Property) -> CodeLines:
         ]
 
     values = prop.enum
-    namespace = prop.parent.namespace
+    namespace = db.namespace if prop.ref else prop.parent.namespace
     item_type = 'const FSTR::String*' if prop.enum_type == 'String' else prop.enum_ctype
 
     # Use explicit ctype override if given, otherwise type is based on property name
