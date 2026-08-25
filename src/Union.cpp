@@ -55,8 +55,9 @@ void Union::setTag(Tag tag)
 		return;
 	}
 	auto ptr = static_cast<uint8_t*>(getDataPtr());
-	if(tagIsObject(*ptr)) {
-		disposeArrays();
+	Tag curtag = *ptr;
+	if(tagIsObject(curtag)) {
+		Object(*this, curtag).disposeArrays();
 	}
 	memset(ptr, 0, ti.dataSize);
 	*ptr = tag;

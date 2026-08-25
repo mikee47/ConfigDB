@@ -161,6 +161,25 @@ public:
 		setTag(tag);
 		return Item(*parent, typeinfo().getObject(tag), dataRef + propinfo().offset);
 	}
+
+protected:
+	friend class Object;
+
+	void initArrays()
+	{
+		auto tag = getTag();
+		if(tagIsObject(tag)) {
+			Object(*this, tag).initArrays();
+		}
+	}
+
+	void disposeArrays()
+	{
+		auto tag = getTag();
+		if(tagIsObject(tag)) {
+			Object(*this, tag).disposeArrays();
+		}
+	}
 };
 
 /**

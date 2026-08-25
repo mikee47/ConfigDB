@@ -64,12 +64,8 @@ void Object::disposeArrays()
 			Object(*this, i).disposeArrays();
 		}
 		break;
-	case ObjectType::Union: {
-		auto& u = *static_cast<const Union*>(this);
-		auto tag = u.getTag();
-		if(u.tagIsObject(tag)) {
-			Object(*this, tag).disposeArrays();
-		}
+	case ObjectType::Union:
+		static_cast<Union*>(this)->disposeArrays();
 		break;
 	case ObjectType::Array:
 	case ObjectType::ObjectArray:
@@ -94,14 +90,9 @@ void Object::initArrays()
 			Object(*this, i).initArrays();
 		}
 		break;
-	case ObjectType::Union: {
-		auto& u = *static_cast<const Union*>(this);
-		auto tag = u.getTag();
-		if(u.tagIsObject(tag)) {
-			Object(*this, tag).initArrays();
-		}
+	case ObjectType::Union:
+		static_cast<Union*>(this)->initArrays();
 		break;
-	}
 	case ObjectType::Array:
 		static_cast<Array*>(this)->loadDefaults();
 		break;
