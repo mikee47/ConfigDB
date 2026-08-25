@@ -131,8 +131,8 @@ StringId StringPool::add(const CountedString& string)
 
 bool ArrayData::remove(unsigned index)
 {
-	assert(index < count);
 	if(index >= count) {
+		assert(false);
 		return false;
 	}
 	if(index + 1 < count) {
@@ -144,8 +144,8 @@ bool ArrayData::remove(unsigned index)
 
 void* ArrayData::insert(unsigned index, const void* data, size_t itemCount)
 {
-	assert(index <= count);
 	if(index > count) {
+		assert(false);
 		return nullptr;
 	}
 	if(!allocate(itemCount)) {

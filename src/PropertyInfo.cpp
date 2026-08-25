@@ -128,7 +128,10 @@ int PropertyInfo::findProperty(const char* name, unsigned length) const
 
 const PropertyInfo& PropertyInfo::getObject(unsigned index) const
 {
-	assert(type == PropertyType::Object);
+	if(type != PropertyType::Object) {
+		assert(false);
+		return PropertyInfo::empty;
+	}
 	return variant.object->getObject(index);
 }
 

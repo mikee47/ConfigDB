@@ -122,8 +122,8 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 		return invalid;
 	};
 
-	assert(store);
 	if(!store) {
+		assert(false);
 		return invalid();
 	}
 
@@ -134,7 +134,10 @@ StoreUpdateRef Database::lockStore(StoreRef& store)
 
 	auto& storeInfo = store->propinfo();
 	auto storeIndex = typeinfo.indexOf(storeInfo);
-	assert(storeIndex >= 0);
+	if(storeIndex < 0) {
+		assert(false);
+		return invalid();
+	}
 	auto& weakRef = updateRefs[storeIndex];
 
 	if(auto ref = weakRef.lock()) {
@@ -200,7 +203,10 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 void Database::registerCallback(Store& store, Callback&& callback, CallbackType type)
 {
 	int storeIndex = typeinfo.indexOf(store.propinfo());
-	assert(storeIndex >= 0);
+	if(storeIndex < 0) {
+		assert(false);
+		return;
+	}
 	registerCallback(storeIndex, std::move(callback), type);
 }
 
@@ -287,7 +293,10 @@ void Database::beforeCommit(Store& store)
 {
 	// Invoke any registered commit callbacks
 	auto storeIndex = typeinfo.indexOf(store.propinfo());
-	assert(storeIndex >= 0);
+	if(storeIndex < 0) {
+		assert(false);
+		return;
+	}
 
 	CallbackItem ref{this, uint8_t(storeIndex), CallbackType::commit};
 	for(auto& item : callbacks) {
@@ -306,7 +315,10 @@ bool Database::save(Store& store) const
 
 	// Update write cache so it contains most recent data
 	auto storeIndex = typeinfo.indexOf(store.propinfo());
-	assert(storeIndex >= 0);
+	if(storeIndex < 0) {
+		assert(false);
+		return false;
+	}
 	writeCache.store = updateRefs[storeIndex].lock();
 	assert(&store == writeCache.store.get());
 

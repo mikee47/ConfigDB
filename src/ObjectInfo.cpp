@@ -37,8 +37,11 @@ const ObjectInfo PROGMEM ObjectInfo::empty{};
 
 const PropertyInfo& ObjectInfo::getObject(unsigned index) const
 {
-	assert(index < objectCount);
-	return (index < objectCount) ? propinfo[index] : PropertyInfo::empty;
+	if(index >= objectCount) {
+		assert(false);
+		return PropertyInfo::empty;
+	}
+	return propinfo[index];
 }
 
 String ObjectInfo::getObjectName(unsigned index) const
@@ -48,8 +51,11 @@ String ObjectInfo::getObjectName(unsigned index) const
 
 const PropertyInfo& ObjectInfo::getProperty(unsigned index) const
 {
-	assert(index < propertyCount);
-	return (index < propertyCount) ? propinfo[objectCount + index] : PropertyInfo::empty;
+	if(index >= propertyCount) {
+		assert(false);
+		return PropertyInfo::empty;
+	}
+	return propinfo[objectCount + index];
 }
 
 int ObjectInfo::findObject(const char* name, size_t length) const

@@ -25,8 +25,12 @@ namespace ConfigDB
 {
 String PropertyConst::getValue() const
 {
-	assert(propinfo && store);
-	if(!store || !data) {
+	if(!propinfo || !store) {
+		assert(false);
+		return nullptr;
+	}
+	if(!data) {
+		// read-only
 		return nullptr;
 	}
 	return store->getValueString(*propinfo, data);
@@ -46,8 +50,12 @@ String PropertyConst::getJsonValue() const
 
 bool Property::setJsonValue(const char* value, size_t valueLength)
 {
-	assert(propinfo && store);
-	if(!store || !data) {
+	if(!propinfo || !store) {
+		assert(false);
+		return false;
+	}
+	if(!data) {
+		// read-only
 		return false;
 	}
 	auto& dst = *const_cast<PropertyData*>(data);

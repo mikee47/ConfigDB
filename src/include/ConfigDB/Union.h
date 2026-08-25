@@ -62,9 +62,13 @@ public:
 		if(!writeCheck()) {
 			return;
 		}
-		assert(tag < typeinfo().objectCount);
+		auto& ti = typeinfo();
+		if(tag >= ti.objectCount) {
+			assert(false);
+			return;
+		}
 		disposeArrays();
-		memset(getDataPtr(), 0, typeinfo().structSize);
+		memset(getDataPtr(), 0, ti.structSize);
 		getPropertyData(0)->uint8 = tag;
 		getObject(0).resetToDefaults();
 	}
@@ -88,9 +92,12 @@ public:
 		return 1;
 	}
 
-	Object getObject([[maybe_unused]] unsigned index)
+	Object getObject(unsigned index)
 	{
-		assert(index == 0);
+		if(index != 0) {
+			assert(false);
+			return {};
+		}
 		return Object(*this, getTag());
 	}
 
@@ -116,8 +123,8 @@ public:
 	 */
 	template <typename Item> const Item as(Tag tag) const
 	{
-		assert(getTag() == tag);
 		if(getTag() != tag) {
+			assert(false);
 			return {};
 		}
 		return Item(*parent, typeinfo().getObject(tag), dataRef + propinfo().offset);
@@ -130,8 +137,8 @@ public:
 	 */
 	template <typename Item> Item as(Tag tag)
 	{
-		assert(getTag() == tag);
 		if(getTag() != tag) {
+			assert(false);
 			return {};
 		}
 		return Item(*parent, typeinfo().getObject(tag), dataRef + propinfo().offset);

@@ -134,8 +134,8 @@ StoreUpdateRef Object::openStoreForUpdate(Database& db, unsigned storeIndex)
 StoreUpdateRef Object::lockStore(StoreRef& store)
 {
 	// Get root object which has pointer to Store: this may change
-	assert(parent);
 	if(!parent) {
+		assert(false);
 		return {};
 	}
 	auto obj = this;
@@ -391,8 +391,8 @@ Property Object::getProperty(unsigned index)
 	case ObjectType::Union:
 		return static_cast<Union*>(this)->getProperty(index);
 	default:
-		assert(index < typeinfo().propertyCount);
 		if(index >= typeinfo().propertyCount) {
+			assert(false);
 			return {};
 		}
 		auto& prop = typeinfo().getProperty(index);
@@ -410,8 +410,8 @@ PropertyConst Object::getProperty(unsigned index) const
 	case ObjectType::Union:
 		return static_cast<const Union*>(this)->getProperty(index);
 	default:
-		assert(index < typeinfo().propertyCount);
 		if(index >= typeinfo().propertyCount) {
+			assert(false);
 			return {};
 		}
 		auto& prop = typeinfo().getProperty(index);

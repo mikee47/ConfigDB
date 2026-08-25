@@ -93,13 +93,19 @@ protected:
 
 	void* getItemPtr(unsigned index)
 	{
-		assert(index < count);
+		if(index >= count) {
+			assert(false);
+			return nullptr;
+		}
 		return static_cast<uint8_t*>(buffer) + getItemSize(index);
 	}
 
 	const void* getItemPtr(unsigned index) const
 	{
-		assert(index < count);
+		if(index >= count) {
+			assert(false);
+			return nullptr;
+		}
 		return static_cast<const uint8_t*>(buffer) + getItemSize(index);
 	}
 
