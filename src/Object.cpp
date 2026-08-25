@@ -321,6 +321,15 @@ String Object::getPath() const
 	return path;
 }
 
+const PropertyData* Object::getDefaultPropertyData(unsigned index) const
+{
+	auto& ti = typeinfo();
+	if(ti.type == ObjectType::Union) {
+		return static_cast<const Union*>(this)->getDefaultPropertyData(index);
+	}
+	return PropertyData::fromStruct(ti.getProperty(index), ti.defaultData);
+}
+
 String Object::getPropertyString(unsigned index, StringId id) const
 {
 	if(id) {

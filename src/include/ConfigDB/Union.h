@@ -78,6 +78,8 @@ public:
 		setTag(getDefaultTag());
 	}
 
+	const PropertyData* getDefaultPropertyData(unsigned index) const;
+
 	Tag getDefaultTag() const
 	{
 		auto ptr = static_cast<const uint8_t*>(typeinfo().defaultData);

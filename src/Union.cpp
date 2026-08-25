@@ -21,6 +21,29 @@
 
 namespace ConfigDB
 {
+const PropertyData* Union::getDefaultPropertyData(unsigned index) const
+{
+	auto& ti = typeinfo();
+	auto ptr = static_cast<const uint8_t*>(ti.defaultData);
+	if(!ptr || index >= ti.propertyCount) {
+		assert(false);
+		return nullptr;
+	}
+	if(!ptr) {
+		assert(false);
+		return nullptr;
+	}
+	auto prop = ti.propinfo;
+	ptr += prop->offset;
+	for(unsigned n = ti.objectCount; n--; ++prop) {
+		ptr += prop->variant.object->dataSize;
+	}
+	for(; index--; ++prop) {
+		ptr += prop->getSize();
+	}
+	return reinterpret_cast<const PropertyData*>(ptr);
+}
+
 void Union::setTag(Tag tag)
 {
 	if(!writeCheck()) {
