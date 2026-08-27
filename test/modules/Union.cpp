@@ -129,7 +129,7 @@ public:
 			DEFINE_FSTR_LOCAL(empty, "{\"array-with-defaults\":[]}")
 
 			TestConfigUnion::Root::Color3::OuterUpdater color3(db);
-			color3.toArrayWithDefaults();
+			color3.toArrayWithDefaults().loadArrayDefaults();
 			REQUIRE_EQ(exportObject(color3), defaults);
 			color3.asArrayWithDefaults().clear();
 			REQUIRE_EQ(exportObject(color3), empty);
@@ -146,7 +146,7 @@ public:
 			REQUIRE_EQ(exportObject(color3), cleared);
 			// ...then re-used
 			Serial << _F("ArrayPool re-uses slot:") << endl;
-			color3.toArrayWithDefaults();
+			color3.toArrayWithDefaults().loadArrayDefaults();
 			REQUIRE_EQ(arrayPool.getCount(), arrayCount);
 			REQUIRE_EQ(exportObject(color3), defaults);
 		}

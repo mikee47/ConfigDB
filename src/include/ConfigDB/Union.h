@@ -70,7 +70,7 @@ public:
 		disposeArrays();
 		memset(getDataPtr(), 0, ti.dataSize);
 		getPropertyData(0)->uint8 = tag;
-		getObject(0).resetToDefaults();
+		Object(*this, tag).clear();
 	}
 
 	/**
@@ -78,13 +78,7 @@ public:
 	 */
 	void clear()
 	{
-		if(!writeCheck()) {
-			return;
-		}
-		disposeArrays();
-		memset(getDataPtr(), 0, typeinfo().dataSize);
-		getPropertyData(0)->uint8 = 0;
-		getObject(0).clear();
+		setTag(0);
 	}
 
 	unsigned getObjectCount() const
