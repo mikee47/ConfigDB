@@ -730,12 +730,16 @@ def parse_oneof(path: str, union_prop: ObjectProperty, fields: dict):
         raise ValueError('Union default not supported')
     if 'properties' in fields:
         raise ValueError('Union may not have properties')
+    idlist = []
     for i, opt in enumerate(fields['oneOf']):
         prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
         if not prop.obj:
             raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
         if not prop.id or not prop.name or not prop.obj.typename:
             raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
+        if prop.id in idlist:
+            raise ValueError(f'Entry {len(idlist)} "{prop.name}" conflicts with entry {idlist.index(prop.id)}')
+        idlist.append(prop.id)
     if union_prop.obj.max_object_size == 0:
         raise ValueError('Union contains only empty objects')
     prop = Property(union_prop, 'tag', {
