@@ -27,6 +27,7 @@ CPP_TYPENAMES = {
 
 STRING_ID_SIZE = 2
 ARRAY_ID_SIZE = 2
+UNION_TAG_SIZE = 1
 # These values get truncated by ConstNumber during C++ compilation
 NUMBER_MIN = -1e100
 NUMBER_MAX = 1e100
@@ -275,6 +276,7 @@ class Property:
             'integer': int,
             'boolean': bool,
             'number': (float, int),
+            'union': str,
         }
         if not isinstance(value, types[self.ptype]):
             raise ValueError(f'Attribute "{attr_name}" must be an {self.ptype}, found {type(value).__name__} ({value})')
@@ -304,6 +306,11 @@ class Property:
     @property
     def propdata_id(self):
         return 'uint8' if self.enum else self.property_type.lower()
+
+    @property
+    def accessor(self):
+        '''Get templated Accessor type for union properties'''
+        return f'ConfigDB::AccessorTemplate<{self.ctype}, {self.ctype_ret}>'
 
     @property
     def data_size(self):
@@ -421,6 +428,10 @@ class Object:
     schema_id: str
     object_properties: list[Property] = field(default_factory=list)
     properties: list[Property] = field(default_factory=list)
+
+    @property
+    def all_properties(self):
+        return self.object_properties + self.properties
 
     @property
     def namespace(self):
@@ -541,22 +552,28 @@ class Array(Object):
 
 @dataclass
 class Union(Object):
+    tag: int = 0
+
     @property
     def is_union(self):
         return True
 
     @property
+    def has_struct(self):
+        return True
+
+    @property
     def max_object_size(self):
-        return max(prop.data_size for prop in self.object_properties)
+        return max(prop.data_size for prop in self.object_properties) if self.object_properties else 0
 
     @property
     def max_property_size(self):
-        return max(prop.data_size for prop in self.properties)
+        return max(prop.data_size for prop in self.properties) if self.properties else 0
 
     @property
     def data_size(self):
         '''Size of the corresponding C++ storage'''
-        return self.max_object_size + self.max_property_size
+        return max(self.max_object_size, self.max_property_size) + UNION_TAG_SIZE
 
 
 @dataclass
@@ -726,28 +743,20 @@ def parse_properties(path: str, parent_prop: Property, parent_fields: dict):
 
 
 def parse_oneof(path: str, union_prop: ObjectProperty, fields: dict):
-    if 'default' in fields:
-        raise ValueError('Union default not supported')
     if 'properties' in fields:
         raise ValueError('Union may not have properties')
     idlist = []
     for i, opt in enumerate(fields['oneOf']):
         prop = parse_property(f'{path}/oneOf/{i}', union_prop, opt.get('title'), opt)
-        if not prop.obj:
-            raise ValueError(f'Union "{union_prop.name}" option type must be *object*')
-        if not prop.id or not prop.name or not prop.obj.typename:
-            raise ValueError(f'Union "{union_prop.name}" option requires title or $ref')
+        if not prop.id or not prop.name or (prop.obj and not prop.obj.typename):
+            raise ValueError(f'Union "{union_prop.name}" option {i} requires title or $ref')
         if prop.id in idlist:
             raise ValueError(f'Entry {len(idlist)} "{prop.name}" conflicts with entry {idlist.index(prop.id)}')
         idlist.append(prop.id)
-    if union_prop.obj.max_object_size == 0:
+    if union_prop.obj.data_size == UNION_TAG_SIZE:
         raise ValueError('Union contains only empty objects')
-    prop = Property(union_prop, 'tag', {
-        'type': 'integer',
-        'minimum': 0,
-        'maximum': len(union_prop.obj.object_properties) - 1
-    })
-    union_prop.obj.properties.append(prop)
+    if default := fields.get('default'):
+        union_prop.obj.tag = [prop.name for prop in union_prop.obj.all_properties].index(default)
 
 
 def parse_array(path: str, array_prop: ObjectProperty, fields: dict):
@@ -942,6 +951,7 @@ def generate_database(db: Database) -> CodeLines:
             '#pragma once',
             '',
             '#include <ConfigDB/Database.h>',
+            '#include <ConfigDB/Accessor.h>',
             *(f'#include <{file}>' for file in db.include),
             '',
             f'class {db.typename}: public ConfigDB::DatabaseTemplate<{db.typename}>',
@@ -1053,7 +1063,7 @@ def generate_database(db: Database) -> CodeLines:
                 decl,
                 '{',
                 [
-                    f'return {typename}::typeinfo.getObjectName(unsigned(tag));'
+                    f'return {typename}::typeinfo.getName(unsigned(tag));'
                 ],
                 '}'
             ]
@@ -1104,12 +1114,13 @@ def generate_structure(db: Database) -> list[str]:
         add(offset, object_prop.id, obj.base_class)
         if obj.is_array:
             return
+        if obj.is_union:
+            add(0, '   @tag', 'uint8_t')
+            offset = UNION_TAG_SIZE
         for prop in obj.object_properties:
             print_structure(prop, indent+1, offset)
             if not obj.is_union:
                 offset += prop.data_size
-        if obj.is_union:
-            offset += obj.max_object_size
         indent += 1
         for prop in obj.properties:
             add(offset, prop.id, prop.ctype)
@@ -1229,7 +1240,7 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
             for x in alias:
                 add_alias(x)
 
-    offset = 0
+    offset = UNION_TAG_SIZE if obj.is_union else 0
 
     for prop in obj.object_properties:
         proplist += [[
@@ -1241,9 +1252,6 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
         add_alias(prop.alias)
         if not obj.is_union:
             offset += prop.data_size
-
-    if obj.is_union:
-        offset += obj.max_object_size
 
     for prop in obj.properties:
         variant_info = ''
@@ -1268,7 +1276,8 @@ def generate_typeinfo(db: Database, object_prop: ObjectProperty) -> CodeLines:
             f'.variant = {{{variant_info}}}'
         ]]
         add_alias(prop.alias)
-        offset += prop.data_size
+        if not obj.is_union:
+            offset += prop.data_size
 
     # Generate array default data
     defaultData = 'nullptr'
@@ -1338,36 +1347,64 @@ def generate_object_struct(object_prop: ObjectProperty) -> CodeLines:
     obj = object_prop.obj
 
     typename = f'{object_prop.namespace}::{obj.typename_contained}'
-    struct_props = [prop for prop in obj.object_properties if prop.obj.has_struct]
-    return CodeLines([
-        '',
-        'struct __attribute__((packed)) Struct {',
-        [
-            'union __attribute__((packed)) {',
-            [f'{prop.obj.typename_struct} {prop.id}{"{}" if index == 0 else ""};' for index, prop in enumerate(struct_props)],
+    fields = [(prop.obj.typename_struct, prop.id, '') for prop in obj.object_properties if prop.obj.has_struct]
+    fields += [(get_ctype(prop), prop.id, get_default(prop)) for prop in obj.properties]
+    lines = CodeLines()
+    if obj.is_union:
+        lines.header += [
+            '',
+            'struct __attribute__((packed)) Struct {',
+            [
+                f'uint8_t tag{{{obj.tag}}};',
+                'union __attribute__((packed)) {',
+                [f'{typename} {id}' + (f'{{{default}}};' if index == obj.tag else ';') for index, (typename, id, default) in enumerate(fields)],
+                '};'
+            ],
             '};',
-        ] if obj.is_union else
-        [f'{prop.obj.typename_struct} {prop.id}{{}};' for prop in struct_props],
-        [f'{get_ctype(prop)} {prop.id}{{{get_default(prop)}}};' for prop in obj.properties],
-        '};',
+            '',
+            'struct __attribute__((packed)) DefaultData {',
+            [f'uint8_t tag{{{obj.tag}}};'],
+            [f'{typename} {id}{{{default}}};' for typename, id, default in fields],
+            '};'
+        ]
+    else:
+        lines.header += [
+            '',
+            'struct __attribute__((packed)) Struct {',
+            [f'{typename} {id}{{{default}}};' for typename, id, default in fields],
+            '};',
+            '',
+            'using DefaultData = Struct;'
+        ]
+    lines.header += [
         '',
-        'static const Struct defaultData;',
-    ],
-    [
+        f'static_assert(sizeof(Struct) == {obj.data_size});',
         '',
-        f'const {typename}::Struct PROGMEM {typename}::defaultData{{}};'
-    ])
+        'static const DefaultData defaultData;',
+    ]
+    lines.source += [
+        '',
+        f'const {typename}::DefaultData PROGMEM {typename}::defaultData{{}};'
+    ]
+    return lines
 
 
 def generate_property_accessors(obj: Object) -> list:
     '''Generate typed get/set methods for each property'''
+
+    def get_value_expr(index: int, prop: Property) -> str:
+        if prop.ptype == 'string':
+            value = f'getPropertyString({index})'
+        else:
+            value = f'getPropertyData({index})->{prop.propdata_id}'
+        return f'{prop.ctype_override}({value})' if prop.ctype_override else value
 
     if obj.is_union:
         return [
             '',
             [
                 'enum class Tag {',
-                [f'{prop.obj.typename},' for prop in obj.object_properties],
+                [f'{prop.typename},' for prop in obj.all_properties],
                 '};',
                 '',
                 'Tag getTag() const',
@@ -1381,16 +1418,17 @@ def generate_property_accessors(obj: Object) -> list:
                 '{',
                 [f'return Union::as<{prop.obj.typename_contained}>({index});'],
                 '}',
-                ) for index, prop in enumerate(obj.object_properties))
-            ]
-
-    def get_value_expr(index: int, prop: Property) -> str:
-        if prop.ptype == 'string':
-            return f'getPropertyString({index})'
-        value = f'getPropertyData({index})->{prop.propdata_id}'
-        if prop.ctype_override:
-            return f'{prop.ctype_override}({value})'
-        return value
+                ) for index, prop in enumerate(obj.object_properties)),
+            *((
+                '',
+                f'{prop.ctype_ret} as{prop.typename}() const',
+                '{',
+                [
+                    f'return {get_value_expr(index, prop)};',
+                ],
+                '}',
+                ) for index, prop in enumerate(obj.properties)),
+        ]
 
     accessors = []
     for index, prop in enumerate(obj.properties):
@@ -1427,12 +1465,15 @@ def generate_property_write_accessors(obj: Object) -> list:
         return 'value'
 
     if obj.is_union:
+        def get_tag(index: int, prop: Property) -> int:
+            return len(prop.parent.obj.object_properties) + index
+
         return [
             [
                 '',
                 'void setTag(Tag tag)',
                 '{',
-                ['Union::setTag(unsigned(tag));'],
+                ['Union::setTag(uint8_t(tag));'],
                 '}',
             ],
             *((
@@ -1446,7 +1487,27 @@ def generate_property_write_accessors(obj: Object) -> list:
                 '{',
                 [f'return Union::to<{prop.obj.typename_updater}>({index});'],
                 '}',
-                ) for index, prop in enumerate(obj.object_properties))
+                ) for index, prop in enumerate(obj.object_properties)),
+            *((
+                '',
+                f'{prop.accessor} as{prop.typename}()',
+                '{',
+                [f'return {prop.accessor}(*this, {index});'],
+                '}',
+                '',
+                f'{prop.accessor} to{prop.typename}()',
+                '{',
+                [
+                    f'Union::setTag({get_tag(index, prop)});',
+                    f'return {prop.accessor}(*this, {index});'
+                ],
+                '}',
+                '',
+                f'void reset{prop.typename}()',
+                '{',
+                [f'resetPropertyValue({index});'],
+                '}'
+                ) for index, prop in enumerate(obj.properties)),
         ]
 
     return [*((

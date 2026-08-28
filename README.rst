@@ -225,9 +225,9 @@ The *test* application contains an example of this in the *test-config-union.cfg
 
 Like a regular C++ *union*, a :cpp:class:`ConfigDB::Union` object has one or more object types overlaid in the same storage space. The size of the object is therefore governed by the size of the largest type stored. A `uint8_t` property tag indicates which type is stored.
 
-The code generator produces an **asXXX** method for each type of object which can be stored. The application is responsible for checking which type is present via :cpp:func:`ConfigDB::Union::getTag`; if the wrong method is called, a runtime assertion will be generated.
+The code generator produces an **asXXX** method for each type of object or property which can be stored. The application is responsible for checking which type is present via :cpp:func:`ConfigDB::Union::getTag`; if the wrong method is called, a runtime assertion will be generated.
 
-The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change so can be used to 'reset' an object to defaults. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object type.
+The corresponding Union Updater class has a :cpp:func:`ConfigDB::Union::setTag` method. This changes the stored object type and initialises it to default values. This is done even if the tag value doesn't change. The code generator produces a **toXXX** method which sets the tag and returns the appropriate object or property :cpp:class:`ConfigDB::Accessor` type.
 
 Note that the root database object may also be a union. For example::
 
@@ -856,6 +856,12 @@ API Reference
 
 .. doxygenclass:: ConfigDB::UnionTemplate
 .. doxygenclass:: ConfigDB::UnionUpdaterTemplate
+
+.. doxygenclass:: ConfigDB::Accessor
+   :members:
+
+.. doxygenclass:: ConfigDB::AccessorTemplate
+   :members:
 
 .. doxygenclass:: ConfigDB::ArrayBase
    :members:

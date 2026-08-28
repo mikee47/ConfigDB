@@ -61,7 +61,7 @@ struct ObjectInfo {
 
 	const PropertyInfo& getProperty(unsigned index) const;
 
-	String getObjectName(unsigned index) const;
+	String getName(unsigned index) const;
 
 private:
 	int findAlias(const char* name, size_t length) const;

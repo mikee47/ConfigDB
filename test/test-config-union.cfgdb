@@ -1,5 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "include": [
+    "Core/Data/Uuid.h"
+  ],
   "type": "object",
   "properties": {
     "color1": {
@@ -33,12 +36,51 @@
         },
         {
           "$ref": "#/$defs/array-with-defaults"
+        },
+        {
+          "type": "string",
+          "title": "name",
+          "default": "default string"
+        },
+        {
+          "type": "integer",
+          "title": "value",
+          "default": 123
+        },
+        {
+          "type": "string",
+          "title": "id",
+          "ctype": "Uuid"
+        },
+        {
+          "title": "enumval",
+          "$ref": "#/$defs/TestEnum"
         }
-      ]
+      ],
+      "default": "last"
     },
     "union-store": {
       "$ref": "#/$defs/Color",
       "store": true
+    },
+    "union-props": {
+      "description": "Contains no objects, just properties",
+      "oneOf": [
+        {
+          "type": "string",
+          "title": "a",
+          "default": "value a"
+        },
+        {
+          "type": "integer",
+          "title": "b"
+        },
+        {
+          "type": "number",
+          "title": "c",
+          "default": 314159e12
+        }
+      ]
     }
   },
   "$defs": {
@@ -147,6 +189,17 @@
         "two",
         "three",
         "four"
+      ]
+    },
+    "TestEnum": {
+      "type": "string",
+      "ctype": "EnumValue",
+      "enum": [
+        "one",
+        "two",
+        "three",
+        "four",
+        "five"
       ]
     }
   }

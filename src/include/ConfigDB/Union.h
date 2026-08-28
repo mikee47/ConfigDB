@@ -32,7 +32,7 @@ class Union : public Object
 {
 public:
 	/**
-	 * @brief A zero-based index which identifies the stored object type
+	 * @brief A zero-based index which identifies the stored object or property type
 	 */
 	using Tag = uint8_t;
 
@@ -43,7 +43,8 @@ public:
 	 */
 	Tag getTag() const
 	{
-		return getPropertyData(0)->uint8;
+		auto ptr = static_cast<const uint8_t*>(getDataPtr());
+		return *ptr;
 	}
 
 	/**
@@ -51,39 +52,43 @@ public:
 	 */
 	String getTagString() const
 	{
-		return propinfo().variant.object->getObjectName(getPropertyData(0)->uint8);
+		return propinfo().variant.object->propinfo[getTag()].name;
+	}
+
+	bool tagIsObject(Tag tag) const
+	{
+		return tag < typeinfo().objectCount;
+	}
+
+	bool tagIsObject() const
+	{
+		return tagIsObject(getTag());
 	}
 
 	/**
 	 * @brief Set the current tag and reset content to object default
 	 */
-	void setTag(Tag tag)
-	{
-		if(!writeCheck()) {
-			return;
-		}
-		auto& ti = typeinfo();
-		if(tag >= ti.objectCount) {
-			assert(false);
-			return;
-		}
-		disposeArrays();
-		memset(getDataPtr(), 0, ti.dataSize);
-		getPropertyData(0)->uint8 = tag;
-		Object(*this, tag).clear();
-	}
+	void setTag(Tag tag);
 
 	/**
 	 * @brief Reset tag to default and clear whatever object that corresponds to
 	 */
 	void clear()
 	{
-		setTag(0);
+		setTag(getDefaultTag());
+	}
+
+	const PropertyData* getDefaultPropertyData(unsigned index) const;
+
+	Tag getDefaultTag() const
+	{
+		auto ptr = static_cast<const uint8_t*>(typeinfo().defaultData);
+		return pgm_read_byte(ptr);
 	}
 
 	unsigned getObjectCount() const
 	{
-		return 1;
+		return tagIsObject() ? 1 : 0;
 	}
 
 	Object getObject(unsigned index)
@@ -92,22 +97,30 @@ public:
 			assert(false);
 			return {};
 		}
-		return Object(*this, getTag());
+		return {*this, getTag()};
 	}
 
 	unsigned getPropertyCount() const
 	{
-		return 0;
+		return tagIsObject() ? 0 : 1;
 	}
 
-	PropertyConst getProperty(unsigned) const
+	PropertyConst getProperty(unsigned index) const
 	{
-		return {};
+		if(index != 0) {
+			assert(false);
+			return {};
+		}
+		return {*this, getTag() - typeinfo().objectCount};
 	}
 
-	Property getProperty(unsigned)
+	Property getProperty(unsigned index)
 	{
-		return {};
+		if(index != 0) {
+			assert(false);
+			return {};
+		}
+		return {*this, getTag() - typeinfo().objectCount};
 	}
 
 	/**
@@ -147,6 +160,25 @@ public:
 	{
 		setTag(tag);
 		return Item(*parent, typeinfo().getObject(tag), dataRef + propinfo().offset);
+	}
+
+protected:
+	friend class Object;
+
+	void initArrays()
+	{
+		auto tag = getTag();
+		if(tagIsObject(tag)) {
+			Object(*this, tag).initArrays();
+		}
+	}
+
+	void disposeArrays()
+	{
+		auto tag = getTag();
+		if(tagIsObject(tag)) {
+			Object(*this, tag).disposeArrays();
+		}
 	}
 };
 

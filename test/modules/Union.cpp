@@ -118,6 +118,70 @@ public:
 			color.toRAW().setWarmWhite(234);
 		}
 
+		TEST_CASE("Union with properties")
+		{
+			TestConfigUnion::Root::Color3::OuterUpdater color3(db);
+			color3.toName();
+			Serial << "color3: " << color3 << endl;
+			color3.toName() = "abc";
+			Serial << "color3: " << color3 << endl;
+
+			color3.toValue();
+			Serial << "color3: " << color3 << endl;
+			color3.resetValue();
+			Serial << "color3: " << color3 << endl;
+			color3.toValue() = 1000;
+			Serial << "color3: " << color3 << endl;
+
+			Uuid uuid;
+			uuid.generate();
+			color3.toId() = uuid;
+			Serial << "id " << Uuid(color3.asId()) << endl;
+			Serial << "color3: " << color3 << endl;
+
+			Serial << "enumval " << *color3.toEnumval() << endl;
+			color3.asEnumval() = TestConfigUnion::EnumValue::three;
+			Serial << "enumval " << *color3.asEnumval() << endl;
+			Serial << "color3: " << color3 << endl;
+
+			color3.toColor().toRAW().setWarmWhite(234);
+			Serial << "color3: " << color3 << endl;
+		}
+
+		TEST_CASE("Union with only properties")
+		{
+			TestConfigUnion::Root::UnionProps props(db);
+			Serial << props << endl;
+			REQUIRE_EQ(props.asA(), "value a");
+
+			if(auto update = props.update()) {
+				update.toB() = 555;
+			}
+			Serial << props << endl;
+			REQUIRE_EQ(props.asB(), 555);
+
+			if(auto update = props.update()) {
+				update.toC();
+			}
+			Serial << props << endl;
+			REQUIRE(props.asC() == const_number_t{3.14159e17});
+		}
+
+		TEST_CASE("Json import")
+		{
+			TestConfigUnion::Root::UnionProps::OuterUpdater props(db);
+
+			DEFINE_FSTR_LOCAL(stringProp, "{\"a\":\"This is an imported value\"}")
+			importObject(props, stringProp);
+			String s = exportObject(props);
+			REQUIRE_EQ(s, stringProp);
+
+			DEFINE_FSTR_LOCAL(numProp, "{\"c\":3.14159e17}")
+			importObject(props, numProp);
+			s = exportObject(props);
+			REQUIRE_EQ(s, numProp);
+		}
+
 		TestConfigUnion::Root root(db);
 		String json = exportObject(root);
 		CHECK_EQ(json, json::union_test_root_json);

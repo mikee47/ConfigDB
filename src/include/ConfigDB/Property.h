@@ -24,6 +24,7 @@
 namespace ConfigDB
 {
 class Store;
+class Object;
 
 /**
  * @brief Read-only access to a key/value pair stored in an object, or a simple array value
@@ -32,6 +33,8 @@ class PropertyConst
 {
 public:
 	PropertyConst() = default;
+
+	PropertyConst(const Object& object, unsigned index);
 
 	/**
 	 * @brief Create a PropertyConst instance
@@ -80,6 +83,8 @@ class Property : public PropertyConst
 {
 public:
 	Property() = default;
+
+	Property(Object& object, unsigned index);
 
 	/**
 	 * @brief Create a Property instance
