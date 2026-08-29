@@ -24,23 +24,28 @@
 
 namespace JsonRPC
 {
-/**
- * @brief Applications should implement this method
- * @param id Received message RPC ID
- * @retval int Root tag index for corresponding request, -1 if unknown
- */
-using GetRequestTag = Delegate<int(int id)>;
-
 class WriteStream : public ConfigDB::Json::WriteStream
 {
 public:
+	/**
+	 * @brief Callback interface provided by Application
+	 */
+	struct Callback {
+		/**
+		 * @brief Get a writeable object for the data with a given request ID
+		 * @param requestId ID specified in received response or error message
+		 * @param isError true if an error was received, false for a regular response
+		 * @retval ConfigDB::Object Object instance to write message content
+		 */
+		virtual ConfigDB::Object getObject(int requestId, bool isError) = 0;
+
+		virtual ConfigDB::Object getObject(const String& method) = 0;
+	};
+
 	using Element = JSON::Element;
 
-	WriteStream(ConfigDB::Object& obj, Message& msg, GetRequestTag& getRequestTag)
-		: ConfigDB::Json::WriteStream(obj), root(static_cast<ConfigDB::Union&>(obj)), msg(msg),
-		  getRequestTag(getRequestTag)
+	WriteStream(Message& msg, Callback& callback) : ConfigDB::Json::WriteStream(), msg(msg), callback(callback)
 	{
-		assert(root.typeIs(ConfigDB::ObjectType::Union));
 	}
 
 	bool isReparseRequired() const
@@ -58,9 +63,8 @@ public:
 protected:
 	bool startElement(const Element& element) override;
 
-	ConfigDB::Union& root;
 	Message& msg;
-	GetRequestTag getRequestTag;
+	Callback& callback;
 	bool haveMethod{false};
 	bool haveId{false};
 	bool repeatParse{false};

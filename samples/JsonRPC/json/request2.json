@@ -1,1 +1,1 @@
-{"params":{"raw":{"r":1,"g":2,"b":3,"ww":4,"cw":5}},"jsonrpc":"2.0","id":1,"method":"color_event"}
+{"params":{"raw":{"r":1,"g":2,"b":3,"ww":4,"cw":5}},"jsonrpc":"2.0","id":2,"method":"color_event"}

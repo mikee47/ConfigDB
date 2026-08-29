@@ -24,16 +24,10 @@
 
 namespace JsonRPC
 {
-Message importMessage(ConfigDB::Database& db, const String& jsonString, GetRequestTag getRequestTag)
+Message importMessage(const String& jsonString, WriteStream::Callback& callback)
 {
-	auto store = db.openStoreForUpdate(0);
-	if(!store) {
-		return {};
-	}
-	store->resetToDefaults();
-
 	Message msg{};
-	WriteStream stream(*store, msg, getRequestTag);
+	WriteStream stream(msg, callback);
 	stream.print(jsonString);
 
 	if(stream.isReparseRequired()) {
