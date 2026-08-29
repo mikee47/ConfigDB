@@ -25,7 +25,7 @@ struct Message {
 	enum class Kind {
 		none,		  ///< No valid message
 		request,	  ///< May have params (optional)
-		notification, ///< Same as a result but with no ID
+		notification, ///< Same as a *request* but with no ID
 		result,		  ///< Successful response to a request
 		error,		  ///< An error response
 	};
