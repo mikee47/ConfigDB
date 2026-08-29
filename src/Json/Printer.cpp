@@ -17,7 +17,7 @@
  *
  ****/
 
-#include "Printer.h"
+#include <ConfigDB/Json/Printer.h>
 #include <Data/Format/Json.h>
 
 namespace ConfigDB::Json
