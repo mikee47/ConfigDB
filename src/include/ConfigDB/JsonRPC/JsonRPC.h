@@ -28,11 +28,10 @@ namespace JsonRPC
 
 /**
  * @brief Decode a JSON-RPC message into the database's ConfigDB working store.
- * @param db
  * @param jsonString
- * @param getRequestTag Callback invoked when importing responses
+ * @param callback Callback invoked when importing responses
  */
-Message importMessage(ConfigDB::Database& db, const String& jsonString, GetRequestTag getRequestTag);
+Message importMessage(const String& jsonString, WriteStream::Callback& callback);
 
 /**
  * @brief Create a message in JSON-RPC 2.0 format

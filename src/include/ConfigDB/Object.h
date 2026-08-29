@@ -144,6 +144,11 @@ public:
 	 */
 	Object findObject(const char* name, size_t length);
 
+	Object findObject(const String& name)
+	{
+		return findObject(name.c_str(), name.length());
+	}
+
 	/**
 	 * @brief Get number of properties
 	 * @note Array types override this to return the number of items in the array.
@@ -162,6 +167,11 @@ public:
 	 * @brief Find property by name
 	 */
 	Property findProperty(const char* name, size_t length);
+
+	Property findProperty(const String& name)
+	{
+		return findProperty(name.c_str(), name.length());
+	}
 
 	/**
 	 * @brief Reset contents to defaults (except arrays, which are cleared)
