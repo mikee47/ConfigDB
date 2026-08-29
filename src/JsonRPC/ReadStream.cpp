@@ -63,7 +63,8 @@ size_t ReadStream::printHeader(Print& p)
 	auto& root = reinterpret_cast<Union&>(*store);
 	request = root.getObject(0);
 	switch(msg.kind) {
-	case Message::Kind::request: {
+	case Message::Kind::request:
+	case Message::Kind::notification: {
 		n += p.print(',');
 		if(pretty) {
 			n += p.println();
@@ -76,8 +77,7 @@ size_t ReadStream::printHeader(Print& p)
 		setBody(FS_params);
 		break;
 	}
-	case Message::Kind::result:
-	case Message::Kind::notification: {
+	case Message::Kind::result: {
 		setBody(FS_result);
 		break;
 	}

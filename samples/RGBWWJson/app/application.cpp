@@ -74,7 +74,7 @@ void printMessage(Jsonrpc& db, const Message& msg)
 {
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto raw = update.toColor().result.toRaw(); // make this a color notification
+		auto raw = update.toColor().params.toRaw(); // make this a color notification
 		raw.setR(1023);
 		raw.setG(512);
 		raw.setB(128);
@@ -135,7 +135,7 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
 		// make this a color notification
-		auto hsv = update.toColor().result.toHsv();
+		auto hsv = update.toColor().params.toHsv();
 		hsv.setH(210);
 		hsv.setS(75);
 		hsv.setV(60);
@@ -208,7 +208,7 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	int free = system_get_free_heap_size();
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto info = update.toInfo().result.toInfoV1Params();
+		auto info = update.toInfo().params.toInfoV1Params();
 		info.setDeviceid(10964360);
 		info.setSoc("esp8266");
 		info.setCurrentRom("rom0");
@@ -297,7 +297,7 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	int free = system_get_free_heap_size();
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto info = update.toInfo().result.toInfoV2Params();
+		auto info = update.toInfo().params.toInfoV2Params();
 
 		info.device.setDeviceid(10964360);
 		info.device.setSoc("esp8266");
