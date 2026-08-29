@@ -1,6 +1,7 @@
 #include <SmingCore.h>
 #include <RpcData.h>
 #include <ConfigDB/JsonRPC/JsonRPC.h>
+#include <WHashMap.h>
 
 #ifdef ENABLE_MALLOC_COUNT
 #include <malloc_count.h>
@@ -18,15 +19,47 @@ IMPORT_FSTR(error, PROJECT_DIR "/json/error.json")
 
 JsonRPC::Message rpcImport(RpcData& db, const String& jsonString)
 {
-	auto getRequestTag = [](int id) -> int { return 1; };
+	using Tag = RpcData::Root::Tag;
 
-	auto msg = JsonRPC::importMessage(db, jsonString, getRequestTag);
+	class CallbackImpl : public JsonRPC::WriteStream::Callback
+	{
+	public:
+		CallbackImpl(RpcData::Root& root) : root(root.update())
+		{
+			root.resetToDefaults();
+			map[1] = Tag::ColorEvent;
+		}
+
+		ConfigDB::Object getObject(int requestId, bool isError) override
+		{
+			int i = map.indexOf(requestId);
+			if(i < 0) {
+				return {};
+			}
+			auto tag = map.valueAt(i);
+			root.setTag(tag);
+			request = root.getObject(0);
+			return request.findObject(isError ? "error" : "result");
+		}
+
+		ConfigDB::Object getObject(const String& method) override
+		{
+			request = root.findObject(method);
+			return request.findObject("params");
+		}
+
+	private:
+		RpcData::Root::OuterUpdater root;
+		ConfigDB::Object request;
+		HashMap<int, Tag> map;
+	};
 
 	RpcData::Root root(db);
+	CallbackImpl callbacks(root);
+	auto msg = JsonRPC::importMessage(jsonString, callbacks);
 
 	Serial << "RPC " << toString(msg.kind) << ": method " << root.getTagString() << ", id " << msg.id << endl;
 
-	using Tag = RpcData::Root::Tag;
 	switch(root.getTag()) {
 	case Tag::ColorEvent: {
 		auto obj = root.asColorEvent();
