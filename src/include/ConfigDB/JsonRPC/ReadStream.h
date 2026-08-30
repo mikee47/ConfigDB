@@ -19,39 +19,17 @@
 
 #pragma once
 
-#include <ConfigDB/Json/Format.h>
 #include "Message.h"
 
 namespace JsonRPC
 {
 using namespace ConfigDB;
 
-struct ObjectExport {
-	// virtual ~ObjectStream()
-	// {
-	// }
-
-	virtual std::unique_ptr<ExportStream> getStream(bool pretty) const = 0;
-};
-
-template <typename T> struct ObjectExportTemplate : public ObjectExport {
-	ObjectExportTemplate(const T& object) : object(object)
-	{
-	}
-
-	T& object;
-
-	std::unique_ptr<ExportStream> getStream(bool pretty) const override
-	{
-		return object.createExportStream(ConfigDB::Json::format, ExportOptions{.pretty = pretty});
-	}
-};
-
 class ReadStream : public IDataSourceStream
 {
 public:
-	ReadStream(const Message& msg, const ObjectExport& body, bool pretty = false)
-		: msg(msg), body(body.getStream(pretty)), pretty(pretty)
+	ReadStream(const Message& msg, const ObjectRef& body, bool pretty = false)
+		: msg(msg), store(body.store), body(body.object), pretty(pretty)
 	{
 		if(msg.kind == Message::Kind::none || !store) {
 			state = State::done;
@@ -97,10 +75,9 @@ protected:
 		footer,
 		done,
 	};
-	StoreRef store;
 	const Message msg;
-	Object request;
-	std::unique_ptr<ExportStream> body;
+	StoreRef store;
+	Object body;
 	std::unique_ptr<IDataSourceStream> stream;
 	State state{};
 	const bool pretty;
