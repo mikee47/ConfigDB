@@ -36,14 +36,18 @@ bool WriteStream::startElement(const Element& element)
 	}
 
 	if(element.keyIs(FS_method)) {
-		auto& params = info[1];
-		params = callback.getObject(element.as<String>());
+		if(msg.method) {
+			return true;
+		}
+		auto params = callback.getObject(element.as<String>());
 		if(!params) {
 			debug_e("[JRPC] Missing %s", element.value);
 			return false;
 		}
+		store = params.store;
+		info[1] = params.object;
 
-		haveMethod = true;
+		msg.method = element.as<String>();
 		return true;
 	}
 
@@ -54,7 +58,7 @@ bool WriteStream::startElement(const Element& element)
 	}
 
 	if(element.keyIs(FS_params)) {
-		if(!haveMethod) {
+		if(!msg.method) {
 			// Cannot decode: we need id to determine request type
 			repeatParse = true;
 			return true;
@@ -71,12 +75,13 @@ bool WriteStream::startElement(const Element& element)
 			return true;
 		}
 
-		auto& result = info[1];
-		result = callback.getObject(msg.id, false);
+		auto result = callback.getObject(msg.id, false);
 		if(!result) {
 			debug_e("[JRPC] Unknown ID %d", msg.id);
 			return false;
 		}
+		store = result.store;
+		info[1] = result.object;
 
 		msg.kind = Message::Kind::result;
 		return true;
@@ -89,12 +94,13 @@ bool WriteStream::startElement(const Element& element)
 			return true;
 		}
 
-		auto& error = info[1];
-		error = callback.getObject(msg.id, true);
+		auto error = callback.getObject(msg.id, true);
 		if(!error) {
 			debug_e("[JRPC] Missing %s", element.key);
 			return false;
 		}
+		store = error.store;
+		info[1] = error.object;
 
 		msg.kind = Message::Kind::error;
 		return true;
