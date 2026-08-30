@@ -1,6 +1,7 @@
 #include <SmingCore.h>
 #include <RpcData.h>
 #include <ConfigDB/JsonRPC/JsonRPC.h>
+#include <WVector.h>
 
 namespace
 {
@@ -14,25 +15,46 @@ IMPORT_FSTR(error, PROJECT_DIR "/json/error.json")
 
 RpcData database("RPC");
 
+/**
+ * Application should keep note of outstanding requests in some way
+ * so incoming responses can be tied to the originating request.
+ */
+struct RequestInfo {
+	/**
+	 * @brief Method identifier, numeric is more efficient than string
+	 */
+	unsigned method;
+};
+
+HashMap<int /* Request ID */, RequestInfo> requestMap;
+
 JsonRPC::Message rpcImport(const String& jsonString)
 {
 	class CallbackImpl : public JsonRPC::WriteStream::Callback
 	{
 	public:
-		ConfigDB::ObjectUpdateRef getObject(int requestId, bool isError) override
+		ConfigDB::ObjectUpdateRef getParamsObject(const String& method) override
 		{
-			if(isError) {
-				return RpcData::Root::Error::OuterUpdater(database);
+			return database.getObjectForUpdate(method);
+		}
+
+		ConfigDB::ObjectUpdateRef getResultObject(int requestId) override
+		{
+			// Result content generally depends on the request
+			int i = requestMap.indexOf(requestId);
+			if(i < 0) {
+				// Request not found
+			} else {
+				auto requestIndex = requestMap.valueAt(i);
+				// ...
 			}
+
 			return RpcData::Root::Result::OuterUpdater(database);
 		}
 
-		ConfigDB::ObjectUpdateRef getObject(const String& method) override
+		ConfigDB::ObjectUpdateRef getErrorObject(int requestId) override
 		{
-			if(method == "color_event") {
-				return RpcData::Root::ColorEvent::OuterUpdater(database);
-			}
-			return {};
+			return RpcData::Root::Error::OuterUpdater(database);
 		}
 	};
 
@@ -47,7 +69,7 @@ JsonRPC::Message rpcImport(const String& jsonString)
 		break;
 	case Kind::request:
 		if(msg.method == "color_event") {
-			Serial << RpcData::Root::ColorEvent(database);
+			Serial << RpcData::ColorEvent(database);
 		}
 		break;
 	case Kind::result:
@@ -103,16 +125,26 @@ void init()
 	// Don't commit parsed data to filesystem
 	RpcData::Root::onCommit(database, [](auto params) { params.clearDirty(); });
 
+	/*
+	In this example each event has its own store so this commit callback is invoked
+	only when the event data has been updated.
+	What's missing here is the request ID.
+	*/
+	RpcData::ColorEvent::onCommit(database, [](auto params) {
+		params.clearDirty();
+		Serial << "** COLOR EVENT ** " << endl << params << endl;
+	});
+
 	{
 		Serial << endl << "IMPORT request" << endl;
 		auto msg = rpcImport(json::request);
-		rpcExport(msg, RpcData::Root::ColorEvent(database));
+		rpcExport(msg, RpcData::ColorEvent(database));
 	}
 
 	{
 		Serial << endl << "IMPORT request2" << endl;
 		auto msg = rpcImport(json::request2);
-		rpcExport(msg, RpcData::Root::ColorEvent(database));
+		rpcExport(msg, RpcData::ColorEvent(database));
 	}
 
 	{
