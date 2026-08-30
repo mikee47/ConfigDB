@@ -51,6 +51,7 @@ struct Message {
 
 	int id{0};
 	Kind kind{};
+	String method;
 };
 
 } // namespace JsonRPC
