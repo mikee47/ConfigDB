@@ -38,6 +38,7 @@ namespace json
 IMPORT_FSTR_LOCAL(update1, PROJECT_DIR "/resource/update1.json")
 IMPORT_FSTR_LOCAL(root1, PROJECT_DIR "/resource/root1.json")
 IMPORT_FSTR_LOCAL(database1, PROJECT_DIR "/resource/database1.json")
+IMPORT_FSTR_LOCAL(export_root, PROJECT_DIR "/resource/export-root.json")
 IMPORT_FSTR_LOCAL(array_test_default, PROJECT_DIR "/resource/array_test_default.json")
 IMPORT_FSTR_LOCAL(async_update, PROJECT_DIR "/resource/async-update.json")
 IMPORT_FSTR_LOCAL(async_update_result, PROJECT_DIR "/resource/async-update-result.json")
@@ -143,18 +144,13 @@ public:
 		TEST_CASE("Streaming export options (root)")
 		{
 			// An un-named root object should produce same output (i.e. options are ignored)
-			String expectedContent =
-				F("{\"simple-union\":{\"obj2\":{\"value\":12}},\"int_array\":[13,28,39,40],\"string_array\":[\"a\","
-				  "\"b\",\"c\"],\"object_array\":[],\"color\":"
-				  "\"red\",\"simple-bool\":true,\"simple-string\":\"donkey\",\"simple-int\":100,\"simple-float\":3."
-				  "1415927}");
 			TestConfig::Root root(database);
 			auto stream = root.createExportStream(ConfigDB::Json::format);
-			REQUIRE_EQ(getContent(*stream), expectedContent);
+			REQUIRE_EQ(getContent(*stream), json::export_root);
 			stream = root.createExportStream(ConfigDB::Json::format, {.useName = true});
-			REQUIRE_EQ(getContent(*stream), expectedContent);
+			REQUIRE_EQ(getContent(*stream), json::export_root);
 			stream = root.createExportStream(ConfigDB::Json::format, {.asObject = true});
-			REQUIRE_EQ(getContent(*stream), expectedContent);
+			REQUIRE_EQ(getContent(*stream), json::export_root);
 		}
 
 		TEST_CASE("Streaming export options (database)")

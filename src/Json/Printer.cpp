@@ -90,27 +90,9 @@ size_t Printer::operator()()
 		n += p->print(isArray ? '[' : '{');
 	}
 
-	// Print child object
-	auto objectCount = object.getObjectCount();
-	if(index < objectCount) {
-		auto obj = object.getObject(index);
-		if(object.streamPos++) {
-			n += p->print(',');
-		}
-		n += newline();
-		if(pretty && object.typeIs(ObjectType::ObjectArray)) {
-			n += p->print(indent);
-			n += p->print("  ");
-		}
-		++nesting;
-		objects[nesting] = obj;
-		return n;
-	}
-
-	index -= objectCount;
-
 	// Print property
-	if(index < object.getPropertyCount()) {
+	auto propertyCount = object.getPropertyCount();
+	if(index < propertyCount) {
 		auto prop = static_cast<const Object&>(object).getProperty(index);
 		if(object.streamPos++) {
 			n += p->print(',');
@@ -125,6 +107,25 @@ size_t Printer::operator()()
 			n += p->print(colon);
 		}
 		n += p->print(prop.getJsonValue());
+		return n;
+	}
+
+	index -= propertyCount;
+
+	// Print child object
+	auto objectCount = object.getObjectCount();
+	if(index < objectCount) {
+		auto obj = object.getObject(index);
+		if(object.streamPos++) {
+			n += p->print(',');
+		}
+		n += newline();
+		if(pretty && object.typeIs(ObjectType::ObjectArray)) {
+			n += p->print(indent);
+			n += p->print("  ");
+		}
+		++nesting;
+		objects[nesting] = obj;
 		return n;
 	}
 

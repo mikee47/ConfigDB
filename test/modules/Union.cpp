@@ -228,7 +228,7 @@ public:
 
 		TEST_CASE("Root Union")
 		{
-			DEFINE_FSTR_LOCAL(expectedRequest, "{\"request\":{\"args\":[\"all\"],\"method\":\"query\"}}")
+			DEFINE_FSTR_LOCAL(expectedRequest, "{\"request\":{\"method\":\"query\",\"args\":[\"all\"]}}")
 			DEFINE_FSTR_LOCAL(expectedResponse, "{\"response\":{\"code\":-1,\"message\":\"undefined\"}}")
 			TestRootUnion db("dummy");
 			TestRootUnion::Root root(db);
