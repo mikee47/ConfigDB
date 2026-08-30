@@ -65,6 +65,20 @@ public:
 	 */
 	void checkStoreRef(const StoreRef& ref);
 
+	ObjectRef getObject(const char* name, unsigned length);
+
+	ObjectRef getObject(const String& name)
+	{
+		return getObject(name.c_str(), name.length());
+	}
+
+	ObjectUpdateRef getObjectForUpdate(const char* name, unsigned length);
+
+	ObjectUpdateRef getObjectForUpdate(const String& name)
+	{
+		return getObjectForUpdate(name.c_str(), name.length());
+	}
+
 	/**
 	 * @brief Register a callback using a store instance
 	 * @param store The store associated with the callback
