@@ -4,6 +4,7 @@
   "properties": {
     "color_event": {
       "type": "object",
+      "store": true,
       "oneOf": [
         {
           "type": "object",
