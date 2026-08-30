@@ -149,28 +149,16 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	auto& obj = info[element.level];
 	obj = {};
 
-	// Look in root store for a matching object
-	auto& root = database->typeinfo.stores[0];
-	int i = root.findObject(element.key, element.keyLength);
-	if(i >= 0) {
-		if(!openStore(0)) {
-			return handleError(FormatError::UpdateConflict, element.getKey());
-		}
-		parent = *store;
-		obj = store->getObject(i);
-		return true;
-	}
-
-	// Now check for a matching store
-	store = StoreUpdateRef();
-	i = database->typeinfo.findStore(element.key, element.keyLength);
-	if(i < 0) {
+	auto ref = database->getObject(element.key, element.keyLength);
+	if(!ref) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
-	if(!openStore(i)) {
+	store = database->lockStore(ref.store);
+	if(!store) {
 		return handleError(FormatError::UpdateConflict, element.getKey());
 	}
-	obj = *store;
+	parent = *store;
+	obj = ref.object;
 	return true;
 }
 

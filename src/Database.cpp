@@ -200,6 +200,34 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 	return store;
 }
 
+ObjectRef Database::getObject(const char* name, unsigned length)
+{
+	// Look in root store for a matching object
+	auto& root = typeinfo.stores[0];
+	int i = root.findObject(name, length);
+	if(i >= 0) {
+		auto store = openStore(0);
+		return {store, store->getObject(i)};
+	}
+
+	// Now check for a matching store
+	i = typeinfo.findStore(name, length);
+	if(i < 0) {
+		return {};
+	}
+	auto store = openStore(i);
+	return {store, *store};
+}
+
+ObjectUpdateRef Database::getObjectForUpdate(const char* name, unsigned length)
+{
+	auto ref = getObject(name, length);
+	if(ref) {
+		return {lockStore(ref.store), ref.object};
+	}
+	return {};
+}
+
 void Database::registerCallback(Store& store, Callback&& callback, CallbackType type)
 {
 	int storeIndex = typeinfo.indexOf(store.propinfo());
