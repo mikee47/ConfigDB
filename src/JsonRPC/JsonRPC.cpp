@@ -46,9 +46,9 @@ Message importMessage(const String& jsonString, WriteStream::Callback& callback)
 	return msg;
 }
 
-bool exportMessage(ConfigDB::Database& db, const Message& msg, Print& out)
+bool exportMessage(const Message& msg, const ConfigDB::Object& body, Print& out)
 {
-	return JsonRPC::ReadStream::print(db, msg, out) != 0;
+	return JsonRPC::ReadStream::print(msg, body, out) != 0;
 }
 
 } // namespace JsonRPC
