@@ -39,7 +39,7 @@ bool WriteStream::startElement(const Element& element)
 		if(msg.method) {
 			return true;
 		}
-		auto params = callback.getObject(element.as<String>());
+		auto params = callback.getParamsObject(element.as<String>());
 		if(!params) {
 			debug_e("[JRPC] Missing %s", element.value);
 			return false;
@@ -75,7 +75,7 @@ bool WriteStream::startElement(const Element& element)
 			return true;
 		}
 
-		auto result = callback.getObject(msg.id, false);
+		auto result = callback.getResultObject(msg.id);
 		if(!result) {
 			debug_e("[JRPC] Unknown ID %d", msg.id);
 			return false;
@@ -94,7 +94,7 @@ bool WriteStream::startElement(const Element& element)
 			return true;
 		}
 
-		auto error = callback.getObject(msg.id, true);
+		auto error = callback.getErrorObject(msg.id);
 		if(!error) {
 			debug_e("[JRPC] Missing %s", element.key);
 			return false;
