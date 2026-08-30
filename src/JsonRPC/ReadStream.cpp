@@ -19,6 +19,7 @@
 
 #include <ConfigDB/JsonRPC/ReadStream.h>
 #include <ConfigDB/Json/Printer.h>
+#include <ConfigDB/Json/ReadStream.h>
 #include <Data/Stream/MemoryDataStream.h>
 
 namespace JsonRPC
@@ -139,7 +140,7 @@ uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
 		case State::body:
 			state = State::footer;
 			if(body) {
-				stream = std::move(body);
+				stream = std::make_unique<ConfigDB::Json::ReadStream>(store, body, ExportOptions{.pretty = pretty});
 				break;
 			}
 			[[fallthrough]];

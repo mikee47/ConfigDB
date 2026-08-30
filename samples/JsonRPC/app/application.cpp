@@ -1,11 +1,6 @@
 #include <SmingCore.h>
 #include <RpcData.h>
 #include <ConfigDB/JsonRPC/JsonRPC.h>
-#include <WHashMap.h>
-
-#ifdef ENABLE_MALLOC_COUNT
-#include <malloc_count.h>
-#endif
 
 namespace
 {
@@ -21,71 +16,46 @@ RpcData database("RPC");
 
 JsonRPC::Message rpcImport(const String& jsonString)
 {
-	using Tag = RpcData::Root::Tag;
-
 	class CallbackImpl : public JsonRPC::WriteStream::Callback
 	{
 	public:
-		CallbackImpl(RpcData::Root& root) : root(root.update())
+		ConfigDB::ObjectUpdateRef getObject(int requestId, bool isError) override
 		{
-			root.resetToDefaults();
-			map[1] = Tag::ColorEvent;
-		}
-
-		ConfigDB::Object getObject(int requestId, bool isError) override
-		{
-			int i = map.indexOf(requestId);
-			if(i < 0) {
-				return {};
+			if(isError) {
+				return RpcData::Root::Error::OuterUpdater(database);
 			}
-			auto tag = map.valueAt(i);
-			root.setTag(tag);
-			request = root.getObject(0);
-			return request.findObject(isError ? "error" : "result");
+			return RpcData::Root::Result::OuterUpdater(database);
 		}
 
-		ConfigDB::Object getObject(const String& method) override
+		ConfigDB::ObjectUpdateRef getObject(const String& method) override
 		{
-			request = root.findObject(method);
-			return request.findObject("params");
+			if(method == "color_event") {
+				return RpcData::Root::ColorEvent::OuterUpdater(database);
+			}
+			return {};
 		}
-
-	private:
-		RpcData::Root::OuterUpdater root;
-		ConfigDB::Object request;
-		HashMap<int, Tag> map;
 	};
 
-	RpcData::Root root(database);
-	CallbackImpl callbacks(root);
+	CallbackImpl callbacks;
 	auto msg = JsonRPC::importMessage(jsonString, callbacks);
 
-	Serial << "RPC " << toString(msg.kind) << ": method " << root.getTagString() << ", id " << msg.id << endl;
+	Serial << "RPC " << toString(msg.kind) << ": method " << msg.method << ", id " << msg.id << endl;
 
-	switch(root.getTag()) {
-	case Tag::ColorEvent: {
-		auto obj = root.asColorEvent();
-		using Kind = JsonRPC::Message::Kind;
-		switch(msg.kind) {
-		case Kind::none:
-			break;
-		case Kind::request:
-			Serial << obj.params;
-			break;
-		case Kind::result:
-		case Kind::notification:
-			Serial << obj.result;
-			break;
-		case Kind::error:
-			Serial << obj.error;
-			break;
-		}
-
+	using Kind = JsonRPC::Message::Kind;
+	switch(msg.kind) {
+	case Kind::none:
 		break;
-	}
-
-	case RpcData::Root::Tag::None:
-
+	case Kind::request:
+		if(msg.method == "color_event") {
+			Serial << RpcData::Root::ColorEvent(database);
+		}
+		break;
+	case Kind::result:
+	case Kind::notification:
+		Serial << RpcData::Root::Result(database);
+		break;
+	case Kind::error:
+		Serial << RpcData::Root::Error(database);
 		break;
 	}
 
@@ -94,11 +64,28 @@ JsonRPC::Message rpcImport(const String& jsonString)
 	return msg;
 }
 
+#if 1
+
 void rpcExport(const JsonRPC::Message& msg, const ConfigDB::Object& body)
 {
 	Serial << "EXPORT:" << endl;
 	JsonRPC::exportMessage(msg, body, Serial);
+	Serial << endl << endl;
 }
+
+#else
+
+template <typename T> void rpcExport(const JsonRPC::Message& msg, const T& body)
+{
+	Serial << "EXPORT:" << endl;
+
+	auto stream = std::make_unique<JsonRPC::ReadStream>(msg, body);
+
+	Serial.copyFrom(stream.get());
+	Serial << endl << endl;
+}
+
+#endif
 
 } // namespace
 
@@ -119,29 +106,25 @@ void init()
 	{
 		Serial << endl << "IMPORT request" << endl;
 		auto msg = rpcImport(json::request);
-		auto body = RpcData::Root(database).asColorEvent().params;
-		rpcExport(msg, body);
+		rpcExport(msg, RpcData::Root::ColorEvent(database));
 	}
 
 	{
 		Serial << endl << "IMPORT request2" << endl;
 		auto msg = rpcImport(json::request2);
-		auto body = RpcData::Root(database).asColorEvent().params;
-		rpcExport(msg, body);
+		rpcExport(msg, RpcData::Root::ColorEvent(database));
 	}
 
 	{
 		Serial << endl << "IMPORT response" << endl;
 		auto msg = rpcImport(json::response);
-		auto body = RpcData::Root(database).asColorEvent().result;
-		rpcExport(msg, body);
+		rpcExport(msg, RpcData::Root::Result(database));
 	}
 
 	{
 		Serial << endl << "IMPORT error" << endl;
 		auto msg = rpcImport(json::error);
-		auto body = RpcData::Root(database).asColorEvent().error;
-		rpcExport(msg, body);
+		rpcExport(msg, RpcData::Root::Error(database));
 	}
 
 	Serial << endl << endl;

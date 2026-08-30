@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <ConfigDB/Json/Format.h>
 #include <ConfigDB/Json/WriteStream.h>
 #include "Message.h"
 
@@ -37,9 +38,9 @@ public:
 		 * @param isError true if an error was received, false for a regular response
 		 * @retval ConfigDB::Object Object instance to write message content
 		 */
-		virtual ConfigDB::Object getObject(int requestId, bool isError) = 0;
+		virtual ConfigDB::ObjectUpdateRef getObject(int requestId, bool isError) = 0;
 
-		virtual ConfigDB::Object getObject(const String& method) = 0;
+		virtual ConfigDB::ObjectUpdateRef getObject(const String& method) = 0;
 	};
 
 	using Element = JSON::Element;
@@ -65,6 +66,7 @@ protected:
 
 	Message& msg;
 	Callback& callback;
+	ConfigDB::StoreUpdateRef store;
 	bool haveMethod{false};
 	bool haveId{false};
 	bool repeatParse{false};
