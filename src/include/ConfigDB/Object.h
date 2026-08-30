@@ -346,6 +346,26 @@ public:
 	}
 };
 
+struct ObjectRef {
+	ConfigDB::StoreRef store;
+	const ConfigDB::Object object;
+
+	explicit operator bool() const
+	{
+		return bool(object);
+	}
+};
+
+struct ObjectUpdateRef {
+	ConfigDB::StoreUpdateRef store;
+	ConfigDB::Object object;
+
+	explicit operator bool() const
+	{
+		return bool(object);
+	}
+};
+
 /**
  * @brief Used by code generator
  * @tparam UpdaterType
@@ -382,6 +402,11 @@ public:
 	explicit operator bool() const
 	{
 		return store && UpdaterType::operator bool();
+	}
+
+	operator ObjectUpdateRef()
+	{
+		return {store, *this};
 	}
 
 private:
@@ -498,6 +523,11 @@ public:
 	static void onCommit(Database& db, UpdateCallback callback)
 	{
 		registerCallback(db, std::move(callback), CallbackType::commit);
+	}
+
+	operator ObjectRef() const
+	{
+		return {store, *this};
 	}
 
 private:

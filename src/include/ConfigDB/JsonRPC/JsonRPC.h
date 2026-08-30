@@ -21,6 +21,7 @@
 
 #include <Print.h>
 #include <ConfigDB/Database.h>
+#include "ReadStream.h"
 #include "WriteStream.h"
 
 namespace JsonRPC
