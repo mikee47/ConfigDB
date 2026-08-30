@@ -33,14 +33,25 @@ public:
 	 */
 	struct Callback {
 		/**
-		 * @brief Get a writeable object for the data with a given request ID
-		 * @param requestId ID specified in received response or error message
-		 * @param isError true if an error was received, false for a regular response
-		 * @retval ConfigDB::Object Object instance to write message content
+		 * @brief Get a writeable object to store incoming request parameters
+		 * @param method The received request method
+		 * @retval ConfigDB::ObjectUpdateRef Object instance to write message content
 		 */
-		virtual ConfigDB::ObjectUpdateRef getObject(int requestId, bool isError) = 0;
+		virtual ConfigDB::ObjectUpdateRef getParamsObject(const String& method) = 0;
 
-		virtual ConfigDB::ObjectUpdateRef getObject(const String& method) = 0;
+		/**
+		 * @brief Get a writeable object for result data
+		 * @param requestId ID specified in received message
+		 * @retval ConfigDB::ObjectUpdateRef Object instance to write message content
+		 */
+		virtual ConfigDB::ObjectUpdateRef getResultObject(int requestId) = 0;
+
+		/**
+		 * @brief Get a writeable object for error data
+		 * @param requestId ID specified in received message
+		 * @retval ConfigDB::ObjectUpdateRef Object instance to write message content
+		 */
+		virtual ConfigDB::ObjectUpdateRef getErrorObject(int requestId) = 0;
 	};
 
 	using Element = JSON::Element;
