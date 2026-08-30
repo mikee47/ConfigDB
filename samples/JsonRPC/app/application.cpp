@@ -9,15 +9,17 @@
 
 namespace
 {
-namespace Message
+namespace json
 {
 IMPORT_FSTR(request, PROJECT_DIR "/json/request.json")
 IMPORT_FSTR(request2, PROJECT_DIR "/json/request2.json")
 IMPORT_FSTR(response, PROJECT_DIR "/json/response.json")
 IMPORT_FSTR(error, PROJECT_DIR "/json/error.json")
-} // namespace Message
+} // namespace json
 
-JsonRPC::Message rpcImport(RpcData& db, const String& jsonString)
+RpcData database("RPC");
+
+JsonRPC::Message rpcImport(const String& jsonString)
 {
 	using Tag = RpcData::Root::Tag;
 
@@ -54,7 +56,7 @@ JsonRPC::Message rpcImport(RpcData& db, const String& jsonString)
 		HashMap<int, Tag> map;
 	};
 
-	RpcData::Root root(db);
+	RpcData::Root root(database);
 	CallbackImpl callbacks(root);
 	auto msg = JsonRPC::importMessage(jsonString, callbacks);
 
@@ -92,10 +94,10 @@ JsonRPC::Message rpcImport(RpcData& db, const String& jsonString)
 	return msg;
 }
 
-void rpcExport(RpcData& db, const JsonRPC::Message& msg)
+void rpcExport(const JsonRPC::Message& msg, const ConfigDB::Object& body)
 {
 	Serial << "EXPORT:" << endl;
-	JsonRPC::exportMessage(db, msg, Serial);
+	JsonRPC::exportMessage(msg, body, Serial);
 }
 
 } // namespace
@@ -111,25 +113,36 @@ void init()
 	spiffs_mount();
 #endif
 
-	RpcData db("RPC");
 	// Don't commit parsed data to filesystem
-	RpcData::Root::onCommit(db, [](auto params) { params.clearDirty(); });
+	RpcData::Root::onCommit(database, [](auto params) { params.clearDirty(); });
 
-	Serial << endl << "IMPORT request" << endl;
-	auto msg = rpcImport(db, Message::request);
-	rpcExport(db, msg);
+	{
+		Serial << endl << "IMPORT request" << endl;
+		auto msg = rpcImport(json::request);
+		auto body = RpcData::Root(database).asColorEvent().params;
+		rpcExport(msg, body);
+	}
 
-	Serial << endl << "IMPORT request2" << endl;
-	msg = rpcImport(db, Message::request2);
-	rpcExport(db, msg);
+	{
+		Serial << endl << "IMPORT request2" << endl;
+		auto msg = rpcImport(json::request2);
+		auto body = RpcData::Root(database).asColorEvent().params;
+		rpcExport(msg, body);
+	}
 
-	Serial << endl << "IMPORT response" << endl;
-	msg = rpcImport(db, Message::response);
-	rpcExport(db, msg);
+	{
+		Serial << endl << "IMPORT response" << endl;
+		auto msg = rpcImport(json::response);
+		auto body = RpcData::Root(database).asColorEvent().result;
+		rpcExport(msg, body);
+	}
 
-	Serial << endl << "IMPORT error" << endl;
-	msg = rpcImport(db, Message::error);
-	rpcExport(db, msg);
+	{
+		Serial << endl << "IMPORT error" << endl;
+		auto msg = rpcImport(json::error);
+		auto body = RpcData::Root(database).asColorEvent().error;
+		rpcExport(msg, body);
+	}
 
 	Serial << endl << endl;
 }

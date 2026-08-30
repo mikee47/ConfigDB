@@ -18,24 +18,26 @@
  ****/
 
 #include <ConfigDB/JsonRPC/ReadStream.h>
+#include <ConfigDB/Json/Printer.h>
+#include <Data/Stream/MemoryDataStream.h>
 
 namespace JsonRPC
 {
-size_t ReadStream::print(Database& db, const Message& msg, Print& p, bool pretty)
+size_t ReadStream::print(const Message& msg, const ConfigDB::Object& body, Print& p, bool pretty)
 {
 	size_t n{0};
 
-	ReadStream stream(db, msg, pretty);
-	n += stream.printHeader(p);
+	ReadStream rs(msg, pretty);
+	n += rs.printHeader(p);
 
-	if(stream.body) {
-		Json::Printer printer(p, stream.body, pretty, Json::Printer::RootStyle::braces);
+	if(body) {
+		Json::Printer printer(p, body, pretty, Json::Printer::RootStyle::braces);
 		do {
 			n += printer();
 		} while(!printer.isDone());
 	}
 
-	n += stream.printFooter(p);
+	n += rs.printFooter(p);
 
 	return n;
 }
@@ -64,8 +66,7 @@ size_t ReadStream::printHeader(Print& p)
 		n += p.print(msg.id);
 	}
 
-	auto setBody = [&](const String& ident) {
-		body = request.findObject(ident.c_str(), ident.length());
+	auto setBody = [&](const FSTR::String& ident) {
 		if(!body) {
 			return;
 		}
@@ -79,8 +80,6 @@ size_t ReadStream::printHeader(Print& p)
 		n += p.print(colon);
 	};
 
-	auto& root = reinterpret_cast<Union&>(*store);
-	request = root.getObject(0);
 	switch(msg.kind) {
 	case Message::Kind::request:
 	case Message::Kind::notification: {
@@ -91,7 +90,7 @@ size_t ReadStream::printHeader(Print& p)
 		n += p.print(_F("\"method\""));
 		n += p.print(colon);
 		n += p.print('"');
-		n += p.print(root.getTagString());
+		n += p.print(msg.method);
 		n += p.print('"');
 		setBody(FS_params);
 		break;
@@ -140,7 +139,7 @@ uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
 		case State::body:
 			state = State::footer;
 			if(body) {
-				stream = std::make_unique<Json::ReadStream>(store, body, ExportOptions{.pretty = pretty});
+				stream = std::move(body);
 				break;
 			}
 			[[fallthrough]];
