@@ -19,24 +19,46 @@
 
 #pragma once
 
-#include <ConfigDB/Json/ReadStream.h>
+#include <ConfigDB/Json/Format.h>
 #include "Message.h"
 
 namespace JsonRPC
 {
 using namespace ConfigDB;
 
+struct ObjectExport {
+	// virtual ~ObjectStream()
+	// {
+	// }
+
+	virtual std::unique_ptr<ExportStream> getStream(bool pretty) const = 0;
+};
+
+template <typename T> struct ObjectExportTemplate : public ObjectExport {
+	ObjectExportTemplate(const T& object) : object(object)
+	{
+	}
+
+	T& object;
+
+	std::unique_ptr<ExportStream> getStream(bool pretty) const override
+	{
+		return object.createExportStream(ConfigDB::Json::format, ExportOptions{.pretty = pretty});
+	}
+};
+
 class ReadStream : public IDataSourceStream
 {
 public:
-	ReadStream(Database& db, const Message& msg, bool pretty = false) : store(db.openStore(0)), msg(msg), pretty(pretty)
+	ReadStream(const Message& msg, const ObjectExport& body, bool pretty = false)
+		: msg(msg), body(body.getStream(pretty)), pretty(pretty)
 	{
 		if(msg.kind == Message::Kind::none || !store) {
 			state = State::done;
 		}
 	}
 
-	static size_t print(Database& db, const Message& msg, Print& p, bool pretty = false);
+	static size_t print(const Message& msg, const ConfigDB::Object& body, Print& p, bool pretty = false);
 
 	size_t printHeader(Print& p);
 
@@ -65,6 +87,10 @@ public:
 	}
 
 protected:
+	ReadStream(const Message& msg, bool pretty = false) : msg(msg), pretty(pretty)
+	{
+	}
+
 	enum class State {
 		header,
 		body,
@@ -74,7 +100,7 @@ protected:
 	StoreRef store;
 	const Message msg;
 	Object request;
-	Object body;
+	std::unique_ptr<ExportStream> body;
 	std::unique_ptr<IDataSourceStream> stream;
 	State state{};
 	const bool pretty;
