@@ -28,6 +28,7 @@ namespace ConfigDB
 {
 class Database;
 class Store;
+class ObjectRef;
 
 /**
  * @brief Callback invoked by asynchronous updater or other trigger points
@@ -292,6 +293,8 @@ protected:
 
 	const void* getDataPtr() const;
 
+	void getObjectRef(ObjectRef& ref, StoreRef& store) const;
+
 	String getPropertyString(unsigned index, StringId id) const;
 
 	String getPropertyString(unsigned index) const;
@@ -349,9 +352,45 @@ public:
 	}
 };
 
+/**
+ * @brief Reference to an object independent of where it resides
+ *
+ * An Object contains 'dataref' which can be *either* an array index
+ * *or* an offset. I *think* these are the cases:
+ *
+ * 1. Object is a direct child of store:
+ *
+ * 		- store
+ * 			object
+ *
+ * 2. Object is an indirect child (intermediate objects):
+ *
+ * 		- store
+ * 			parent (offset): Replaces one or more intermediate objects
+ * 				object
+ *
+ * 3. Member of an ObjectArray:
+ *
+ * 		- store
+ * 			ObjectArray
+ * 				item (index)
+ *
+ * 4. Indirect child of object within ObjectArray:
+ *
+ * 		- store
+ * 			ObjectArray
+ * 				item (index)
+ * 					parent (offset)
+ * 						object
+ * 
+ * So we need a StoreRef plus four objects.
+ */
 struct ObjectRef {
-	ConfigDB::StoreRef store;
-	const ConfigDB::Object object;
+	StoreRef store; ///< Keep reference to store so it persists
+	Object array;
+	Object item;
+	Object parent; ///< Either the store or an array owned by the store
+	Object object;
 
 	explicit operator bool() const
 	{
@@ -360,8 +399,8 @@ struct ObjectRef {
 };
 
 struct ObjectUpdateRef {
-	ConfigDB::StoreUpdateRef store;
-	ConfigDB::Object object;
+	StoreUpdateRef store;
+	Object object;
 
 	explicit operator bool() const
 	{
