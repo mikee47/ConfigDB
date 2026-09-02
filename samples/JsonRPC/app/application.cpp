@@ -35,7 +35,13 @@ JsonRPC::Message rpcImport(const String& jsonString)
 	public:
 		ConfigDB::ObjectUpdateRef getParamsObject(const String& method) override
 		{
-			return database.getObjectForUpdate(method);
+			RpcData::Root::OuterUpdater root(database);
+			auto event = root.toColorEvent();
+			ConfigDB::ObjectUpdateRef ref;
+			event.params.getObjectRef(ref, root.store);
+			return ref;
+
+			// return database.getObjectForUpdate(method);
 		}
 
 		ConfigDB::ObjectUpdateRef getResultObject(int requestId) override
@@ -49,12 +55,20 @@ JsonRPC::Message rpcImport(const String& jsonString)
 				// ...
 			}
 
-			return RpcData::Root::Result::OuterUpdater(database);
+			RpcData::Root::OuterUpdater upd(database);
+			auto event = upd.toColorEvent();
+			ConfigDB::ObjectUpdateRef ref;
+			event.result.getObjectRef(ref, upd.store);
+			return ref;
 		}
 
 		ConfigDB::ObjectUpdateRef getErrorObject(int requestId) override
 		{
-			return RpcData::Root::Error::OuterUpdater(database);
+			RpcData::Root::OuterUpdater upd(database);
+			auto event = upd.toColorEvent();
+			ConfigDB::ObjectUpdateRef ref;
+			event.error.getObjectRef(ref, upd.store);
+			return ref;
 		}
 	};
 
@@ -69,15 +83,15 @@ JsonRPC::Message rpcImport(const String& jsonString)
 		break;
 	case Kind::request:
 		if(msg.method == "color_event") {
-			Serial << RpcData::ColorEvent(database);
+			Serial << RpcData::Root(database).asColorEvent().params;
 		}
 		break;
 	case Kind::result:
 	case Kind::notification:
-		Serial << RpcData::Root::Result(database);
+		Serial << RpcData::Root(database).asColorEvent().result;
 		break;
 	case Kind::error:
-		Serial << RpcData::Root::Error(database);
+		Serial << RpcData::Root(database).asColorEvent().error;
 		break;
 	}
 
@@ -130,33 +144,33 @@ void init()
 	only when the event data has been updated.
 	What's missing here is the request ID.
 	*/
-	RpcData::ColorEvent::onCommit(database, [](auto params) {
-		params.clearDirty();
-		Serial << "** COLOR EVENT ** " << endl << params << endl;
-	});
+	// RpcData::ColorEvent::onCommit(database, [](auto params) {
+	// 	params.clearDirty();
+	// 	Serial << "** COLOR EVENT ** " << endl << params << endl;
+	// });
 
 	{
 		Serial << endl << "IMPORT request" << endl;
 		auto msg = rpcImport(json::request);
-		rpcExport(msg, RpcData::ColorEvent(database));
+		rpcExport(msg, RpcData::Root(database).asColorEvent().params);
 	}
 
 	{
 		Serial << endl << "IMPORT request2" << endl;
 		auto msg = rpcImport(json::request2);
-		rpcExport(msg, RpcData::ColorEvent(database));
+		rpcExport(msg, RpcData::Root(database).asColorEvent().params);
 	}
 
 	{
 		Serial << endl << "IMPORT response" << endl;
 		auto msg = rpcImport(json::response);
-		rpcExport(msg, RpcData::Root::Result(database));
+		rpcExport(msg, RpcData::Root(database).asColorEvent().result);
 	}
 
 	{
 		Serial << endl << "IMPORT error" << endl;
 		auto msg = rpcImport(json::error);
-		rpcExport(msg, RpcData::Root::Error(database));
+		rpcExport(msg, RpcData::Root(database).asColorEvent().error);
 	}
 
 	Serial << endl << endl;

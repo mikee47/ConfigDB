@@ -28,7 +28,7 @@ size_t ReadStream::print(const Message& msg, const ConfigDB::Object& body, Print
 {
 	size_t n{0};
 
-	ReadStream rs(msg, pretty);
+	ReadStream rs(msg, {.object = body}, pretty);
 	n += rs.printHeader(p);
 
 	if(body) {
