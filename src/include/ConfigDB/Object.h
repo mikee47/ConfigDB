@@ -29,6 +29,7 @@ namespace ConfigDB
 class Database;
 class Store;
 class ObjectRef;
+class ObjectUpdateRef;
 
 /**
  * @brief Callback invoked by asynchronous updater or other trigger points
@@ -273,6 +274,9 @@ public:
 	 */
 	static void registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type);
 
+	void getObjectRef(ObjectRef& ref, StoreRef& store) const;
+	void getObjectRef(ObjectUpdateRef& ref, StoreUpdateRef& store);
+
 protected:
 	friend class Union;
 	friend class Accessor;
@@ -292,8 +296,6 @@ protected:
 	void* getDataPtr();
 
 	const void* getDataPtr() const;
-
-	void getObjectRef(ObjectRef& ref, StoreRef& store) const;
 
 	String getPropertyString(unsigned index, StringId id) const;
 
@@ -400,6 +402,9 @@ struct ObjectRef {
 
 struct ObjectUpdateRef {
 	StoreUpdateRef store;
+	Object array;
+	Object item;
+	Object parent; ///< Either the store or an array owned by the store
 	Object object;
 
 	explicit operator bool() const
@@ -446,12 +451,6 @@ public:
 		return store && UpdaterType::operator bool();
 	}
 
-	operator ObjectUpdateRef()
-	{
-		return {store, *this};
-	}
-
-private:
 	StoreUpdateRef store;
 };
 
@@ -567,12 +566,6 @@ public:
 		registerCallback(db, std::move(callback), CallbackType::commit);
 	}
 
-	operator ObjectRef() const
-	{
-		return {store, *this};
-	}
-
-private:
 	StoreRef store;
 };
 

@@ -215,8 +215,33 @@ void Object::getObjectRef(ObjectRef& ref, StoreRef& store) const
 	while(obj->parent) {
 		offset += obj->propinfo().offset;
 		if(obj->parent->isArray() && !obj->parent->isStore()) {
-			// Problem: We need array item index plus calculated offset, propinfo isn't sufficient
-			ref = ObjectRef{
+			// We need array item index plus calculated offset, propinfo isn't sufficient
+			ref = {
+				.store = store,
+				.array = *obj->parent,
+				.item = *obj,
+			};
+			ref.object = {ref.parent, propinfo(), offset};
+		}
+		offset += obj->dataRef;
+		obj = obj->parent;
+	}
+	ref = {
+		.store = store,
+		.parent = {*store, parent->propinfo(), offset},
+	};
+	ref.object = {ref.parent, propinfo(), 0};
+}
+
+void Object::getObjectRef(ObjectUpdateRef& ref, StoreUpdateRef& store)
+{
+	uint16_t offset{0};
+	auto obj = this;
+	while(obj->parent) {
+		offset += obj->propinfo().offset;
+		if(obj->parent->isArray() && !obj->parent->isStore()) {
+			// We need array item index plus calculated offset, propinfo isn't sufficient
+			ref = {
 				.store = store,
 				.array = *obj->parent,
 				.item = *obj,
