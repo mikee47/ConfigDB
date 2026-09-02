@@ -1,59 +1,66 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "color_event": {
+  "oneOf": [
+    {
       "type": "object",
-      "store": true,
-      "oneOf": [
-        {
-          "type": "object",
-          "title": "raw",
-          "properties": {
-            "r": {
-              "$ref": "#/$defs/color-value"
+      "title": "none"
+    },
+    {
+      "type": "object",
+      "title": "color_event",
+      "properties": {
+        "params": {
+          "oneOf": [
+            {
+              "type": "object",
+              "title": "raw",
+              "properties": {
+                "r": {
+                  "$ref": "#/$defs/color-value"
+                },
+                "g": {
+                  "$ref": "#/$defs/color-value"
+                },
+                "b": {
+                  "$ref": "#/$defs/color-value"
+                },
+                "ww": {
+                  "$ref": "#/$defs/color-value"
+                },
+                "cw": {
+                  "$ref": "#/$defs/color-value"
+                }
+              }
             },
-            "g": {
-              "$ref": "#/$defs/color-value"
-            },
-            "b": {
-              "$ref": "#/$defs/color-value"
-            },
-            "ww": {
-              "$ref": "#/$defs/color-value"
-            },
-            "cw": {
-              "$ref": "#/$defs/color-value"
+            {
+              "type": "object",
+              "title": "hsv",
+              "properties": {
+                "h": {
+                  "$ref": "#/$defs/color-value"
+                },
+                "s": {
+                  "$ref": "#/$defs/color-value"
+                },
+                "v": {
+                  "$ref": "#/$defs/color-value"
+                },
+                "ct": {
+                  "$ref": "#/$defs/color-value"
+                }
+              }
             }
-          }
+          ]
         },
-        {
-          "type": "object",
-          "title": "hsv",
-          "properties": {
-            "h": {
-              "$ref": "#/$defs/color-value"
-            },
-            "s": {
-              "$ref": "#/$defs/color-value"
-            },
-            "v": {
-              "$ref": "#/$defs/color-value"
-            },
-            "ct": {
-              "$ref": "#/$defs/color-value"
-            }
-          }
+        "result": {
+          "$ref": "#/$defs/standard-result"
+        },
+        "error": {
+          "$ref": "#/$defs/standard-error"
         }
-      ]
-    },
-    "result": {
-      "$ref": "#/$defs/standard-result"
-    },
-    "error": {
-      "$ref": "#/$defs/standard-error"
+      }
     }
-  },
+  ],
   "$defs": {
     "color-value": {
       "type": "integer",
