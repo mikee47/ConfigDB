@@ -65,10 +65,6 @@ public:
 	}
 
 protected:
-	ReadStream(const Message& msg, bool pretty = false) : msg(msg), pretty(pretty)
-	{
-	}
-
 	enum class State {
 		header,
 		body,
