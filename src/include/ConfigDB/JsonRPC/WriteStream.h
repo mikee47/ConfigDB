@@ -77,7 +77,7 @@ protected:
 
 	Message& msg;
 	Callback& callback;
-	ConfigDB::StoreUpdateRef store;
+	ConfigDB::ObjectUpdateRef body;
 	bool haveMethod{false};
 	bool haveId{false};
 	bool repeatParse{false};

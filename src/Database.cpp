@@ -207,7 +207,7 @@ ObjectRef Database::getObject(const char* name, unsigned length)
 	int i = root.findObject(name, length);
 	if(i >= 0) {
 		auto store = openStore(0);
-		return {.store = store, .object = store->getObject(i)};
+		return {.store = store, .object = {*store, unsigned(i)}};
 	}
 
 	// Now check for a matching store
