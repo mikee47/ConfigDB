@@ -207,7 +207,7 @@ ObjectRef Database::getObject(const char* name, unsigned length)
 	int i = root.findObject(name, length);
 	if(i >= 0) {
 		auto store = openStore(0);
-		return {.store = store, .object = {*store, unsigned(i)}};
+		return ObjectRef(store, i);
 	}
 
 	// Now check for a matching store
@@ -216,7 +216,7 @@ ObjectRef Database::getObject(const char* name, unsigned length)
 		return {};
 	}
 	auto store = openStore(i);
-	return {.store = store, .object = *store};
+	return ObjectRef(store);
 }
 
 ObjectUpdateRef Database::getObjectForUpdate(const char* name, unsigned length)

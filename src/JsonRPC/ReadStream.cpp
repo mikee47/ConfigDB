@@ -28,7 +28,7 @@ size_t ReadStream::print(const Message& msg, const ConfigDB::Object& body, Print
 {
 	size_t n{0};
 
-	ReadStream rs(msg, {.object = body}, pretty);
+	ReadStream rs(msg, body, pretty);
 	n += rs.printHeader(p);
 
 	if(body) {
@@ -140,7 +140,8 @@ uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
 		case State::body:
 			state = State::footer;
 			if(body) {
-				stream = std::make_unique<ConfigDB::Json::ReadStream>(store, body, ExportOptions{.pretty = pretty});
+				stream = std::make_unique<ConfigDB::Json::ReadStream>(body.store, body.object,
+																	  ExportOptions{.pretty = pretty});
 				break;
 			}
 			[[fallthrough]];
