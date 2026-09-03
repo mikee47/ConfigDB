@@ -278,6 +278,7 @@ public:
 	void getObjectRef(ObjectUpdateRef& ref, StoreUpdateRef& store);
 
 protected:
+	friend struct ObjectRef;
 	friend class Union;
 	friend class Accessor;
 
@@ -390,9 +391,28 @@ public:
 struct ObjectRef {
 	StoreRef store; ///< Keep reference to store so it persists
 	Object array;
-	Object item;
-	Object parent; ///< Either the store or an array owned by the store
+	Object parent; ///< Either the store or an array item
 	Object object;
+
+	ObjectRef() = default;
+
+	ObjectRef(StoreRef& store);
+
+	ObjectRef(StoreRef& store, unsigned propIndex);
+
+	ObjectRef(StoreRef& store, const Object& array, const Object& item, const PropertyInfo& propinfo, unsigned offset);
+
+	ObjectRef(StoreRef& store, const Object& parent, const PropertyInfo& propinfo, unsigned offset);
+
+	ObjectRef(const Object& object) : object(object)
+	{
+	}
+
+	ObjectRef(ObjectRef&& other);
+
+	ObjectRef(const ObjectRef& other);
+
+	ObjectRef& operator=(const ObjectRef& other);
 
 	explicit operator bool() const
 	{
@@ -403,8 +423,7 @@ struct ObjectRef {
 struct ObjectUpdateRef {
 	StoreUpdateRef store;
 	Object array;
-	Object item;
-	Object parent; ///< Either the store or an array owned by the store
+	Object parent; ///< Either the store or an array item
 	Object object;
 
 	explicit operator bool() const
