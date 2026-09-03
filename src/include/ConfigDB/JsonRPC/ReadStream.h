@@ -28,10 +28,9 @@ using namespace ConfigDB;
 class ReadStream : public IDataSourceStream
 {
 public:
-	ReadStream(const Message& msg, const ObjectRef& body, bool pretty = false)
-		: msg(msg), store(body.store), body(body.object), pretty(pretty)
+	ReadStream(const Message& msg, const ObjectRef& body, bool pretty = false) : msg(msg), body(body), pretty(pretty)
 	{
-		if(msg.kind == Message::Kind::none || !store) {
+		if(msg.kind == Message::Kind::none || !body) {
 			state = State::done;
 		}
 	}
@@ -72,8 +71,7 @@ protected:
 		done,
 	};
 	const Message msg;
-	StoreRef store;
-	Object body;
+	ObjectRef body;
 	std::unique_ptr<IDataSourceStream> stream;
 	State state{};
 	const bool pretty;
