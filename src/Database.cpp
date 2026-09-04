@@ -206,8 +206,7 @@ ObjectRef Database::getObject(const char* name, unsigned length)
 	auto& root = typeinfo.stores[0];
 	int i = root.findObject(name, length);
 	if(i >= 0) {
-		auto store = openStore(0);
-		return ObjectRef(store, i);
+		return {openStore(0), unsigned(i)};
 	}
 
 	// Now check for a matching store
@@ -215,15 +214,15 @@ ObjectRef Database::getObject(const char* name, unsigned length)
 	if(i < 0) {
 		return {};
 	}
-	auto store = openStore(i);
-	return ObjectRef(store);
+	return openStore(i);
 }
 
 ObjectUpdateRef Database::getObjectForUpdate(const char* name, unsigned length)
 {
 	auto ref = getObject(name, length);
 	if(ref) {
-		return {lockStore(ref.store), ref.object};
+		auto lockedStore = lockStore(ref.store);
+		return ObjectUpdateRef(lockedStore, ref.object);
 	}
 	return {};
 }
