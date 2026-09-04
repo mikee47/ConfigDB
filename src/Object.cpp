@@ -24,105 +24,79 @@
 
 namespace ConfigDB
 {
-ObjectRef::ObjectRef(StoreRef store) : store(store), object(*store)
+ObjectRefBase::ObjectRefBase(const Object& object)
 {
-}
-
-ObjectRef::ObjectRef(StoreRef store, unsigned propIndex) : store(store), object(*store, propIndex)
-{
-}
-
-ObjectRef::ObjectRef(const ObjectRef& other)
-	: store(other.store), array(other.array), parent(other.parent), object(other.object)
-{
-	if(array) {
-		assert(array.parent == store.get());
+	if(object.parent->isStore()) {
+		this->object = object;
+		return;
 	}
+
+	uint16_t offset{0};
+	auto obj = &object;
+	while(obj->parent) {
+		if(obj->parent->isArray() && !obj->parent->isStore()) {
+			this->array = *obj->parent;
+			this->parent = Object(this->array, obj->propinfo(), obj->dataRef);
+			this->object = Object(this->parent, object.propinfo(), offset);
+			return;
+		}
+		offset += obj->dataRef;
+		obj = obj->parent;
+	}
+	this->parent = *object.parent;
+	this->object = Object(this->parent, object.propinfo(), offset);
+}
+
+void ObjectRefBase::copy(const ObjectRefBase& other)
+{
+	array = other.array;
+	parent = other.parent;
+	object = other.object;
+
 	if(other.parent.parent == &other.array) {
 		parent.parent = &array;
 	}
 	if(other.object.parent == &other.parent) {
 		object.parent = &parent;
 	}
+}
+
+ObjectRef::ObjectRef(StoreRef store) : ObjectRefBase(*store), store(store)
+{
+}
+
+ObjectRef::ObjectRef(StoreRef store, unsigned propIndex) : ObjectRef(store, {*store, propIndex})
+{
+}
+
+ObjectRef::ObjectRef(StoreRef store, const Object& object) : ObjectRefBase(object), store(store)
+{
+}
+
+ObjectRef::ObjectRef(const ObjectRef& other) : ObjectRefBase(other), store(other.store)
+{
 }
 
 ObjectRef& ObjectRef::operator=(const ObjectRef& other)
 {
 	store = other.store;
-	array = other.array;
-	parent = other.parent;
-	object = other.object;
-
-	if(array) {
-		assert(array.parent == store.get());
-	}
-	if(other.parent.parent == &other.array) {
-		parent.parent = &array;
-	}
-	if(other.object.parent == &other.parent) {
-		object.parent = &parent;
-	}
-
+	copy(other);
 	return *this;
 }
 
-ObjectRef::ObjectRef(StoreRef store, const Object& object) : store(store)
+ObjectUpdateRef::ObjectUpdateRef(const ObjectUpdateRef& other) : ObjectRefBase(other), store(other.store)
 {
-	uint16_t offset{0};
-	auto obj = &object;
-	while(obj->parent) {
-		if(obj->parent->isArray() && !obj->parent->isStore()) {
-			// We need array item index plus calculated offset, propinfo isn't sufficient
-			this->array = *obj->parent;
-			this->parent = Object(this->array, obj->propinfo(), obj->dataRef);
-			this->object = Object(this->parent, object.propinfo(), offset);
-			return;
-		}
-		offset += obj->dataRef;
-		obj = obj->parent;
-	}
-	this->parent = *object.parent;
-	assert(this->parent.parent == store.get());
-	this->object = Object(this->parent, object.propinfo(), offset);
 }
 
 ObjectUpdateRef& ObjectUpdateRef::operator=(const ObjectUpdateRef& other)
 {
 	store = other.store;
-	array = other.array;
-	parent = other.parent;
-	object = other.object;
-
-	if(array) {
-		assert(array.parent == store.get());
-	}
-	if(other.parent.parent == &other.array) {
-		parent.parent = &array;
-	}
-	if(other.object.parent == &other.parent) {
-		object.parent = &parent;
-	}
-
+	copy(other);
 	return *this;
 }
 
-ObjectUpdateRef::ObjectUpdateRef(StoreUpdateRef store, Object& object) : store(store)
+ObjectUpdateRef::ObjectUpdateRef(StoreUpdateRef store, Object& object) : ObjectRefBase(object), store(store)
 {
-	uint16_t offset{0};
-	auto obj = &object;
-	while(obj->parent) {
-		if(obj->parent->isArray() && !obj->parent->isStore()) {
-			// We need array item index plus calculated offset, propinfo isn't sufficient
-			this->array = *obj->parent;
-			this->parent = Object(this->array, obj->propinfo(), obj->dataRef);
-			this->object = Object(this->parent, object.propinfo(), offset);
-			return;
-		}
-		offset += obj->dataRef;
-		obj = obj->parent;
-	}
-	this->parent = *object.parent;
-	this->object = Object(this->parent, object.propinfo(), offset);
 }
 
 void Object::clear()

@@ -273,8 +273,7 @@ public:
 	static void registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type);
 
 protected:
-	friend struct ObjectRef;
-	friend struct ObjectUpdateRef;
+	friend struct ObjectRefBase;
 	friend class Union;
 	friend class Accessor;
 
@@ -366,7 +365,7 @@ public:
  *
  * 		- store
  * 			parent (offset): Replaces one or more intermediate objects
- * 				object
+ * 				object (offset)
  *
  * 3. Member of an ObjectArray:
  *
@@ -378,62 +377,62 @@ public:
  *
  * 		- store
  * 			ObjectArray
- * 				item (index)
- * 					parent (offset)
- * 						object
+ *				item (index)
+ * 					object (plus offset)
  * 
- * So we need a StoreRef plus four objects.
+ * So we need a StoreRef plus three objects.
  */
-struct ObjectRef {
-	StoreRef store; ///< Keep reference to store so it persists
+struct ObjectRefBase {
 	Object array;
 	Object parent; ///< Either the store or an array item
 	Object object;
 
-	ObjectRef() = default;
+	ObjectRefBase() = default;
 
-	ObjectRef(StoreRef store, const Object& object);
+	ObjectRefBase(const Object& object);
+
+	ObjectRefBase(const ObjectRefBase& other)
+	{
+		copy(other);
+	}
+
+	ObjectRefBase(ObjectRefBase&&) = delete;
+
+	explicit operator bool() const
+	{
+		return bool(object);
+	}
+
+protected:
+	void copy(const ObjectRefBase& other);
+};
+
+struct ObjectRef : public ObjectRefBase {
+	StoreRef store;
+
+	using ObjectRefBase::ObjectRefBase;
 
 	ObjectRef(StoreRef store);
 
 	ObjectRef(StoreRef store, unsigned propIndex);
 
-	ObjectRef(const Object& object) : object(object)
-	{
-	}
-
-	ObjectRef(ObjectRef&& other) = delete;
+	ObjectRef(StoreRef store, const Object& object);
 
 	ObjectRef(const ObjectRef& other);
 
 	ObjectRef& operator=(const ObjectRef& other);
-
-	explicit operator bool() const
-	{
-		return bool(object);
-	}
 };
 
-struct ObjectUpdateRef {
+struct ObjectUpdateRef : public ObjectRefBase {
 	StoreUpdateRef store;
-	Object array;
-	Object parent; ///< Either the store or an array item
-	Object object;
 
-	ObjectUpdateRef() = default;
+	using ObjectRefBase::ObjectRefBase;
 
 	ObjectUpdateRef(StoreUpdateRef store, Object& object);
-
-	ObjectUpdateRef(ObjectUpdateRef&& other) = delete;
 
 	ObjectUpdateRef(const ObjectUpdateRef& other);
 
 	ObjectUpdateRef& operator=(const ObjectUpdateRef& other);
-
-	explicit operator bool() const
-	{
-		return bool(object);
-	}
 };
 
 /**
