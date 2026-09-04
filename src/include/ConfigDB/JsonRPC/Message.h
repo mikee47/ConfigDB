@@ -20,7 +20,7 @@
 #pragma once
 
 #include <Print.h>
-#include <ConfigDB/Object.h>
+#include <ConfigDB/ObjectRef.h>
 
 namespace JsonRPC
 {
