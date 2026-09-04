@@ -28,8 +28,6 @@ namespace ConfigDB
 {
 class Database;
 class Store;
-class ObjectRef;
-class ObjectUpdateRef;
 
 /**
  * @brief Callback invoked by asynchronous updater or other trigger points
@@ -274,11 +272,9 @@ public:
 	 */
 	static void registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type);
 
-	void getObjectRef(ObjectRef& ref, StoreRef& store) const;
-	void getObjectRef(ObjectUpdateRef& ref, StoreUpdateRef& store);
-
 protected:
 	friend struct ObjectRef;
+	friend struct ObjectUpdateRef;
 	friend class Union;
 	friend class Accessor;
 
@@ -396,19 +392,17 @@ struct ObjectRef {
 
 	ObjectRef() = default;
 
-	ObjectRef(StoreRef& store);
+	ObjectRef(StoreRef store, const Object& object);
 
-	ObjectRef(StoreRef& store, unsigned propIndex);
+	ObjectRef(StoreRef store);
 
-	ObjectRef(StoreRef& store, const Object& array, const Object& item, const PropertyInfo& propinfo, unsigned offset);
-
-	ObjectRef(StoreRef& store, const Object& parent, const PropertyInfo& propinfo, unsigned offset);
+	ObjectRef(StoreRef store, unsigned propIndex);
 
 	ObjectRef(const Object& object) : object(object)
 	{
 	}
 
-	ObjectRef(ObjectRef&& other);
+	ObjectRef(ObjectRef&& other) = delete;
 
 	ObjectRef(const ObjectRef& other);
 
@@ -425,6 +419,16 @@ struct ObjectUpdateRef {
 	Object array;
 	Object parent; ///< Either the store or an array item
 	Object object;
+
+	ObjectUpdateRef() = default;
+
+	ObjectUpdateRef(StoreUpdateRef store, Object& object);
+
+	ObjectUpdateRef(ObjectUpdateRef&& other) = delete;
+
+	ObjectUpdateRef(const ObjectUpdateRef& other);
+
+	ObjectUpdateRef& operator=(const ObjectUpdateRef& other);
 
 	explicit operator bool() const
 	{

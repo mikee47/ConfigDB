@@ -24,41 +24,12 @@
 
 namespace ConfigDB
 {
-ObjectRef::ObjectRef(StoreRef& store) : store(store), object(*store)
+ObjectRef::ObjectRef(StoreRef store) : store(store), object(*store)
 {
 }
 
-ObjectRef::ObjectRef(StoreRef& store, unsigned propIndex) : store(store), object(*store, propIndex)
+ObjectRef::ObjectRef(StoreRef store, unsigned propIndex) : store(store), object(*store, propIndex)
 {
-}
-
-ObjectRef::ObjectRef(StoreRef& store, const Object& array, const Object& item, const PropertyInfo& propinfo,
-					 unsigned offset)
-	: store(store), array(array), parent(item), object(this->parent, propinfo, offset)
-{
-	assert(false);
-	assert(array.parent == store.get());
-	this->parent.parent = &this->array;
-}
-
-ObjectRef::ObjectRef(StoreRef& store, const Object& parent, const PropertyInfo& propinfo, unsigned offset)
-	: store(store), parent(parent), object(this->parent, propinfo, offset)
-{
-	assert(parent.parent == store.get());
-}
-
-ObjectRef::ObjectRef(ObjectRef&& other)
-	: store(std::move(other.store)), array(other.array), parent(other.parent), object(other.object)
-{
-	if(array) {
-		assert(array.parent == store.get());
-	}
-	if(other.parent.parent == &other.array) {
-		parent.parent = &array;
-	}
-	if(other.object.parent == &other.parent) {
-		object.parent = &parent;
-	}
 }
 
 ObjectRef::ObjectRef(const ObjectRef& other)
@@ -93,6 +64,65 @@ ObjectRef& ObjectRef::operator=(const ObjectRef& other)
 	}
 
 	return *this;
+}
+
+ObjectRef::ObjectRef(StoreRef store, const Object& object) : store(store)
+{
+	uint16_t offset{0};
+	auto obj = &object;
+	while(obj->parent) {
+		if(obj->parent->isArray() && !obj->parent->isStore()) {
+			// We need array item index plus calculated offset, propinfo isn't sufficient
+			this->array = *obj->parent;
+			this->parent = Object(this->array, obj->propinfo(), obj->dataRef);
+			this->object = Object(this->parent, object.propinfo(), offset);
+			return;
+		}
+		offset += obj->dataRef;
+		obj = obj->parent;
+	}
+	this->parent = *object.parent;
+	assert(this->parent.parent == store.get());
+	this->object = Object(this->parent, object.propinfo(), offset);
+}
+
+ObjectUpdateRef& ObjectUpdateRef::operator=(const ObjectUpdateRef& other)
+{
+	store = other.store;
+	array = other.array;
+	parent = other.parent;
+	object = other.object;
+
+	if(array) {
+		assert(array.parent == store.get());
+	}
+	if(other.parent.parent == &other.array) {
+		parent.parent = &array;
+	}
+	if(other.object.parent == &other.parent) {
+		object.parent = &parent;
+	}
+
+	return *this;
+}
+
+ObjectUpdateRef::ObjectUpdateRef(StoreUpdateRef store, Object& object) : store(store)
+{
+	uint16_t offset{0};
+	auto obj = &object;
+	while(obj->parent) {
+		if(obj->parent->isArray() && !obj->parent->isStore()) {
+			// We need array item index plus calculated offset, propinfo isn't sufficient
+			this->array = *obj->parent;
+			this->parent = Object(this->array, obj->propinfo(), obj->dataRef);
+			this->object = Object(this->parent, object.propinfo(), offset);
+			return;
+		}
+		offset += obj->dataRef;
+		obj = obj->parent;
+	}
+	this->parent = *object.parent;
+	this->object = Object(this->parent, object.propinfo(), offset);
 }
 
 void Object::clear()
@@ -277,49 +307,6 @@ const void* Object::getDataPtr() const
 		obj = obj->parent;
 	}
 	return static_cast<const Store*>(obj)->getRootData() + offset;
-}
-
-void Object::getObjectRef(ObjectRef& ref, StoreRef& store) const
-{
-	uint16_t offset{0};
-	auto obj = this;
-	while(obj->parent) {
-		if(obj->parent->isArray() && !obj->parent->isStore()) {
-			// We need array item index plus calculated offset, propinfo isn't sufficient
-			ref = ObjectRef(store, *obj->parent, *obj, propinfo(), offset);
-			return;
-		}
-		offset += obj->propinfo().offset;
-		offset += obj->dataRef;
-		obj = obj->parent;
-	}
-	// ref = ObjectRef(store, {*store, parent->propinfo(), offset}, propinfo(), 0);
-	ref = ObjectRef(store, *parent, propinfo(), offset);
-}
-
-void Object::getObjectRef(ObjectUpdateRef& ref, StoreUpdateRef& store)
-{
-	uint16_t offset{0};
-	auto obj = this;
-	while(obj->parent) {
-		offset += obj->propinfo().offset;
-		if(obj->parent->isArray() && !obj->parent->isStore()) {
-			// We need array item index plus calculated offset, propinfo isn't sufficient
-			ref = {
-				.store = store,
-				.array = *obj->parent,
-				.parent = *obj,
-			};
-			ref.object = {ref.parent, propinfo(), offset};
-		}
-		offset += obj->dataRef;
-		obj = obj->parent;
-	}
-	ref = {
-		.store = store,
-		.parent = {*store, parent->propinfo(), offset},
-	};
-	ref.object = {ref.parent, propinfo(), 0};
 }
 
 unsigned Object::getObjectCount() const
