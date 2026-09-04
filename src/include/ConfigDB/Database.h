@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Store.h"
+#include "ObjectRef.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
 #include <WVector.h>
