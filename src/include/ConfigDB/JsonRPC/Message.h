@@ -52,6 +52,11 @@ struct Message {
 	int id{0};
 	Kind kind{};
 	String method;
+
+	explicit operator bool() const
+	{
+		return kind != Kind::none;
+	}
 };
 
 } // namespace JsonRPC
