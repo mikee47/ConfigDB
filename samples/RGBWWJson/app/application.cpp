@@ -29,7 +29,7 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 	Serial << endl;
 }
 
-[[maybe_unused]] Message generateRawColorRequest(int id)
+Message generateRawColorRequest(int id)
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -44,16 +44,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::request, root.getTagString()};
-		printMessage(msg, req);
-
-		return msg;
+		return {id, Message::Kind::request, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateRawColorResponse(int id)
+Message generateRawColorResponse(int id)
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -68,16 +65,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::result, root.getTagString()};
-		printMessage(msg, rsp);
-
-		return msg;
+		return {id, Message::Kind::result, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateRawColorNotification()
+Message generateRawColorNotification(int)
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -91,16 +85,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{0, Message::Kind::notification, root.getTagString()};
-		printMessage(msg, raw);
-
-		return msg;
+		return {0, Message::Kind::notification, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateHsvColorRequest(int id)
+Message generateHsvColorRequest(int id)
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -114,16 +105,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::request, root.getTagString()};
-		printMessage(msg, hsv);
-
-		return msg;
+		return {id, Message::Kind::request, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateHsvColorResponse(int id)
+Message generateHsvColorResponse(int id)
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -137,16 +125,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::result, root.getTagString()};
-		printMessage(msg, hsv);
-
-		return msg;
+		return {id, Message::Kind::result, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateHsvColorNotification()
+Message generateHsvColorNotification(int)
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -160,16 +145,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{0, Message::Kind::notification, root.getTagString()};
-		printMessage(msg, hsv);
-
-		return msg;
+		return {0, Message::Kind::notification, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateInfoRequest(int id)
+Message generateInfoRequest(int id)
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -177,16 +159,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::request, root.getTagString()};
-		printMessage(msg, root);
-
-		return msg;
+		return {id, Message::Kind::request, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateInfoV1Response(int id)
+Message generateInfoV1Response(int id)
 {
 	int free = system_get_free_heap_size();
 
@@ -219,15 +198,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::result, root.getTagString()};
-		printMessage(msg, info);
-
-		return msg;
+		return {id, Message::Kind::result, root.getTagString()};
 	}
+
 	return {};
 }
 
-[[maybe_unused]] Message generateInfoV1Notification()
+Message generateInfoV1Notification(int)
 {
 	int free = system_get_free_heap_size();
 	Jsonrpc::Root root(database);
@@ -258,15 +235,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{0, Message::Kind::notification, root.getTagString()};
-		printMessage(msg, info);
-
-		return msg;
+		return {0, Message::Kind::notification, root.getTagString()};
 	}
+
 	return {};
 }
 
-[[maybe_unused]] Message generateInfoV2Response(int id)
+Message generateInfoV2Response(int id)
 {
 	int free = system_get_free_heap_size();
 
@@ -312,16 +287,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::result, root.getTagString()};
-		printMessage(msg, info);
-
-		return msg;
+		return {id, Message::Kind::result, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateInfoV2Notification()
+Message generateInfoV2Notification(int)
 {
 	int free = system_get_free_heap_size();
 	Jsonrpc::Root root(database);
@@ -367,16 +339,13 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{0, Message::Kind::notification, root.getTagString()};
-		printMessage(msg, info);
-
-		return msg;
+		return {0, Message::Kind::notification, root.getTagString()};
 	}
 
 	return {};
 }
 
-[[maybe_unused]] Message generateErrorResponse(int id, const ErrorType error, String data = "")
+Message generateErrorResponse(int id, const ErrorType error, String data = "")
 {
 	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
@@ -425,14 +394,30 @@ void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 
 		root.clearDirty();
 
-		Message msg{id, Message::Kind::result, root.getTagString()};
-		printMessage(msg, result);
-
-		return msg;
+		return {id, Message::Kind::result, root.getTagString()};
 	}
 
 	return {};
 }
+
+struct Generator {
+	Message (*func)(int id);
+	const char* desc;
+};
+
+Generator generators[]{
+	{generateRawColorRequest, "RAW Color Request"},
+	{generateRawColorResponse, "RAW Color Response"},
+	{generateRawColorNotification, "Raw Color Notification"},
+	{generateHsvColorRequest, "HSV Color Request"},
+	{generateHsvColorResponse, "HSV Color Response"},
+	{generateHsvColorNotification, "HSV Color Notification"},
+	{generateInfoRequest, "Info Request"},
+	{generateInfoV1Response, "Info V1 Response"},
+	{generateInfoV1Notification, "Info V1 Notification"},
+	{generateInfoV2Response, "Info V2 Response"},
+	{generateInfoV2Notification, "Info V2 Notification"},
+};
 
 } // namespace
 
@@ -447,73 +432,35 @@ void init()
 	spiffs_mount();
 #endif
 
-	Serial << endl << "RAW COLOR REQUEST" << endl;
-	if(!generateRawColorRequest(1)) {
-		Serial << "Failed to update color database" << endl;
-	}
-
-	Serial << endl << "RAW COLOR RESPONSE" << endl;
-	if(!generateRawColorResponse(1)) {
-		Serial << "Failed to update color database" << endl;
-	}
-
-	Serial << endl << "RAW COLOR NOTIFICATION" << endl;
-	if(!generateRawColorNotification()) {
-		Serial << "Failed to generate raw color notification" << endl;
-	}
-
-	Serial << endl << "HSV COLOR REQUEST" << endl;
-	if(!generateHsvColorRequest(1)) {
-		Serial << "Failed to update color database" << endl;
-	}
-
-	Serial << endl << "HSV COLOR RESPONSE" << endl;
-	if(!generateHsvColorResponse(1)) {
-		Serial << "Failed to update color database" << endl;
-	}
-
-	Serial << endl << "HSV COLOR NOTIFICATION" << endl;
-	if(!generateHsvColorNotification()) {
-		Serial << "Failed to generate raw color notification" << endl;
-	}
-
-	Serial << endl << "INFO REQUEST" << endl;
-	if(!generateInfoRequest(1)) {
-		Serial << "Failed to generate info request" << endl;
-	}
-
-	Serial << endl << "INFO V1 RESPONSE" << endl;
-	if(!generateInfoV1Response(1)) {
-		Serial << "Failed to generate info v1 response" << endl;
-	}
-
-	Serial << endl << "INFO V1 NOTIFICATION" << endl;
-	if(!generateInfoV1Notification()) {
-		Serial << "Failed to generate info v1 notification" << endl;
-	}
-
-	Serial << endl << "INFO V2 RESPONSE" << endl;
-	if(!generateInfoV2Response(1)) {
-		Serial << "Failed to generate info v2 response" << endl;
-	}
-
-	Serial << endl << "INFO V2 NOTIFICATION" << endl;
-	if(!generateInfoV2Notification()) {
-		Serial << "Failed to generate info v2 notification" << endl;
+	for(auto& gen : generators) {
+		Serial << gen.desc << endl;
+		auto msg = gen.func(1);
+		assert(msg);
+		Jsonrpc::Root root(database);
+		auto method = root.findObject(msg.method);
+		auto body = method.findObject((msg.kind == Message::Kind::result) ? "result" : "params");
+		printMessage(msg, body);
+		Serial << endl << endl;
 	}
 
 	Serial << endl << "ERROR RESPONSES" << endl;
-	if(!generateErrorResponse(1, ErrorType::InvalidRequest)) {
-		Serial << "Failed to generate error response" << endl;
-	}
 
-	if(!generateErrorResponse(2, ErrorType::ApplicationError2, "something went horribly wrong")) {
-		Serial << "Failed to generate error response" << endl;
-	}
+	auto printError = [](const Message& msg) {
+		Jsonrpc::Root root(database);
+		printMessage(msg, root.asError().result);
+	};
 
-	if(!generateErrorResponse(2, ErrorType::MethodNotFound)) {
-		Serial << "Failed to generate error response" << endl;
-	}
+	auto msg = generateErrorResponse(1, ErrorType::InvalidRequest);
+	assert(msg);
+	printError(msg);
+
+	msg = generateErrorResponse(2, ErrorType::ApplicationError2, "something went horribly wrong");
+	assert(msg);
+	printError(msg);
+
+	msg = generateErrorResponse(2, ErrorType::MethodNotFound);
+	assert(msg);
+	printError(msg);
 
 	Serial << endl << endl;
 }
