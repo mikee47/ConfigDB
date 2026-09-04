@@ -37,11 +37,7 @@ JsonRPC::Message rpcImport(const String& jsonString)
 		{
 			RpcData::Root::OuterUpdater root(database);
 			auto event = root.toColorEvent();
-			ConfigDB::ObjectUpdateRef ref;
-			event.params.getObjectRef(ref, root.store);
-			return ref;
-
-			// return database.getObjectForUpdate(method);
+			return {root.store, event.params};
 		}
 
 		ConfigDB::ObjectUpdateRef getResultObject(int requestId) override
@@ -57,18 +53,14 @@ JsonRPC::Message rpcImport(const String& jsonString)
 
 			RpcData::Root::OuterUpdater upd(database);
 			auto event = upd.toColorEvent();
-			ConfigDB::ObjectUpdateRef ref;
-			event.result.getObjectRef(ref, upd.store);
-			return ref;
+			return {upd.store, event.result};
 		}
 
 		ConfigDB::ObjectUpdateRef getErrorObject(int requestId) override
 		{
 			RpcData::Root::OuterUpdater upd(database);
 			auto event = upd.toColorEvent();
-			ConfigDB::ObjectUpdateRef ref;
-			event.error.getObjectRef(ref, upd.store);
-			return ref;
+			return {upd.store, event.error};
 		}
 	};
 
@@ -100,7 +92,7 @@ JsonRPC::Message rpcImport(const String& jsonString)
 	return msg;
 }
 
-#if 0
+#if 1
 
 void rpcExport(const JsonRPC::Message& msg, const ConfigDB::ObjectRef& body)
 {
@@ -158,28 +150,29 @@ void init()
 		Serial << endl << "IMPORT request" << endl;
 		auto msg = rpcImport(json::request);
 		RpcData::Root root(database);
-		ConfigDB::ObjectRef ref;
-		root.asColorEvent().params.getObjectRef(ref, root.store);
-		rpcExport(msg, ref);
+		rpcExport(msg, {root.store, root.asColorEvent().params});
 	}
 
-	// {
-	// 	Serial << endl << "IMPORT request2" << endl;
-	// 	auto msg = rpcImport(json::request2);
-	// 	rpcExport(msg, RpcData::Root(database).asColorEvent().params);
-	// }
+	{
+		Serial << endl << "IMPORT request2" << endl;
+		auto msg = rpcImport(json::request2);
+		RpcData::Root root(database);
+		rpcExport(msg, {root.store, root.asColorEvent().params});
+	}
 
-	// {
-	// 	Serial << endl << "IMPORT response" << endl;
-	// 	auto msg = rpcImport(json::response);
-	// 	rpcExport(msg, RpcData::Root(database).asColorEvent().result);
-	// }
+	{
+		Serial << endl << "IMPORT response" << endl;
+		auto msg = rpcImport(json::response);
+		RpcData::Root root(database);
+		rpcExport(msg, {root.store, root.asColorEvent().result});
+	}
 
-	// {
-	// 	Serial << endl << "IMPORT error" << endl;
-	// 	auto msg = rpcImport(json::error);
-	// 	rpcExport(msg, RpcData::Root(database).asColorEvent().error);
-	// }
+	{
+		Serial << endl << "IMPORT error" << endl;
+		auto msg = rpcImport(json::error);
+		RpcData::Root root(database);
+		rpcExport(msg, {root.store, root.asColorEvent().error});
+	}
 
 	Serial << endl << endl;
 }
