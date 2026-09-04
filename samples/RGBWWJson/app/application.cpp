@@ -32,7 +32,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
 		// make this a raw color request
-		auto req = update.toColor().params.toRaw();
+		auto colorObject = update.toColor();
+		auto req = colorObject.params.toRaw();
 		req.setR(1023);
 		req.setG(512);
 		req.setB(128);
@@ -54,7 +55,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
 		// make this a color response
-		auto rsp = update.toColor().result.toRaw();
+		auto colorObject = update.toColor();
+		auto rsp = colorObject.result.toRaw();
 		rsp.setR(1023);
 		rsp.setG(512);
 		rsp.setB(128);
@@ -74,7 +76,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 {
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto raw = update.toColor().params.toRaw(); // make this a color notification
+		auto colorObject = update.toColor();
+		auto raw = colorObject.params.toRaw(); // make this a color notification
 		raw.setR(1023);
 		raw.setG(512);
 		raw.setB(128);
@@ -95,7 +98,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
 		// make this a color request
-		auto hsv = update.toColor().params.toHsv();
+		auto colorObject = update.toColor();
+		auto hsv = colorObject.params.toHsv();
 		hsv.setH(210);
 		hsv.setS(75);
 		hsv.setV(60);
@@ -115,7 +119,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
 		// make this a color response
-		auto hsv = update.toColor().result.toHsv();
+		auto colorObject = update.toColor();
+		auto hsv = colorObject.result.toHsv();
 		hsv.setH(210);
 		hsv.setS(75);
 		hsv.setV(60);
@@ -135,7 +140,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
 		// make this a color notification
-		auto hsv = update.toColor().params.toHsv();
+		auto colorObject = update.toColor();
+		auto hsv = colorObject.params.toHsv();
 		hsv.setH(210);
 		hsv.setS(75);
 		hsv.setV(60);
@@ -168,10 +174,12 @@ void printMessage(Jsonrpc& db, const Message& msg)
 [[maybe_unused]] bool generateInfoV1Response(Jsonrpc& db, int id)
 {
 	int free = system_get_free_heap_size();
-
+	
+	Serial << "heap free before generating info v1 response: " << free << " bytes" << endl;
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto info = update.toInfo().result.toInfoV1Params();
+		auto infoObject = update.toInfo();
+		auto info = infoObject.result.toInfoV1Params();
 		info.setDeviceid(10964360);
 		info.setSoc("esp8266");
 		info.setCurrentRom("rom0");
@@ -182,7 +190,7 @@ void printMessage(Jsonrpc& db, const Message& msg)
 		info.setSming("6.2.0");
 		info.setEventNumClients(1);
 		info.setUptime(358620);
-		info.setHeapFree(16912);
+		info.setHeapFree(free);
 		info.rgbww.setVersion("0.10.0");
 		info.rgbww.setQueuesize(20);
 		info.connection.setConnected(true);
@@ -192,7 +200,7 @@ void printMessage(Jsonrpc& db, const Message& msg)
 		info.connection.setNetmask("255.255.255.0");
 		info.connection.setGateway("192.168.29.1");
 		info.connection.setMac("840d8ea74d88");
-		Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
+	    Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
 
 		root.clearDirty();
 
@@ -208,7 +216,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	int free = system_get_free_heap_size();
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto info = update.toInfo().params.toInfoV1Params();
+		auto infoObject = update.toInfo();
+		auto info = infoObject.params.toInfoV1Params();
 		info.setDeviceid(10964360);
 		info.setSoc("esp8266");
 		info.setCurrentRom("rom0");
@@ -246,7 +255,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto info = update.toInfo().result.toInfoV2Params();
+		auto infoObject = update.toInfo();
+		auto info = infoObject.result.toInfoV2Params();
 		info.device.setDeviceid(10964360);
 		info.device.setSoc("esp8266");
 		info.device.setCurrentRom("rom0");
@@ -297,7 +307,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 	int free = system_get_free_heap_size();
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto info = update.toInfo().params.toInfoV2Params();
+		auto infoObject = update.toInfo();
+		auto info = infoObject.params.toInfoV2Params();
 
 		info.device.setDeviceid(10964360);
 		info.device.setSoc("esp8266");
@@ -349,7 +360,8 @@ void printMessage(Jsonrpc& db, const Message& msg)
 {
 	Jsonrpc::Root root(db);
 	if(auto update = root.update()) {
-		auto result = update.toError().result;
+		auto errorObject = update.toError();
+		auto result = errorObject.result;
 		switch(error) {
 		case ParseError:
 			result.setCode(-32700);
