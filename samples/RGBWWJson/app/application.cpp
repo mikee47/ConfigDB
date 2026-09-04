@@ -21,15 +21,17 @@ namespace
 {
 using JsonRPC::Message;
 
-void printMessage(Jsonrpc& db, const Message& msg)
+Jsonrpc database("jsonrpc");
+
+void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
 {
-	JsonRPC::exportMessage(db, msg, Serial);
+	JsonRPC::exportMessage(msg, body.object, Serial);
 	Serial << endl;
 }
 
-[[maybe_unused]] bool generateRawColorRequest(Jsonrpc& db, int id)
+[[maybe_unused]] Message generateRawColorRequest(int id)
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		// make this a raw color request
 		auto colorObject = update.toColor();
@@ -42,17 +44,18 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::request});
+		Message msg{id, Message::Kind::request, root.getTagString()};
+		printMessage(msg, req);
 
-		return true;
+		return msg;
 	}
 
-	return false;
+	return {};
 }
 
-[[maybe_unused]] bool generateRawColorResponse(Jsonrpc& db, int id)
+[[maybe_unused]] Message generateRawColorResponse(int id)
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		// make this a color response
 		auto colorObject = update.toColor();
@@ -65,16 +68,18 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::result});
+		Message msg{id, Message::Kind::result, root.getTagString()};
+		printMessage(msg, rsp);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
-[[maybe_unused]] bool generateRawColorNotification(Jsonrpc& db)
+[[maybe_unused]] Message generateRawColorNotification()
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		auto colorObject = update.toColor();
 		auto raw = colorObject.params.toRaw(); // make this a color notification
@@ -86,16 +91,18 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {0, Message::Kind::notification});
+		Message msg{0, Message::Kind::notification, root.getTagString()};
+		printMessage(msg, raw);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
-[[maybe_unused]] bool generateHsvColorRequest(Jsonrpc& db, int id)
+[[maybe_unused]] Message generateHsvColorRequest(int id)
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		// make this a color request
 		auto colorObject = update.toColor();
@@ -107,16 +114,18 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::request});
+		Message msg{id, Message::Kind::request, root.getTagString()};
+		printMessage(msg, hsv);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
-[[maybe_unused]] bool generateHsvColorResponse(Jsonrpc& db, int id)
+[[maybe_unused]] Message generateHsvColorResponse(int id)
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		// make this a color response
 		auto colorObject = update.toColor();
@@ -128,16 +137,18 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::result});
+		Message msg{id, Message::Kind::result, root.getTagString()};
+		printMessage(msg, hsv);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
-[[maybe_unused]] bool generateHsvColorNotification(Jsonrpc& db)
+[[maybe_unused]] Message generateHsvColorNotification()
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		// make this a color notification
 		auto colorObject = update.toColor();
@@ -149,34 +160,38 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {0, Message::Kind::notification});
+		Message msg{0, Message::Kind::notification, root.getTagString()};
+		printMessage(msg, hsv);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
-[[maybe_unused]] bool generateInfoRequest(Jsonrpc& db, int id)
+[[maybe_unused]] Message generateInfoRequest(int id)
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		update.toInfo();
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::request});
+		Message msg{id, Message::Kind::request, root.getTagString()};
+		printMessage(msg, root);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
-[[maybe_unused]] bool generateInfoV1Response(Jsonrpc& db, int id)
+[[maybe_unused]] Message generateInfoV1Response(int id)
 {
 	int free = system_get_free_heap_size();
-	
+
 	Serial << "heap free before generating info v1 response: " << free << " bytes" << endl;
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		auto infoObject = update.toInfo();
 		auto info = infoObject.result.toInfoV1Params();
@@ -200,21 +215,22 @@ void printMessage(Jsonrpc& db, const Message& msg)
 		info.connection.setNetmask("255.255.255.0");
 		info.connection.setGateway("192.168.29.1");
 		info.connection.setMac("840d8ea74d88");
-	    Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
+		Serial << "heap used: " << (free - system_get_free_heap_size()) << " bytes" << endl;
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::result});
+		Message msg{id, Message::Kind::result, root.getTagString()};
+		printMessage(msg, info);
 
-		return true;
+		return msg;
 	}
-	return false;
+	return {};
 }
 
-[[maybe_unused]] bool generateInfoV1Notification(Jsonrpc& db)
+[[maybe_unused]] Message generateInfoV1Notification()
 {
 	int free = system_get_free_heap_size();
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		auto infoObject = update.toInfo();
 		auto info = infoObject.params.toInfoV1Params();
@@ -242,18 +258,19 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {0, Message::Kind::notification});
+		Message msg{0, Message::Kind::notification, root.getTagString()};
+		printMessage(msg, info);
 
-		return true;
+		return msg;
 	}
-	return false;
+	return {};
 }
 
-[[maybe_unused]] bool generateInfoV2Response(Jsonrpc& db, int id)
+[[maybe_unused]] Message generateInfoV2Response(int id)
 {
 	int free = system_get_free_heap_size();
 
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		auto infoObject = update.toInfo();
 		auto info = infoObject.result.toInfoV2Params();
@@ -295,17 +312,19 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::result});
+		Message msg{id, Message::Kind::result, root.getTagString()};
+		printMessage(msg, info);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
-[[maybe_unused]] bool generateInfoV2Notification(Jsonrpc& db)
+[[maybe_unused]] Message generateInfoV2Notification()
 {
 	int free = system_get_free_heap_size();
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		auto infoObject = update.toInfo();
 		auto info = infoObject.params.toInfoV2Params();
@@ -348,17 +367,18 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {0, Message::Kind::notification});
+		Message msg{0, Message::Kind::notification, root.getTagString()};
+		printMessage(msg, info);
 
-		return true;
+		return msg;
 	}
 
-	return false;
+	return {};
 }
 
-[[maybe_unused]] bool generateErrorResponse(Jsonrpc& db, int id, const ErrorType error, String data = "")
+[[maybe_unused]] Message generateErrorResponse(int id, const ErrorType error, String data = "")
 {
-	Jsonrpc::Root root(db);
+	Jsonrpc::Root root(database);
 	if(auto update = root.update()) {
 		auto errorObject = update.toError();
 		auto result = errorObject.result;
@@ -405,11 +425,13 @@ void printMessage(Jsonrpc& db, const Message& msg)
 
 		root.clearDirty();
 
-		printMessage(db, {id, Message::Kind::result});
+		Message msg{id, Message::Kind::result, root.getTagString()};
+		printMessage(msg, result);
 
-		return true;
+		return msg;
 	}
-	return false;
+
+	return {};
 }
 
 } // namespace
@@ -425,73 +447,71 @@ void init()
 	spiffs_mount();
 #endif
 
-	Jsonrpc db("jsonrpc");
-
 	Serial << endl << "RAW COLOR REQUEST" << endl;
-	if(!generateRawColorRequest(db, 1)) {
+	if(!generateRawColorRequest(1)) {
 		Serial << "Failed to update color database" << endl;
 	}
 
 	Serial << endl << "RAW COLOR RESPONSE" << endl;
-	if(!generateRawColorResponse(db, 1)) {
+	if(!generateRawColorResponse(1)) {
 		Serial << "Failed to update color database" << endl;
 	}
 
 	Serial << endl << "RAW COLOR NOTIFICATION" << endl;
-	if(!generateRawColorNotification(db)) {
+	if(!generateRawColorNotification()) {
 		Serial << "Failed to generate raw color notification" << endl;
 	}
 
 	Serial << endl << "HSV COLOR REQUEST" << endl;
-	if(!generateHsvColorRequest(db, 1)) {
+	if(!generateHsvColorRequest(1)) {
 		Serial << "Failed to update color database" << endl;
 	}
 
 	Serial << endl << "HSV COLOR RESPONSE" << endl;
-	if(!generateHsvColorResponse(db, 1)) {
+	if(!generateHsvColorResponse(1)) {
 		Serial << "Failed to update color database" << endl;
 	}
 
 	Serial << endl << "HSV COLOR NOTIFICATION" << endl;
-	if(!generateHsvColorNotification(db)) {
+	if(!generateHsvColorNotification()) {
 		Serial << "Failed to generate raw color notification" << endl;
 	}
 
 	Serial << endl << "INFO REQUEST" << endl;
-	if(!generateInfoRequest(db, 1)) {
+	if(!generateInfoRequest(1)) {
 		Serial << "Failed to generate info request" << endl;
 	}
 
 	Serial << endl << "INFO V1 RESPONSE" << endl;
-	if(!generateInfoV1Response(db, 1)) {
+	if(!generateInfoV1Response(1)) {
 		Serial << "Failed to generate info v1 response" << endl;
 	}
 
 	Serial << endl << "INFO V1 NOTIFICATION" << endl;
-	if(!generateInfoV1Notification(db)) {
+	if(!generateInfoV1Notification()) {
 		Serial << "Failed to generate info v1 notification" << endl;
 	}
 
 	Serial << endl << "INFO V2 RESPONSE" << endl;
-	if(!generateInfoV2Response(db, 1)) {
+	if(!generateInfoV2Response(1)) {
 		Serial << "Failed to generate info v2 response" << endl;
 	}
 
 	Serial << endl << "INFO V2 NOTIFICATION" << endl;
-	if(!generateInfoV2Notification(db)) {
+	if(!generateInfoV2Notification()) {
 		Serial << "Failed to generate info v2 notification" << endl;
 	}
 
 	Serial << endl << "ERROR RESPONSES" << endl;
-	if(!generateErrorResponse(db, 1, ErrorType::InvalidRequest)) {
+	if(!generateErrorResponse(1, ErrorType::InvalidRequest)) {
 		Serial << "Failed to generate error response" << endl;
 	}
 
-	if(!generateErrorResponse(db, 2, ErrorType::ApplicationError2, "something went horribly wrong")) {
+	if(!generateErrorResponse(2, ErrorType::ApplicationError2, "something went horribly wrong")) {
 		Serial << "Failed to generate error response" << endl;
 	}
 
-	if(!generateErrorResponse(db, 2, ErrorType::MethodNotFound)) {
+	if(!generateErrorResponse(2, ErrorType::MethodNotFound)) {
 		Serial << "Failed to generate error response" << endl;
 	}
 
