@@ -119,16 +119,6 @@ Object& Object::operator=(const Object& other)
 	return *this;
 }
 
-StoreRef Object::openStore(Database& db, unsigned storeIndex)
-{
-	return db.openStore(storeIndex);
-}
-
-StoreUpdateRef Object::openStoreForUpdate(Database& db, unsigned storeIndex)
-{
-	return db.openStoreForUpdate(storeIndex);
-}
-
 StoreUpdateRef Object::lockStore(StoreRef& store)
 {
 	// Get root object which has pointer to Store: this may change

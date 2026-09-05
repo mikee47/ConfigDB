@@ -277,9 +277,6 @@ protected:
 	friend class Union;
 	friend class Accessor;
 
-	StoreRef openStore(Database& db, unsigned storeIndex);
-	StoreUpdateRef openStoreForUpdate(Database& db, unsigned storeIndex);
-
 	void disposeArrays();
 	void initArrays();
 
@@ -364,13 +361,13 @@ template <class UpdaterType, class DatabaseClassType, unsigned storeIndex, class
 class OuterObjectUpdaterTemplate : public UpdaterType
 {
 public:
-	OuterObjectUpdaterTemplate(StoreUpdateRef store)
+	explicit OuterObjectUpdaterTemplate(StoreUpdateRef store)
 		: UpdaterType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
 	explicit OuterObjectUpdaterTemplate(DatabaseClassType& db)
-		: OuterObjectUpdaterTemplate(this->openStoreForUpdate(db, storeIndex))
+		: OuterObjectUpdaterTemplate(db.openStoreForUpdate(storeIndex))
 	{
 	}
 
@@ -408,12 +405,12 @@ class OuterObjectTemplate : public ContainedClassType
 public:
 	using Updater = UpdaterType;
 
-	OuterObjectTemplate(StoreRef store)
+	explicit OuterObjectTemplate(StoreRef store)
 		: ContainedClassType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
-	OuterObjectTemplate(DatabaseClassType& db) : OuterObjectTemplate(this->openStore(db, storeIndex))
+	explicit OuterObjectTemplate(DatabaseClassType& db) : OuterObjectTemplate(db.openStore(storeIndex))
 	{
 	}
 
