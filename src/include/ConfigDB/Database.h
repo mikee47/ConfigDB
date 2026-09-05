@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Store.h"
+#include "ObjectRef.h"
 #include "DatabaseInfo.h"
 #include <Data/CString.h>
 #include <WVector.h>
@@ -64,6 +65,15 @@ public:
 	 * @param ref The store reference being destroyed
 	 */
 	void checkStoreRef(const StoreRef& ref);
+
+	ObjectRef getObject(const char* name, unsigned length);
+
+	ObjectUpdateRef getObjectForUpdate(const char* name, unsigned length);
+
+	ObjectUpdateRef getObjectForUpdate(const String& name)
+	{
+		return getObjectForUpdate(name.c_str(), name.length());
+	}
 
 	/**
 	 * @brief Register a callback using a store instance

@@ -18,8 +18,8 @@
  ****/
 
 #include <ConfigDB/Json/Format.h>
-#include "ReadStream.h"
-#include "WriteStream.h"
+#include <ConfigDB/Json/ReadStream.h>
+#include <ConfigDB/Json/WriteStream.h>
 #include <debug_progmem.h>
 
 namespace ConfigDB::Json

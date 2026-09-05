@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "string-value": {
+      "type": "string"
+    },
+    "boolean-value": {
+      "type": "boolean"
+    },
+    "integer-value": {
+      "type": "integer"
+    },
+    "non-negative-integer": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "raw-value": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1023
+    },
+    "hue-value": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 360
+    },
+    "percentage-value": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    }
+  }
+}

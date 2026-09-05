@@ -244,7 +244,11 @@ Object Object::findObject(const char* name, size_t length)
 		return {};
 	}
 	if(ti.type == ObjectType::Union) {
-		static_cast<Union*>(this)->setTag(index);
+		if(isWriteable()) {
+			static_cast<Union*>(this)->setTag(index);
+		} else if(static_cast<const Union*>(this)->getTag() != index) {
+			return {};
+		}
 	}
 	return {*this, unsigned(index)};
 }
