@@ -84,9 +84,15 @@ struct ObjectRef : public ObjectRefBase {
 
 	ObjectRef(StoreRef store, unsigned propIndex);
 
-	ObjectRef(StoreRef store, const Object& object);
+	ObjectRef(StoreRef store, const Object& object) : ObjectRefBase(object), store(store)
+	{
+	}
 
-	ObjectRef(const ObjectRef& other);
+	ObjectRef(const Object& object);
+
+	ObjectRef(const ObjectRef& other) : ObjectRefBase(other), store(other.store)
+	{
+	}
 
 	ObjectRef& operator=(const ObjectRef& other);
 
@@ -101,9 +107,15 @@ struct ObjectUpdateRef : public ObjectRefBase {
 
 	using ObjectRefBase::ObjectRefBase;
 
-	ObjectUpdateRef(StoreUpdateRef store, Object& object);
+	ObjectUpdateRef(StoreUpdateRef store, Object& object) : ObjectRefBase(object), store(store)
+	{
+	}
 
-	ObjectUpdateRef(const ObjectUpdateRef& other);
+	ObjectUpdateRef(Object& object);
+
+	ObjectUpdateRef(const ObjectUpdateRef& other) : ObjectRefBase(other), store(other.store)
+	{
+	}
 
 	ObjectUpdateRef& operator=(const ObjectUpdateRef& other);
 
