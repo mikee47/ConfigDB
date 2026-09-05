@@ -189,6 +189,7 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 		return nullptr;
 	}
 
+	store->weakref = store;
 	auto& format = getFormat(*store);
 	StoreUpdateRef update = store;
 	// Handle *any* import failure by loading defaults
@@ -222,7 +223,7 @@ ObjectUpdateRef Database::getObjectForUpdate(const char* name, unsigned length)
 	auto ref = getObject(name, length);
 	if(ref) {
 		auto lockedStore = lockStore(ref.store);
-		return ObjectUpdateRef(lockedStore, ref.object);
+		return {lockedStore, ref.object};
 	}
 	return {};
 }

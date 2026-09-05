@@ -37,7 +37,7 @@ JsonRPC::Message rpcImport(const String& jsonString)
 		{
 			RpcData::Root::OuterUpdater root(database);
 			auto event = root.toColorEvent();
-			return {root.store, event.params};
+			return event.params;
 		}
 
 		ConfigDB::ObjectUpdateRef getResultObject(int requestId) override
@@ -53,14 +53,14 @@ JsonRPC::Message rpcImport(const String& jsonString)
 
 			RpcData::Root::OuterUpdater upd(database);
 			auto event = upd.toColorEvent();
-			return {upd.store, event.result};
+			return event.result;
 		}
 
 		ConfigDB::ObjectUpdateRef getErrorObject(int requestId) override
 		{
 			RpcData::Root::OuterUpdater upd(database);
 			auto event = upd.toColorEvent();
-			return {upd.store, event.error};
+			return event.error;
 		}
 	};
 
@@ -150,28 +150,28 @@ void init()
 		Serial << endl << "IMPORT request" << endl;
 		auto msg = rpcImport(json::request);
 		RpcData::Root root(database);
-		rpcExport(msg, {root.store, root.asColorEvent().params});
+		rpcExport(msg, root.asColorEvent().params);
 	}
 
 	{
 		Serial << endl << "IMPORT request2" << endl;
 		auto msg = rpcImport(json::request2);
 		RpcData::Root root(database);
-		rpcExport(msg, {root.store, root.asColorEvent().params});
+		rpcExport(msg, root.asColorEvent().params);
 	}
 
 	{
 		Serial << endl << "IMPORT response" << endl;
 		auto msg = rpcImport(json::response);
 		RpcData::Root root(database);
-		rpcExport(msg, {root.store, root.asColorEvent().result});
+		rpcExport(msg, root.asColorEvent().result);
 	}
 
 	{
 		Serial << endl << "IMPORT error" << endl;
 		auto msg = rpcImport(json::error);
 		RpcData::Root root(database);
-		rpcExport(msg, {root.store, root.asColorEvent().error});
+		rpcExport(msg, root.asColorEvent().error);
 	}
 
 	Serial << endl << endl;
