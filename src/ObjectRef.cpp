@@ -63,15 +63,11 @@ ObjectRef::ObjectRef(StoreRef store) : ObjectRefBase(*store), store(store)
 {
 }
 
-ObjectRef::ObjectRef(StoreRef store, unsigned propIndex) : ObjectRef(store, {*store, propIndex})
+ObjectRef::ObjectRef(StoreRef store, unsigned propIndex) : ObjectRefBase({*store, propIndex}), store(store)
 {
 }
 
-ObjectRef::ObjectRef(StoreRef store, const Object& object) : ObjectRefBase(object), store(store)
-{
-}
-
-ObjectRef::ObjectRef(const ObjectRef& other) : ObjectRefBase(other), store(other.store)
+ObjectRef::ObjectRef(const Object& object) : ObjectRef(object.getStore().lock(), object)
 {
 }
 
@@ -82,10 +78,6 @@ ObjectRef& ObjectRef::operator=(const ObjectRef& other)
 	return *this;
 }
 
-ObjectUpdateRef::ObjectUpdateRef(const ObjectUpdateRef& other) : ObjectRefBase(other), store(other.store)
-{
-}
-
 ObjectUpdateRef& ObjectUpdateRef::operator=(const ObjectUpdateRef& other)
 {
 	store = other.store;
@@ -93,7 +85,7 @@ ObjectUpdateRef& ObjectUpdateRef::operator=(const ObjectUpdateRef& other)
 	return *this;
 }
 
-ObjectUpdateRef::ObjectUpdateRef(StoreUpdateRef store, Object& object) : ObjectRefBase(object), store(store)
+ObjectUpdateRef::ObjectUpdateRef(Object& object) : ObjectUpdateRef(object.getStore().lockForUpdate(), object)
 {
 }
 

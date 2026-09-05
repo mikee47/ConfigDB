@@ -23,9 +23,9 @@ using JsonRPC::Message;
 
 Jsonrpc database("jsonrpc");
 
-void printMessage(const Message& msg, const ConfigDB::ObjectRef& body)
+void printMessage(const Message& msg, const ConfigDB::Object& body)
 {
-	JsonRPC::exportMessage(msg, body.object, Serial);
+	JsonRPC::exportMessage(msg, body, Serial);
 	Serial << endl;
 }
 
