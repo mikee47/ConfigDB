@@ -35,9 +35,9 @@ public:
 	{
 	}
 
-	ReadStream(StoreRef& store, const Object& object, const ExportOptions& options = {})
-		: store(store),
-		  printer(stream, object, options.pretty,
+	ReadStream(ObjectRef ref, const ExportOptions& options = {})
+		: root(ref),
+		  printer(stream, ref.object, options.pretty,
 				  options.asObject ? Printer::RootStyle::object
 								   : options.useName ? Printer::RootStyle::name : Printer::RootStyle::braces),
 		  options(options)
@@ -62,7 +62,7 @@ public:
 
 	String getName() const override
 	{
-		return db ? db->getName() : store ? store->getName() : nullptr;
+		return db ? db->getName() : root ? root.store->getName() : nullptr;
 	}
 
 	MimeType getMimeType() const override
@@ -79,7 +79,7 @@ private:
 	size_t fillStream(Print& p);
 
 	Database* db{};
-	StoreRef store;
+	ObjectRef root;
 	Printer printer;
 	MemoryDataStream stream;
 	const ExportOptions options;
