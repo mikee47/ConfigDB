@@ -78,6 +78,10 @@ ObjectRef& ObjectRef::operator=(const ObjectRef& other)
 	return *this;
 }
 
+ObjectUpdateRef::ObjectUpdateRef(StoreUpdateRef store) : ObjectRefBase(*store), store(store)
+{
+}
+
 ObjectUpdateRef& ObjectUpdateRef::operator=(const ObjectUpdateRef& other)
 {
 	store = other.store;

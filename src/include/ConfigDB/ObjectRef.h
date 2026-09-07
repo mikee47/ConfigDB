@@ -62,9 +62,9 @@ struct ObjectRefBase {
 
 	ObjectRefBase() = default;
 
-	ObjectRefBase(const Object& object);
+	explicit ObjectRefBase(const Object& object);
 
-	ObjectRefBase(const ObjectRefBase& other)
+	explicit ObjectRefBase(const ObjectRefBase& other)
 	{
 		copy(other);
 	}
@@ -106,6 +106,8 @@ struct ObjectUpdateRef : public ObjectRefBase {
 	StoreUpdateRef store;
 
 	using ObjectRefBase::ObjectRefBase;
+
+	ObjectUpdateRef(StoreUpdateRef store);
 
 	ObjectUpdateRef(StoreUpdateRef store, Object& object) : ObjectRefBase(object), store(store)
 	{
