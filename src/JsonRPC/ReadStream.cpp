@@ -140,8 +140,7 @@ uint16_t ReadStream::readMemoryBlock(char* data, int bufSize)
 		case State::body:
 			state = State::footer;
 			if(body) {
-				stream = std::make_unique<ConfigDB::Json::ReadStream>(body.store, body.object,
-																	  ExportOptions{.pretty = pretty});
+				stream = std::make_unique<ConfigDB::Json::ReadStream>(body, ExportOptions{.pretty = pretty});
 				break;
 			}
 			[[fallthrough]];
