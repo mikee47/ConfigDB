@@ -53,7 +53,7 @@ Status WriteStream::parse(Object& object, Stream& source)
 bool WriteStream::handleError(FormatError err, Object& object, const String& arg)
 {
 	status = err;
-	Database& db = database ? *database : info[0].getDatabase();
+	Database& db = database ? *database : root.store->getDatabase();
 	return db.handleFormatError(err, object, arg);
 	return true;
 }
@@ -66,12 +66,12 @@ bool WriteStream::handleError(FormatError err, const String& arg)
 
 bool WriteStream::openStore(unsigned storeIndex)
 {
-	if(store && database->typeinfo.indexOf(store->propinfo()) == int(storeIndex)) {
+	if(root.store && database->typeinfo.indexOf(root.store->propinfo()) == int(storeIndex)) {
 		return true;
 	}
-	store = StoreUpdateRef();
-	store = database->openStoreForUpdate(storeIndex);
-	return bool(store);
+	root = {};
+	root = ObjectUpdateRef(database->openStoreForUpdate(storeIndex));
+	return bool(root);
 }
 
 bool WriteStream::startElement(const Element& element)
@@ -96,7 +96,7 @@ bool WriteStream::startElement(const Element& element)
 		if(!openStore(0)) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
 		}
-		parent = *store;
+		parent = *root.store;
 	}
 
 	if(sel) {
@@ -145,7 +145,6 @@ bool WriteStream::startElement(const Element& element)
  */
 bool WriteStream::locateStoreOrRoot(const Element& element)
 {
-	auto& parent = info[element.level - 1];
 	auto& obj = info[element.level];
 	obj = {};
 
@@ -153,12 +152,12 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	if(!ref) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
-	store = database->lockStore(ref.store);
+	auto store = database->lockStore(ref.store);
 	if(!store) {
 		return handleError(FormatError::UpdateConflict, element.getKey());
 	}
-	parent = *store;
-	obj = ref.object;
+	root = ObjectUpdateRef(store, ref.object);
+	obj = root.object;
 	return true;
 }
 

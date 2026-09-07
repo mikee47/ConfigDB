@@ -38,11 +38,11 @@ public:
 	{
 	}
 
-	WriteStream(StoreUpdateRef& store, Object& object) : store(store), info{object}, parser(this)
+	WriteStream(StoreUpdateRef store, Object& object) : WriteStream(ObjectUpdateRef(store, object))
 	{
 	}
 
-	WriteStream(Object& object) : info{object}, parser(this)
+	WriteStream(ObjectUpdateRef ref) : root(ref), info{root.object}, parser(this)
 	{
 	}
 
@@ -108,7 +108,7 @@ protected:
 
 protected:
 	Database* database{};
-	StoreUpdateRef store;
+	ObjectUpdateRef root;
 	Object info[JSON::StreamingParser::maxNesting]{};
 	ObjectArray arrayParent; ///< Temporary required when using selectors
 	JSON::StaticStreamingParser<1024> parser;
