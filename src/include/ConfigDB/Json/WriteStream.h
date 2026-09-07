@@ -44,6 +44,9 @@ public:
 
 	WriteStream(ObjectUpdateRef ref) : root(ref), info{root.object}, parser(this)
 	{
+		if(!ref) {
+			status = {Error::UpdateConflict};
+		}
 	}
 
 	static Status parse(Database& database, Stream& source);
