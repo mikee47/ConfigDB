@@ -391,7 +391,7 @@ std::unique_ptr<ExportStream> Database::createExportStream(const Format& format,
 	}
 
 	Object obj(*store, *prop, offset);
-	return format.createExportStream(store, obj, options);
+	return format.createExportStream(obj, options);
 }
 
 bool Database::exportToFile(const Format& format, const String& filename, const ExportOptions& options)
