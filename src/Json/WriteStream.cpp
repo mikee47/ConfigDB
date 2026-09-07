@@ -26,6 +26,9 @@ namespace ConfigDB::Json
 {
 Status WriteStream::getStatus() const
 {
+	if(!status) {
+		return status;
+	}
 	switch(jsonStatus) {
 	case JSON::Status::EndOfDocument:
 	case JSON::Status::Cancelled:
@@ -46,7 +49,9 @@ Status WriteStream::parse(Database& database, Stream& source)
 Status WriteStream::parse(Object& object, Stream& source)
 {
 	WriteStream writer(object);
-	writer.jsonStatus = writer.parser.parse(source);
+	if(writer.status) {
+		writer.jsonStatus = writer.parser.parse(source);
+	}
 	return writer.getStatus();
 }
 
