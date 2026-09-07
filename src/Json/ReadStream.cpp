@@ -40,7 +40,7 @@ size_t ReadStream::fillStream(Print& p)
 
 	size_t n{0};
 
-	if(db && !store) {
+	if(db && !root) {
 		if(storeIndex == 0) {
 			if(options.asObject) {
 				n += p.print('{');
@@ -53,16 +53,16 @@ size_t ReadStream::fillStream(Print& p)
 			}
 			n += p.print('{');
 		}
-		store = db->openStore(storeIndex);
+		root = db->openStore(storeIndex);
 		auto style = storeIndex == 0 ? Printer::RootStyle::hidden : Printer::RootStyle::name;
-		printer = Printer(p, *store, options.pretty, style);
+		printer = Printer(p, root.object, options.pretty, style);
 	}
 
 	n += printer();
 	if(!printer.isDone()) {
 		return n;
 	}
-	store = {};
+	root = {};
 
 	if(!db) {
 		done = true;

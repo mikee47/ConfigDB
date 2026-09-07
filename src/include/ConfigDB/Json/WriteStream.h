@@ -38,10 +38,6 @@ public:
 	{
 	}
 
-	WriteStream(StoreUpdateRef store, Object& object) : WriteStream(ObjectUpdateRef(store, object))
-	{
-	}
-
 	WriteStream(ObjectUpdateRef ref) : root(ref), info{root.object}, parser(this)
 	{
 		if(!ref) {
