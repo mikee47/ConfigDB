@@ -32,6 +32,11 @@ ObjectRefBase::ObjectRefBase(const Object& object)
 	uint16_t offset{0};
 	auto obj = &object;
 	while(obj->parent) {
+		// Include property offset, but only for intermediate objects
+		if(obj != &object) {
+			offset += obj->propinfo().offset;
+		}
+
 		if(obj->parent->isArray() && !obj->parent->isStore()) {
 			this->array = *obj->parent;
 			this->parent = Object(this->array, obj->propinfo(), obj->dataRef);
@@ -41,7 +46,7 @@ ObjectRefBase::ObjectRefBase(const Object& object)
 		offset += obj->dataRef;
 		obj = obj->parent;
 	}
-	this->parent = *object.parent;
+	this->parent = *obj;
 	this->object = Object(this->parent, object.propinfo(), offset);
 }
 
