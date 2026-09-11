@@ -24,13 +24,13 @@ namespace ConfigDB
 uint8_t Store::instanceCount;
 
 Store::Store(Database& db, const PropertyInfo& propinfo)
-	: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(propinfo.variant.object->dataSize))
+	: Object(propinfo), db(db), rootData(std::make_unique<uint8_t[]>(typeinfo().dataSize))
 {
-	auto& obj = *propinfo.variant.object;
-	if(obj.type == ObjectType::Array) {
-		*reinterpret_cast<ArrayId*>(rootData.get()) = arrayPool.add(obj);
-	} else if(obj.defaultData) {
-		memcpy_P(rootData.get(), obj.defaultData, obj.dataSize);
+	auto& ti = typeinfo();
+	if(ti.type == ObjectType::Array) {
+		*reinterpret_cast<ArrayId*>(rootData.get()) = arrayPool.add(ti);
+	} else if(ti.defaultData) {
+		memcpy_P(rootData.get(), ti.defaultData, ti.dataSize);
 	}
 	++instanceCount;
 	CFGDB_DEBUG(" %u", instanceCount)
@@ -38,7 +38,7 @@ Store::Store(Database& db, const PropertyInfo& propinfo)
 
 Store::Store(const Store& store)
 	: Object(store.propinfo()), arrayPool(store.arrayPool), stringPool(store.stringPool), db(store.db),
-	  rootData(std::make_unique<uint8_t[]>(store.typeinfo().dataSize))
+	  rootData(std::make_unique<uint8_t[]>(typeinfo().dataSize))
 {
 	++instanceCount;
 	CFGDB_DEBUG(" COPY %u", instanceCount)

@@ -17,7 +17,7 @@
  *
  ****/
 
-#include "WriteStream.h"
+#include <ConfigDB/Json/WriteStream.h>
 #include <JSON/StreamingParser.h>
 
 using Element = JSON::Element;
@@ -26,6 +26,9 @@ namespace ConfigDB::Json
 {
 Status WriteStream::getStatus() const
 {
+	if(!status) {
+		return status;
+	}
 	switch(jsonStatus) {
 	case JSON::Status::EndOfDocument:
 	case JSON::Status::Cancelled:
@@ -46,14 +49,16 @@ Status WriteStream::parse(Database& database, Stream& source)
 Status WriteStream::parse(Object& object, Stream& source)
 {
 	WriteStream writer(object);
-	writer.jsonStatus = writer.parser.parse(source);
+	if(writer.status) {
+		writer.jsonStatus = writer.parser.parse(source);
+	}
 	return writer.getStatus();
 }
 
 bool WriteStream::handleError(FormatError err, Object& object, const String& arg)
 {
 	status = err;
-	Database& db = database ? *database : info[0].getDatabase();
+	Database& db = database ? *database : root.store->getDatabase();
 	return db.handleFormatError(err, object, arg);
 	return true;
 }
@@ -66,12 +71,12 @@ bool WriteStream::handleError(FormatError err, const String& arg)
 
 bool WriteStream::openStore(unsigned storeIndex)
 {
-	if(store && database->typeinfo.indexOf(store->propinfo()) == int(storeIndex)) {
+	if(root.store && database->typeinfo.indexOf(root.store->propinfo()) == int(storeIndex)) {
 		return true;
 	}
-	store = StoreUpdateRef();
-	store = database->openStoreForUpdate(storeIndex);
-	return bool(store);
+	root = {};
+	root = ObjectUpdateRef(database->openStoreForUpdate(storeIndex));
+	return bool(root);
 }
 
 bool WriteStream::startElement(const Element& element)
@@ -96,7 +101,7 @@ bool WriteStream::startElement(const Element& element)
 		if(!openStore(0)) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
 		}
-		parent = *store;
+		parent = *root.store;
 	}
 
 	if(sel) {
@@ -145,32 +150,19 @@ bool WriteStream::startElement(const Element& element)
  */
 bool WriteStream::locateStoreOrRoot(const Element& element)
 {
-	auto& parent = info[element.level - 1];
 	auto& obj = info[element.level];
 	obj = {};
 
-	// Look in root store for a matching object
-	auto& root = database->typeinfo.stores[0];
-	int i = root.findObject(element.key, element.keyLength);
-	if(i >= 0) {
-		if(!openStore(0)) {
-			return handleError(FormatError::UpdateConflict, element.getKey());
-		}
-		parent = *store;
-		obj = store->getObject(i);
-		return true;
-	}
-
-	// Now check for a matching store
-	store = StoreUpdateRef();
-	i = database->typeinfo.findStore(element.key, element.keyLength);
-	if(i < 0) {
+	auto ref = database->getObject(element.key, element.keyLength);
+	if(!ref) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
-	if(!openStore(i)) {
+	auto store = database->lockStore(ref.store);
+	if(!store) {
 		return handleError(FormatError::UpdateConflict, element.getKey());
 	}
-	obj = *store;
+	root = ObjectUpdateRef(store, ref.object);
+	obj = root.object;
 	return true;
 }
 

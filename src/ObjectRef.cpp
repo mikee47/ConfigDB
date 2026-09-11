@@ -1,0 +1,101 @@
+/****
+ * ConfigDB/ObjectRef.cpp
+ *
+ * Copyright 2026 mikee47 <mike@sillyhouse.net>
+ *
+ * This file is part of the ConfigDB Library
+ *
+ * This library is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, version 3 or later.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this library.
+ * If not, see <https://www.gnu.org/licenses/>.
+ *
+ ****/
+
+#include "include/ConfigDB/ObjectRef.h"
+#include "include/ConfigDB/Store.h"
+
+namespace ConfigDB
+{
+ObjectRefBase::ObjectRefBase(const Object& object)
+{
+	if(object.isStore() || object.parent->isStore()) {
+		this->object = object;
+		return;
+	}
+
+	uint16_t offset{0};
+	auto obj = &object;
+	while(obj->parent) {
+		// Include property offset, but only for intermediate objects
+		if(obj != &object) {
+			offset += obj->propinfo().offset;
+		}
+
+		if(obj->parent->isArray() && !obj->parent->isStore()) {
+			this->array = *obj->parent;
+			this->parent = Object(this->array, obj->propinfo(), obj->dataRef);
+			this->object = Object(this->parent, object.propinfo(), offset);
+			return;
+		}
+		offset += obj->dataRef;
+		obj = obj->parent;
+	}
+	this->parent = *obj;
+	this->object = Object(this->parent, object.propinfo(), offset);
+}
+
+void ObjectRefBase::copy(const ObjectRefBase& other)
+{
+	array = other.array;
+	parent = other.parent;
+	object = other.object;
+
+	if(other.parent.parent == &other.array) {
+		parent.parent = &array;
+	}
+	if(other.object.parent == &other.parent) {
+		object.parent = &parent;
+	}
+}
+
+ObjectRef::ObjectRef(StoreRef store) : ObjectRefBase(*store), store(store)
+{
+}
+
+ObjectRef::ObjectRef(StoreRef store, unsigned propIndex) : ObjectRefBase({*store, propIndex}), store(store)
+{
+}
+
+ObjectRef::ObjectRef(const Object& object) : ObjectRef(object.getStore().lock(), object)
+{
+}
+
+ObjectRef& ObjectRef::operator=(const ObjectRef& other)
+{
+	store = other.store;
+	copy(other);
+	return *this;
+}
+
+ObjectUpdateRef::ObjectUpdateRef(StoreUpdateRef store) : ObjectRefBase(*store), store(store)
+{
+}
+
+ObjectUpdateRef& ObjectUpdateRef::operator=(const ObjectUpdateRef& other)
+{
+	store = other.store;
+	copy(other);
+	return *this;
+}
+
+ObjectUpdateRef::ObjectUpdateRef(Object& object) : ObjectUpdateRef(object.getStore().lockForUpdate(), object)
+{
+}
+
+} // namespace ConfigDB

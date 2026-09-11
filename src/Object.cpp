@@ -119,16 +119,6 @@ Object& Object::operator=(const Object& other)
 	return *this;
 }
 
-StoreRef Object::openStore(Database& db, unsigned storeIndex)
-{
-	return db.openStore(storeIndex);
-}
-
-StoreUpdateRef Object::openStoreForUpdate(Database& db, unsigned storeIndex)
-{
-	return db.openStoreForUpdate(storeIndex);
-}
-
 StoreUpdateRef Object::lockStore(StoreRef& store)
 {
 	// Get root object which has pointer to Store: this may change
@@ -244,7 +234,11 @@ Object Object::findObject(const char* name, size_t length)
 		return {};
 	}
 	if(ti.type == ObjectType::Union) {
-		static_cast<Union*>(this)->setTag(index);
+		if(isWriteable()) {
+			static_cast<Union*>(this)->setTag(index);
+		} else if(static_cast<const Union*>(this)->getTag() != index) {
+			return {};
+		}
 	}
 	return {*this, unsigned(index)};
 }
