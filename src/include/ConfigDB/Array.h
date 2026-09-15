@@ -39,22 +39,34 @@ public:
 
 	Property getProperty(unsigned index)
 	{
-		return makeProperty(getArray()[index]);
+		if(auto array = getArray()) {
+			return makeProperty(array->get(index));
+		}
+		return {};
 	}
 
 	Property addItem()
 	{
-		return makeProperty(getArray().add());
+		if(auto array = getArray()) {
+			return makeProperty(array->add());
+		}
+		return {};
 	}
 
 	Property insertItem(unsigned index)
 	{
-		return makeProperty(getArray().insert(index));
+		if(auto array = getArray()) {
+			return makeProperty(array->insert(index));
+		}
+		return {};
 	}
 
 	PropertyConst getProperty(unsigned index) const
 	{
-		return makeProperty(getArray()[index]);
+		if(auto array = getArray()) {
+			return makeProperty(array->get(index));
+		}
+		return {};
 	}
 
 	const PropertyInfo& getItemType() const
@@ -77,14 +89,18 @@ protected:
 	{
 		PropertyData dst{};
 		dst.setValue(getItemType(), value);
-		this->getArray().add(&dst);
+		if(auto array = getArray()) {
+			array->add(&dst);
+		}
 	}
 
 	template <typename T> void insertItem(unsigned index, T value)
 	{
 		PropertyData dst{};
 		dst.setValue(getItemType(), value);
-		this->getArray().insert(index, &dst);
+		if(auto array = getArray()) {
+			array->insert(index, &dst);
+		}
 	}
 
 	template <typename T> void setItem(unsigned index, T value)
@@ -96,10 +112,11 @@ protected:
 	int indexOf(const void* value) const
 	{
 		auto itemSize = getItemType().getSize();
-		auto& array = getArray();
-		for(unsigned i = 0; i < array.getCount(); ++i) {
-			if(memcmp(array[i], value, itemSize) == 0) {
-				return i;
+		if(auto array = getArray()){
+			for(unsigned i = 0; i < array->getCount(); ++i) {
+				if(memcmp(array->get(i), value, itemSize) == 0) {
+					return i;
+				}
 			}
 		}
 		return -1;
@@ -131,7 +148,7 @@ public:
 
 	ItemType getItem(unsigned index) const
 	{
-		return *static_cast<const ItemType*>(getArray()[index]);
+		return *static_cast<const ItemType*>(getArray()->get(index));
 	}
 
 	const ItemType operator[](unsigned index) const
@@ -235,7 +252,7 @@ public:
 
 	String getItem(unsigned index) const
 	{
-		auto id = *static_cast<const StringId*>(this->getArray()[index]);
+		auto id = *static_cast<const StringId*>(this->getArray()->get(index));
 		return this->getPropertyString(0, id);
 	}
 

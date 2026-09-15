@@ -22,7 +22,7 @@
 
 namespace ConfigDB
 {
-ArrayData& ArrayBase::getArray()
+ArrayData* ArrayBase::getArray()
 {
 	auto& store = getStore();
 	auto& id = getId();
@@ -34,25 +34,25 @@ ArrayData& ArrayBase::getArray()
 			id = store.arrayPool.add(prop);
 		}
 	}
-	return store.arrayPool[id];
+	return store.arrayPool.get(id);
 }
 
-const ArrayData& ArrayBase::getArray() const
+const ArrayData* ArrayBase::getArray() const
 {
-	return getStore().arrayPool[getId()];
+	return getStore().arrayPool.get(getId());
 }
 
 void ArrayBase::clear()
 {
 	if(auto id = getId()) {
-		getStore().arrayPool[id].clear();
+		getStore().arrayPool.get(id)->clear();
 	}
 }
 
 void ArrayBase::dispose()
 {
 	if(auto id = getId()) {
-		getStore().arrayPool[id].dispose();
+		getStore().arrayPool.get(id)->dispose();
 	}
 }
 

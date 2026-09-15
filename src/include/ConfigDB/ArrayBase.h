@@ -34,7 +34,10 @@ public:
 
 	unsigned getItemCount() const
 	{
-		return getId() ? getArray().getCount() : 0;
+		if(auto array = getArray()) {
+			return array->getCount();
+		}
+		return 0;
 	}
 
 	/*
@@ -44,7 +47,10 @@ public:
 	 */
 	bool removeItem(unsigned index)
 	{
-		return getArray().remove(index);
+		if(auto array = getArray()) {
+			return array->remove(index);
+		}
+		return false;
 	}
 
 	void clear();
@@ -66,16 +72,22 @@ protected:
 
 	void* getItem(unsigned index)
 	{
-		return getArray()[index];
+		if(auto array = getArray()) {
+			return array->get(index);
+		}
+		return nullptr;
 	}
 
 	const void* getItem(unsigned index) const
 	{
-		return getArray()[index];
+		if(auto array = getArray()) {
+			return array->get(index);
+		}
+		return nullptr;
 	}
 
-	ArrayData& getArray();
-	const ArrayData& getArray() const;
+	ArrayData* getArray();
+	const ArrayData* getArray() const;
 };
 
 } // namespace ConfigDB

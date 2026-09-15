@@ -194,10 +194,10 @@ ArrayId ArrayPool::add(size_t itemSize)
 {
 	// See if there's a free slot
 	for(unsigned id = 1; id <= count; ++id) {
-		auto& arr = (*this)[id];
-		if(arr.getItemSize() == 0) {
+		auto arr = get(id);
+		if(arr->getItemSize() == 0) {
 			debug_d("[CFGDB] ArrayPool re-use #%u", id);
-			arr = ArrayData(itemSize);
+			*arr = ArrayData(itemSize);
 			return id;
 		}
 	}

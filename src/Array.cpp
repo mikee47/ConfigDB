@@ -30,21 +30,26 @@ void Array::loadDefaults()
 		return;
 	}
 
-	auto& array = getArray();
+	auto array = getArray();
+	if(!array) {
+		return;
+	}
 
 	auto& item = getItemType();
 	if(item.type == PropertyType::String) {
 		auto& strings = *static_cast<const FSTR::Vector<FSTR::String>*>(ti.defaultData);
-		array.ensureCapacity(array.getCount() + strings.length());
+		if(!array->ensureCapacity(array->getCount() + strings.length())) {
+			return;
+		}
 		for(auto& s : strings) {
 			auto id = getStringId(s);
-			array.add(&id);
+			array->add(&id);
 		}
 		return;
 	}
 
 	auto& items = *static_cast<const FSTR::ObjectBase*>(ti.defaultData);
-	array.add(items.data(), items.length() / item.getSize());
+	array->add(items.data(), items.length() / item.getSize());
 }
 
 } // namespace ConfigDB
