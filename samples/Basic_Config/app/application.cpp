@@ -168,7 +168,7 @@ void printArrayPool(const ConfigDB::ArrayPool& pool, bool detailed)
 	size_t used{0};
 	size_t capacity{0};
 	for(unsigned i = 1; i <= n; ++i) {
-		auto& data = pool[i];
+		auto& data = *pool.get(i);
 		if(detailed) {
 			String tag;
 			tag += "  [";
