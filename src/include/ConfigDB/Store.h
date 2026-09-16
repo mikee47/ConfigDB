@@ -152,14 +152,14 @@ public:
 
 	bool commit();
 
-	static StoreUpdateRef lock(StoreRef& store);
-
 protected:
 	friend class Object;
 	friend class ArrayBase;
 	friend class Database;
 	friend class StoreRef;
 	friend class StoreUpdateRef;
+	friend class ObjectRef;
+	friend class ObjectUpdateRef;
 
 	void checkRef(const StoreRef& ref);
 
@@ -172,11 +172,22 @@ protected:
 
 	void decUpdate();
 
+	StoreRef lock() const
+	{
+		return weakref.lock();
+	}
+
+	StoreUpdateRef lockForUpdate()
+	{
+		return isWriteable() ? lock() : StoreUpdateRef{};
+	}
+
 	ArrayPool arrayPool;
 	StringPool stringPool;
 
 private:
 	Database& db;
+	std::weak_ptr<Store> weakref;
 	std::unique_ptr<uint8_t[]> rootData;
 	uint8_t updaterCount{};
 	bool dirty{};

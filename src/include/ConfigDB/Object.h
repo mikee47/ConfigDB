@@ -144,6 +144,11 @@ public:
 	 */
 	Object findObject(const char* name, size_t length);
 
+	Object findObject(const String& name)
+	{
+		return findObject(name.c_str(), name.length());
+	}
+
 	/**
 	 * @brief Get number of properties
 	 * @note Array types override this to return the number of items in the array.
@@ -162,6 +167,11 @@ public:
 	 * @brief Find property by name
 	 */
 	Property findProperty(const char* name, size_t length);
+
+	Property findProperty(const String& name)
+	{
+		return findProperty(name.c_str(), name.length());
+	}
 
 	/**
 	 * @brief Reset contents to defaults (except arrays, which are cleared)
@@ -263,11 +273,9 @@ public:
 	static void registerCallback(Database& db, uint8_t storeIndex, Callback callback, CallbackType type);
 
 protected:
+	friend struct ObjectRefBase;
 	friend class Union;
 	friend class Accessor;
-
-	StoreRef openStore(Database& db, unsigned storeIndex);
-	StoreUpdateRef openStoreForUpdate(Database& db, unsigned storeIndex);
 
 	void disposeArrays();
 	void initArrays();
@@ -353,13 +361,13 @@ template <class UpdaterType, class DatabaseClassType, unsigned storeIndex, class
 class OuterObjectUpdaterTemplate : public UpdaterType
 {
 public:
-	OuterObjectUpdaterTemplate(StoreUpdateRef store)
+	explicit OuterObjectUpdaterTemplate(StoreUpdateRef store)
 		: UpdaterType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
 	explicit OuterObjectUpdaterTemplate(DatabaseClassType& db)
-		: OuterObjectUpdaterTemplate(this->openStoreForUpdate(db, storeIndex))
+		: OuterObjectUpdaterTemplate(db.openStoreForUpdate(storeIndex))
 	{
 	}
 
@@ -369,7 +377,7 @@ public:
 	 */
 	std::unique_ptr<ImportStream> createImportStream(const Format& format)
 	{
-		return format.createImportStream(store, *this);
+		return format.createImportStream(*this);
 	}
 
 	explicit operator bool() const
@@ -398,12 +406,12 @@ class OuterObjectTemplate : public ContainedClassType
 public:
 	using Updater = UpdaterType;
 
-	OuterObjectTemplate(StoreRef store)
+	explicit OuterObjectTemplate(StoreRef store)
 		: ContainedClassType(*store, ParentClassType::typeinfo.getObject(propIndex), offset), store(store)
 	{
 	}
 
-	OuterObjectTemplate(DatabaseClassType& db) : OuterObjectTemplate(this->openStore(db, storeIndex))
+	explicit OuterObjectTemplate(DatabaseClassType& db) : OuterObjectTemplate(db.openStore(storeIndex))
 	{
 	}
 
@@ -415,7 +423,7 @@ public:
 	 */
 	std::unique_ptr<ExportStream> createExportStream(const Format& format, const ExportOptions& options = {}) const
 	{
-		return format.createExportStream(store, *this, options);
+		return format.createExportStream(*this, options);
 	}
 
 	using OuterUpdater =
