@@ -63,12 +63,12 @@ public:
 		return count * itemSize;
 	}
 
-	void* operator[](unsigned index)
+	void* get(unsigned index)
 	{
 		return getItemPtr(index);
 	}
 
-	const void* operator[](unsigned index) const
+	const void* get(unsigned index) const
 	{
 		return getItemPtr(index);
 	}
@@ -280,14 +280,14 @@ public:
 		return add(prop.getSize());
 	}
 
-	ArrayData& operator[](ArrayId id)
+	ArrayData* get(ArrayId id)
 	{
-		return *static_cast<ArrayData*>(getItemPtr(id - 1));
+		return id ? static_cast<ArrayData*>(getItemPtr(id - 1)) : nullptr;
 	}
 
-	const ArrayData& operator[](ArrayId id) const
+	const ArrayData* get(ArrayId id) const
 	{
-		return *static_cast<const ArrayData*>(getItemPtr(id - 1));
+		return id ? static_cast<const ArrayData*>(getItemPtr(id - 1)) : nullptr;
 	}
 
 	void clear();

@@ -55,7 +55,6 @@ bool WriteStream::handleError(FormatError err, Object& object, const String& arg
 	status = err;
 	Database& db = database ? *database : info[0].getDatabase();
 	return db.handleFormatError(err, object, arg);
-	return true;
 }
 
 bool WriteStream::handleError(FormatError err, const String& arg)
@@ -110,7 +109,7 @@ bool WriteStream::startElement(const Element& element)
 			return handleError(FormatError::BadType, parent, toString(element.type));
 		}
 		obj = static_cast<ObjectArray&>(parent).insertItem(parent.streamPos++);
-		return true;
+		return bool(obj);
 	}
 
 	if(parent.typeIs(ObjectType::Array)) {
@@ -118,7 +117,12 @@ bool WriteStream::startElement(const Element& element)
 			return handleError(FormatError::BadType, parent, toString(element.type));
 		}
 		auto& array = static_cast<Array&>(parent);
-		return setProperty(element, array, array.insertItem(parent.streamPos++));
+		auto item = array.insertItem(parent.streamPos);
+		if(!item) {
+			return false;
+		}
+		++parent.streamPos;
+		return setProperty(element, array, item);
 	}
 
 	if(element.isContainer()) {

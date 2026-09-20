@@ -52,11 +52,14 @@ public:
 		if(!this->writeCheck()) {
 			return {};
 		}
-		auto& array = getArray();
-		auto index = array.getCount();
-		auto& itemType = getItemType();
-		array.add(itemType.variant.object->defaultData);
-		return Item(*this, 0, index);
+		if(auto array = getArray()) {
+			auto index = array->getCount();
+			auto& itemType = getItemType();
+			if(array->add(itemType.variant.object->defaultData)) {
+				return Item(*this, 0, index);
+			}
+		}
+		return {};
 	}
 
 	template <typename Item = Object> Item insertItem(unsigned index)
@@ -65,9 +68,12 @@ public:
 			return {};
 		}
 		auto& itemType = getItemType();
-		auto& array = getArray();
-		array.insert(index, itemType.variant.object->defaultData);
-		return Item(*this, 0, index);
+		if(auto array = getArray()) {
+			if(array->insert(index, itemType.variant.object->defaultData)) {
+				return Item(*this, 0, index);
+			}
+		}
+		return {};
 	}
 
 	const PropertyInfo& getItemType() const
