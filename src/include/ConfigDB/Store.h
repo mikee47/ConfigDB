@@ -152,8 +152,6 @@ public:
 
 	bool commit();
 
-	static StoreUpdateRef lock(StoreRef& store);
-
 protected:
 	friend class Object;
 	friend class ArrayBase;
