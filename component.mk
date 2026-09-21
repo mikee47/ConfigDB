@@ -1,8 +1,13 @@
 COMPONENT_DEPENDS := JsonStreamingParser
 
-COMPONENT_INCDIRS := src/include
-COMPONENT_SRCDIRS := src src/Json
-COMPONENT_DOXYGEN_INPUT := src/include
+COMPONENT_INCDIRS := \
+	src/include
+COMPONENT_SRCDIRS := \
+	src \
+	src/Json \
+	src/JsonRPC
+COMPONENT_DOXYGEN_INPUT := \
+	src/include
 
 ifneq (,$(COMPONENT_RULE))
 

@@ -21,7 +21,7 @@
 
 #include <Data/Stream/ReadWriteStream.h>
 #include "Status.h"
-#include "StoreRef.h"
+#include <memory>
 
 namespace ConfigDB
 {
@@ -92,13 +92,12 @@ public:
 
 	/**
 	 * @brief Create a stream to serialize an Object
-	 * @param store Shared pointer to store
 	 * @param object Object to start streaming from
 	 * @param options Advanced settings for adjusting output
 	 *
 	 * Used for streaming asychronously to a web client, for example in an HttpResponse.
 	 */
-	virtual std::unique_ptr<ExportStream> createExportStream(StoreRef store, const Object& object,
+	virtual std::unique_ptr<ExportStream> createExportStream(const Object& object,
 															 const ExportOptions& options = {}) const = 0;
 
 	/**
@@ -127,12 +126,11 @@ public:
 
 	/**
 	 * @brief Create a stream for de-serialising (writing) into a store
-	 * @param store Shared pointer to store with write access
 	 * @param object Object to start streaming to
 	 *
 	 * Used when updating a store from a remote web client, for example via HttpRequest
 	 */
-	virtual std::unique_ptr<ImportStream> createImportStream(StoreUpdateRef& store, Object& object) const = 0;
+	virtual std::unique_ptr<ImportStream> createImportStream(Object& object) const = 0;
 
 	/**
 	 * @brief De-serialise content from stream into object (RAM)

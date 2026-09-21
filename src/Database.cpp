@@ -189,6 +189,7 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 		return nullptr;
 	}
 
+	store->weakref = store;
 	auto& format = getFormat(*store);
 	StoreUpdateRef update = store;
 	// Handle *any* import failure by loading defaults
@@ -198,6 +199,33 @@ std::shared_ptr<Store> Database::loadStore(const PropertyInfo& storeInfo)
 	}
 	update->clearDirty();
 	return store;
+}
+
+ObjectRef Database::getObject(const char* name, unsigned length)
+{
+	// Look in root store for a matching object
+	auto& root = typeinfo.stores[0];
+	int i = root.findObject(name, length);
+	if(i >= 0) {
+		return {openStore(0), unsigned(i)};
+	}
+
+	// Now check for a matching store
+	i = typeinfo.findStore(name, length);
+	if(i < 0) {
+		return {};
+	}
+	return openStore(i);
+}
+
+ObjectUpdateRef Database::getObjectForUpdate(const char* name, unsigned length)
+{
+	auto ref = getObject(name, length);
+	if(ref) {
+		auto lockedStore = lockStore(ref.store);
+		return {lockedStore, ref.object};
+	}
+	return {};
 }
 
 void Database::registerCallback(Store& store, Callback&& callback, CallbackType type)
@@ -363,7 +391,7 @@ std::unique_ptr<ExportStream> Database::createExportStream(const Format& format,
 	}
 
 	Object obj(*store, *prop, offset);
-	return format.createExportStream(store, obj, options);
+	return format.createExportStream(obj, options);
 }
 
 bool Database::exportToFile(const Format& format, const String& filename, const ExportOptions& options)
