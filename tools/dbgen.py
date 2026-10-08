@@ -834,6 +834,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                 if obj := ref_node.get('object'):
                     if obj.schema_id != parent_prop.obj.schema_id:
                         database.external_objects[object_ref] = obj
+                        databases[parent_prop.obj.schema_id].external_objects[object_ref] = obj
                     return create_object_property(obj)
 
                 if next_ref := ref_node.get('$ref'):
@@ -875,6 +876,7 @@ def parse_property(path: str, parent_prop: Property, key: str, fields: dict) -> 
                 db.object_defs[object_ref] = obj
             if obj.schema_id != parent_prop.obj.schema_id:
                 database.external_objects[object_ref] = obj
+                databases[parent_prop.obj.schema_id].external_objects[object_ref] = obj
             fields['object'] = obj
             return create_object_property(obj)
 
