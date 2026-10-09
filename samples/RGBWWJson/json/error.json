@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":1,"error":{"code":123,"message":"Some error or other","data":{"position":{"location": 123, "length": 5}}}}
