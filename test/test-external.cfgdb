@@ -7,6 +7,10 @@
     },
     "colors": {
       "$ref": "test-config-enum/properties/colors"
+    },
+    "nested-ref": {
+      "$comment": "PR#112 Verify nested references",
+      "$ref": "mid/$defs/mid-obj"
     }
   }
 }
