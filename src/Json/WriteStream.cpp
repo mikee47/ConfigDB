@@ -82,14 +82,23 @@ bool WriteStream::startElement(const Element& element)
 		return true;
 	}
 
-	auto& parent = info[element.level - 1];
-
 	// Check for array selector expression
-	auto sel = strchr(element.key, '[');
+	if(auto sel = strchr(element.key, '[')) {
+		return handleSelector(element, sel);
+	}
+
+	auto& parent = info[element.level - 1];
+	auto& obj = info[element.level];
 
 	if(database && element.level == 1) {
-		if(!sel && element.type == Element::Type::Object) {
-			return locateStoreOrRoot(element);
+		if(element.isContainer()) {
+			if(!locateStoreOrRoot(element, element.keyLength)) {
+				return false;
+			}
+			if(obj.isArray()) {
+				static_cast<ArrayBase&>(obj).clear();
+			}
+			return true;
 		}
 		// Assume this is a property of the root store
 		if(!openStore(0)) {
@@ -97,12 +106,6 @@ bool WriteStream::startElement(const Element& element)
 		}
 		parent = *store;
 	}
-
-	if(sel) {
-		return handleSelector(element, sel);
-	}
-
-	auto& obj = info[element.level];
 
 	if(parent.typeIs(ObjectType::ObjectArray)) {
 		if(element.type != Element::Type::Object) {
@@ -147,7 +150,7 @@ bool WriteStream::startElement(const Element& element)
  * When processing a full database the element at level #1 can refer to either a store
  * or an object in the Root store.
  */
-bool WriteStream::locateStoreOrRoot(const Element& element)
+bool WriteStream::locateStoreOrRoot(const Element& element, unsigned keyLength)
 {
 	auto& parent = info[element.level - 1];
 	auto& obj = info[element.level];
@@ -155,7 +158,7 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 
 	// Look in root store for a matching object
 	auto& root = database->typeinfo.stores[0];
-	int i = root.findObject(element.key, element.keyLength);
+	int i = root.findObject(element.key, keyLength);
 	if(i >= 0) {
 		if(!openStore(0)) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
@@ -167,7 +170,7 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 
 	// Now check for a matching store
 	store = StoreUpdateRef();
-	i = database->typeinfo.findStore(element.key, element.keyLength);
+	i = database->typeinfo.findStore(element.key, keyLength);
 	if(i < 0) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
@@ -198,9 +201,15 @@ bool WriteStream::handleSelector(const Element& element, const char* sel)
 	if(*keyEnd != ']') {
 		return handleError(FormatError::BadSelector, parent, element.getKey());
 	}
-	obj = parent.findObject(element.key, sel - element.key);
-	if(!obj) {
-		return handleError(FormatError::NotInSchema, parent, element.getKey());
+	if(database && element.level == 1) {
+		if(!locateStoreOrRoot(element, sel - element.key)) {
+			return false;
+		}
+	} else {
+		obj = parent.findObject(element.key, sel - element.key);
+		if(!obj) {
+			return handleError(FormatError::NotInSchema, parent, element.getKey());
+		}
 	}
 	if(!obj.isArray()) {
 		return handleError(FormatError::BadType, obj, toString(obj.typeinfo().type));
