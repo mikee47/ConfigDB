@@ -109,9 +109,7 @@ struct ObjectUpdateRef : public ObjectRefBase {
 
 	ObjectUpdateRef(StoreUpdateRef store);
 
-	ObjectUpdateRef(StoreUpdateRef store, Object& object) : ObjectRefBase(object), store(store)
-	{
-	}
+	ObjectUpdateRef(StoreUpdateRef store, Object& object);
 
 	ObjectUpdateRef(Object& object);
 

@@ -274,6 +274,7 @@ public:
 
 protected:
 	friend struct ObjectRefBase;
+	friend struct ObjectUpdateRef;
 	friend class Union;
 	friend class Accessor;
 

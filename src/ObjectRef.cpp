@@ -98,4 +98,12 @@ ObjectUpdateRef::ObjectUpdateRef(Object& object) : ObjectUpdateRef(object.getSto
 {
 }
 
+ObjectUpdateRef::ObjectUpdateRef(StoreUpdateRef store, Object& object) : ObjectRefBase(object), store(store)
+{
+	if(this->object.parent && this->object.parent->isStore()) {
+		// Existing parent may be an updatable instance
+		this->object.parent = this->store.get();
+	}
+}
+
 } // namespace ConfigDB
