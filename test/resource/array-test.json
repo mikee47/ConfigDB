@@ -218,5 +218,19 @@
 				"result": [{"intval":1,"stringval":"a"},{"intval":2,"stringval":"b"},{"intval":12,"stringval":"xyz"},{"intval":4,"stringval":"d"}]
 			}
 		]
+	},
+	"array_store": {
+		"Assign": [
+			{
+				"expr": {"array_store": ["x","y","z"]},
+				"result": ["x","y","z"]
+			}
+		],
+		"Update item": [
+			{
+				"expr": {"array_store[1]": "g"},
+				"result": ["a","g","c","d"]
+			}
+		]
 	}
 }

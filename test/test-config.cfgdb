@@ -105,12 +105,18 @@
         }
       }
     },
-    "array-store": {
+    "array_store": {
       "type": "array",
       "store": true,
       "items": {
         "type": "string"
-      }
+      },
+      "default": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
     },
     "object-array-store": {
       "type": "array",
