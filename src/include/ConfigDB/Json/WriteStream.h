@@ -38,12 +38,11 @@ public:
 	{
 	}
 
-	WriteStream(StoreUpdateRef& store, Object& object) : store(store), info{object}, parser(this)
+	WriteStream(ObjectUpdateRef ref) : root(ref), info{root.object}, parser(this)
 	{
-	}
-
-	WriteStream(Object& object) : info{object}, parser(this)
-	{
+		if(!ref) {
+			status = {Error::UpdateConflict};
+		}
 	}
 
 	static Status parse(Database& database, Stream& source);
@@ -91,7 +90,7 @@ public:
 
 	Status getStatus() const override;
 
-private:
+protected:
 	bool startElement(const JSON::Element& element) override;
 
 	bool endElement(const JSON::Element&) override
@@ -106,9 +105,9 @@ private:
 	bool handleError(FormatError err, Object& object, const String& arg);
 	bool handleError(FormatError err, const String& arg);
 
-private:
+protected:
 	Database* database{};
-	StoreUpdateRef store;
+	ObjectUpdateRef root;
 	Object info[JSON::StreamingParser::maxNesting]{};
 	ObjectArray arrayParent; ///< Temporary required when using selectors
 	JSON::StaticStreamingParser<1024> parser;

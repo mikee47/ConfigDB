@@ -18,8 +18,8 @@
  ****/
 
 #include <ConfigDB/Json/Format.h>
-#include "ReadStream.h"
-#include "WriteStream.h"
+#include <ConfigDB/Json/ReadStream.h>
+#include <ConfigDB/Json/WriteStream.h>
 #include <debug_progmem.h>
 
 namespace ConfigDB::Json
@@ -31,10 +31,9 @@ std::unique_ptr<ExportStream> Format::createExportStream(Database& db, const Exp
 	return std::make_unique<ReadStream>(db, options);
 }
 
-std::unique_ptr<ExportStream> Format::createExportStream(StoreRef store, const Object& object,
-														 const ExportOptions& options) const
+std::unique_ptr<ExportStream> Format::createExportStream(const Object& object, const ExportOptions& options) const
 {
-	return std::make_unique<ReadStream>(store, object, options);
+	return std::make_unique<ReadStream>(object, options);
 }
 
 size_t Format::exportToStream(const Object& object, Print& output, const ExportOptions& options) const
@@ -59,9 +58,9 @@ std::unique_ptr<ImportStream> Format::createImportStream(Database& db) const
 	return std::make_unique<WriteStream>(db);
 }
 
-std::unique_ptr<ImportStream> Format::createImportStream(StoreUpdateRef& store, Object& object) const
+std::unique_ptr<ImportStream> Format::createImportStream(Object& object) const
 {
-	return std::make_unique<WriteStream>(store, object);
+	return std::make_unique<WriteStream>(object);
 }
 
 Status Format::importFromStream(Object& object, Stream& source) const
