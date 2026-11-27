@@ -159,8 +159,9 @@ bool WriteStream::locateStoreOrRoot(const Element& element, unsigned keyLength)
 {
 	auto& obj = info[element.level];
 	obj = {};
+	root = {};
 
-	auto ref = database->getObject(element.key, element.keyLength);
+	auto ref = database->getObject(element.key, keyLength);
 	if(!ref) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
