@@ -11,6 +11,7 @@ def get_default_vars() -> dict():
     '''Return test config value dictionary which can be modified without side-effects'''
     return {
         'int_array': [1, 2, 3, 4],
+        'array_store': ["a","b","c","d"],
         'object_array': [
             {"intval": 1, "stringval": "a"},
             {"intval": 2, "stringval": "b"},
@@ -111,6 +112,14 @@ TEST_CASES = {
 		'Delete/Insert at named item position': [
             'x[stringval=c] = [{"intval":12,"stringval":"xyz"}]',
 		]
+    },
+    'array_store': {
+        'Assign': [
+            'x = ["x","y","z"]',
+        ],
+        'Update item': [
+            'x[1] = "g"',
+        ]
     }
 }
 

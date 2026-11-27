@@ -99,7 +99,7 @@ protected:
 	}
 
 	bool openStore(unsigned storeIndex);
-	bool locateStoreOrRoot(const JSON::Element& element);
+	bool locateStoreOrRoot(const JSON::Element& element, unsigned keyLength);
 	bool handleSelector(const JSON::Element& element, const char* sel);
 	bool setProperty(const JSON::Element& element, Object& object, Property prop);
 	bool handleError(FormatError err, Object& object, const String& arg);

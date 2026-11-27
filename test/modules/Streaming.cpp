@@ -242,6 +242,26 @@ public:
 				Serial << " - " << result << endl;
 			}
 		}
+
+		TEST_CASE("Array store update")
+		{
+			for(auto test : array_store_test_cases) {
+				String expr = test.expr.get(arrayTestData);
+				Serial << "CASE: " << expr << endl;
+				String result = test.result.get(arrayTestData);
+				bool isValid = (result[0] == '[');
+				Serial << expr << " -> ";
+				TestConfig::ArrayStore::OuterUpdater(database).resetToDefaults();
+				CHECK_EQ(importObject(database, expr), isValid);
+				if(isValid) {
+					TestConfig::ArrayStore array(database);
+					String s = exportObject(array);
+					Serial << s;
+					REQUIRE_EQ(s, result);
+				}
+				Serial << " - " << result << endl;
+			}
+		}
 	}
 
 	void arrayTests(const FSTR::Array<ArrayTestCase>& testCases, bool isObject)

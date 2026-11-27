@@ -53,3 +53,6 @@ DEFINE_FSTR_ARRAY(object_array_test_cases, ArrayTestCase,
 	{{6841, 25}, {6882, 21}},
 	{{6956, 33}, {7005, 88}},
 	{{7165, 64}, {7245, 120}} )
+DEFINE_FSTR_ARRAY(array_store_test_cases, ArrayTestCase,
+	{{7428, 30}, {7474, 13}},
+	{{7534, 23}, {7573, 17}} )
