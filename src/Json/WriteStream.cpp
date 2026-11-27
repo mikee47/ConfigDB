@@ -88,14 +88,20 @@ bool WriteStream::startElement(const Element& element)
 	auto sel = strchr(element.key, '[');
 
 	if(database && element.level == 1) {
-		if(!sel && element.type == Element::Type::Object) {
-			return locateStoreOrRoot(element);
+		if(element.type == Element::Type::Object || element.type == Element::Type::Array) {
+			if(!locateStoreOrRoot(element)) {
+				return false;
+			}
+			if(!sel) {
+				return true;
+			}
+		} else {
+			// Assume this is a property of the root store
+			if(!openStore(0) || !root.store) {
+				return handleError(FormatError::UpdateConflict, element.getKey());
+			}
+			parent = *root.store;
 		}
-		// Assume this is a property of the root store
-		if(!openStore(0)) {
-			return handleError(FormatError::UpdateConflict, element.getKey());
-		}
-		parent = *store;
 	}
 
 	if(sel) {
@@ -153,11 +159,14 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 	auto& obj = info[element.level];
 	obj = {};
 
+	auto sel = static_cast<const char*>(memchr(element.key, '[', element.keyLength));
+	size_t keyLen = sel ? static_cast<size_t>(sel - element.key) : element.keyLength;
+
 	// Look in root store for a matching object
 	auto& root = database->typeinfo.stores[0];
-	int i = root.findObject(element.key, element.keyLength);
+	int i = root.findObject(element.key, keyLen);
 	if(i >= 0) {
-		if(!openStore(0)) {
+		if(!openStore(0) || !store) {
 			return handleError(FormatError::UpdateConflict, element.getKey());
 		}
 		parent = *store;
@@ -167,11 +176,11 @@ bool WriteStream::locateStoreOrRoot(const Element& element)
 
 	// Now check for a matching store
 	store = StoreUpdateRef();
-	i = database->typeinfo.findStore(element.key, element.keyLength);
+	i = database->typeinfo.findStore(element.key, keyLen);
 	if(i < 0) {
 		return handleError(FormatError::NotInSchema, element.getKey());
 	}
-	if(!openStore(i)) {
+	if(!openStore(i) || !store) {
 		return handleError(FormatError::UpdateConflict, element.getKey());
 	}
 	obj = *store;
@@ -192,15 +201,17 @@ bool WriteStream::handleSelector(const Element& element, const char* sel)
 {
 	auto& parent = info[element.level - 1];
 	auto& obj = info[element.level];
-	obj = {};
 
 	auto keyEnd = element.key + element.keyLength - 1;
 	if(*keyEnd != ']') {
 		return handleError(FormatError::BadSelector, parent, element.getKey());
 	}
-	obj = parent.findObject(element.key, sel - element.key);
+
 	if(!obj) {
-		return handleError(FormatError::NotInSchema, parent, element.getKey());
+		obj = parent.findObject(element.key, sel - element.key);
+		if(!obj) {
+			return handleError(FormatError::NotInSchema, parent, element.getKey());
+		}
 	}
 	if(!obj.isArray()) {
 		return handleError(FormatError::BadType, obj, toString(obj.typeinfo().type));
